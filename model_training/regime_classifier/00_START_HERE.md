@@ -10,31 +10,31 @@ All components of the Market Regime Classification System have been created and 
 
 ### Core Python Modules (5 files)
 
-1. [**regime_classifier.py**](computer:///mnt/user-data/outputs/regime_classifier.py) (30KB)
+1. [**regime_classifier.py**](computer:///outputs/regime_classifier.py) (30KB)
    - Core model, feature engineering, training pipeline
    - Complete LSTM architecture
    - Automatic regime labeling
    - Visualization functions
 
-2. [**train_regime_classifier.py**](computer:///mnt/user-data/outputs/train_regime_classifier.py) (15KB)
+2. [**train_regime_classifier.py**](computer:///outputs/train_regime_classifier.py) (15KB)
    - Command-line training script
    - Full training pipeline
    - Hyperparameter configuration
    - Performance reporting
 
-3. [**regime_inference.py**](computer:///mnt/user-data/outputs/regime_inference.py) (16KB)
+3. [**regime_inference.py**](computer:///outputs/regime_inference.py) (16KB)
    - Real-time prediction engine
    - Low-latency inference (<50ms)
    - Pattern suitability checking
    - Trading bias calculation
 
-4. [**generate_test_data.py**](computer:///mnt/user-data/outputs/generate_test_data.py) (13KB)
+4. [**generate_test_data.py**](computer:///outputs/generate_test_data.py) (13KB)
    - Synthetic EURUSD data generator
    - 7 regime patterns
    - Realistic price action
    - Testing utilities
 
-5. [**complete_example.py**](computer:///mnt/user-data/outputs/complete_example.py) (13KB)
+5. [**complete_example.py**](computer:///outputs/complete_example.py) (13KB)
    - End-to-end demonstration
    - Complete workflow example
    - Integration examples
@@ -44,31 +44,31 @@ All components of the Market Regime Classification System have been created and 
 
 ### Documentation (5 files)
 
-6. [**INDEX.md**](computer:///mnt/user-data/outputs/INDEX.md) (12KB)
+6. [**INDEX.md**](computer:///outputs/INDEX.md) (12KB)
    - Complete package index
    - File navigation guide
    - Reading order recommendations
    - Use case directory
 
-7. [**PROJECT_SUMMARY_REGIME_CLASSIFIER.md**](computer:///mnt/user-data/outputs/PROJECT_SUMMARY_REGIME_CLASSIFIER.md) (17KB)
+7. [**PROJECT_SUMMARY_REGIME_CLASSIFIER.md**](computer:///outputs/PROJECT_SUMMARY_REGIME_CLASSIFIER.md) (17KB)
    - Executive summary
    - Complete deliverables list
    - Performance metrics
    - Integration guide
 
-8. [**README_REGIME_CLASSIFIER.md**](computer:///mnt/user-data/outputs/README_REGIME_CLASSIFIER.md) (13KB)
+8. [**README_REGIME_CLASSIFIER.md**](computer:///outputs/README_REGIME_CLASSIFIER.md) (13KB)
    - Comprehensive documentation
    - Architecture details
    - Training instructions
    - API reference
 
-9. [**QUICKSTART_REGIME_CLASSIFIER.md**](computer:///mnt/user-data/outputs/QUICKSTART_REGIME_CLASSIFIER.md) (13KB)
+9. [**QUICKSTART_REGIME_CLASSIFIER.md**](computer:///outputs/QUICKSTART_REGIME_CLASSIFIER.md) (13KB)
    - Quick start guide
    - 5-minute setup
    - Usage examples
    - Common issues
 
-10. [**QUICK_REFERENCE.md**](computer:///mnt/user-data/outputs/QUICK_REFERENCE.md) (5.5KB)
+10. [**QUICK_REFERENCE.md**](computer:///outputs/QUICK_REFERENCE.md) (5.5KB)
     - One-page reference card
     - Essential commands
     - Code snippets
@@ -78,7 +78,7 @@ All components of the Market Regime Classification System have been created and 
 
 ### Configuration
 
-11. [**requirements.txt**](computer:///mnt/user-data/outputs/requirements.txt) (726 bytes)
+11. [**requirements.txt**](computer:///outputs/requirements.txt) (726 bytes)
     - Python dependencies
     - Version specifications
     - Installation instructions

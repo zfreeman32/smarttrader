@@ -333,7 +333,7 @@ def create_performance_dashboard(history, y_true_conf, y_pred_conf, y_true_bias,
 
 
 def save_all_visualizations(history, y_true_conf, y_pred_conf, y_true_bias, y_pred_bias, 
-                           output_dir='/mnt/user-data/outputs/'):
+                           output_dir='./outputs/'):
     """Save all visualization plots"""
     
     plots = []

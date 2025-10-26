@@ -26,7 +26,10 @@ from tensorflow.keras import layers, callbacks, optimizers
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix, classification_report
+)
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, Tuple, List, Optional
@@ -540,50 +543,78 @@ class RegimeClassifierModel:
         
         return self.history
     
-    def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict:
+    def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> dict:
         """
-        Evaluate model performance on test set.
+        Evaluate model on test data.
         
         Args:
-            X_test: Test features
+            X_test: Test sequences
             y_test: Test labels (one-hot encoded)
             
         Returns:
-            Dictionary of evaluation metrics
+            Dictionary containing evaluation metrics
         """
+        print("\n" + "="*70)
+        print("EVALUATING MODEL")
+        print("="*70)
+        
         # Get predictions
-        y_pred_proba = self.model.predict(X_test, verbose=0)
-        y_pred = np.argmax(y_pred_proba, axis=1)
+        y_pred_probs = self.model.predict(X_test, verbose=0)
+        y_pred = np.argmax(y_pred_probs, axis=1)
         y_true = np.argmax(y_test, axis=1)
         
         # Calculate metrics
-        test_loss, test_acc, test_precision, test_recall = self.model.evaluate(
-            X_test, y_test, verbose=0
-        )
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+        recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+        f1 = f1_score(y_true, y_pred, average='weighted', zero_division=0)
         
-        # Classification report
-        regime_names = [
-            'Strong Up', 'Weak Up', 'Ranging',
-            'Weak Down', 'Strong Down', 'High Vol', 'Low Vol'
-        ]
-        
-        print("\n" + "="*70)
-        print("CLASSIFICATION REPORT")
-        print("="*70)
-        print(classification_report(y_true, y_pred, target_names=regime_names))
+        print(f"\nTest Accuracy:  {accuracy:.4f}")
+        print(f"Test Precision: {precision:.4f}")
+        print(f"Test Recall:    {recall:.4f}")
+        print(f"Test F1 Score:  {f1:.4f}")
         
         # Confusion matrix
         cm = confusion_matrix(y_true, y_pred)
         
+        print("\n" + "="*70)
+        print("CLASSIFICATION REPORT")
+        print("="*70)
+        
+        regime_names = [
+            'Strong Uptrend', 'Weak Uptrend', 'Ranging',
+            'Weak Downtrend', 'Strong Downtrend', 'High Volatility', 'Low Volatility'
+        ]
+        
+        # Find which classes are actually present in the data
+        unique_classes = np.unique(np.concatenate([y_true, y_pred]))
+        present_regime_names = [regime_names[i] for i in unique_classes]
+        
+        # Only report on classes that exist
+        print(classification_report(y_true, y_pred, 
+                                labels=unique_classes,
+                                target_names=present_regime_names,
+                                zero_division=0))
+        
+        # Show which classes are missing
+        all_classes = set(range(len(regime_names)))
+        present_classes = set(unique_classes)
+        missing_classes = all_classes - present_classes
+        
+        if missing_classes:
+            print("\n⚠️  Missing Classes (no examples in data):")
+            for cls in sorted(missing_classes):
+                print(f"   Class {cls}: {regime_names[cls]}")
+        
         return {
-            'test_loss': test_loss,
-            'test_accuracy': test_acc,
-            'test_precision': test_precision,
-            'test_recall': test_recall,
+            'test_accuracy': accuracy,
+            'test_precision': precision,
+            'test_recall': recall,
+            'test_f1': f1,
             'confusion_matrix': cm,
-            'y_pred': y_pred,
             'y_true': y_true,
-            'y_pred_proba': y_pred_proba
+            'y_pred': y_pred,
+            'y_pred_probs': y_pred_probs
         }
     
     def predict(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -674,7 +705,7 @@ def plot_training_history(history: keras.callbacks.History):
     axes[1, 1].grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('/mnt/user-data/outputs/regime_training_history.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./outputs/regime_training_history.png', dpi=300, bbox_inches='tight')
     print("Training history plot saved")
     plt.close()
 
@@ -702,7 +733,7 @@ def plot_confusion_matrix(cm: np.ndarray, normalize: bool = True):
     plt.ylabel('True Regime', fontsize=12)
     plt.xlabel('Predicted Regime', fontsize=12)
     plt.tight_layout()
-    plt.savefig('/mnt/user-data/outputs/regime_confusion_matrix.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./outputs/regime_confusion_matrix.png', dpi=300, bbox_inches='tight')
     print("Confusion matrix plot saved")
     plt.close()
 
@@ -762,7 +793,7 @@ def plot_regime_distribution(df: pd.DataFrame):
                     f'{pct:.1f}%', ha='center', va='bottom', fontsize=9)
     
     plt.tight_layout()
-    plt.savefig('/mnt/user-data/outputs/regime_distribution.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./outputs/regime_distribution.png', dpi=300, bbox_inches='tight')
     print("Regime distribution plot saved")
     plt.close()
 
@@ -883,7 +914,7 @@ if __name__ == "__main__":
     plot_confusion_matrix(results['confusion_matrix'])
     
     # 13. Save model
-    model.save('/mnt/user-data/outputs/regime_classifier.keras')
+    model.save('./outputs/regime_classifier.keras')
     
     print("\n" + "="*70)
     print("TRAINING COMPLETE!")

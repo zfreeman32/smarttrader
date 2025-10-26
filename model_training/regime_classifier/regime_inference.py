@@ -392,7 +392,7 @@ def example_usage():
     
     # Initialize predictor
     predictor = RealtimeRegimePredictor(
-        model_path='/mnt/user-data/outputs/regime_classifier.keras',
+        model_path='./outputs/regime_classifier.keras',
         lookback_period=100,
         min_confidence=0.70
     )
@@ -460,6 +460,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error: {e}")
         print("Note: This example requires a trained model at:")
-        print("      /mnt/user-data/outputs/regime_classifier.keras")
+        print("      ./outputs/regime_classifier.keras")
         print("\nTrain a model first using:")
         print("      python train_regime_classifier.py --data_path eurusd_1min.csv")

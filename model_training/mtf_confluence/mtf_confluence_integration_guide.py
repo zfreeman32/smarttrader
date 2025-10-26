@@ -125,7 +125,7 @@ model.compile_model(learning_rate=0.001)
 # Train
 trainer = ConfluenceModelTrainer(
     model=model,
-    model_save_path='/mnt/user-data/outputs/mtf_confluence_model_best.keras'
+    model_save_path='./outputs/mtf_confluence_model_best.keras'
 )
 
 history = trainer.train(
@@ -142,12 +142,12 @@ history = trainer.train(
 
 # Save scalers
 import pickle
-with open('/mnt/user-data/outputs/mtf_confluence_scalers.pkl', 'wb') as f:
+with open('./outputs/mtf_confluence_scalers.pkl', 'wb') as f:
     pickle.dump(preparator.scalers, f)
 
 print("Training complete!")
-print(f"Model: /mnt/user-data/outputs/mtf_confluence_model_best.keras")
-print(f"Scalers: /mnt/user-data/outputs/mtf_confluence_scalers.pkl")
+print(f"Model: ./outputs/mtf_confluence_model_best.keras")
+print(f"Scalers: ./outputs/mtf_confluence_scalers.pkl")
 
 """
 STEP 3: Evaluate Model Performance
@@ -207,8 +207,8 @@ STEP 1: Initialize Analyzer
 from mtf_confluence_analyzer import ConfluenceAnalyzer, format_analysis_report
 
 analyzer = ConfluenceAnalyzer(
-    model_path='/mnt/user-data/outputs/mtf_confluence_model_best.keras',
-    scaler_path='/mnt/user-data/outputs/mtf_confluence_scalers.pkl'
+    model_path='./outputs/mtf_confluence_model_best.keras',
+    scaler_path='./outputs/mtf_confluence_scalers.pkl'
 )
 
 """

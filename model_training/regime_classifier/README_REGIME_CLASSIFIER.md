@@ -139,7 +139,7 @@ import numpy as np
 
 # Load trained model
 model = RegimeClassifierModel()
-model.load('/mnt/user-data/outputs/regime_classifier.keras')
+model.load('/outputs/regime_classifier.keras')
 
 # Prepare live data
 df_live = get_live_eurusd_data()  # Your data source

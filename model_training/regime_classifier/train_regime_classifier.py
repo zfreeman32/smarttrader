@@ -423,7 +423,7 @@ if __name__ == "__main__":
                        help='Use class weights for imbalanced data')
     
     # Output arguments
-    parser.add_argument('--output_dir', type=str, default='/mnt/user-data/outputs',
+    parser.add_argument('--output_dir', type=str, default='./outputs',
                        help='Output directory')
     parser.add_argument('--model_name', type=str, default='regime_classifier.keras',
                        help='Model filename')

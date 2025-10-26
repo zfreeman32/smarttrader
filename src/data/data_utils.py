@@ -170,48 +170,98 @@ def generate_volatile_data(n_bars: int = 500) -> pd.DataFrame:
     )
 
 
-def load_csv_data(filepath: str, parse_dates: bool = True) -> pd.DataFrame:
+def load_csv_data(filepath: str, parse_dates: bool = True, 
+                 keep_extra_features: bool = False) -> pd.DataFrame:
     """
     Load OHLCV data from CSV file
     
     Args:
         filepath: Path to CSV file
         parse_dates: Whether to parse date column
+        keep_extra_features: Keep additional columns beyond OHLCV
         
     Returns:
-        DataFrame with OHLCV data
+        DataFrame with OHLCV data (and optionally extra features)
     """
     df = pd.read_csv(filepath)
     
-    # Try to find timestamp/datetime column
-    timestamp_cols = ['timestamp', 'datetime', 'date', 'time']
-    timestamp_col = None
+    # Handle datetime - priority order:
+    # 1. Look for existing 'datetime' column
+    # 2. Look for 'Date' + 'Time' columns to combine
+    # 3. Look for other timestamp columns
     
-    for col in timestamp_cols:
-        if col in df.columns:
-            timestamp_col = col
-            break
+    datetime_created = False
     
-    if timestamp_col and parse_dates:
-        df[timestamp_col] = pd.to_datetime(df[timestamp_col])
-        df.set_index(timestamp_col, inplace=True)
+    if parse_dates:
+        # Check for existing datetime column (case-insensitive)
+        datetime_cols = [col for col in df.columns if col.lower() == 'datetime']
+        
+        if datetime_cols:
+            # Found datetime column - use it
+            datetime_col = datetime_cols[0]
+            df[datetime_col] = pd.to_datetime(df[datetime_col])
+            df.set_index(datetime_col, inplace=True)
+            datetime_created = True
+        
+        elif 'Date' in df.columns and 'Time' in df.columns:
+            # Found separate Date and Time columns - combine them
+            # Handle different date formats
+            try:
+                # Try YYYYMMDD format (like 20180426)
+                df['datetime'] = pd.to_datetime(
+                    df['Date'].astype(str) + ' ' + df['Time'].astype(str),
+                    format='%Y%m%d %H:%M:%S'
+                )
+            except:
+                # Try standard format
+                df['datetime'] = pd.to_datetime(df['Date'].astype(str) + ' ' + df['Time'].astype(str))
+            
+            df.set_index('datetime', inplace=True)
+            datetime_created = True
+        
+        elif 'date' in df.columns and 'time' in df.columns:
+            # Handle lowercase date/time columns
+            try:
+                df['datetime'] = pd.to_datetime(
+                    df['date'].astype(str) + ' ' + df['time'].astype(str)
+                )
+            except:
+                df['datetime'] = pd.to_datetime(df['date'].astype(str) + ' ' + df['time'].astype(str))
+            
+            df.set_index('datetime', inplace=True)
+            datetime_created = True
+        
+        else:
+            # Try to find other timestamp columns
+            timestamp_cols = ['timestamp', 'Timestamp', 'date', 'Date', 'time', 'Time']
+            timestamp_col = None
+            
+            for col in timestamp_cols:
+                if col in df.columns:
+                    timestamp_col = col
+                    break
+            
+            if timestamp_col:
+                df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+                df.set_index(timestamp_col, inplace=True)
+                datetime_created = True
     
-    # Ensure required columns exist
+    # Ensure required columns exist (case-insensitive)
     required = ['open', 'high', 'low', 'close', 'volume']
     
-    # Handle different column name formats
+    # Create mapping for column names (handle both upper and lower case)
     column_mapping = {}
     for col in df.columns:
         col_lower = col.lower()
-        if 'open' in col_lower:
+        if col_lower == 'open':
             column_mapping[col] = 'open'
-        elif 'high' in col_lower:
+        elif col_lower == 'high':
             column_mapping[col] = 'high'
-        elif 'low' in col_lower:
+        elif col_lower == 'low':
             column_mapping[col] = 'low'
-        elif 'close' in col_lower:
+        elif col_lower == 'close':
             column_mapping[col] = 'close'
-        elif 'volume' in col_lower or 'vol' in col_lower:
+        elif col_lower == 'volume' or col_lower == 'vol':
             column_mapping[col] = 'volume'
     
     if column_mapping:
@@ -220,9 +270,15 @@ def load_csv_data(filepath: str, parse_dates: bool = True) -> pd.DataFrame:
     # Verify all required columns exist
     missing = set(required) - set(df.columns)
     if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+        raise ValueError(f"Missing required columns: {missing}. Found columns: {df.columns.tolist()}")
     
-    return df[required]
+    # Return only OHLCV or include extra features
+    if keep_extra_features:
+        # Keep OHLCV at the front, then other features
+        other_cols = [col for col in df.columns if col not in required]
+        return df[required + other_cols]
+    else:
+        return df[required]
 
 
 def resample_data(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
@@ -259,7 +315,7 @@ def add_session_labels(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with session column added
     """
-    from .tier1_ict_detection.session_filter import SessionFilter
+    from src.ict_detection.session_filter import SessionFilter
     
     df = df.copy()
     session_filter = SessionFilter()
