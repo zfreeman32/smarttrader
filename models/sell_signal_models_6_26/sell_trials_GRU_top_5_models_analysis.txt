@@ -1,0 +1,25 @@
+Top 5 Trials for sell_trials_GRU by Validation Loss:
+
+     model_type trial_id  val_loss  val_accuracy  accuracy  composite_score  num_GRU_layers  units_first activation kernel_initializer  dropout  recurrent_dropout  num_dense_layers  units bias_initializer  dropout_rate  learning_rate  focal_gamma  focal_alpha
+sell_trials_GRU      070 25.461365      0.994687  0.995352         1.469226               1           32       relu      glorot_normal      0.4               0.40                 1     32        he_normal           0.5       0.010000          3.0          0.9
+sell_trials_GRU      048 26.597788      0.994687  0.994687         1.468090               1           32       relu          he_normal      0.2               0.25                 1     96        he_normal           0.5       0.010000          1.0          0.1
+sell_trials_GRU      096 27.274651      0.994687  0.995156         1.467413               1           32       relu          he_normal      0.4               0.40                 2     32        he_normal           0.3       0.004328          3.0          0.9
+sell_trials_GRU      122 27.426165      0.994687  0.995117         1.467261               1           32       relu          he_normal      0.1               0.10                 1    128            zeros           0.5       0.010000          3.0          0.1
+sell_trials_GRU      080 27.690186      0.994687  0.995352         1.466997               1           32       relu      glorot_normal      0.4               0.10                 2     32        he_normal           0.5       0.010000          1.0          0.1
+
+
+Most Common Hyperparameters in Top 5:
+
+  num_GRU_layers: 1 (shared by 5 models)
+  units_first: 32 (shared by 5 models)
+  activation: relu (shared by 5 models)
+  kernel_initializer: he_normal (shared by 3 models)
+  dropout: 0.4 (shared by 3 models)
+  recurrent_dropout: 0.4 (shared by 2 models)
+  num_dense_layers: 1 (shared by 3 models)
+  units: 32 (shared by 3 models)
+  bias_initializer: he_normal (shared by 4 models)
+  dropout_rate: 0.5 (shared by 4 models)
+  learning_rate: 0.01 (shared by 4 models)
+  focal_gamma: 3.0 (shared by 3 models)
+  focal_alpha: 0.1 (shared by 3 models)

@@ -1,0 +1,94 @@
+Classification Models Training Results
+================================================================================
+
+
+
+## Model: LSTM
+==================================================
+
+📌 Model: LSTM
+========================================
+Hyperparameters:
+- num_LSTM_layers: 1
+- units_first: 32
+- activation: relu
+- kernel_initializer: glorot_normal
+- forget_bias: False
+- dropout: 0.2
+- recurrent_dropout: 0.2
+- num_dense_layers: 1
+- units: 32
+- bias_initializer: zeros
+- dropout_rate: 0.2
+- learning_rate: 0.01
+- focal_gamma: 3.0
+- focal_alpha: 0.1
+
+Test Metrics:
+loss: 7.6108
+compile_metrics: 0.9951
+================================================================================
+
+
+
+## Model: GRU
+==================================================
+
+📌 Model: GRU
+========================================
+Hyperparameters:
+- num_GRU_layers: 1
+- units_first: 32
+- activation: relu
+- kernel_initializer: glorot_normal
+- dropout: 0.4
+- recurrent_dropout: 0.1
+- num_dense_layers: 1
+- units: 32
+- bias_initializer: he_normal
+- dropout_rate: 0.5
+- learning_rate: 0.01
+- focal_gamma: 3.0
+- focal_alpha: 0.1
+
+Test Metrics:
+loss: 11.6379
+compile_metrics: 0.9951
+================================================================================
+
+
+
+## Model: Conv1D
+==================================================
+
+📌 Model: Conv1D
+========================================
+Hyperparameters:
+- num_conv1d_layers: 3
+- filters: 32
+- kernel_size: 7
+- padding: valid
+- activation: gelu
+- kernel_initializer: he_normal
+- add_pooling_0: True
+- pool_size: 3
+- strides: 2
+- num_dense_layers: 1
+- units: 32
+- bias_initializer: glorot_normal
+- dropout_rate: 0.5
+- learning_rate: 0.01
+- focal_gamma: 2.5
+- focal_alpha: 0.8
+- add_pooling_1: True
+- add_pooling_2: True
+
+Test Metrics:
+loss: 1.1580
+compile_metrics: 0.9951
+================================================================================
+
+
+
+## Model: Conv1D_LSTM
+==================================================

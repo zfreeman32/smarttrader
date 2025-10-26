@@ -1,0 +1,25 @@
+# Python cache and environment
+__pycache__/
+.pyc
+.env
+
+# Editor settings
+.vscode/
+
+# Model artifacts
+*.h5
+*.joblib
+
+# Config files
+build_config.json
+oracle.json
+tuner0.json
+trial.json
+
+# Data directories
+data/currency_data/
+data/currency_data/sampled/
+data/stock_data/
+features/important_features_datasets/
+model_training/datasets/
+model_training/regression/regression_models/
