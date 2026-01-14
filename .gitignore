@@ -9,6 +9,8 @@ __pycache__/
 # Model artifacts
 *.h5
 *.joblib
+*.npy
+*.keras
 
 # Config files
 build_config.json
@@ -23,3 +25,6 @@ data/stock_data/
 features/important_features_datasets/
 model_training/datasets/
 model_training/regression/regression_models/
+*_config.json
+*_summary.json
+*_trial.json

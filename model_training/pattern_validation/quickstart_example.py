@@ -17,38 +17,60 @@ from data_generation import (
     PatternOutcomeLabeler,
     PatternDatasetGenerator
 )
-from model_architecture import PatternValidationModel
+from .model_architecture import PatternValidationModel
 from training_pipeline import run_full_training_pipeline
 from inference_pipeline import PatternValidator, TradingSystemIntegration
 
 
-def generate_dummy_price_data(n_bars: int = 10000) -> pd.DataFrame:
-    """Generate synthetic EURUSD price data"""
-    print("Generating dummy price data...")
+def load_eurusd_data(filepath: str, sample_size: int = None) -> pd.DataFrame:
+    """
+    Load EURUSD data from CSV file.
     
-    dates = pd.date_range(start='2023-01-01', periods=n_bars, freq='1min')
+    Args:
+        filepath: Path to CSV file
+        sample_size: Optional number of rows to sample (for testing)
+        
+    Returns:
+        DataFrame with OHLCV data
+    """
+    print(f"Loading data from {filepath}...")
     
-    # Generate realistic price movement
-    returns = np.random.randn(n_bars) * 0.0001  # ~10 pip moves
-    price = 1.1000 + np.cumsum(returns)
+    # Try different timestamp column names
+    timestamp_cols = ['timestamp', 'time', 'datetime', 'date']
     
-    # OHLC
-    high = price + np.random.uniform(0, 0.0005, n_bars)
-    low = price - np.random.uniform(0, 0.0005, n_bars)
-    open_price = np.roll(price, 1)
-    open_price[0] = price[0]
-    close = price
+    df = pd.read_csv(filepath)
     
-    # Volume
-    volume = np.random.uniform(100, 1000, n_bars)
+    # Find timestamp column
+    timestamp_col = None
+    for col in timestamp_cols:
+        if col in df.columns:
+            timestamp_col = col
+            break
     
-    df = pd.DataFrame({
-        'open': open_price,
-        'high': high,
-        'low': low,
-        'close': close,
-        'volume': volume
-    }, index=dates)
+    if timestamp_col:
+        df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+        df = df.set_index(timestamp_col)
+        df = df.sort_index()
+    
+    # Standardize column names (lowercase)
+    df.columns = df.columns.str.lower()
+    
+    # Verify required columns
+    required_cols = ['open', 'high', 'low', 'close', 'volume']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+    
+    # Sample data if requested (for testing)
+    if sample_size:
+        if len(df) > sample_size:
+            print(f"Sampling {sample_size:,} rows from {len(df):,} total rows")
+            df = df.iloc[-sample_size:]
+    
+    print(f"Loaded {len(df):,} rows")
+    print(f"Date range: {df.index[0]} to {df.index[-1]}")
+    print(f"Columns: {list(df.columns)}")
     
     return df
 
@@ -119,7 +141,7 @@ def quick_start_example():
     print("-"*70)
     
     # Generate dummy data
-    price_data = generate_dummy_price_data(n_bars=10000)
+    price_data = load_eurusd_data(n_bars=10000)
     detected_patterns = generate_dummy_detected_patterns(n_patterns=500)
     
     print(f"Created {len(price_data)} price bars")

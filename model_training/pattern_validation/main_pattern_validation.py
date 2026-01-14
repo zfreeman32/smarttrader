@@ -26,9 +26,8 @@ from data_generation import (
     PatternDatasetGenerator
 )
 from model_architecture import PatternValidationModel
-from training_pipeline import PatternValidationTrainer, run_full_training_pipeline
+from training_pipeline import PatternValidationTrainer, run_full_training_pipeline  # ← FIXED
 from inference_pipeline import PatternValidator, TradingSystemIntegration
-
 
 class PatternValidationSystem:
     """Complete pattern validation system orchestrator"""
@@ -185,13 +184,27 @@ class PatternValidationSystem:
         
         data_dir = os.path.join(self.data_dir, data_name)
         output_dir = os.path.join(self.outputs_dir, f'{model_name}_training')
+        from model_architecture import PatternValidationModel
+    
+        model_builder = PatternValidationModel(
+            chart_shape=(100, 5),
+            volume_shape=(100, 1),
+            pattern_features_dim=13,
+            indicator_features_dim=15,
+            cnn_filters=(64, 128, 256),
+            lstm_units=(128, 64),
+            dropout_rate=0.4
+        )
         
+        model_builder.build_model()
+        model_builder.compile_model(learning_rate=0.001, loss='mse')
         # Run training pipeline
         trainer = run_full_training_pipeline(
             data_dir=data_dir,
             output_dir=output_dir,
+            model_builder=model_builder,
             use_progressive=self.config['training']['use_progressive'],
-            use_cv=self.config['training']['use_cv']
+            # use_cv=self.config['training']['use_cv']
         )
         
         # Copy best model to models directory
@@ -403,13 +416,7 @@ def main():
         print("\n" + "="*70)
         print("RUNNING COMPLETE PATTERN VALIDATION PIPELINE")
         print("="*70)
-        
-        # Step 1: Generate data
-        system.generate_training_data(
-            ict_detections_path=args.ict_detections,
-            price_data_path=args.price_data,
-            output_name=args.data_name
-        )
+    
         
         # Step 2: Train model
         system.train_model(

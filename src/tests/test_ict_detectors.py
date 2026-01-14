@@ -3,7 +3,7 @@ Phase 1 Test Script
 Comprehensive testing of all ICT detectors
 """
 import sys
-sys.path.append('/home/claude/eurusd_trading_system/src')
+sys.path.append('./outputs/eurusd_trading_system/src')
 
 import pandas as pd
 import numpy as np

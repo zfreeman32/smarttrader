@@ -361,7 +361,8 @@ class PatternDatasetGenerator:
                 })
                 
             except Exception as e:
-                print(f"Error processing pattern {pattern.pattern_id}: {e}")
+                pid = getattr(pattern, "pattern_id", getattr(pattern, "type", "<?>"))
+                print(f"Error processing pattern {pid}: {e}")
                 continue
         
         print(f"Successfully generated {len(training_examples)} training examples")
@@ -494,26 +495,260 @@ class PatternDatasetGenerator:
         
         print(f"Dataset saved to {save_path}")
 
+# --- add near your imports ---
+from uuid import uuid4
+
+# --- add this helper class anywhere above example_usage() ---
+class DetectionResultAdapter:
+    """
+    Converts detector-specific objects (e.g., DetectionResult) into DetectedPattern.
+    Tries multiple common attribute names and fills sensible defaults when missing.
+    """
+    def __init__(self, price_data: pd.DataFrame, lookback: int = 100):
+        self.price_data = price_data
+        self.lookback = lookback
+    
+    def _calculate_indicators_talib(self, data: pd.DataFrame) -> np.ndarray:
+        """Calculate indicators using TA-Lib"""
+        import talib
+        
+        close = data['close'].values
+        high = data['high'].values
+        low = data['low'].values
+        volume = data['volume'].values
+        
+        # Calculate 15 indicators
+        rsi = talib.RSI(close, timeperiod=14)[-1]
+        adx = talib.ADX(high, low, close, timeperiod=14)[-1]
+        macd, macd_signal, _ = talib.MACD(close)
+        macd = macd[-1]
+        macd_signal = macd_signal[-1]
+        cci = talib.CCI(high, low, close, timeperiod=14)[-1]
+        willr = talib.WILLR(high, low, close, timeperiod=14)[-1]
+        stoch_k, stoch_d = talib.STOCH(high, low, close)
+        stoch_k = stoch_k[-1]
+        stoch_d = stoch_d[-1]
+        atr = talib.ATR(high, low, close, timeperiod=14)[-1]
+        obv = talib.OBV(close, volume)[-1] / 1e6  # Normalize
+        mfi = talib.MFI(high, low, close, volume, timeperiod=14)[-1]
+        roc = talib.ROC(close, timeperiod=10)[-1]
+        trix = talib.TRIX(close, timeperiod=30)[-1]
+        ultosc = talib.ULTOSC(high, low, close)[-1]
+        dx = talib.DX(high, low, close, timeperiod=14)[-1]
+        
+        return np.array([
+            rsi, adx, macd, macd_signal, cci,
+            willr, stoch_k, stoch_d, atr, obv,
+            mfi, roc, trix, ultosc, dx
+        ], dtype=float)
+    
+    def _get_indicators(self, ts, window_data: pd.DataFrame) -> np.ndarray:
+        """Get 15 indicators using available library"""
+        try:
+            if self.indicator_lib == 'talib':
+                return self._calculate_indicators_talib(window_data)
+        except Exception as e:
+            print(f"Warning: Indicator calculation failed at {ts}: {e}")
+
+    def __call__(self, obj) -> DetectedPattern:
+        # timestamp
+        ts = getattr(obj, "timestamp", None) or getattr(obj, "time", None) or getattr(obj, "dt", None)
+        if isinstance(ts, str):
+            ts = pd.to_datetime(ts, errors="coerce")
+        if ts is None or pd.isna(ts):
+            raise ValueError("missing timestamp")
+
+        # pattern type
+        ptype = (
+            getattr(obj, "pattern_type", None)
+            or getattr(obj, "type", None)
+            or getattr(obj, "name", None)
+        )
+        if ptype is None:
+            raise ValueError("missing pattern_type")
+        # normalize case
+        ptype = ptype if ptype in {"FVG", "OB", "Sweep"} else ptype.upper()
+
+        # direction
+        direction = (
+            getattr(obj, "direction", None)
+            or ("bullish" if getattr(obj, "is_bullish", False) else "bearish" if getattr(obj, "is_bearish", False) else None)
+        )
+        if direction not in {"bullish", "bearish"}:
+            raise ValueError("missing direction")
+
+        # entry price
+        entry = (
+            getattr(obj, "entry_price", None)
+            or getattr(obj, "entry", None)
+            or getattr(obj, "price", None)
+        )
+        if entry is None:
+            # fall back to close at detection bar
+            try:
+                entry = float(self.price_data.loc[ts, "close"])
+            except Exception:
+                raise ValueError("missing entry_price")
+
+        # zone bounds (try multiple common names; fallback to bar high/low)
+        ztop = (
+            getattr(obj, "zone_top", None)
+            or getattr(obj, "fvg_top", None)
+            or getattr(obj, "ob_high", None)
+            or getattr(obj, "zone_high", None)
+        )
+        zbot = (
+            getattr(obj, "zone_bottom", None)
+            or getattr(obj, "fvg_bottom", None)
+            or getattr(obj, "ob_low", None)
+            or getattr(obj, "zone_low", None)
+        )
+        if ztop is None or zbot is None:
+            row = self.price_data.loc[ts]
+            ztop = float(row["high"])
+            zbot = float(row["low"])
+
+        # ATR at detection (fallback: compute quick ATR(14))
+        atr = getattr(obj, "atr_at_detection", None) or getattr(obj, "atr", None)
+        if atr is None:
+            idx = self.price_data.index.get_loc(ts)
+            window = self.price_data.iloc[max(0, idx - 15): idx + 1].copy()
+            tr = (window["high"] - window["low"]).to_numpy()
+            prev_close = window["close"].shift(1)
+            tr = np.maximum(tr, (window["high"] - prev_close).abs().fillna(0))
+            tr = np.maximum(tr, (window["low"] - prev_close).abs().fillna(0))
+            atr = float(pd.Series(tr).rolling(14, min_periods=1).mean().iloc[-1])
+
+        # pattern_size_pips default: zone height
+        size_pips = float(abs(ztop - zbot) * 10000)
+
+        # session / context (use defaults if your detector didn't attach them)
+        session = getattr(obj, "session", "NY")
+        volume_ratio = float(getattr(obj, "volume_ratio", 1.0))
+        volume_confirmed = bool(getattr(obj, "volume_confirmed", True))
+        rsi = float(getattr(obj, "rsi", 50.0))
+        adx = float(getattr(obj, "adx", 20.0))
+        trend_alignment = bool(getattr(obj, "trend_alignment", True))
+        distance_to_structure = float(getattr(obj, "distance_to_structure", atr))
+
+        # lookback window (must have self.lookback rows before ts)
+        idx = self.price_data.index.get_loc(ts)
+        start = idx - self.lookback
+        if start < 0:
+            raise ValueError(f"insufficient lookback ({self.lookback}) before {ts}")
+        window = self.price_data.iloc[start:idx][["open","high","low","close","volume"]]
+        candle_window = window.to_numpy(dtype=float)
+        volume_profile = window["volume"].to_numpy(dtype=float)
+
+        # indicators vector – put whatever you have; keep length stable
+        idx = self.price_data.index.get_loc(ts)
+        ind_window = self.price_data.iloc[max(0, idx-100):idx+1]
+        indicator_values = self._get_indicators(ts, ind_window)
+
+        pattern_id = getattr(obj, "pattern_id", None) or f"{ptype}_{ts.value}_{uuid4().hex[:6]}"
+
+        return DetectedPattern(
+            pattern_id=pattern_id,
+            timestamp=ts,
+            pattern_type=ptype,
+            direction=direction,
+            entry_price=float(entry),
+            zone_top=float(ztop),
+            zone_bottom=float(zbot),
+            pattern_size_pips=size_pips,
+            volume_ratio=volume_ratio,
+            volume_confirmed=volume_confirmed,
+            session=session,
+            atr_at_detection=float(atr),
+            rsi=rsi,
+            adx=adx,
+            trend_alignment=trend_alignment,
+            distance_to_structure=distance_to_structure,
+            candle_window=candle_window,
+            volume_profile=volume_profile,
+            indicator_values=indicator_values,
+        )
 
 # Example usage function
 def example_usage():
     """Example of how to use the data generation pipeline"""
     
     # 1. Load your historical data
-    price_data = pd.read_csv('eurusd_1m.csv', index_col=0, parse_dates=True)
-    
+    # price_data = pd.read_csv(r'C:\Users\zebfr\Documents\All_Files\TRADING\trade_bot\data\currency_data\sampled\EURUSD_1min_sampled.csv', index_col=0, parse_dates=True)
+    path = r'C:\Users\zebfr\Documents\All_Files\TRADING\trade_bot\data\currency_data\EURUSD_1min_signals.csv'
+    df = pd.read_csv(path)    
     # 2. Run your ICT detectors to get detected patterns
     # This assumes you have detectors that return DetectedPattern objects
-    from your_ict_detectors import FVGDetector, OrderBlockDetector, LiquiditySweepDetector
-    
+    from src.ict_detection import FVGDetector, OrderBlockDetector, LiquiditySweepDetector
+    # normalize column names: strip spaces and lowercase
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    # --- robust datetime build for many CSV formats ---
+    if {'date', 'time'}.issubset(df.columns):
+        # date -> string (handles int like 20240131 or '2024-01-31')
+        date_s = df['date'].astype(str).str.strip()
+
+        # time -> HH:MM:SS
+        # handles ints like 93000, 945, 153000; or strings like '09:30', '09:30:00'
+        time_raw = df['time'].astype(str).str.strip()
+        time_digits = time_raw.str.replace(r'\D', '', regex=True).str.zfill(6)   # keep only digits, pad to 6
+        time_hms = time_digits.str.replace(r'(\d{2})(\d{2})(\d{2})', r'\1:\2:\3', regex=True)
+
+        # combine and parse
+        df['timestamp'] = pd.to_datetime(
+            date_s + ' ' + time_hms,
+            errors='coerce',
+            infer_datetime_format=True
+        )
+
+    elif 'datetime' in df.columns:
+        df['timestamp'] = pd.to_datetime(df['datetime'], errors='coerce', infer_datetime_format=True)
+    else:
+        # fallback: try first column as datetime
+        first_col = df.columns[0]
+        df['timestamp'] = pd.to_datetime(df[first_col], errors='coerce', infer_datetime_format=True)
+
+    # sanity checks
+    if df['timestamp'].isna().all():
+        raise ValueError("Failed to parse timestamp. Inspect a few raw 'date'/'time' values.")
+
+    df = df.dropna(subset=['timestamp']).set_index('timestamp').sort_index()
+    df = df[~df.index.duplicated(keep='first')]
+
+    # ensure required OHLCV exist and are numeric
+    required = ['open','high','low','close','volume']
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns after normalization: {missing}")
+
+    for c in required:
+        df[c] = pd.to_numeric(df[c], errors='coerce')
+    df = df.dropna(subset=required)
+
+    price_data = df[required]
+
+    price_data = df[required]
     fvg_detector = FVGDetector()
     ob_detector = OrderBlockDetector()
     sweep_detector = LiquiditySweepDetector()
     
+    raw_patterns = []
+    raw_patterns.extend(fvg_detector.detect(price_data))
+    raw_patterns.extend(ob_detector.detect(price_data))
+    raw_patterns.extend(sweep_detector.detect(price_data))
+
+    adapter = DetectionResultAdapter(price_data, lookback=100)
+
     detected_patterns = []
-    detected_patterns.extend(fvg_detector.detect(price_data))
-    detected_patterns.extend(ob_detector.detect(price_data))
-    detected_patterns.extend(sweep_detector.detect(price_data))
+    for p in raw_patterns:
+        try:
+            dp = adapter(p)
+            detected_patterns.append(dp)
+        except Exception as e:
+            # safer logging: don't assume attribute names on raw object
+            desc = getattr(p, "pattern_type", getattr(p, "type", "<?>"))
+            ts = getattr(p, "timestamp", getattr(p, "time", "<?>"))
+            print(f"Skipping raw pattern ({desc} @ {ts}): {e}")
     
     # 3. Generate training dataset
     generator = PatternDatasetGenerator(lookback_candles=100)

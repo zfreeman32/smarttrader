@@ -3,7 +3,7 @@ Simple Example: Using ICT Pattern Detectors
 Basic usage example for the EURUSD trading system
 """
 import sys
-sys.path.append('/home/claude/eurusd_trading_system/src')
+sys.path.append('./outputs/eurusd_trading_system/src')
 
 import pandas as pd
 from data.data_utils import generate_sample_eurusd_data

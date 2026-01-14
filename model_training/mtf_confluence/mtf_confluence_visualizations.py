@@ -1,29 +1,25 @@
 """
-Multi-Timeframe Confluence Model - Visualization & Analysis
-==========================================================
+Multi-Timeframe Confluence Model - Visualizations
+================================================
 
-This script provides visualization tools for analyzing and understanding
-the confluence model's behavior and performance.
+Generates comprehensive visualizations for training analysis.
 """
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import datetime, timedelta
-
-# Set style
-sns.set_style("darkgrid")
-plt.rcParams['figure.figsize'] = (14, 8)
+from typing import Dict, List, Optional
+import os
 
 
-def plot_training_history(history):
-    """Plot training and validation metrics"""
+def plot_training_history(history, save_path: str):
+    """Plot training and validation metrics over epochs"""
     
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Multi-Timeframe Confluence Model - Training History', fontsize=16, fontweight='bold')
+    fig.suptitle('Training History', fontsize=16, fontweight='bold')
     
-    # Loss curves
+    # Total loss
     axes[0, 0].plot(history.history['loss'], label='Train Loss', linewidth=2)
     axes[0, 0].plot(history.history['val_loss'], label='Val Loss', linewidth=2)
     axes[0, 0].set_title('Total Loss', fontsize=12, fontweight='bold')
@@ -32,349 +28,302 @@ def plot_training_history(history):
     axes[0, 0].legend()
     axes[0, 0].grid(True, alpha=0.3)
     
-    # Confluence score metrics
-    axes[0, 1].plot(history.history['confluence_score_mae'], label='Train MAE', linewidth=2)
-    axes[0, 1].plot(history.history['val_confluence_score_mae'], label='Val MAE', linewidth=2)
-    axes[0, 1].axhline(y=0.15, color='r', linestyle='--', label='Target (0.15)', linewidth=2)
-    axes[0, 1].set_title('Confluence Score - MAE', fontsize=12, fontweight='bold')
+    # Confluence metrics
+    axes[0, 1].plot(history.history['confluence_score_loss'], label='Train Conf Loss', linewidth=2)
+    axes[0, 1].plot(history.history['val_confluence_score_loss'], label='Val Conf Loss', linewidth=2)
+    axes[0, 1].set_title('Confluence Score Loss', fontsize=12, fontweight='bold')
     axes[0, 1].set_xlabel('Epoch')
-    axes[0, 1].set_ylabel('MAE')
+    axes[0, 1].set_ylabel('Loss')
     axes[0, 1].legend()
     axes[0, 1].grid(True, alpha=0.3)
     
-    # Directional bias metrics
-    axes[1, 0].plot(history.history['directional_bias_mae'], label='Train MAE', linewidth=2)
-    axes[1, 0].plot(history.history['val_directional_bias_mae'], label='Val MAE', linewidth=2)
-    axes[1, 0].axhline(y=0.20, color='r', linestyle='--', label='Target (0.20)', linewidth=2)
-    axes[1, 0].set_title('Directional Bias - MAE', fontsize=12, fontweight='bold')
+    # Bias metrics
+    axes[1, 0].plot(history.history['directional_bias_loss'], label='Train Bias Loss', linewidth=2)
+    axes[1, 0].plot(history.history['val_directional_bias_loss'], label='Val Bias Loss', linewidth=2)
+    axes[1, 0].set_title('Directional Bias Loss', fontsize=12, fontweight='bold')
     axes[1, 0].set_xlabel('Epoch')
-    axes[1, 0].set_ylabel('MAE')
+    axes[1, 0].set_ylabel('Loss')
     axes[1, 0].legend()
     axes[1, 0].grid(True, alpha=0.3)
     
-    # Learning rate (if available)
-    if 'lr' in history.history:
-        axes[1, 1].plot(history.history['lr'], linewidth=2, color='green')
-        axes[1, 1].set_title('Learning Rate Schedule', fontsize=12, fontweight='bold')
+    # MAE metrics
+    if 'confluence_score_mae' in history.history:
+        axes[1, 1].plot(history.history['confluence_score_mae'], label='Train Conf MAE', linewidth=2)
+        axes[1, 1].plot(history.history['val_confluence_score_mae'], label='Val Conf MAE', linewidth=2)
+        axes[1, 1].set_title('Confluence Score MAE', fontsize=12, fontweight='bold')
         axes[1, 1].set_xlabel('Epoch')
-        axes[1, 1].set_ylabel('Learning Rate')
-        axes[1, 1].set_yscale('log')
+        axes[1, 1].set_ylabel('MAE')
+        axes[1, 1].legend()
         axes[1, 1].grid(True, alpha=0.3)
-    else:
-        # Best epoch marker
-        best_epoch = np.argmin(history.history['val_loss'])
-        axes[1, 1].text(0.5, 0.5, f'Best Epoch: {best_epoch+1}\nVal Loss: {history.history["val_loss"][best_epoch]:.4f}',
-                       ha='center', va='center', fontsize=14, transform=axes[1, 1].transAxes,
-                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-        axes[1, 1].set_title('Training Summary', fontsize=12, fontweight='bold')
-        axes[1, 1].axis('off')
     
     plt.tight_layout()
-    return fig
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✓ Training history plot saved: {save_path}")
 
 
-def plot_prediction_analysis(y_true_conf, y_pred_conf, y_true_bias, y_pred_bias):
-    """Analyze prediction quality"""
+def plot_prediction_analysis(y_true_conf: np.ndarray,
+                            y_pred_conf: np.ndarray,
+                            y_true_bias: np.ndarray,
+                            y_pred_bias: np.ndarray,
+                            save_path: str):
+    """Plot prediction vs actual analysis"""
     
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle('Prediction Quality Analysis', fontsize=16, fontweight='bold')
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle('Prediction Analysis', fontsize=16, fontweight='bold')
     
-    # Confluence: Actual vs Predicted
-    axes[0, 0].scatter(y_true_conf, y_pred_conf, alpha=0.3, s=10)
-    axes[0, 0].plot([0, 1], [0, 1], 'r--', linewidth=2, label='Perfect')
+    # Confluence: Scatter
+    axes[0, 0].scatter(y_true_conf, y_pred_conf, alpha=0.5, s=10)
+    axes[0, 0].plot([0, 1], [0, 1], 'r--', linewidth=2, label='Perfect Prediction')
+    axes[0, 0].set_title('Confluence Score: Predicted vs Actual', fontsize=12, fontweight='bold')
     axes[0, 0].set_xlabel('Actual Confluence')
     axes[0, 0].set_ylabel('Predicted Confluence')
-    axes[0, 0].set_title('Confluence: Actual vs Predicted')
     axes[0, 0].legend()
     axes[0, 0].grid(True, alpha=0.3)
     
-    # Confluence: Error Distribution
+    # Confluence: Error distribution
     conf_errors = y_pred_conf - y_true_conf
     axes[0, 1].hist(conf_errors, bins=50, edgecolor='black', alpha=0.7)
-    axes[0, 1].axvline(x=0, color='r', linestyle='--', linewidth=2)
+    axes[0, 1].axvline(0, color='r', linestyle='--', linewidth=2)
+    axes[0, 1].set_title('Confluence Prediction Errors', fontsize=12, fontweight='bold')
     axes[0, 1].set_xlabel('Prediction Error')
     axes[0, 1].set_ylabel('Frequency')
-    axes[0, 1].set_title(f'Confluence Error Distribution\nMAE: {np.abs(conf_errors).mean():.4f}')
     axes[0, 1].grid(True, alpha=0.3)
     
-    # Confluence: By Range
-    bins = [0, 0.6, 0.7, 0.8, 0.9, 1.0]
-    labels = ['<0.6', '0.6-0.7', '0.7-0.8', '0.8-0.9', '0.9+']
-    y_true_binned = pd.cut(y_true_conf, bins=bins, labels=labels)
-    
-    df_conf = pd.DataFrame({
-        'range': y_true_binned,
-        'error': np.abs(conf_errors)
-    })
-    
-    df_conf.boxplot(column='error', by='range', ax=axes[0, 2])
-    axes[0, 2].set_xlabel('Actual Confluence Range')
-    axes[0, 2].set_ylabel('Absolute Error')
-    axes[0, 2].set_title('Error by Confluence Level')
-    plt.sca(axes[0, 2])
-    plt.xticks(rotation=0)
-    
-    # Bias: Actual vs Predicted
-    axes[1, 0].scatter(y_true_bias, y_pred_bias, alpha=0.3, s=10)
-    axes[1, 0].plot([-1, 1], [-1, 1], 'r--', linewidth=2, label='Perfect')
+    # Bias: Scatter
+    axes[1, 0].scatter(y_true_bias, y_pred_bias, alpha=0.5, s=10)
+    axes[1, 0].plot([-1, 1], [-1, 1], 'r--', linewidth=2, label='Perfect Prediction')
+    axes[1, 0].set_title('Directional Bias: Predicted vs Actual', fontsize=12, fontweight='bold')
     axes[1, 0].set_xlabel('Actual Bias')
     axes[1, 0].set_ylabel('Predicted Bias')
-    axes[1, 0].set_title('Directional Bias: Actual vs Predicted')
     axes[1, 0].legend()
     axes[1, 0].grid(True, alpha=0.3)
     
-    # Bias: Error Distribution
+    # Bias: Error distribution
     bias_errors = y_pred_bias - y_true_bias
     axes[1, 1].hist(bias_errors, bins=50, edgecolor='black', alpha=0.7)
-    axes[1, 1].axvline(x=0, color='r', linestyle='--', linewidth=2)
+    axes[1, 1].axvline(0, color='r', linestyle='--', linewidth=2)
+    axes[1, 1].set_title('Bias Prediction Errors', fontsize=12, fontweight='bold')
     axes[1, 1].set_xlabel('Prediction Error')
     axes[1, 1].set_ylabel('Frequency')
-    axes[1, 1].set_title(f'Bias Error Distribution\nMAE: {np.abs(bias_errors).mean():.4f}')
     axes[1, 1].grid(True, alpha=0.3)
     
-    # Directional Accuracy
-    correct_direction = (np.sign(y_true_bias) == np.sign(y_pred_bias))
-    dir_accuracy = correct_direction.mean() * 100
-    
-    axes[1, 2].text(0.5, 0.6, f'Directional Accuracy\n\n{dir_accuracy:.1f}%',
-                   ha='center', va='center', fontsize=24, fontweight='bold',
-                   transform=axes[1, 2].transAxes,
-                   bbox=dict(boxstyle='round', facecolor='lightgreen' if dir_accuracy > 65 else 'yellow', alpha=0.8))
-    
-    axes[1, 2].text(0.5, 0.3, f'Target: >65%',
-                   ha='center', va='center', fontsize=12,
-                   transform=axes[1, 2].transAxes)
-    
-    axes[1, 2].axis('off')
-    
     plt.tight_layout()
-    return fig
-
-
-def plot_confluence_distribution(confluence_scores, directional_bias, trading_outcomes=None):
-    """Visualize confluence score distribution and trading outcomes"""
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
     
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Confluence Analysis', fontsize=16, fontweight='bold')
+    print(f"✓ Prediction analysis plot saved: {save_path}")
+
+
+def plot_confluence_distribution(y_pred_conf: np.ndarray,
+                                 y_pred_bias: np.ndarray,
+                                 save_path: str):
+    """Plot distribution of predictions"""
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle('Signal Distribution Analysis', fontsize=16, fontweight='bold')
     
     # Confluence distribution
-    axes[0, 0].hist(confluence_scores, bins=50, edgecolor='black', alpha=0.7, color='steelblue')
-    axes[0, 0].axvline(x=0.70, color='r', linestyle='--', linewidth=2, label='Trading Threshold')
+    axes[0, 0].hist(y_pred_conf, bins=50, edgecolor='black', alpha=0.7, color='blue')
+    axes[0, 0].axvline(0.70, color='r', linestyle='--', linewidth=2, label='Min Tradeable (0.70)')
+    axes[0, 0].axvline(0.85, color='g', linestyle='--', linewidth=2, label='Excellent (0.85)')
+    axes[0, 0].set_title('Confluence Score Distribution', fontsize=12, fontweight='bold')
     axes[0, 0].set_xlabel('Confluence Score')
     axes[0, 0].set_ylabel('Frequency')
-    axes[0, 0].set_title('Confluence Score Distribution')
     axes[0, 0].legend()
     axes[0, 0].grid(True, alpha=0.3)
     
     # Bias distribution
-    axes[0, 1].hist(directional_bias, bins=50, edgecolor='black', alpha=0.7, color='coral')
-    axes[0, 1].axvline(x=0.3, color='g', linestyle='--', linewidth=2, label='Long Threshold')
-    axes[0, 1].axvline(x=-0.3, color='r', linestyle='--', linewidth=2, label='Short Threshold')
-    axes[0, 1].axvline(x=0, color='gray', linestyle='-', linewidth=1)
+    axes[0, 1].hist(y_pred_bias, bins=50, edgecolor='black', alpha=0.7, color='green')
+    axes[0, 1].axvline(0, color='k', linestyle='-', linewidth=2)
+    axes[0, 1].axvline(0.30, color='r', linestyle='--', linewidth=2, label='Strong Bullish')
+    axes[0, 1].axvline(-0.30, color='r', linestyle='--', linewidth=2, label='Strong Bearish')
+    axes[0, 1].set_title('Directional Bias Distribution', fontsize=12, fontweight='bold')
     axes[0, 1].set_xlabel('Directional Bias')
     axes[0, 1].set_ylabel('Frequency')
-    axes[0, 1].set_title('Directional Bias Distribution')
     axes[0, 1].legend()
     axes[0, 1].grid(True, alpha=0.3)
     
     # 2D distribution
-    h = axes[1, 0].hexbin(confluence_scores, directional_bias, gridsize=30, cmap='YlOrRd')
-    axes[1, 0].axhline(y=0.3, color='g', linestyle='--', linewidth=2, alpha=0.7, label='Long Threshold')
-    axes[1, 0].axhline(y=-0.3, color='r', linestyle='--', linewidth=2, alpha=0.7, label='Short Threshold')
-    axes[1, 0].axvline(x=0.70, color='b', linestyle='--', linewidth=2, alpha=0.7, label='Conf Threshold')
-    axes[1, 0].set_xlabel('Confluence Score')
-    axes[1, 0].set_ylabel('Directional Bias')
-    axes[1, 0].set_title('Joint Distribution')
+    axes[1, 0].hexbin(y_pred_bias, y_pred_conf, gridsize=50, cmap='YlOrRd')
+    axes[1, 0].axhline(0.70, color='b', linestyle='--', linewidth=2, label='Min Confluence')
+    axes[1, 0].axvline(0, color='k', linestyle='-', linewidth=2)
+    axes[1, 0].set_title('Confluence vs Bias (2D Distribution)', fontsize=12, fontweight='bold')
+    axes[1, 0].set_xlabel('Directional Bias')
+    axes[1, 0].set_ylabel('Confluence Score')
     axes[1, 0].legend()
-    plt.colorbar(h, ax=axes[1, 0])
+    axes[1, 0].grid(True, alpha=0.3)
     
-    # Trading signal statistics
-    high_conf = confluence_scores >= 0.70
-    strong_bias = np.abs(directional_bias) >= 0.30
-    tradeable = high_conf & strong_bias
+    # Signal quality pie chart
+    excellent = np.sum((y_pred_conf >= 0.85) & (np.abs(y_pred_bias) >= 0.50))
+    good = np.sum((y_pred_conf >= 0.70) & (np.abs(y_pred_bias) >= 0.30) & ~((y_pred_conf >= 0.85) & (np.abs(y_pred_bias) >= 0.50)))
+    fair = np.sum((y_pred_conf >= 0.60) & (np.abs(y_pred_bias) >= 0.20) & ~((y_pred_conf >= 0.70) & (np.abs(y_pred_bias) >= 0.30)))
+    poor = len(y_pred_conf) - excellent - good - fair
     
-    stats_text = f"""
-    SIGNAL STATISTICS
+    sizes = [excellent, good, fair, poor]
+    labels = [f'Excellent\n{excellent:,}', f'Good\n{good:,}', f'Fair\n{fair:,}', f'Poor\n{poor:,}']
+    colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
+    explode = (0.1, 0.05, 0, 0)
     
-    Total Samples: {len(confluence_scores):,}
-    
-    High Confluence (≥0.70): {high_conf.sum():,} ({high_conf.mean()*100:.1f}%)
-    Strong Bias (|bias|≥0.30): {strong_bias.sum():,} ({strong_bias.mean()*100:.1f}%)
-    
-    Tradeable Signals: {tradeable.sum():,} ({tradeable.mean()*100:.1f}%)
-    
-    Of Tradeable:
-      - Long Signals: {((directional_bias > 0.3) & high_conf).sum():,}
-      - Short Signals: {((directional_bias < -0.3) & high_conf).sum():,}
-    
-    Signal Quality:
-      - EXCELLENT (≥0.85 & |bias|≥0.50): {((confluence_scores >= 0.85) & (np.abs(directional_bias) >= 0.50)).sum():,}
-      - GOOD (≥0.70 & |bias|≥0.30): {tradeable.sum():,}
-      - FAIR (≥0.60 & |bias|≥0.20): {((confluence_scores >= 0.60) & (np.abs(directional_bias) >= 0.20)).sum():,}
-    """
-    
-    axes[1, 1].text(0.1, 0.5, stats_text, ha='left', va='center',
-                   fontsize=10, family='monospace',
-                   transform=axes[1, 1].transAxes,
-                   bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    axes[1, 1].axis('off')
+    axes[1, 1].pie(sizes, explode=explode, labels=labels, colors=colors,
+                   autopct='%1.1f%%', shadow=True, startangle=90)
+    axes[1, 1].set_title('Signal Quality Distribution', fontsize=12, fontweight='bold')
     
     plt.tight_layout()
-    return fig
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✓ Confluence distribution plot saved: {save_path}")
 
 
-def plot_timeframe_importance(model, feature_names_per_tf):
-    """
-    Visualize learned attention weights across timeframes
-    Note: This is a simplified visualization - actual attention extraction
-    would require model-specific implementation
-    """
-    
-    # Placeholder - in real implementation, extract attention weights from model
-    timeframes = ['1m', '5m', '15m', '1h', '4h']
-    
-    # Simulate importance (replace with actual attention extraction)
-    importance = np.random.dirichlet(np.ones(5))
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
-    bars = ax.barh(timeframes, importance, color=colors, edgecolor='black', linewidth=2)
-    
-    # Add value labels
-    for i, (bar, val) in enumerate(zip(bars, importance)):
-        ax.text(val + 0.01, i, f'{val:.1%}', va='center', fontweight='bold')
-    
-    ax.set_xlabel('Relative Importance', fontsize=12, fontweight='bold')
-    ax.set_title('Timeframe Importance (Learned by Model)', fontsize=14, fontweight='bold')
-    ax.set_xlim(0, max(importance) * 1.2)
-    ax.grid(axis='x', alpha=0.3)
-    
-    plt.tight_layout()
-    return fig
-
-
-def create_performance_dashboard(history, y_true_conf, y_pred_conf, y_true_bias, y_pred_bias):
+def plot_performance_dashboard(metrics: Dict, save_path: str):
     """Create comprehensive performance dashboard"""
     
-    # Calculate all metrics
-    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-    
-    conf_mae = mean_absolute_error(y_true_conf, y_pred_conf)
-    conf_rmse = np.sqrt(mean_squared_error(y_true_conf, y_pred_conf))
-    conf_r2 = r2_score(y_true_conf, y_pred_conf)
-    
-    bias_mae = mean_absolute_error(y_true_bias, y_pred_bias)
-    bias_rmse = np.sqrt(mean_squared_error(y_true_bias, y_pred_bias))
-    bias_r2 = r2_score(y_true_bias, y_pred_bias)
-    
-    dir_accuracy = (np.sign(y_true_bias) == np.sign(y_pred_bias)).mean() * 100
-    
-    # Create dashboard
     fig = plt.figure(figsize=(16, 10))
     gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
     
-    # Title
-    fig.suptitle('Multi-Timeframe Confluence Model - Performance Dashboard', 
-                fontsize=18, fontweight='bold', y=0.98)
+    fig.suptitle('Performance Dashboard', fontsize=18, fontweight='bold')
     
     # Metric cards
-    metrics = [
-        ('Confluence MAE', conf_mae, 0.15, '<'),
-        ('Confluence RMSE', conf_rmse, 0.20, '<'),
-        ('Confluence R²', conf_r2, 0.40, '>'),
-        ('Bias MAE', bias_mae, 0.20, '<'),
-        ('Bias RMSE', bias_rmse, 0.30, '<'),
-        ('Bias R²', bias_r2, 0.40, '>'),
-        ('Directional Acc', dir_accuracy, 65.0, '>'),
-        ('Training Epochs', len(history.history['loss']), 100, '<'),
-        ('Best Val Loss', min(history.history['val_loss']), 0.10, '<'),
-    ]
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.text(0.5, 0.7, 'Confluence R²', ha='center', va='center', fontsize=14, fontweight='bold')
+    ax1.text(0.5, 0.3, f"{metrics['conf_r2']:.4f}", ha='center', va='center', fontsize=24, color='blue')
+    ax1.set_xlim(0, 1)
+    ax1.set_ylim(0, 1)
+    ax1.axis('off')
     
-    for idx, (name, value, target, comparison) in enumerate(metrics):
-        row = idx // 3
-        col = idx % 3
-        ax = fig.add_subplot(gs[row, col])
-        
-        # Determine if target met
-        if comparison == '<':
-            target_met = value < target
-        else:
-            target_met = value > target
-        
-        color = 'lightgreen' if target_met else 'lightcoral'
-        
-        # Format value
-        if 'Acc' in name or 'R²' in name:
-            value_text = f'{value:.2f}%' if 'Acc' in name else f'{value:.3f}'
-        else:
-            value_text = f'{value:.4f}'
-        
-        # Create card
-        ax.text(0.5, 0.65, value_text, 
-               ha='center', va='center', fontsize=24, fontweight='bold',
-               transform=ax.transAxes)
-        
-        ax.text(0.5, 0.35, name,
-               ha='center', va='center', fontsize=11,
-               transform=ax.transAxes)
-        
-        ax.text(0.5, 0.15, f'Target: {comparison}{target}',
-               ha='center', va='center', fontsize=9, style='italic',
-               transform=ax.transAxes, color='gray')
-        
-        # Color background
-        ax.set_facecolor(color)
-        ax.set_alpha(0.3)
-        ax.axis('off')
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.text(0.5, 0.7, 'Directional Accuracy', ha='center', va='center', fontsize=14, fontweight='bold')
+    ax2.text(0.5, 0.3, f"{metrics['directional_accuracy']:.1f}%", ha='center', va='center', fontsize=24, color='green')
+    ax2.set_xlim(0, 1)
+    ax2.set_ylim(0, 1)
+    ax2.axis('off')
     
-    plt.tight_layout()
-    return fig
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.text(0.5, 0.7, 'Tradeable Signals', ha='center', va='center', fontsize=14, fontweight='bold')
+    ax3.text(0.5, 0.3, f"{metrics['pct_tradeable_signals']:.1f}%", ha='center', va='center', fontsize=24, color='purple')
+    ax3.set_xlim(0, 1)
+    ax3.set_ylim(0, 1)
+    ax3.axis('off')
+    
+    # Confluence metrics bar chart
+    ax4 = fig.add_subplot(gs[1, :2])
+    conf_metrics = ['MAE', 'RMSE', 'Correlation']
+    conf_values = [metrics['conf_mae'], metrics['conf_rmse'], metrics['conf_correlation']]
+    bars = ax4.bar(conf_metrics, conf_values, color=['#3498db', '#2ecc71', '#e74c3c'])
+    ax4.set_title('Confluence Metrics', fontsize=12, fontweight='bold')
+    ax4.set_ylabel('Value')
+    ax4.grid(True, alpha=0.3, axis='y')
+    
+    for bar in bars:
+        height = bar.get_height()
+        ax4.text(bar.get_x() + bar.get_width()/2., height,
+                f'{height:.4f}', ha='center', va='bottom', fontsize=10)
+    
+    # Directional accuracy by confluence
+    ax5 = fig.add_subplot(gs[1, 2])
+    conf_thresholds = []
+    dir_accs = []
+    for threshold in [60, 70, 75, 80, 85]:
+        key = f'dir_acc_conf_{threshold}'
+        if key in metrics:
+            conf_thresholds.append(f'{threshold}%')
+            dir_accs.append(metrics[key])
+    
+    bars = ax5.barh(conf_thresholds, dir_accs, color='#9b59b6')
+    ax5.set_title('Dir Acc by Confluence', fontsize=10, fontweight='bold')
+    ax5.set_xlabel('Accuracy (%)')
+    ax5.grid(True, alpha=0.3, axis='x')
+    
+    for bar in bars:
+        width = bar.get_width()
+        ax5.text(width, bar.get_y() + bar.get_height()/2.,
+                f'{width:.1f}%', ha='left', va='center', fontsize=9)
+    
+    # Signal quality comparison
+    ax6 = fig.add_subplot(gs[2, :])
+    quality_labels = ['Excellent\n(≥0.85, |bias|≥0.50)', 'Good\n(≥0.70, |bias|≥0.30)', 'Fair\n(≥0.60, |bias|≥0.20)']
+    quality_counts = [metrics['excellent_signals'], metrics['good_signals'], metrics['fair_signals']]
+    colors = ['#2ecc71', '#3498db', '#f39c12']
+    
+    bars = ax6.bar(quality_labels, quality_counts, color=colors, edgecolor='black', linewidth=2)
+    ax6.set_title('Signal Quality Distribution', fontsize=12, fontweight='bold')
+    ax6.set_ylabel('Count')
+    ax6.grid(True, alpha=0.3, axis='y')
+    
+    for bar in bars:
+        height = bar.get_height()
+        ax6.text(bar.get_x() + bar.get_width()/2., height,
+                f'{int(height):,}', ha='center', va='bottom', fontsize=11, fontweight='bold')
+    
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✓ Performance dashboard saved: {save_path}")
 
 
-def save_all_visualizations(history, y_true_conf, y_pred_conf, y_true_bias, y_pred_bias, 
-                           output_dir='./outputs/'):
-    """Save all visualization plots"""
+def save_all_visualizations(history,
+                           y_true_conf: np.ndarray,
+                           y_pred_conf: np.ndarray,
+                           y_true_bias: np.ndarray,
+                           y_pred_bias: np.ndarray,
+                           metrics: Dict,
+                           output_dir: str):
+    """
+    Generate and save all visualizations
     
-    plots = []
+    Args:
+        history: Training history
+        y_true_conf: True confluence scores
+        y_pred_conf: Predicted confluence scores
+        y_true_bias: True directional bias
+        y_pred_bias: Predicted directional bias
+        metrics: Performance metrics dictionary
+        output_dir: Directory to save plots
+    """
     
-    # Training history
-    fig1 = plot_training_history(history)
-    fig1.savefig(f'{output_dir}training_history.png', dpi=150, bbox_inches='tight')
-    plots.append('training_history.png')
-    plt.close(fig1)
+    print("\n" + "="*80)
+    print("GENERATING VISUALIZATIONS")
+    print("="*80)
     
-    # Prediction analysis
-    fig2 = plot_prediction_analysis(y_true_conf, y_pred_conf, y_true_bias, y_pred_bias)
-    fig2.savefig(f'{output_dir}prediction_analysis.png', dpi=150, bbox_inches='tight')
-    plots.append('prediction_analysis.png')
-    plt.close(fig2)
+    plots_dir = os.path.join(output_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
     
-    # Confluence distribution
-    fig3 = plot_confluence_distribution(y_pred_conf, y_pred_bias)
-    fig3.savefig(f'{output_dir}confluence_distribution.png', dpi=150, bbox_inches='tight')
-    plots.append('confluence_distribution.png')
-    plt.close(fig3)
+    # Set style
+    sns.set_style("whitegrid")
+    plt.rcParams['figure.facecolor'] = 'white'
     
-    # Performance dashboard
-    fig4 = create_performance_dashboard(history, y_true_conf, y_pred_conf, y_true_bias, y_pred_bias)
-    fig4.savefig(f'{output_dir}performance_dashboard.png', dpi=150, bbox_inches='tight')
-    plots.append('performance_dashboard.png')
-    plt.close(fig4)
+    # Generate plots
+    plot_training_history(
+        history,
+        os.path.join(plots_dir, '1_training_history.png')
+    )
     
-    print(f"\n✅ Saved {len(plots)} visualization plots to {output_dir}")
-    for plot in plots:
-        print(f"   - {plot}")
+    plot_prediction_analysis(
+        y_true_conf, y_pred_conf,
+        y_true_bias, y_pred_bias,
+        os.path.join(plots_dir, '2_prediction_analysis.png')
+    )
     
-    return plots
+    plot_confluence_distribution(
+        y_pred_conf, y_pred_bias,
+        os.path.join(plots_dir, '3_confluence_distribution.png')
+    )
+    
+    plot_performance_dashboard(
+        metrics,
+        os.path.join(plots_dir, '4_performance_dashboard.png')
+    )
+    
+    print("\n✓ All visualizations generated successfully!")
+    print(f"✓ Plots saved to: {plots_dir}")
 
 
-if __name__ == "__main__":
-    print("Multi-Timeframe Confluence Model - Visualization Tools")
-    print("=" * 60)
-    print("\nThis module provides visualization functions for analyzing")
-    print("model training and performance.")
-    print("\nUsage:")
-    print("  from mtf_confluence_visualizations import *")
-    print("  fig = plot_training_history(history)")
-    print("  fig.show()")
+__all__ = [
+    'plot_training_history',
+    'plot_prediction_analysis',
+    'plot_confluence_distribution',
+    'plot_performance_dashboard',
+    'save_all_visualizations'
+]

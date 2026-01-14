@@ -1,15 +1,11 @@
 """
-Pattern Validation Model Architecture
-======================================
-CNN-LSTM Hybrid model for validating ICT pattern quality.
-
-Architecture:
-- CNN branch: Extracts spatial features from candlestick charts
-- LSTM branch: Captures temporal dynamics from volume profiles
-- Dense branch: Processes pattern metadata
-- Merged layers: Combines all features for final prediction
+Pattern Validation Model Training Pipeline - FIXED
+===================================================
+Fixed the learning rate setting issue in progressive training.
 """
 
+from datetime import datetime
+import os
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, Model
@@ -18,369 +14,454 @@ import numpy as np
 from typing import Tuple, Dict, Optional
 import json
 
+# Assuming you have this import from your model architecture file
+# from model_architecture import PatternValidationModel
 
-class PatternValidationModel:
-    """CNN-LSTM Hybrid for Pattern Quality Scoring"""
+
+class PatternValidationTrainer:
+    """Training pipeline for pattern validation model"""
     
     def __init__(
         self,
-        chart_shape: Tuple[int, int] = (100, 5),  # (timesteps, OHLCV)
-        volume_shape: Tuple[int, int] = (100, 1),  # (timesteps, volume)
-        pattern_features_dim: int = 13,
-        indicator_features_dim: int = 15,
-        cnn_filters: Tuple[int, int, int] = (64, 128, 256),
-        lstm_units: Tuple[int, int] = (128, 64),
-        dropout_rate: float = 0.4,
-        l2_reg: float = 0.001
+        model_builder,  # PatternValidationModel instance
+        data_dir: str,
+        output_dir: str = './training_outputs'
     ):
         """
-        Initialize model architecture
+        Initialize trainer
         
         Args:
-            chart_shape: Shape of candlestick chart input (timesteps, features)
-            volume_shape: Shape of volume profile input
-            pattern_features_dim: Number of pattern metadata features
-            indicator_features_dim: Number of indicator features
-            cnn_filters: Number of filters for each CNN layer
-            lstm_units: Number of units for each LSTM layer
-            dropout_rate: Dropout rate for regularization
-            l2_reg: L2 regularization factor
+            model_builder: PatternValidationModel instance
+            data_dir: Directory containing training data
+            output_dir: Directory for saving outputs
         """
-        self.chart_shape = chart_shape
-        self.volume_shape = volume_shape
-        self.pattern_features_dim = pattern_features_dim
-        self.indicator_features_dim = indicator_features_dim
-        self.cnn_filters = cnn_filters
-        self.lstm_units = lstm_units
-        self.dropout_rate = dropout_rate
-        self.l2_reg = l2_reg
+        self.model_builder = model_builder
+        self.data_dir = data_dir
+        self.output_dir = output_dir
         
-        self.model = None
-        self.history = None
+        os.makedirs(output_dir, exist_ok=True)
+        
+        self.X_train = None
+        self.X_val = None
+        self.X_test = None
+        self.y_train = None
+        self.y_val = None
+        self.y_test = None
+        
+        self.training_history = {}
+        self.evaluation_results = {}
     
-    def build_model(self) -> Model:
-        """Build the complete CNN-LSTM hybrid architecture"""
+    def load_data(self) -> Dict:
+        """Load training data from disk"""
+        print("Loading training data...")
         
-        # ==================== INPUT LAYERS ====================
-        
-        # Chart input (100 candles x 5 OHLCV)
-        chart_input = layers.Input(
-            shape=self.chart_shape,
-            name='chart_input'
-        )
-        
-        # Volume profile input (100 timesteps x 1)
-        volume_input = layers.Input(
-            shape=self.volume_shape,
-            name='volume_input'
-        )
-        
-        # Pattern metadata input (13 features)
-        pattern_input = layers.Input(
-            shape=(self.pattern_features_dim,),
-            name='pattern_input'
-        )
-        
-        # Technical indicators input (15 features)
-        indicator_input = layers.Input(
-            shape=(self.indicator_features_dim,),
-            name='indicator_input'
-        )
-        
-        # ==================== CNN BRANCH ====================
-        # Process candlestick chart patterns
-        
-        x_cnn = chart_input
-        
-        # First CNN block
-        x_cnn = layers.Conv1D(
-            filters=self.cnn_filters[0],
-            kernel_size=3,
-            padding='same',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='conv1d_1'
-        )(x_cnn)
-        x_cnn = layers.BatchNormalization(name='bn_1')(x_cnn)
-        x_cnn = layers.Activation('relu', name='relu_1')(x_cnn)
-        x_cnn = layers.MaxPooling1D(pool_size=2, name='maxpool_1')(x_cnn)
-        x_cnn = layers.Dropout(self.dropout_rate, name='dropout_1')(x_cnn)
-        
-        # Second CNN block
-        x_cnn = layers.Conv1D(
-            filters=self.cnn_filters[1],
-            kernel_size=3,
-            padding='same',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='conv1d_2'
-        )(x_cnn)
-        x_cnn = layers.BatchNormalization(name='bn_2')(x_cnn)
-        x_cnn = layers.Activation('relu', name='relu_2')(x_cnn)
-        x_cnn = layers.MaxPooling1D(pool_size=2, name='maxpool_2')(x_cnn)
-        x_cnn = layers.Dropout(self.dropout_rate, name='dropout_2')(x_cnn)
-        
-        # Third CNN block
-        x_cnn = layers.Conv1D(
-            filters=self.cnn_filters[2],
-            kernel_size=3,
-            padding='same',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='conv1d_3'
-        )(x_cnn)
-        x_cnn = layers.BatchNormalization(name='bn_3')(x_cnn)
-        x_cnn = layers.Activation('relu', name='relu_3')(x_cnn)
-        x_cnn = layers.GlobalAveragePooling1D(name='global_avg_pool')(x_cnn)
-        
-        # ==================== LSTM BRANCH ====================
-        # Process volume profile temporal patterns
-        
-        x_lstm = volume_input
-        
-        # First LSTM layer
-        x_lstm = layers.LSTM(
-            units=self.lstm_units[0],
-            return_sequences=True,
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='lstm_1'
-        )(x_lstm)
-        x_lstm = layers.Dropout(self.dropout_rate, name='lstm_dropout_1')(x_lstm)
-        
-        # Second LSTM layer
-        x_lstm = layers.LSTM(
-            units=self.lstm_units[1],
-            return_sequences=False,
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='lstm_2'
-        )(x_lstm)
-        x_lstm = layers.Dropout(self.dropout_rate, name='lstm_dropout_2')(x_lstm)
-        
-        # ==================== PATTERN METADATA BRANCH ====================
-        
-        x_pattern = pattern_input
-        x_pattern = layers.Dense(
-            64,
-            activation='relu',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='pattern_dense_1'
-        )(x_pattern)
-        x_pattern = layers.Dropout(self.dropout_rate, name='pattern_dropout')(x_pattern)
-        
-        # ==================== INDICATOR BRANCH ====================
-        
-        x_indicator = indicator_input
-        x_indicator = layers.Dense(
-            32,
-            activation='relu',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='indicator_dense_1'
-        )(x_indicator)
-        x_indicator = layers.Dropout(self.dropout_rate, name='indicator_dropout')(x_indicator)
-        
-        # ==================== MERGE ALL BRANCHES ====================
-        
-        merged = layers.Concatenate(name='merge_all')([
-            x_cnn,
-            x_lstm,
-            x_pattern,
-            x_indicator
-        ])
-        
-        # ==================== FINAL CLASSIFICATION LAYERS ====================
-        
-        x = layers.Dense(
-            128,
-            activation='relu',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='dense_1'
-        )(merged)
-        x = layers.Dropout(self.dropout_rate, name='final_dropout_1')(x)
-        
-        x = layers.Dense(
-            64,
-            activation='relu',
-            kernel_regularizer=keras.regularizers.l2(self.l2_reg),
-            name='dense_2'
-        )(x)
-        x = layers.Dropout(self.dropout_rate * 0.5, name='final_dropout_2')(x)
-        
-        # Output: Pattern quality score [0, 1]
-        output = layers.Dense(
-            1,
-            activation='sigmoid',
-            name='quality_score_output'
-        )(x)
-        
-        # ==================== CREATE MODEL ====================
-        
-        model = Model(
-            inputs=[chart_input, volume_input, pattern_input, indicator_input],
-            outputs=output,
-            name='PatternValidationModel'
-        )
-        
-        self.model = model
-        return model
+        X_chart = np.load(os.path.join(self.data_dir, 'X_chart.npy'))
+        X_volume = np.load(os.path.join(self.data_dir, 'X_volume.npy'))
+        X_pattern = np.load(os.path.join(self.data_dir, 'X_pattern.npy'))
+        X_indicators = np.load(os.path.join(self.data_dir, 'X_indicators.npy'), allow_pickle=True)
     
-    def compile_model(
+        print(f"Original indicators dtype: {X_indicators.dtype}")
+        print(f"Original indicators shape: {X_indicators.shape}")
+        
+        # Convert to float, handling any non-numeric values
+        try:
+            # If it's object dtype, convert each element
+            if X_indicators.dtype == object:
+                print("Converting object dtype to float32...")
+                X_indicators_float = []
+                for row in X_indicators:
+                    # Convert each row to float, replacing NaN/None with 0
+                    float_row = []
+                    for val in row:
+                        try:
+                            f = float(val)
+                            # Replace NaN/inf with 0
+                            if not np.isfinite(f):
+                                f = 0.0
+                            float_row.append(f)
+                        except (ValueError, TypeError):
+                            float_row.append(0.0)
+                    X_indicators_float.append(float_row)
+                X_indicators = np.array(X_indicators_float, dtype=np.float32)
+            else:
+                # If already numeric, just ensure it's float32
+                X_indicators = X_indicators.astype(np.float32)
+                # Replace NaN/inf with 0
+                X_indicators = np.nan_to_num(X_indicators, nan=0.0, posinf=0.0, neginf=0.0)
+        except Exception as e:
+            print(f"Error converting indicators: {e}")
+            print("Using zeros as fallback...")
+            X_indicators = np.zeros((len(X_chart), 15), dtype=np.float32)
+        
+        print(f"Final indicators dtype: {X_indicators.dtype}")
+        print(f"Final indicators shape: {X_indicators.shape}")
+        y = np.load(os.path.join(self.data_dir, 'y.npy'))
+        
+        print(f"Loaded {len(y)} training examples")
+        
+        return {
+            'X_chart': X_chart,
+            'X_volume': X_volume,
+            'X_pattern': X_pattern,
+            'X_indicators': X_indicators,
+            'y': y
+        }
+    
+    def split_data(
         self,
-        learning_rate: float = 0.001,
-        loss: str = 'mse',  # or 'focal_loss' for imbalanced data
-        metrics: Optional[list] = None
+        data: Dict,
+        train_ratio: float = 0.7,
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15
     ):
-        """Compile the model with optimizer and loss"""
+        """Split data into train/val/test"""
+        n_samples = len(data['y'])
         
-        if metrics is None:
-            metrics = ['mae', 'mse']
+        train_end = int(n_samples * train_ratio)
+        val_end = int(n_samples * (train_ratio + val_ratio))
         
-        optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+        print(f"\nSplitting data: Train={train_end}, Val={val_end-train_end}, Test={n_samples-val_end}")
         
-        # Use custom focal loss if specified
-        if loss == 'focal_loss':
-            loss_fn = self._focal_loss(gamma=2.0, alpha=0.25)
-        else:
-            loss_fn = loss
-        
-        self.model.compile(
-            optimizer=optimizer,
-            loss=loss_fn,
-            metrics=metrics
-        )
-    
-    @staticmethod
-    def _focal_loss(gamma=2.0, alpha=0.25):
-        """Focal loss for handling class imbalance"""
-        def focal_loss_fixed(y_true, y_pred):
-            epsilon = tf.keras.backend.epsilon()
-            y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
-            
-            # Calculate focal loss
-            pt = tf.where(tf.equal(y_true, 1), y_pred, 1 - y_pred)
-            focal_weight = tf.pow(1 - pt, gamma)
-            focal_loss = -alpha * focal_weight * tf.math.log(pt)
-            
-            return tf.reduce_mean(focal_loss)
-        
-        return focal_loss_fixed
-    
-    def get_callbacks(
-        self,
-        model_save_path: str = './best_pattern_validator.keras',
-        patience: int = 15
-    ) -> list:
-        """Get training callbacks"""
-        
-        callbacks = [
-            EarlyStopping(
-                monitor='val_loss',
-                patience=patience,
-                restore_best_weights=True,
-                verbose=1
-            ),
-            ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=0.5,
-                patience=5,
-                min_lr=1e-7,
-                verbose=1
-            ),
-            ModelCheckpoint(
-                filepath=model_save_path,
-                monitor='val_loss',
-                save_best_only=True,
-                verbose=1
-            )
-        ]
-        
-        return callbacks
-    
-    def summary(self):
-        """Print model architecture summary"""
-        if self.model is None:
-            print("Model not built yet. Call build_model() first.")
-            return
-        
-        self.model.summary()
-        
-        # Print parameter counts per branch
-        print("\n" + "="*60)
-        print("PARAMETER BREAKDOWN BY BRANCH")
-        print("="*60)
-        
-        cnn_params = sum([np.prod(v.shape) for v in self.model.get_layer('conv1d_1').trainable_weights])
-        lstm_params = sum([np.prod(v.shape) for v in self.model.get_layer('lstm_1').trainable_weights])
-        
-        print(f"CNN Branch: ~{cnn_params:,} parameters")
-        print(f"LSTM Branch: ~{lstm_params:,} parameters")
-        print(f"Total Trainable: {self.model.count_params():,} parameters")
-        print("="*60 + "\n")
-    
-    def save_config(self, path: str):
-        """Save model configuration"""
-        config = {
-            'chart_shape': self.chart_shape,
-            'volume_shape': self.volume_shape,
-            'pattern_features_dim': self.pattern_features_dim,
-            'indicator_features_dim': self.indicator_features_dim,
-            'cnn_filters': self.cnn_filters,
-            'lstm_units': self.lstm_units,
-            'dropout_rate': self.dropout_rate,
-            'l2_reg': self.l2_reg
+        self.X_train = {
+            'chart': data['X_chart'][:train_end],
+            'volume': data['X_volume'][:train_end],
+            'pattern': data['X_pattern'][:train_end],
+            'indicators': data['X_indicators'][:train_end]
         }
         
-        with open(path, 'w') as f:
-            json.dump(config, f, indent=2)
+        self.X_val = {
+            'chart': data['X_chart'][train_end:val_end],
+            'volume': data['X_volume'][train_end:val_end],
+            'pattern': data['X_pattern'][train_end:val_end],
+            'indicators': data['X_indicators'][train_end:val_end]
+        }
         
-        print(f"Model config saved to {path}")
+        self.X_test = {
+            'chart': data['X_chart'][val_end:],
+            'volume': data['X_volume'][val_end:],
+            'pattern': data['X_pattern'][val_end:],
+            'indicators': data['X_indicators'][val_end:]
+        }
+        
+        self.y_train = data['y'][:train_end]
+        self.y_val = data['y'][train_end:val_end]
+        self.y_test = data['y'][val_end:]
     
-    @classmethod
-    def load_from_config(cls, config_path: str):
-        """Load model from configuration file"""
-        with open(config_path, 'r') as f:
-            config = json.load(f)
+    def train_progressive(
+        self,
+        epochs: int = 100,
+        batch_size: int = 32,
+        warmup_epochs: int = 20,
+        warmup_data_pct: float = 0.2
+    ):
+        """Progressive training: warmup then full dataset"""
+        print("\n" + "="*60)
+        print("PROGRESSIVE TRAINING")
+        print("="*60)
         
-        return cls(**config)
+        # Phase 1: Warmup
+        print(f"\nPhase 1: Warmup ({warmup_data_pct*100:.0f}% data)")
+        warmup_size = int(len(self.y_train) * warmup_data_pct)
+        
+        X_warmup = {k: v[:warmup_size] for k, v in self.X_train.items()}
+        y_warmup = self.y_train[:warmup_size]
+        
+        history_warmup = self.model_builder.model.fit(
+            [X_warmup['chart'], X_warmup['volume'], X_warmup['pattern'], X_warmup['indicators']],
+            y_warmup,
+            validation_data=(
+                [self.X_val['chart'], self.X_val['volume'], self.X_val['pattern'], self.X_val['indicators']],
+                self.y_val
+            ),
+            epochs=warmup_epochs,
+            batch_size=batch_size,
+            callbacks=self.model_builder.get_callbacks(
+                model_save_path=os.path.join(self.output_dir, 'warmup_model.keras'),
+                patience=10
+            ),
+            verbose=1
+        )
+        
+        # Phase 2: Fine-tune
+        print(f"\nPhase 2: Fine-tuning (full dataset)")
+        
+        # FIX: Use the proper method to set learning rate
+        # Option 1: Using assign() method (recommended for TF 2.x)
+        self.model_builder.model.optimizer.learning_rate.assign(0.0001)
+        
+        # Alternative Option 2: Recompile with new learning rate
+        # self.model_builder.model.compile(
+        #     optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+        #     loss='mse',
+        #     metrics=['mae']
+        # )
+        
+        history_finetune = self.model_builder.model.fit(
+            [self.X_train['chart'], self.X_train['volume'], self.X_train['pattern'], self.X_train['indicators']],
+            self.y_train,
+            validation_data=(
+                [self.X_val['chart'], self.X_val['volume'], self.X_val['pattern'], self.X_val['indicators']],
+                self.y_val
+            ),
+            epochs=epochs - warmup_epochs,
+            batch_size=batch_size,
+            callbacks=self.model_builder.get_callbacks(
+                model_save_path=os.path.join(self.output_dir, 'best_model.keras'),
+                patience=15
+            ),
+            verbose=1
+        )
+        
+        self.training_history = {
+            'warmup': history_warmup.history,
+            'finetune': history_finetune.history
+        }
+    
+    def evaluate(self) -> Dict:
+        """Evaluate model on test set"""
+        print("\n" + "="*60)
+        print("MODEL EVALUATION")
+        print("="*60)
+        
+        from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+        
+        y_pred_test = self.model_builder.model.predict(
+            [self.X_test['chart'], self.X_test['volume'], self.X_test['pattern'], self.X_test['indicators']],
+            verbose=0
+        ).flatten()
+        
+        results = {
+            'test': {
+                'mse': mean_squared_error(self.y_test, y_pred_test),
+                'mae': mean_absolute_error(self.y_test, y_pred_test),
+                'rmse': np.sqrt(mean_squared_error(self.y_test, y_pred_test)),
+                'r2': r2_score(self.y_test, y_pred_test),
+                'correlation': np.corrcoef(self.y_test, y_pred_test)[0, 1]
+            }
+        }
+        
+        print(f"\nTEST SET:")
+        print(f"  MSE: {results['test']['mse']:.4f}")
+        print(f"  MAE: {results['test']['mae']:.4f}")
+        print(f"  RMSE: {results['test']['rmse']:.4f}")
+        print(f"  R²: {results['test']['r2']:.4f}")
+        print(f"  Correlation: {results['test']['correlation']:.4f}")
+        
+        self.evaluation_results = results
+        return results
+    
+    def plot_training_history(self):
+        """Plot training curves"""
+        import matplotlib.pyplot as plt
+        
+        if 'warmup' in self.training_history:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+            
+            ax1.plot(self.training_history['warmup']['loss'], label='Train')
+            ax1.plot(self.training_history['warmup']['val_loss'], label='Val')
+            ax1.set_title('Warmup Phase')
+            ax1.set_xlabel('Epoch')
+            ax1.set_ylabel('Loss')
+            ax1.legend()
+            ax1.grid(alpha=0.3)
+            
+            ax2.plot(self.training_history['finetune']['loss'], label='Train')
+            ax2.plot(self.training_history['finetune']['val_loss'], label='Val')
+            ax2.set_title('Fine-tuning Phase')
+            ax2.set_xlabel('Epoch')
+            ax2.set_ylabel('Loss')
+            ax2.legend()
+            ax2.grid(alpha=0.3)
+        
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.output_dir, 'training_history.png'), dpi=300)
+            print(f"\nTraining history saved to {self.output_dir}/training_history.png")
+            plt.close()
+    
+    def plot_predictions(self):
+        """Plot predictions vs actual"""
+        import matplotlib.pyplot as plt
+        
+        y_pred_test = self.model_builder.model.predict(
+            [self.X_test['chart'], self.X_test['volume'], self.X_test['pattern'], self.X_test['indicators']],
+            verbose=0
+        ).flatten()
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+        
+        # Scatter plot
+        ax1.scatter(self.y_test, y_pred_test, alpha=0.5)
+        ax1.plot([self.y_test.min(), self.y_test.max()], 
+                 [self.y_test.min(), self.y_test.max()], 'r--', lw=2)
+        ax1.set_xlabel('Actual')
+        ax1.set_ylabel('Predicted')
+        ax1.set_title('Predictions vs Actual')
+        ax1.grid(alpha=0.3)
+        
+        # Residuals
+        residuals = self.y_test - y_pred_test
+        ax2.scatter(y_pred_test, residuals, alpha=0.5)
+        ax2.axhline(y=0, color='r', linestyle='--', lw=2)
+        ax2.set_xlabel('Predicted')
+        ax2.set_ylabel('Residuals')
+        ax2.set_title('Residual Plot')
+        ax2.grid(alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.output_dir, 'predictions.png'), dpi=300)
+        print(f"Predictions plot saved to {self.output_dir}/predictions.png")
+        plt.close()
+    
+    def plot_error_distribution(self):
+        """Plot error distribution"""
+        import matplotlib.pyplot as plt
+        
+        y_pred_test = self.model_builder.model.predict(
+            [self.X_test['chart'], self.X_test['volume'], self.X_test['pattern'], self.X_test['indicators']],
+            verbose=0
+        ).flatten()
+        
+        errors = self.y_test - y_pred_test
+        
+        plt.figure(figsize=(10, 6))
+        plt.hist(errors, bins=50, edgecolor='black', alpha=0.7)
+        plt.axvline(x=0, color='r', linestyle='--', lw=2)
+        plt.xlabel('Prediction Error')
+        plt.ylabel('Frequency')
+        plt.title('Error Distribution')
+        plt.grid(alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.output_dir, 'error_distribution.png'), dpi=300)
+        print(f"Error distribution saved to {self.output_dir}/error_distribution.png")
+        plt.close()
+    
+    def save_results(self):
+        """Save results to disk"""
+        import json
+        
+        metrics_file = os.path.join(self.output_dir, 'evaluation_metrics.json')
+        with open(metrics_file, 'w') as f:
+            json.dump(self.evaluation_results, f, indent=2)
+        
+        print(f"\nResults saved to {metrics_file}")
 
 
-def build_alternative_architectures():
-    """Build alternative model architectures for comparison"""
+def run_full_training_pipeline(
+    data_dir: str,
+    model_builder,  # Pass the model builder instance
+    output_dir: str = './pattern_validation_outputs',
+    use_progressive: bool = True,
+    epochs: int = 100,
+    batch_size: int = 32,
+    warmup_epochs: int = 20
+):
+    """
+    Complete end-to-end training pipeline
     
-    # Architecture 1: Deeper CNN
-    model_v1 = PatternValidationModel(
-        cnn_filters=(64, 128, 256, 512),
-        lstm_units=(128, 64),
-        dropout_rate=0.5
+    Args:
+        data_dir: Directory with training data
+        model_builder: PatternValidationModel instance (already built and compiled)
+        output_dir: Directory for outputs
+        use_progressive: Use progressive training
+        epochs: Total epochs
+        batch_size: Batch size
+        warmup_epochs: Epochs for warmup phase
+    """
+    print("\n" + "="*60)
+    print("PATTERN VALIDATION MODEL - TRAINING PIPELINE")
+    print("="*60)
+    print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Initialize trainer
+    trainer = PatternValidationTrainer(
+        model_builder=model_builder,
+        data_dir=data_dir,
+        output_dir=output_dir
     )
     
-    # Architecture 2: Bidirectional LSTM
-    # (Would require modification to use Bidirectional wrapper)
+    # Load and split data
+    data = trainer.load_data()
+    trainer.split_data(data)
     
-    # Architecture 3: Attention mechanism
-    # (Would require custom attention layer)
+    # Train
+    if use_progressive:
+        trainer.train_progressive(
+            epochs=epochs, 
+            batch_size=batch_size, 
+            warmup_epochs=warmup_epochs
+        )
+    else:
+        # Standard training
+        history = model_builder.model.fit(
+            [trainer.X_train['chart'], trainer.X_train['volume'], 
+             trainer.X_train['pattern'], trainer.X_train['indicators']],
+            trainer.y_train,
+            validation_data=(
+                [trainer.X_val['chart'], trainer.X_val['volume'], 
+                 trainer.X_val['pattern'], trainer.X_val['indicators']],
+                trainer.y_val
+            ),
+            epochs=epochs,
+            batch_size=batch_size,
+            callbacks=model_builder.get_callbacks(
+                model_save_path=os.path.join(output_dir, 'best_model.keras')
+            ),
+            verbose=1
+        )
+        trainer.training_history = history.history
     
-    return model_v1
+    # Evaluate
+    trainer.evaluate()
+    
+    # Plot results
+    trainer.plot_training_history()
+    trainer.plot_predictions()
+    trainer.plot_error_distribution()
+    
+    # Save everything
+    trainer.save_results()
+    
+    print("\n" + "="*60)
+    print("TRAINING COMPLETE!")
+    print("="*60)
+    print(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"All outputs saved to: {output_dir}")
+    
+    return trainer
 
 
 # Example usage
 if __name__ == "__main__":
+    """
+    Example of how to use the fixed training pipeline
+    """
     
-    # Build model
-    model_builder = PatternValidationModel(
-        chart_shape=(100, 5),
-        volume_shape=(100, 1),
-        pattern_features_dim=13,
-        indicator_features_dim=15,
-        cnn_filters=(64, 128, 256),
-        lstm_units=(128, 64),
-        dropout_rate=0.4
-    )
+    # You would import and initialize your model builder here
+    # from model_architecture import PatternValidationModel
     
-    model = model_builder.build_model()
-    model_builder.compile_model(learning_rate=0.001, loss='mse')
+    # model_builder = PatternValidationModel(
+    #     chart_shape=(100, 5),
+    #     volume_shape=(100, 1),
+    #     pattern_features_dim=13,
+    #     indicator_features_dim=15,
+    #     cnn_filters=(64, 128, 256),
+    #     lstm_units=(128, 64),
+    #     dropout_rate=0.4
+    # )
+    # 
+    # model_builder.build_model()
+    # model_builder.compile_model(learning_rate=0.001, loss='mse')
     
-    # Print summary
-    model_builder.summary()
+    # Then run training
+    # trainer = run_full_training_pipeline(
+    #     data_dir='./training_data',
+    #     model_builder=model_builder,
+    #     output_dir='./outputs',
+    #     use_progressive=True,
+    #     epochs=100,
+    #     batch_size=32,
+    #     warmup_epochs=20
+    # )
     
-    # Save config
-    model_builder.save_config('./model_config.json')
-    
-    print("\nModel built successfully!")
-    print(f"Total parameters: {model.count_params():,}")
+    print("Fixed training pipeline ready to use!")

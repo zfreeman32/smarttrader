@@ -1,37 +1,39 @@
 """
-Multi-Timeframe Confluence Model Training Pipeline
-===================================================
+Multi-Timeframe Confluence Model - Complete Implementation
+==========================================================
 
-Builds a production-ready model that analyzes alignment across multiple timeframes
-to generate confluence scores and directional bias for trading decisions.
+Implements:
+1. MultiTimeframeDataPreparator - Prepares multi-timeframe data
+2. MultiTimeframeConfluenceModel - Transformer-based model architecture
+3. ConfluenceModelTrainer - Training orchestration
 
 Architecture: Multi-Stream Transformer with attention across timeframes
-Output: Confluence score [0-1] and directional bias [-1 to +1]
 """
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers, Model
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.preprocessing import StandardScaler
 from typing import Dict, List, Tuple, Optional
-import json
 import warnings
 warnings.filterwarnings('ignore')
 
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.preprocessing import StandardScaler
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, Model
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+
 
 class MultiTimeframeDataPreparator:
-    """Prepares aligned multi-timeframe data for confluence modeling"""
+    """Prepares multi-timeframe data using pre-calculated features from CSV"""
     
     def __init__(self, 
                  timeframes: Dict[str, int] = None,
                  lookback_periods: Dict[str, int] = None):
         """
         Args:
-            timeframes: Dict of timeframe names to minutes (e.g., {'1m': 1, '5m': 5})
+            timeframes: Dict of timeframe names to minutes
             lookback_periods: Number of bars to look back per timeframe
         """
         if timeframes is None:
@@ -58,139 +60,231 @@ class MultiTimeframeDataPreparator:
             
         self.scalers = {}
         
-    def calculate_features_per_timeframe(self, df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
-        """
-        Calculate confluence-relevant features for a single timeframe
+        # Map existing column names to feature categories
+        self.feature_mapping = self._create_feature_mapping()
+    
+    def _create_feature_mapping(self) -> Dict[str, List[str]]:
+        """Map existing columns to feature categories"""
+        mapping = {
+            # Trend indicators
+            'trend': [
+                'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200',
+                'DEMA', 'TEMA', 'TRIMA',
+                'MA_10', 'MA_50', 'MA_200',
+                'KAMA', 'T3', 'WMA', 'SMA',
+                'HT_TRENDLINE',
+                'MAMA', 'FAMA'
+            ],
+            
+            # Momentum indicators
+            'momentum': [
+                'RSI', 'STOCH_K', 'STOCH_D', 'STOCHF_K', 'STOCHF_D',
+                'STOCHRSI_K', 'STOCHRSI_D',
+                'MACD', 'MACDSIGNAL', 'MACDHIST',
+                'CCI', 'CMO', 'ROC', 'ROCP', 'ROCR', 'ROCR100',
+                'MOM', 'APO', 'PPO', 'TRIX',
+                'WILLR', 'ULTOSC', 'BOP'
+            ],
+            
+            # Volatility indicators
+            'volatility': [
+                'UPPERBAND', 'MIDDLEBAND', 'LOWERBAND',
+                'ATR', 'NATR', 'TRANGE',
+                'KELTNER_UPPER', 'KELTNER_LOWER',
+                'rolling_std'
+            ],
+            
+            # Volume indicators
+            'volume': [
+                'AD', 'ADOSC', 'OBV',
+                'MFI', 'ADOSC',
+                'EFI'
+            ],
+            
+            # Trend strength
+            'trend_strength': [
+                'ADX', 'ADXR', 'DX',
+                'PLUS_DI', 'MINUS_DI',
+                'PLUS_DM', 'MINUS_DM',
+                'AROON_UP', 'AROON_DOWN', 'AROONOSC'
+            ],
+            
+            # Support/Resistance
+            'support_resistance': [
+                'SAR', 'SAREXT',
+                'SUPER_TREND',
+                'DONCHIAN_HIGH', 'DONCHIAN_LOW'
+            ],
+            
+            # Price patterns
+            'price_patterns': [
+                'AVGPRICE', 'MEDPRICE', 'TYPPRICE', 'WCLPRICE',
+                'VWAP', 'HMA'
+            ],
+            
+            # Cycle indicators
+            'cycle': [
+                'HT_DCPERIOD', 'HT_DCPHASE',
+                'HT_PHASOR_INPHASE', 'HT_PHASOR_QUADRATURE',
+                'HT_SINE', 'HT_LEADSINE', 'HT_TRENDMODE'
+            ],
+            
+            # Statistical
+            'statistical': [
+                'rolling_mean', 'z_score'
+            ]
+        }
         
-        Features:
-        - Trend direction (EMA crossovers, slope)
-        - Momentum (RSI, STOCHRSI, MACD)
-        - Volume confirmation
-        - Volatility (ATR, Bollinger Bands)
-        - Price position relative to key levels
-        """
-        features = df.copy()
+        return mapping
+    
+    def select_best_features(self, df: pd.DataFrame, max_features: int = 50) -> List[str]:
+        """Select the most important features from available columns"""
+        # Priority features (most important for confluence)
+        priority_features = [
+            # Trend
+            'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200',
+            'KAMA', 'DEMA',
+            
+            # Momentum
+            'RSI', 'STOCHRSI_K', 'STOCHRSI_D',
+            'MACD', 'MACDSIGNAL', 'MACDHIST',
+            'CCI', 'CMO', 'WILLR',
+            
+            # Volatility
+            'ATR', 'UPPERBAND', 'MIDDLEBAND', 'LOWERBAND',
+            'KELTNER_UPPER', 'KELTNER_LOWER',
+            
+            # Volume
+            'OBV', 'AD', 'MFI', 'ADOSC',
+            
+            # Trend Strength
+            'ADX', 'ADXR',
+            'PLUS_DI', 'MINUS_DI',
+            'AROON_UP', 'AROON_DOWN',
+            
+            # Support/Resistance
+            'SAR', 'SUPER_TREND',
+            'DONCHIAN_HIGH', 'DONCHIAN_LOW',
+            
+            # Price patterns
+            'VWAP', 'HMA', 'AVGPRICE',
+            
+            # Additional
+            'rolling_mean', 'rolling_std', 'z_score',
+            'BOP', 'TRIX', 'APO', 'PPO',
+            'ROC', 'MOM'
+        ]
         
-        # Trend Features
-        features['ema_9'] = features['close'].ewm(span=9, adjust=False).mean()
-        features['ema_21'] = features['close'].ewm(span=21, adjust=False).mean()
-        features['ema_50'] = features['close'].ewm(span=50, adjust=False).mean()
+        # Filter to only features that exist in the dataframe
+        available_features = [f for f in priority_features if f in df.columns]
+        
+        # If no priority features found, use all numeric columns except OHLCV
+        if len(available_features) == 0:
+            print("⚠ No priority features found, using all available numeric columns...")
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            # Exclude basic OHLC if other features exist
+            exclude = ['open', 'high', 'low', 'close', 'volume']
+            available_features = [col for col in numeric_cols if col.lower() not in exclude]
+            
+            # If still empty, just use all numeric columns
+            if len(available_features) == 0:
+                available_features = numeric_cols
+        
+        # If we have more than max_features, take the first max_features
+        selected = available_features[:max_features]
+        
+        print(f"Selected {len(selected)} features from {len(df.columns)} available columns")
+        
+        if len(selected) == 0:
+            raise ValueError("No features available! Please check your data file has technical indicators.")
+        
+        return selected
+    
+    def prepare_timeframe_data(self, df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
+        """Prepare data for a single timeframe using existing features"""
+        # Create output dataframe
+        result = pd.DataFrame(index=df.index)
+        
+        # Add selected features
+        for col in feature_cols:
+            if col in df.columns:
+                result[col] = df[col]
+        
+        # Add some derived features for better confluence detection
         
         # EMA crossover signals
-        features['ema_9_21_cross'] = np.where(features['ema_9'] > features['ema_21'], 1, -1)
-        features['ema_21_50_cross'] = np.where(features['ema_21'] > features['ema_50'], 1, -1)
+        if 'EMA_10' in df.columns and 'EMA_20' in df.columns:
+            result['ema_10_20_cross'] = np.where(df['EMA_10'] > df['EMA_20'], 1, -1)
         
-        # Trend slope (rate of change)
-        features['ema_50_slope'] = features['ema_50'].pct_change(5)
-        features['price_slope'] = features['close'].pct_change(10)
+        if 'EMA_20' in df.columns and 'EMA_50' in df.columns:
+            result['ema_20_50_cross'] = np.where(df['EMA_20'] > df['EMA_50'], 1, -1)
         
-        # Momentum Features
-        # RSI
-        delta = features['close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        features['rsi'] = 100 - (100 / (1 + rs))
-        features['rsi_signal'] = np.where(features['rsi'] > 50, 1, -1)
+        if 'EMA_50' in df.columns and 'EMA_200' in df.columns:
+            result['ema_50_200_cross'] = np.where(df['EMA_50'] > df['EMA_200'], 1, -1)
         
-        # MACD
-        exp1 = features['close'].ewm(span=12, adjust=False).mean()
-        exp2 = features['close'].ewm(span=26, adjust=False).mean()
-        features['macd'] = exp1 - exp2
-        features['macd_signal'] = features['macd'].ewm(span=9, adjust=False).mean()
-        features['macd_histogram'] = features['macd'] - features['macd_signal']
-        features['macd_direction'] = np.where(features['macd'] > features['macd_signal'], 1, -1)
+        # RSI zones
+        if 'RSI' in df.columns:
+            result['rsi_overbought'] = np.where(df['RSI'] > 70, 1, 0)
+            result['rsi_oversold'] = np.where(df['RSI'] < 30, 1, 0)
         
-        # Stochastic RSI
-        rsi_min = features['rsi'].rolling(window=14).min()
-        rsi_max = features['rsi'].rolling(window=14).max()
-        features['stoch_rsi'] = (features['rsi'] - rsi_min) / (rsi_max - rsi_min)
-        features['stoch_rsi_signal'] = np.where(features['stoch_rsi'] > 0.5, 1, -1)
+        # MACD signal
+        if 'MACD' in df.columns and 'MACDSIGNAL' in df.columns:
+            result['macd_signal'] = np.where(df['MACD'] > df['MACDSIGNAL'], 1, -1)
         
-        # Volume Features
-        features['volume_sma'] = features['volume'].rolling(window=20).mean()
-        features['volume_ratio'] = features['volume'] / features['volume_sma']
-        features['volume_trend'] = np.where(features['volume_ratio'] > 1.2, 1, 
-                                            np.where(features['volume_ratio'] < 0.8, -1, 0))
+        # ADX trend strength
+        if 'ADX' in df.columns:
+            result['adx_strong'] = np.where(df['ADX'] > 25, 1, 0)
         
-        # Volume-weighted average price
-        features['vwap'] = (features['volume'] * (features['high'] + features['low'] + features['close']) / 3).cumsum() / features['volume'].cumsum()
-        features['price_vs_vwap'] = np.where(features['close'] > features['vwap'], 1, -1)
+        # Bollinger Band position
+        if all(col in df.columns for col in ['UPPERBAND', 'MIDDLEBAND', 'LOWERBAND', 'close']):
+            bb_position = (df['close'] - df['LOWERBAND']) / (df['UPPERBAND'] - df['LOWERBAND'] + 1e-10)
+            result['bb_position'] = bb_position
         
-        # Volatility Features
-        # ATR
-        high_low = features['high'] - features['low']
-        high_close = np.abs(features['high'] - features['close'].shift())
-        low_close = np.abs(features['low'] - features['close'].shift())
-        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        features['atr'] = true_range.rolling(window=14).mean()
-        features['atr_pct'] = features['atr'] / features['close']
+        # Volume confirmation
+        if 'volume' in df.columns:
+            vol_sma = df['volume'].rolling(20).mean()
+            result['volume_ratio'] = df['volume'] / (vol_sma + 1e-10)
         
-        # Bollinger Bands
-        features['bb_middle'] = features['close'].rolling(window=20).mean()
-        bb_std = features['close'].rolling(window=20).std()
-        features['bb_upper'] = features['bb_middle'] + (bb_std * 2)
-        features['bb_lower'] = features['bb_middle'] - (bb_std * 2)
-        features['bb_width'] = (features['bb_upper'] - features['bb_lower']) / features['bb_middle']
-        features['bb_position'] = (features['close'] - features['bb_lower']) / (features['bb_upper'] - features['bb_lower'])
-        
-        # Price position relative to high/low
-        features['high_20'] = features['high'].rolling(window=20).max()
-        features['low_20'] = features['low'].rolling(window=20).min()
-        features['price_range_position'] = (features['close'] - features['low_20']) / (features['high_20'] - features['low_20'])
-        
-        # Distance from key levels
-        features['distance_from_high'] = (features['high_20'] - features['close']) / features['close']
-        features['distance_from_low'] = (features['close'] - features['low_20']) / features['close']
-        
-        # Composite signals
-        features['bullish_signals'] = (
-            (features['ema_9_21_cross'] == 1).astype(int) +
-            (features['ema_21_50_cross'] == 1).astype(int) +
-            (features['rsi_signal'] == 1).astype(int) +
-            (features['macd_direction'] == 1).astype(int) +
-            (features['stoch_rsi_signal'] == 1).astype(int) +
-            (features['price_vs_vwap'] == 1).astype(int)
-        )
-        
-        features['bearish_signals'] = (
-            (features['ema_9_21_cross'] == -1).astype(int) +
-            (features['ema_21_50_cross'] == -1).astype(int) +
-            (features['rsi_signal'] == -1).astype(int) +
-            (features['macd_direction'] == -1).astype(int) +
-            (features['stoch_rsi_signal'] == -1).astype(int) +
-            (features['price_vs_vwap'] == -1).astype(int)
-        )
-        
-        features['signal_consensus'] = (features['bullish_signals'] - features['bearish_signals']) / 6
-        
-        # Forward fill NaN values
-        features = features.fillna(method='ffill').fillna(0)
-        
-        return features
+        return result
     
-    def resample_to_timeframe(self, df: pd.DataFrame, target_minutes: int) -> pd.DataFrame:
-        """Resample 1-minute data to target timeframe"""
-        df = df.copy()
-        df.index = pd.to_datetime(df.index)
+    def resample_to_timeframe(self, df_1m: pd.DataFrame, minutes: int, feature_cols: List[str]) -> pd.DataFrame:
+        """Resample 1-minute data to higher timeframe"""
+        # Resample OHLCV
+        ohlcv_cols = ['open', 'high', 'low', 'close', 'volume']
+        available_ohlcv = [col for col in ohlcv_cols if col in df_1m.columns]
         
-        resampled = df.resample(f'{target_minutes}T').agg({
-            'open': 'first',
-            'high': 'max',
-            'low': 'min',
-            'close': 'last',
-            'volume': 'sum'
-        }).dropna()
+        if not available_ohlcv:
+            # Try capital case
+            ohlcv_cols_cap = ['Open', 'High', 'Low', 'Close', 'Volume']
+            available_ohlcv = [col for col in ohlcv_cols_cap if col in df_1m.columns]
         
-        return resampled
+        # Resample
+        agg_dict = {}
+        for col in available_ohlcv:
+            lower_col = col.lower()
+            if lower_col == 'open':
+                agg_dict[col] = 'first'
+            elif lower_col == 'high':
+                agg_dict[col] = 'max'
+            elif lower_col == 'low':
+                agg_dict[col] = 'min'
+            elif lower_col == 'close':
+                agg_dict[col] = 'last'
+            elif lower_col == 'volume':
+                agg_dict[col] = 'sum'
+        
+        # For features, use last value
+        for col in feature_cols:
+            if col in df_1m.columns:
+                agg_dict[col] = 'last'
+        
+        df_resampled = df_1m.resample(f'{minutes}T').agg(agg_dict)
+        df_resampled = df_resampled.dropna()
+        
+        return df_resampled
     
     def create_aligned_dataset(self, df_1m: pd.DataFrame) -> Dict[str, np.ndarray]:
-        """
-        Create aligned multi-timeframe dataset from 1-minute data
-        
-        Returns dict with keys: '1m', '5m', '15m', '1h', '4h'
-        Each value is a 3D array: [samples, timesteps, features]
-        """
+        """Create aligned multi-timeframe dataset from 1-minute data"""
         aligned_data = {}
         
         # Ensure datetime index
@@ -198,7 +292,10 @@ class MultiTimeframeDataPreparator:
         if not isinstance(df_1m.index, pd.DatetimeIndex):
             df_1m.index = pd.to_datetime(df_1m.index)
         
-        print("Creating multi-timeframe dataset...")
+        print("Creating multi-timeframe dataset using existing features...")
+        
+        # Select features to use
+        feature_cols = self.select_best_features(df_1m, max_features=50)
         
         for tf_name, tf_minutes in self.timeframes.items():
             print(f"Processing {tf_name} timeframe...")
@@ -207,20 +304,20 @@ class MultiTimeframeDataPreparator:
             if tf_minutes == 1:
                 df_tf = df_1m.copy()
             else:
-                df_tf = self.resample_to_timeframe(df_1m, tf_minutes)
+                df_tf = self.resample_to_timeframe(df_1m, tf_minutes, feature_cols)
             
-            # Calculate features
-            df_tf = self.calculate_features_per_timeframe(df_tf, tf_name)
+            # Prepare features for this timeframe
+            df_tf = self.prepare_timeframe_data(df_tf, feature_cols)
             
-            # Select feature columns (exclude OHLCV)
-            feature_cols = [col for col in df_tf.columns if col not in ['open', 'high', 'low', 'close', 'volume']]
+            # Get all numeric columns
+            numeric_cols = df_tf.select_dtypes(include=[np.number]).columns.tolist()
             
             # Create sequences
             lookback = self.lookback_periods[tf_name]
             sequences = []
             
             for i in range(lookback, len(df_tf)):
-                seq = df_tf[feature_cols].iloc[i-lookback:i].values
+                seq = df_tf[numeric_cols].iloc[i-lookback:i].values
                 sequences.append(seq)
             
             aligned_data[tf_name] = np.array(sequences)
@@ -230,28 +327,30 @@ class MultiTimeframeDataPreparator:
         return aligned_data
     
     def calculate_labels(self, df_1m: pd.DataFrame, forward_window: int = 20) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Calculate confluence score and directional bias labels
-        
-        Returns:
-            confluence_scores: [0-1] how well future direction is predicted
-            directional_bias: [-1 to +1] future price direction
-        """
+        """Calculate confluence score and directional bias labels"""
         df = df_1m.copy()
         
+        # Get close price column
+        if 'close' in df.columns:
+            close_col = 'close'
+        elif 'Close' in df.columns:
+            close_col = 'Close'
+        else:
+            raise ValueError("No 'close' or 'Close' column found")
+        
         # Calculate future returns
-        df['future_return'] = df['close'].pct_change(forward_window).shift(-forward_window)
+        df['future_return'] = df[close_col].pct_change(forward_window).shift(-forward_window)
         
         # Directional bias: normalized future return
-        df['directional_bias'] = np.tanh(df['future_return'] * 100)  # Normalize to [-1, 1]
+        df['directional_bias'] = np.tanh(df['future_return'] * 100)
         
-        # Confluence score: based on consistency of direction across multiple horizons
-        df['return_5'] = df['close'].pct_change(5).shift(-5)
-        df['return_10'] = df['close'].pct_change(10).shift(-10)
-        df['return_15'] = df['close'].pct_change(15).shift(-15)
-        df['return_20'] = df['close'].pct_change(20).shift(-20)
+        # Confluence score: based on consistency across multiple horizons
+        df['return_5'] = df[close_col].pct_change(5).shift(-5)
+        df['return_10'] = df[close_col].pct_change(10).shift(-10)
+        df['return_15'] = df[close_col].pct_change(15).shift(-15)
+        df['return_20'] = df[close_col].pct_change(20).shift(-20)
         
-        # Calculate how many horizons agree on direction
+        # Calculate agreement
         returns_matrix = df[['return_5', 'return_10', 'return_15', 'return_20']].values
         signs = np.sign(returns_matrix)
         
@@ -271,25 +370,20 @@ class MultiTimeframeDataPreparator:
     
     def prepare_training_data(self, 
                              df_1m: pd.DataFrame,
-                             validation_split: float = 0.2) -> Tuple[Dict, Dict, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Complete data preparation pipeline
+                             validation_split: float = 0.2) -> Tuple:
+        """Complete data preparation pipeline"""
+        print("\n" + "="*80)
+        print("DATA PREPARATION USING EXISTING FEATURES")
+        print("="*80)
         
-        Returns:
-            X_train: Dict of timeframe data
-            X_val: Dict of timeframe data
-            y_train_confluence: Confluence scores
-            y_train_bias: Directional bias
-            y_val_confluence: Confluence scores
-            y_val_bias: Directional bias
-        """
         # Create aligned dataset
         aligned_data = self.create_aligned_dataset(df_1m)
         
         # Calculate labels
+        print("\nCalculating labels...")
         confluence_scores, directional_bias = self.calculate_labels(df_1m)
         
-        # Align lengths (labels are calculated from the end)
+        # Align lengths
         min_samples = min([data.shape[0] for data in aligned_data.values()] + [len(confluence_scores)])
         
         for tf_name in aligned_data:
@@ -298,7 +392,7 @@ class MultiTimeframeDataPreparator:
         confluence_scores = confluence_scores[-min_samples:]
         directional_bias = directional_bias[-min_samples:]
         
-        # Split into train/validation
+        # Split
         split_idx = int(len(confluence_scores) * (1 - validation_split))
         
         X_train = {tf: data[:split_idx] for tf, data in aligned_data.items()}
@@ -310,7 +404,8 @@ class MultiTimeframeDataPreparator:
         y_val_confluence = confluence_scores[split_idx:]
         y_val_bias = directional_bias[split_idx:]
         
-        # Fit scalers on training data and transform both
+        # Fit scalers on training data
+        print("\nScaling features...")
         for tf_name in self.timeframes.keys():
             scaler = StandardScaler()
             
@@ -328,17 +423,24 @@ class MultiTimeframeDataPreparator:
             
             self.scalers[tf_name] = scaler
         
-        print(f"\nTraining samples: {len(y_train_confluence)}")
-        print(f"Validation samples: {len(y_val_confluence)}")
+        print(f"\n✓ Training samples: {len(y_train_confluence):,}")
+        print(f"✓ Validation samples: {len(y_val_confluence):,}")
         
         return X_train, X_val, y_train_confluence, y_train_bias, y_val_confluence, y_val_bias
 
 
 class MultiTimeframeConfluenceModel:
-    """Multi-Stream Transformer for timeframe confluence analysis"""
+    """
+    Transformer-based Multi-Timeframe Confluence Model
     
-    def __init__(self, 
-                 input_shapes: Dict[str, Tuple],
+    Architecture:
+    - Separate LSTM encoders for each timeframe
+    - Transformer layers for cross-timeframe attention
+    - Dual outputs: confluence score [0-1] and directional bias [-1, +1]
+    """
+    
+    def __init__(self,
+                 input_shapes: Dict[str, Tuple[int, int]],
                  d_model: int = 128,
                  num_heads: int = 4,
                  ff_dim: int = 256,
@@ -346,10 +448,10 @@ class MultiTimeframeConfluenceModel:
                  dropout_rate: float = 0.2):
         """
         Args:
-            input_shapes: Dict of {timeframe: (timesteps, features)}
-            d_model: Transformer model dimension
+            input_shapes: Dict of {timeframe: (timesteps, features)} for each timeframe
+            d_model: Dimension of transformer model
             num_heads: Number of attention heads
-            ff_dim: Feed-forward dimension
+            ff_dim: Feed-forward network dimension
             num_transformer_blocks: Number of transformer blocks
             dropout_rate: Dropout rate
         """
@@ -362,125 +464,267 @@ class MultiTimeframeConfluenceModel:
         
         self.model = None
         
-    def transformer_encoder(self, inputs, d_model, num_heads, ff_dim, dropout_rate, name_prefix):
-        """Single transformer encoder block"""
+    def build_transformer_block(self, 
+                                x: tf.Tensor, 
+                                num_heads: int, 
+                                ff_dim: int, 
+                                dropout_rate: float,
+                                name: str = "transformer") -> tf.Tensor:
+        """Build a single transformer block"""
+        
         # Multi-head attention
         attention_output = layers.MultiHeadAttention(
             num_heads=num_heads,
-            key_dim=d_model // num_heads,
+            key_dim=self.d_model // num_heads,
             dropout=dropout_rate,
-            name=f"{name_prefix}_attention"
-        )(inputs, inputs)
+            name=f"{name}_mha"
+        )(x, x)
         
         attention_output = layers.Dropout(dropout_rate)(attention_output)
-        attention_output = layers.LayerNormalization(epsilon=1e-6)(inputs + attention_output)
+        x = layers.Add()([x, attention_output])
+        x = layers.LayerNormalization(epsilon=1e-6)(x)
         
         # Feed-forward network
-        ffn_output = layers.Dense(ff_dim, activation='relu', name=f"{name_prefix}_ffn1")(attention_output)
-        ffn_output = layers.Dropout(dropout_rate)(ffn_output)
-        ffn_output = layers.Dense(d_model, name=f"{name_prefix}_ffn2")(ffn_output)
-        ffn_output = layers.Dropout(dropout_rate)(ffn_output)
+        ff_output = layers.Dense(ff_dim, activation='relu', name=f"{name}_ff1")(x)
+        ff_output = layers.Dropout(dropout_rate)(ff_output)
+        ff_output = layers.Dense(self.d_model, name=f"{name}_ff2")(ff_output)
+        ff_output = layers.Dropout(dropout_rate)(ff_output)
         
-        # Residual connection
-        output = layers.LayerNormalization(epsilon=1e-6)(attention_output + ffn_output)
+        x = layers.Add()([x, ff_output])
+        x = layers.LayerNormalization(epsilon=1e-6)(x)
         
-        return output
+        return x
     
-    def build_model(self):
-        """Build multi-stream transformer architecture"""
+    def build_model(self) -> Model:
+        """Build the complete multi-timeframe confluence model"""
         
-        # Input layers for each timeframe
+        print("\n" + "="*80)
+        print("BUILDING MULTI-TIMEFRAME CONFLUENCE MODEL")
+        print("="*80)
+        
+        # Create input layers for each timeframe
         inputs = {}
-        stream_outputs = []
+        for tf_name, (timesteps, features) in self.input_shapes.items():
+            inputs[tf_name] = layers.Input(
+                shape=(timesteps, features),
+                name=f"input_{tf_name}"
+            )
+            print(f"Input {tf_name}: {(timesteps, features)}")
         
-        for tf_name, shape in self.input_shapes.items():
-            # Input layer
-            input_layer = layers.Input(shape=shape, name=f"input_{tf_name}")
-            inputs[tf_name] = input_layer
+        # Encode each timeframe with LSTM
+        encoded_streams = []
+        for tf_name, input_layer in inputs.items():
+            # LSTM encoder
+            x = layers.LSTM(
+                self.d_model,
+                return_sequences=True,
+                dropout=self.dropout_rate,
+                recurrent_dropout=self.dropout_rate,
+                name=f"lstm_{tf_name}"
+            )(input_layer)
             
-            # Project to d_model dimensions
-            x = layers.Dense(self.d_model, name=f"{tf_name}_projection")(input_layer)
-            x = layers.LayerNormalization(epsilon=1e-6)(x)
-            
-            # Apply transformer blocks
-            for i in range(self.num_transformer_blocks):
-                x = self.transformer_encoder(
-                    x, 
-                    self.d_model, 
-                    self.num_heads, 
-                    self.ff_dim, 
-                    self.dropout_rate,
-                    name_prefix=f"{tf_name}_block{i}"
-                )
-            
-            # Global average pooling
-            x = layers.GlobalAveragePooling1D(name=f"{tf_name}_pool")(x)
-            stream_outputs.append(x)
+            encoded_streams.append(x)
+            print(f"LSTM {tf_name}: {self.d_model} units")
         
         # Concatenate all timeframe streams
-        concatenated = layers.Concatenate(name="concat_streams")(stream_outputs)
+        if len(encoded_streams) > 1:
+            combined = layers.Concatenate(axis=1)(encoded_streams)
+        else:
+            combined = encoded_streams[0]
         
-        # Cross-timeframe attention/fusion
-        x = layers.Dense(self.d_model * 2, activation='relu', name="fusion_dense1")(concatenated)
+        print(f"\nCombined streams shape: {combined.shape}")
+        
+        # Apply transformer blocks for cross-timeframe attention
+        x = combined
+        for i in range(self.num_transformer_blocks):
+            x = self.build_transformer_block(
+                x,
+                num_heads=self.num_heads,
+                ff_dim=self.ff_dim,
+                dropout_rate=self.dropout_rate,
+                name=f"transformer_block_{i+1}"
+            )
+            print(f"Transformer Block {i+1}: {self.num_heads} heads, {self.ff_dim} ff_dim")
+        
+        # Global average pooling
+        x = layers.GlobalAveragePooling1D()(x)
+        
+        # Dense layers before outputs
+        x = layers.Dense(128, activation='relu', name='dense_1')(x)
         x = layers.Dropout(self.dropout_rate)(x)
-        x = layers.Dense(self.d_model, activation='relu', name="fusion_dense2")(x)
+        x = layers.Dense(64, activation='relu', name='dense_2')(x)
         x = layers.Dropout(self.dropout_rate)(x)
         
         # Dual outputs
-        # Confluence score [0-1]
-        confluence_output = layers.Dense(64, activation='relu', name="confluence_dense")(x)
-        confluence_output = layers.Dropout(self.dropout_rate)(confluence_output)
-        confluence_output = layers.Dense(1, activation='sigmoid', name="confluence_score")(confluence_output)
+        confluence_output = layers.Dense(
+            1, 
+            activation='sigmoid', 
+            name='confluence_score'
+        )(x)
         
-        # Directional bias [-1 to +1]
-        bias_output = layers.Dense(64, activation='relu', name="bias_dense")(x)
-        bias_output = layers.Dropout(self.dropout_rate)(bias_output)
-        bias_output = layers.Dense(1, activation='tanh', name="directional_bias")(bias_output)
+        bias_output = layers.Dense(
+            1, 
+            activation='tanh', 
+            name='directional_bias'
+        )(x)
         
-        # Create model
+        print("\nOutputs:")
+        print("  - Confluence Score: [0, 1]")
+        print("  - Directional Bias: [-1, +1]")
+        
+        # Build model with inputs in sorted order (alphabetical by timeframe name)
+        # This ensures consistency with training data preparation
+        sorted_timeframes = sorted(inputs.keys())
+        sorted_inputs = [inputs[tf] for tf in sorted_timeframes]
+        
         self.model = Model(
-            inputs=list(inputs.values()),
+            inputs=sorted_inputs,
             outputs=[confluence_output, bias_output],
-            name="MultiTimeframeConfluenceModel"
+            name='MultiTimeframeConfluenceModel'
         )
+        
+        print(f"\n✓ Model built with {self.model.count_params():,} parameters")
         
         return self.model
     
     def compile_model(self, learning_rate: float = 0.001):
-        """Compile model with appropriate losses"""
+        """Compile the model with optimizers and loss functions"""
+        
+        if self.model is None:
+            raise ValueError("Model not built yet. Call build_model() first.")
+        
+        # Custom loss weights
+        loss_weights = {
+            'confluence_score': 1.0,
+            'directional_bias': 0.8
+        }
+        
         self.model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
             loss={
                 'confluence_score': 'mse',
                 'directional_bias': 'mse'
             },
-            loss_weights={
-                'confluence_score': 1.0,
-                'directional_bias': 1.0
-            },
+            loss_weights=loss_weights,
             metrics={
                 'confluence_score': ['mae', 'mse'],
                 'directional_bias': ['mae', 'mse']
             }
         )
         
-        return self.model
+        print(f"\n✓ Model compiled with learning rate: {learning_rate}")
     
     def get_model_summary(self):
-        """Print model architecture"""
+        """Print detailed model summary"""
+        
         if self.model is None:
             raise ValueError("Model not built yet. Call build_model() first.")
-        return self.model.summary()
+        
+        print("\n" + "="*80)
+        print("MODEL SUMMARY")
+        print("="*80)
+        
+        # Print Keras summary
+        self.model.summary()
+        
+        # Print additional details
+        print("\n" + "="*80)
+        print("MODEL DETAILS")
+        print("="*80)
+        
+        print(f"\nArchitecture Configuration:")
+        print(f"  Transformer Dimension (d_model): {self.d_model}")
+        print(f"  Attention Heads: {self.num_heads}")
+        print(f"  Feed-Forward Dimension: {self.ff_dim}")
+        print(f"  Transformer Blocks: {self.num_transformer_blocks}")
+        print(f"  Dropout Rate: {self.dropout_rate}")
+        
+        print(f"\nInput Shapes:")
+        for tf_name, shape in self.input_shapes.items():
+            print(f"  {tf_name}: {shape}")
+        
+        print(f"\nOutput Shapes:")
+        print(f"  Confluence Score: (batch_size, 1) - Range: [0, 1]")
+        print(f"  Directional Bias: (batch_size, 1) - Range: [-1, +1]")
+        
+        print(f"\nTotal Parameters: {self.model.count_params():,}")
+        
+        # Count trainable vs non-trainable
+        trainable_count = sum([tf.size(w).numpy() for w in self.model.trainable_weights])
+        non_trainable_count = sum([tf.size(w).numpy() for w in self.model.non_trainable_weights])
+        
+        print(f"  Trainable: {trainable_count:,}")
+        print(f"  Non-trainable: {non_trainable_count:,}")
+        
+        print("\n" + "="*80)
+    
+    def get_model(self) -> Model:
+        """Get the Keras model"""
+        return self.model
 
 
 class ConfluenceModelTrainer:
-    """Training pipeline for confluence model"""
+    """Handles training of the Multi-Timeframe Confluence Model"""
     
-    def __init__(self, model: MultiTimeframeConfluenceModel, model_save_path: str):
+    def __init__(self, 
+                 model: MultiTimeframeConfluenceModel,
+                 output_dir: str = './mtf_confluence_output/',
+                 model_save_path: Optional[str] = None):
+        """
+        Args:
+            model: MultiTimeframeConfluenceModel instance
+            output_dir: Directory to save outputs
+            model_save_path: Optional custom path to save the best model
+        """
         self.model = model
+        self.output_dir = output_dir
         self.model_save_path = model_save_path
         self.history = None
         
+    def create_callbacks(self, 
+                        patience: int = 15,
+                        min_delta: float = 0.0001) -> List:
+        """Create training callbacks"""
+        
+        import os
+        os.makedirs(os.path.join(self.output_dir, 'models'), exist_ok=True)
+        
+        # Use custom save path if provided, otherwise use default
+        if self.model_save_path:
+            save_path = self.model_save_path
+        else:
+            save_path = os.path.join(self.output_dir, 'models', 'confluence_model_best.keras')
+        
+        callbacks = [
+            # Early stopping
+            EarlyStopping(
+                monitor='val_loss',
+                patience=patience,
+                min_delta=min_delta,
+                restore_best_weights=True,
+                verbose=1
+            ),
+            
+            # Learning rate reduction
+            ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=0.5,
+                patience=patience // 2,
+                min_lr=1e-7,
+                verbose=1
+            ),
+            
+            # Model checkpoint
+            ModelCheckpoint(
+                filepath=save_path,
+                monitor='val_loss',
+                save_best_only=True,
+                verbose=1
+            )
+        ]
+        
+        return callbacks
+    
     def train(self,
              X_train: Dict[str, np.ndarray],
              y_train_confluence: np.ndarray,
@@ -489,212 +733,134 @@ class ConfluenceModelTrainer:
              y_val_confluence: np.ndarray,
              y_val_bias: np.ndarray,
              epochs: int = 100,
-             batch_size: int = 32,
-             patience: int = 15):
+             batch_size: int = 64,
+             patience: int = 15) -> keras.callbacks.History:
         """
-        Train the confluence model
+        Train the model
         
         Args:
-            X_train: Dict of timeframe training data
+            X_train: Dict of training data for each timeframe
             y_train_confluence: Training confluence scores
             y_train_bias: Training directional bias
-            X_val: Dict of timeframe validation data
+            X_val: Dict of validation data for each timeframe
             y_val_confluence: Validation confluence scores
             y_val_bias: Validation directional bias
-            epochs: Maximum epochs
+            epochs: Maximum number of epochs
             batch_size: Batch size
             patience: Early stopping patience
+            
+        Returns:
+            Training history
         """
         
-        # Callbacks
-        callbacks = [
-            EarlyStopping(
-                monitor='val_loss',
-                patience=patience,
-                restore_best_weights=True,
-                verbose=1
-            ),
-            ModelCheckpoint(
-                filepath=self.model_save_path,
-                monitor='val_loss',
-                save_best_only=True,
-                verbose=1
-            ),
-            ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=0.5,
-                patience=patience//3,
-                min_lr=1e-6,
-                verbose=1
-            )
-        ]
+        print("\n" + "="*80)
+        print("TRAINING MULTI-TIMEFRAME CONFLUENCE MODEL")
+        print("="*80)
+        print(f"\nConfiguration:")
+        print(f"  Epochs: {epochs}")
+        print(f"  Batch size: {batch_size}")
+        print(f"  Patience: {patience}")
+        print(f"  Training samples: {len(y_train_confluence):,}")
+        print(f"  Validation samples: {len(y_val_confluence):,}")
         
-        # Prepare input data (model expects list of arrays)
+        # Prepare inputs (list format for multi-input model)
         X_train_list = [X_train[tf] for tf in sorted(X_train.keys())]
         X_val_list = [X_val[tf] for tf in sorted(X_val.keys())]
         
+        # Prepare outputs (dict format for named outputs)
+        y_train_dict = {
+            'confluence_score': y_train_confluence,
+            'directional_bias': y_train_bias
+        }
+        
+        y_val_dict = {
+            'confluence_score': y_val_confluence,
+            'directional_bias': y_val_bias
+        }
+        
+        # Create callbacks
+        callbacks = self.create_callbacks(patience=patience)
+        
         # Train
         print("\nStarting training...")
-        self.history = self.model.model.fit(
+        print("="*80)
+        
+        self.history = self.model.get_model().fit(
             X_train_list,
-            {
-                'confluence_score': y_train_confluence,
-                'directional_bias': y_train_bias
-            },
-            validation_data=(
-                X_val_list,
-                {
-                    'confluence_score': y_val_confluence,
-                    'directional_bias': y_val_bias
-                }
-            ),
+            y_train_dict,
+            validation_data=(X_val_list, y_val_dict),
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callbacks,
             verbose=1
         )
         
-        print(f"\nTraining complete. Best model saved to: {self.model_save_path}")
+        print("\n" + "="*80)
+        print("✓ TRAINING COMPLETE")
+        print("="*80)
+        
+        # Save training history
+        import os
+        history_df = pd.DataFrame(self.history.history)
+        history_path = os.path.join(self.output_dir, 'reports', 'training_history.csv')
+        os.makedirs(os.path.dirname(history_path), exist_ok=True)
+        history_df.to_csv(history_path, index=False)
+        print(f"✓ Training history saved to: {history_path}")
         
         return self.history
     
-    def evaluate(self, X_test: Dict[str, np.ndarray], 
+    def evaluate(self,
+                X_test: Dict[str, np.ndarray],
                 y_test_confluence: np.ndarray,
-                y_test_bias: np.ndarray):
+                y_test_bias: np.ndarray) -> Dict:
         """Evaluate model on test set"""
         
+        # Prepare inputs
         X_test_list = [X_test[tf] for tf in sorted(X_test.keys())]
         
-        results = self.model.model.evaluate(
+        # Evaluate
+        results = self.model.get_model().evaluate(
             X_test_list,
             {
                 'confluence_score': y_test_confluence,
                 'directional_bias': y_test_bias
             },
-            verbose=1
+            verbose=0
         )
         
-        return results
-
-
-def main():
-    """
-    Main training pipeline
-    
-    Usage:
-        # Assumes you have 1-minute EURUSD data in a CSV with columns:
-        # timestamp, open, high, low, close, volume
+        # Extract metrics
+        metrics = {}
+        for i, metric_name in enumerate(self.model.get_model().metrics_names):
+            metrics[metric_name] = results[i]
         
-        df = pd.read_csv('eurusd_1m_data.csv', index_col='timestamp', parse_dates=True)
+        return metrics
+    
+    def predict(self,
+               X: Dict[str, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Make predictions
         
-        # Run training
-        trainer = train_confluence_model(df)
-    """
-    
-    print("=" * 80)
-    print("Multi-Timeframe Confluence Model Training Pipeline")
-    print("=" * 80)
-    
-    # Example with dummy data (replace with your actual data)
-    print("\nNote: This example uses dummy data.")
-    print("Replace with your actual EURUSD 1-minute data.")
-    
-    # Create dummy data for demonstration
-    dates = pd.date_range(start='2023-01-01', end='2024-12-31', freq='1T')
-    np.random.seed(42)
-    
-    df_1m = pd.DataFrame({
-        'open': 1.08 + np.random.randn(len(dates)) * 0.001,
-        'high': 1.08 + np.random.randn(len(dates)) * 0.001,
-        'low': 1.08 + np.random.randn(len(dates)) * 0.001,
-        'close': 1.08 + np.random.randn(len(dates)) * 0.001,
-        'volume': np.random.randint(1000, 10000, len(dates))
-    }, index=dates)
-    
-    df_1m['high'] = df_1m[['open', 'high', 'low', 'close']].max(axis=1)
-    df_1m['low'] = df_1m[['open', 'high', 'low', 'close']].min(axis=1)
-    
-    print(f"\nData shape: {df_1m.shape}")
-    print(f"Date range: {df_1m.index.min()} to {df_1m.index.max()}")
-    
-    # Step 1: Prepare data
-    print("\n" + "=" * 80)
-    print("Step 1: Data Preparation")
-    print("=" * 80)
-    
-    preparator = MultiTimeframeDataPreparator()
-    
-    X_train, X_val, y_train_conf, y_train_bias, y_val_conf, y_val_bias = preparator.prepare_training_data(
-        df_1m, 
-        validation_split=0.2
-    )
-    
-    # Step 2: Build model
-    print("\n" + "=" * 80)
-    print("Step 2: Model Architecture")
-    print("=" * 80)
-    
-    input_shapes = {tf: X_train[tf].shape[1:] for tf in X_train.keys()}
-    print("\nInput shapes:")
-    for tf, shape in input_shapes.items():
-        print(f"  {tf}: {shape}")
-    
-    model = MultiTimeframeConfluenceModel(
-        input_shapes=input_shapes,
-        d_model=128,
-        num_heads=4,
-        ff_dim=256,
-        num_transformer_blocks=2,
-        dropout_rate=0.2
-    )
-    
-    model.build_model()
-    model.compile_model(learning_rate=0.001)
-    
-    print("\nModel Summary:")
-    model.get_model_summary()
-    
-    # Step 3: Train
-    print("\n" + "=" * 80)
-    print("Step 3: Training")
-    print("=" * 80)
-    
-    trainer = ConfluenceModelTrainer(
-        model=model,
-        model_save_path='/home/claude/mtf_confluence_model_best.keras'
-    )
-    
-    history = trainer.train(
-        X_train=X_train,
-        y_train_confluence=y_train_conf,
-        y_train_bias=y_train_bias,
-        X_val=X_val,
-        y_val_confluence=y_val_conf,
-        y_val_bias=y_val_bias,
-        epochs=50,
-        batch_size=64,
-        patience=10
-    )
-    
-    # Step 4: Evaluate
-    print("\n" + "=" * 80)
-    print("Step 4: Final Evaluation")
-    print("=" * 80)
-    
-    results = trainer.evaluate(X_val, y_val_conf, y_val_bias)
-    
-    print("\nTraining complete!")
-    print(f"Model saved to: {trainer.model_save_path}")
-    
-    # Save scalers
-    import pickle
-    scaler_path = '/home/claude/mtf_confluence_scalers.pkl'
-    with open(scaler_path, 'wb') as f:
-        pickle.dump(preparator.scalers, f)
-    print(f"Scalers saved to: {scaler_path}")
-    
-    return trainer, preparator
+        Args:
+            X: Dict of data for each timeframe
+            
+        Returns:
+            Tuple of (confluence_scores, directional_bias)
+        """
+        # Prepare inputs
+        X_list = [X[tf] for tf in sorted(X.keys())]
+        
+        # Predict
+        predictions = self.model.get_model().predict(X_list, verbose=0)
+        
+        confluence_scores = predictions[0].flatten()
+        directional_bias = predictions[1].flatten()
+        
+        return confluence_scores, directional_bias
 
 
-if __name__ == "__main__":
-    trainer, preparator = main()
+# Export classes
+__all__ = [
+    'MultiTimeframeDataPreparator',
+    'MultiTimeframeConfluenceModel',
+    'ConfluenceModelTrainer'
+]

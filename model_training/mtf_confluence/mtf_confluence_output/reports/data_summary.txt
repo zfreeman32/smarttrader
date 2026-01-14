@@ -1,0 +1,9 @@
+DATA SUMMARY
+================================================================================
+
+data_path: C:\Users\zebfr\Documents\All_Files\TRADING\trade_bot\data\currency_data\sampled\EURUSD_1min_sampled_features.csv
+total_rows: 10000
+date_range: 2025-01-15 00:47:00 to 2025-01-23 23:59:00
+duration_days: 8
+price_range: 1.02611 - 1.04556
+avg_volume: 200.5568

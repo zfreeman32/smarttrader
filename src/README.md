@@ -140,7 +140,7 @@ See `examples/simple_example.py` for a complete example.
 Run the comprehensive test suite:
 
 ```bash
-cd /home/claude/eurusd_trading_system
+cd ./outputs/eurusd_trading_system
 python tests/test_phase1_ict_detectors.py
 ```
 

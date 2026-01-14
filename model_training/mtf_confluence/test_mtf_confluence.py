@@ -188,7 +188,7 @@ def test_training_pipeline(quick_test: bool = True):
     # Train
     trainer = ConfluenceModelTrainer(
         model=model,
-        model_save_path='/home/claude/test_confluence_model.keras'
+        model_save_path='./outputs/test_confluence_model.keras'
     )
     
     epochs = 5 if quick_test else 20
@@ -222,8 +222,8 @@ def test_inference_speed():
     try:
         # Load analyzer
         analyzer = ConfluenceAnalyzer(
-            model_path='/home/claude/test_confluence_model.keras',
-            scaler_path='/home/claude/test_confluence_scalers.pkl'
+            model_path='./outputs/test_confluence_model.keras',
+            scaler_path='./outputs/test_confluence_scalers.pkl'
         )
         
         # Generate test data
@@ -272,8 +272,8 @@ def test_prediction_quality():
     try:
         # Load model
         analyzer = ConfluenceAnalyzer(
-            model_path='/home/claude/test_confluence_model.keras',
-            scaler_path='/home/claude/test_confluence_scalers.pkl'
+            model_path='./outputs/test_confluence_model.keras',
+            scaler_path='./outputs/test_confluence_scalers.pkl'
         )
         
         # Generate test data with known patterns
@@ -327,8 +327,8 @@ def test_real_world_simulation():
     
     try:
         analyzer = ConfluenceAnalyzer(
-            model_path='/home/claude/test_confluence_model.keras',
-            scaler_path='/home/claude/test_confluence_scalers.pkl'
+            model_path='./outputs/test_confluence_model.keras',
+            scaler_path='./outputs/test_confluence_scalers.pkl'
         )
         
         # Generate 1 month of data
@@ -411,7 +411,7 @@ def run_all_tests(quick_mode: bool = True):
         
         # Save scalers for later tests
         import pickle
-        with open('/home/claude/test_confluence_scalers.pkl', 'wb') as f:
+        with open('./outputs/test_confluence_scalers.pkl', 'wb') as f:
             pickle.dump(preparator.scalers, f)
     except Exception as e:
         print(f"✗ Test 1 failed: {e}")
@@ -430,7 +430,7 @@ def run_all_tests(quick_mode: bool = True):
         
         # Save scalers again after training
         import pickle
-        with open('/home/claude/test_confluence_scalers.pkl', 'wb') as f:
+        with open('./outputs/test_confluence_scalers.pkl', 'wb') as f:
             pickle.dump(preparator.scalers, f)
     except Exception as e:
         print(f"✗ Test 3 failed: {e}")

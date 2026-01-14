@@ -1,0 +1,10 @@
+MODEL CONFIGURATION
+================================================================================
+
+d_model: 128
+num_heads: 4
+ff_dim: 256
+num_transformer_blocks: 2
+dropout_rate: 0.2
+learning_rate: 0.001
+total_parameters: 635458

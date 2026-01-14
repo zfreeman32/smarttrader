@@ -3,7 +3,7 @@ Load Real EURUSD Data and Run ICT Detectors
 Example for using your own CSV data with the trading system
 """
 import sys
-sys.path.append('/home/claude/eurusd_trading_system/src')
+sys.path.append('./outputs/eurusd_trading_system/src')
 
 import pandas as pd
 from data.data_utils import load_csv_data, validate_ohlcv_data

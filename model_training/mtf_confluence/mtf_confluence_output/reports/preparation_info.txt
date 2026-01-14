@@ -1,0 +1,9 @@
+DATA PREPARATION INFO
+================================================================================
+
+validation_split: 0.2
+train_samples: 18
+val_samples: 5
+timeframes: ['1m', '5m', '15m', '1h', '4h']
+features_per_timeframe: 6
+lookback_periods: {'1m': 240, '5m': 100, '15m': 50, '1h': 24, '4h': 20}
