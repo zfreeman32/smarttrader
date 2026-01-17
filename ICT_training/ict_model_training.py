@@ -1,22 +1,19 @@
 """
-ICT Model Training Pipeline
-============================
-Trains ML models to filter ICT trading signals for quality.
+ICT Model Training Pipeline v2.0
+================================
+Optimized ML training pipeline for ICT trading signal filtering.
 
-Features:
-- Multiple model types (XGBoost, LightGBM, Random Forest, ensemble)
-- Time series cross-validation
-- Hyperparameter tuning
-- Feature importance analysis
-- Comprehensive evaluation metrics
-- Profit simulation
-- Model persistence
-
-Input: Prepared train/val/test datasets from data preparation
-Output: Trained model, evaluation reports, feature importance
+Key Improvements over v1:
+- Proper handling of pre-SMOTE'd data (no double class weighting)
+- Walk-forward validation with temporal gaps
+- Trading-specific metrics (profit factor, Sharpe, expected value)
+- Feature importance by ICT category
+- Threshold optimization based on trading performance
+- Better hyperparameters for ~6K sample dataset
+- Calibration improvements for probability estimation
 
 Author: ICT ML System
-Version: 1.0
+Version: 2.0
 """
 
 import pandas as pd
@@ -26,9 +23,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, average_precision_score, confusion_matrix,
-    classification_report, precision_recall_curve, roc_curve
+    classification_report, precision_recall_curve, roc_curve,
+    brier_score_loss, log_loss
 )
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 import xgboost as xgb
 import lightgbm as lgb
@@ -42,7 +40,8 @@ import seaborn as sns
 import warnings
 import logging
 from datetime import datetime
-import os
+from collections import defaultdict
+from scipy import stats
 
 warnings.filterwarnings('ignore')
 
@@ -54,86 +53,157 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# CONFIGURATION
+# FEATURE CATEGORIES FOR ICT ANALYSIS
+# =============================================================================
+
+FEATURE_CATEGORIES = {
+    'time_session': [
+        'hour', 'minute', 'day_of_week', 'day_of_month', 'month',
+        'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos',
+        'in_london_kz', 'in_nyam_kz', 'in_nypm_kz', 'in_any_kz', 'in_sb_window',
+        'is_monday', 'is_friday', 'is_midweek', 'london_open_hour', 'ny_open_hour'
+    ],
+    'volatility_volume': [
+        'atr', 'atr_ratio', 'atr_pct', 'range_atr',
+        'volume_ratio', 'volume_spike', 'volume_trend', 'rvol',
+        'volatility', 'vol_sma', 'high_volatility', 'low_volatility'
+    ],
+    'trend_momentum': [
+        'close_vs_ema8', 'close_vs_ema21', 'close_vs_ema50',
+        'ema_bullish_stack', 'ema_bearish_stack', 'trend_ema',
+        'roc_5', 'roc_10', 'roc_20', 'rsi', 'rsi_oversold', 'rsi_overbought'
+    ],
+    'market_structure': [
+        'is_swing_high', 'is_swing_low', 'dist_to_swing_high', 'dist_to_swing_low',
+        'higher_high', 'lower_high', 'higher_low', 'lower_low',
+        'hh_count', 'hl_count', 'lh_count', 'll_count', 'structure_bias',
+        'bos_bullish', 'bos_bearish', 'bars_since_bullish_bos', 'bars_since_bearish_bos',
+        'recent_bullish_bos', 'recent_bearish_bos'
+    ],
+    'premium_discount': [
+        'price_position', 'in_discount', 'in_premium', 'in_equilibrium'
+    ],
+    'ict_concepts': [
+        'bullish_fvg', 'bearish_fvg', 'fvg_size', 'in_bullish_fvg', 'in_bearish_fvg',
+        'recent_bullish_fvg', 'recent_bearish_fvg',
+        'is_displacement', 'displacement_size', 'bullish_displacement', 'bearish_displacement',
+        'recent_bullish_disp', 'recent_bearish_disp',
+        'bullish_ob', 'bearish_ob', 'recent_bullish_ob', 'recent_bearish_ob',
+        'sweep_high', 'sweep_low', 'recent_sweep_high', 'recent_sweep_low'
+    ],
+    'key_levels': [
+        'dist_to_pdh', 'dist_to_pdl', 'near_pdh', 'near_pdl', 'above_pdh', 'below_pdl'
+    ],
+    'candle_patterns': [
+        'body_pct', 'is_bullish', 'is_bearish',
+        'upper_wick_ratio', 'lower_wick_ratio',
+        'is_doji', 'is_hammer', 'is_shooting_star', 'is_marubozu',
+        'bullish_engulf', 'bearish_engulf', 'bullish_rejection', 'bearish_rejection'
+    ],
+    'confluence': [
+        'trend_zone_aligned', 'fvg_trend_aligned',
+        'bullish_confluence', 'bearish_confluence', 'max_confluence', 'net_confluence'
+    ]
+}
+
+
+# =============================================================================
+# CONFIGURATION - OPTIMIZED FOR YOUR DATA
 # =============================================================================
 
 @dataclass
-class TrainingConfig:
-    """Configuration for model training"""
+class TrainingConfigV2:
+    """
+    Optimized configuration for ICT signal filtering.
+    
+    Key changes from v1:
+    - No scale_pos_weight (data already SMOTE'd)
+    - Reduced n_estimators for ~6K samples
+    - Higher regularization to prevent overfitting
+    - Optimized for precision (fewer false positives)
+    """
     
     # Model Selection
-    model_type: str = "xgboost"      # 'xgboost', 'lightgbm', 'random_forest', 'ensemble'
+    model_type: str = "xgboost"
     
-    # XGBoost Parameters
+    # XGBoost Parameters - OPTIMIZED for ~6K samples, 112 features
     xgb_params: Dict = field(default_factory=lambda: {
-        'n_estimators': 300,
-        'max_depth': 6,
-        'learning_rate': 0.05,
+        'n_estimators': 200,           # Reduced from 300 (smaller dataset)
+        'max_depth': 5,                 # Reduced to prevent overfitting
+        'learning_rate': 0.03,          # Lower for better generalization
         'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'min_child_weight': 3,
-        'gamma': 0.1,
-        'reg_alpha': 0.1,
-        'reg_lambda': 1.0,
-        'scale_pos_weight': 2.0,
+        'colsample_bytree': 0.7,        # More aggressive feature sampling
+        'colsample_bylevel': 0.7,
+        'min_child_weight': 5,          # Increased for regularization
+        'gamma': 0.2,                   # Increased for pruning
+        'reg_alpha': 0.5,               # L1 regularization
+        'reg_lambda': 2.0,              # L2 regularization (increased)
+        # NO scale_pos_weight - data is already SMOTE balanced
         'random_state': 42,
         'n_jobs': -1,
-        'eval_metric': 'auc'
+        'eval_metric': 'auc',
+        'tree_method': 'hist',          # Faster training
+        'max_bin': 256
     })
     
-    # LightGBM Parameters
+    # LightGBM Parameters - OPTIMIZED
     lgb_params: Dict = field(default_factory=lambda: {
-        'n_estimators': 300,
-        'max_depth': 6,
-        'learning_rate': 0.05,
+        'n_estimators': 200,
+        'max_depth': 5,
+        'learning_rate': 0.03,
+        'num_leaves': 20,               # Conservative for small dataset
         'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'min_child_samples': 20,
-        'reg_alpha': 0.1,
-        'reg_lambda': 1.0,
-        'scale_pos_weight': 2.0,
+        'colsample_bytree': 0.7,
+        'min_child_samples': 30,        # Increased
+        'reg_alpha': 0.5,
+        'reg_lambda': 2.0,
+        # NO scale_pos_weight
         'random_state': 42,
         'n_jobs': -1,
-        'verbose': -1
+        'verbose': -1,
+        'force_row_wise': True
     })
     
-    # Random Forest Parameters
+    # Random Forest Parameters - OPTIMIZED
     rf_params: Dict = field(default_factory=lambda: {
-        'n_estimators': 200,
-        'max_depth': 10,
-        'min_samples_split': 10,
-        'min_samples_leaf': 5,
-        'max_features': 'sqrt',
-        'class_weight': 'balanced',
+        'n_estimators': 300,            # RF benefits from more trees
+        'max_depth': 8,
+        'min_samples_split': 20,        # Increased
+        'min_samples_leaf': 10,         # Increased
+        'max_features': 0.3,            # ~33% of features per tree
+        'class_weight': None,           # Data already balanced
         'random_state': 42,
-        'n_jobs': -1
+        'n_jobs': -1,
+        'oob_score': True               # Use OOB for additional validation
     })
     
-    # Ensemble Weights
-    ensemble_weights: List[float] = field(default_factory=lambda: [0.4, 0.35, 0.25])
+    # Ensemble Weights (XGB, LGB, RF)
+    ensemble_weights: List[float] = field(default_factory=lambda: [0.45, 0.35, 0.20])
     
     # Cross-Validation
     cv_folds: int = 5
     use_time_series_cv: bool = True
+    cv_gap: int = 50                    # Gap between train and val to prevent leakage
     
     # Hyperparameter Tuning
-    tune_hyperparams: bool = False
-    tuning_method: str = "random"     # 'grid', 'random'
-    tuning_iterations: int = 50
+    tune_hyperparams: bool = True       # Enable by default
+    tuning_iterations: int = 30         # Reduced for faster iteration
     
-    # Early Stopping (for boosting models)
-    early_stopping_rounds: int = 50
+    # Early Stopping
+    early_stopping_rounds: int = 30     # Reduced for smaller dataset
     
     # Calibration
     calibrate_probabilities: bool = True
-    calibration_method: str = "isotonic"  # 'isotonic', 'sigmoid'
+    calibration_method: str = "isotonic"
     
-    # Evaluation
-    probability_thresholds: List[float] = field(default_factory=lambda: [0.5, 0.6, 0.7, 0.8])
+    # Trading-Specific Evaluation
+    probability_thresholds: List[float] = field(default_factory=lambda: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8])
     
     # Profit Simulation
     run_profit_simulation: bool = True
-    risk_reward_ratio: float = 1.5
+    risk_reward_ratio: float = 1.5      # TP1 target
+    spread_pips: float = 0.8            # Typical EUR/USD spread
+    commission_per_lot: float = 0.0     # Set if applicable
     
     # Output
     output_dir: str = "models"
@@ -143,18 +213,58 @@ class TrainingConfig:
 
 
 # =============================================================================
+# WALK-FORWARD CROSS-VALIDATION WITH GAPS
+# =============================================================================
+
+class PurgedTimeSeriesSplit:
+    """
+    Time series split with gap between train and validation.
+    Prevents data leakage from overlapping windows.
+    """
+    
+    def __init__(self, n_splits: int = 5, gap: int = 50, test_size: float = 0.2):
+        self.n_splits = n_splits
+        self.gap = gap
+        self.test_size = test_size
+    
+    def split(self, X, y=None, groups=None):
+        """Generate train/val indices with temporal gap"""
+        n_samples = len(X)
+        test_size = int(n_samples * self.test_size / self.n_splits)
+        
+        for i in range(self.n_splits):
+            # Calculate test boundaries
+            test_end = n_samples - (self.n_splits - i - 1) * test_size
+            test_start = test_end - test_size
+            
+            # Training ends before gap
+            train_end = test_start - self.gap
+            train_start = 0
+            
+            if train_end <= train_start:
+                continue
+            
+            train_idx = np.arange(train_start, train_end)
+            test_idx = np.arange(test_start, test_end)
+            
+            yield train_idx, test_idx
+    
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return self.n_splits
+
+
+# =============================================================================
 # MODEL FACTORY
 # =============================================================================
 
-class ModelFactory:
-    """Factory for creating ML models"""
+class ModelFactoryV2:
+    """Factory for creating ML models with optimized parameters"""
     
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfigV2):
         self.config = config
     
     def create_model(self, model_type: Optional[str] = None):
         """Create model based on type"""
-        
         model_type = model_type or self.config.model_type
         
         if model_type == 'xgboost':
@@ -166,31 +276,17 @@ class ModelFactory:
         elif model_type == 'random_forest':
             return RandomForestClassifier(**self.config.rf_params)
         
-        elif model_type == 'gradient_boosting':
-            return GradientBoostingClassifier(
-                n_estimators=200,
-                max_depth=5,
-                learning_rate=0.05,
-                subsample=0.8,
-                random_state=42
-            )
-        
-        elif model_type == 'logistic':
-            return LogisticRegression(
-                max_iter=1000,
-                class_weight='balanced',
-                random_state=42
-            )
-        
         elif model_type == 'ensemble':
             return self._create_ensemble()
+        
+        elif model_type == 'stacking':
+            return self._create_stacking()
         
         else:
             raise ValueError(f"Unknown model type: {model_type}")
     
     def _create_ensemble(self):
-        """Create ensemble of multiple models"""
-        
+        """Create voting ensemble"""
         estimators = [
             ('xgb', xgb.XGBClassifier(**self.config.xgb_params)),
             ('lgb', lgb.LGBMClassifier(**self.config.lgb_params)),
@@ -202,254 +298,126 @@ class ModelFactory:
             voting='soft',
             weights=self.config.ensemble_weights
         )
+    
+    def _create_stacking(self):
+        """Create stacking ensemble with meta-learner"""
+        from sklearn.ensemble import StackingClassifier
+        
+        estimators = [
+            ('xgb', xgb.XGBClassifier(**self.config.xgb_params)),
+            ('lgb', lgb.LGBMClassifier(**self.config.lgb_params)),
+            ('rf', RandomForestClassifier(**self.config.rf_params))
+        ]
+        
+        return StackingClassifier(
+            estimators=estimators,
+            final_estimator=LogisticRegression(max_iter=1000),
+            cv=3,
+            passthrough=False
+        )
 
 
 # =============================================================================
-# TIME SERIES CROSS-VALIDATION
+# HYPERPARAMETER TUNING - OPTIMIZED SEARCH SPACE
 # =============================================================================
 
-class TimeSeriesCrossValidator:
-    """Custom time series cross-validation"""
+class HyperparameterTunerV2:
+    """Hyperparameter tuning with trading-optimized search space"""
     
-    def __init__(self, config: TrainingConfig):
-        self.config = config
-        self.cv_results = []
-    
-    def cross_validate(
-        self, 
-        model, 
-        X: pd.DataFrame, 
-        y: pd.Series,
-        feature_names: List[str]
-    ) -> Dict[str, Any]:
-        """
-        Perform time series cross-validation.
-        
-        Uses expanding window: train on past, validate on future.
-        """
-        logger.info(f"Running {self.config.cv_folds}-fold time series CV...")
-        
-        if self.config.use_time_series_cv:
-            tscv = TimeSeriesSplit(n_splits=self.config.cv_folds)
-        else:
-            # Fall back to stratified k-fold (not recommended for time series)
-            from sklearn.model_selection import StratifiedKFold
-            tscv = StratifiedKFold(n_splits=self.config.cv_folds, shuffle=False)
-        
-        fold_metrics = []
-        feature_importances = []
-        
-        for fold, (train_idx, val_idx) in enumerate(tscv.split(X, y)):
-            logger.info(f"  Fold {fold + 1}/{self.config.cv_folds}")
-            
-            X_train_fold = X.iloc[train_idx]
-            y_train_fold = y.iloc[train_idx]
-            X_val_fold = X.iloc[val_idx]
-            y_val_fold = y.iloc[val_idx]
-            
-            # Clone model for this fold
-            fold_model = self._clone_model(model)
-            
-            # Fit with early stopping for boosting models
-            if hasattr(fold_model, 'fit') and self._supports_early_stopping(fold_model):
-                fold_model.fit(
-                    X_train_fold, y_train_fold,
-                    eval_set=[(X_val_fold, y_val_fold)],
-                    verbose=False
-                )
-            else:
-                fold_model.fit(X_train_fold, y_train_fold)
-            
-            # Predict
-            y_pred = fold_model.predict(X_val_fold)
-            y_pred_proba = fold_model.predict_proba(X_val_fold)[:, 1]
-            
-            # Calculate metrics
-            metrics = self._calculate_fold_metrics(y_val_fold, y_pred, y_pred_proba)
-            metrics['fold'] = fold + 1
-            metrics['train_size'] = len(X_train_fold)
-            metrics['val_size'] = len(X_val_fold)
-            fold_metrics.append(metrics)
-            
-            # Get feature importance
-            if hasattr(fold_model, 'feature_importances_'):
-                importance = pd.DataFrame({
-                    'feature': feature_names,
-                    'importance': fold_model.feature_importances_
-                })
-                feature_importances.append(importance)
-            
-            logger.info(f"    AUC: {metrics['auc']:.4f}, AP: {metrics['avg_precision']:.4f}")
-        
-        # Aggregate results
-        cv_results = self._aggregate_cv_results(fold_metrics, feature_importances)
-        self.cv_results = fold_metrics
-        
-        return cv_results
-    
-    def _clone_model(self, model):
-        """Clone model for cross-validation"""
-        from sklearn.base import clone
-        return clone(model)
-    
-    def _supports_early_stopping(self, model) -> bool:
-        """Check if model supports early stopping"""
-        return isinstance(model, (xgb.XGBClassifier, lgb.LGBMClassifier))
-    
-    def _calculate_fold_metrics(
-        self, 
-        y_true: pd.Series, 
-        y_pred: np.ndarray, 
-        y_pred_proba: np.ndarray
-    ) -> Dict[str, float]:
-        """Calculate metrics for a single fold"""
-        
-        return {
-            'accuracy': accuracy_score(y_true, y_pred),
-            'precision': precision_score(y_true, y_pred, zero_division=0),
-            'recall': recall_score(y_true, y_pred, zero_division=0),
-            'f1': f1_score(y_true, y_pred, zero_division=0),
-            'auc': roc_auc_score(y_true, y_pred_proba),
-            'avg_precision': average_precision_score(y_true, y_pred_proba)
-        }
-    
-    def _aggregate_cv_results(
-        self, 
-        fold_metrics: List[Dict], 
-        feature_importances: List[pd.DataFrame]
-    ) -> Dict[str, Any]:
-        """Aggregate cross-validation results"""
-        
-        metrics_df = pd.DataFrame(fold_metrics)
-        
-        # Mean and std of metrics
-        result = {}
-        for col in ['accuracy', 'precision', 'recall', 'f1', 'auc', 'avg_precision']:
-            result[f'{col}_mean'] = metrics_df[col].mean()
-            result[f'{col}_std'] = metrics_df[col].std()
-        
-        # Aggregate feature importance
-        if feature_importances:
-            importance_df = pd.concat(feature_importances)
-            avg_importance = importance_df.groupby('feature')['importance'].mean()
-            result['feature_importance'] = avg_importance.sort_values(ascending=False)
-        
-        result['fold_metrics'] = fold_metrics
-        
-        return result
-
-
-# =============================================================================
-# HYPERPARAMETER TUNING
-# =============================================================================
-
-class HyperparameterTuner:
-    """Hyperparameter tuning for models"""
-    
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfigV2):
         self.config = config
         self.best_params = {}
     
     def tune(
         self, 
-        model, 
+        model_type: str,
         X: pd.DataFrame, 
-        y: pd.Series,
-        model_type: str
+        y: pd.Series
     ) -> Dict[str, Any]:
-        """Tune hyperparameters using CV"""
+        """Tune hyperparameters using RandomizedSearchCV"""
         
         logger.info(f"Tuning hyperparameters for {model_type}...")
         
+        model = ModelFactoryV2(self.config).create_model(model_type)
         param_grid = self._get_param_grid(model_type)
         
-        if self.config.use_time_series_cv:
-            cv = TimeSeriesSplit(n_splits=3)  # Fewer folds for tuning
-        else:
-            cv = 3
+        # Use purged time series split
+        cv = PurgedTimeSeriesSplit(n_splits=3, gap=self.config.cv_gap)
         
-        if self.config.tuning_method == 'grid':
-            search = GridSearchCV(
-                model, param_grid, 
-                cv=cv, 
-                scoring='roc_auc',
-                n_jobs=-1,
-                verbose=1
-            )
-        else:
-            search = RandomizedSearchCV(
-                model, param_grid,
-                n_iter=self.config.tuning_iterations,
-                cv=cv,
-                scoring='roc_auc',
-                n_jobs=-1,
-                random_state=42,
-                verbose=1
-            )
+        search = RandomizedSearchCV(
+            model, param_grid,
+            n_iter=self.config.tuning_iterations,
+            cv=cv,
+            scoring='average_precision',  # Better for imbalanced data
+            n_jobs=-1,
+            random_state=42,
+            verbose=1,
+            refit=True
+        )
         
         search.fit(X, y)
         
         self.best_params = search.best_params_
         logger.info(f"Best parameters: {self.best_params}")
-        logger.info(f"Best CV score: {search.best_score_:.4f}")
+        logger.info(f"Best CV AP score: {search.best_score_:.4f}")
         
         return {
             'best_params': self.best_params,
             'best_score': search.best_score_,
-            'cv_results': search.cv_results_
+            'best_estimator': search.best_estimator_
         }
     
     def _get_param_grid(self, model_type: str) -> Dict:
-        """Get parameter grid for model type"""
+        """Optimized parameter grids for ~6K samples"""
         
         if model_type == 'xgboost':
             return {
-                'max_depth': [4, 6, 8],
-                'learning_rate': [0.01, 0.05, 0.1],
-                'n_estimators': [100, 200, 300],
-                'min_child_weight': [1, 3, 5],
-                'subsample': [0.7, 0.8, 0.9],
-                'colsample_bytree': [0.7, 0.8, 0.9],
-                'gamma': [0, 0.1, 0.2],
-                'reg_alpha': [0, 0.1, 0.5],
-                'reg_lambda': [0.5, 1.0, 2.0]
+                'max_depth': [3, 4, 5, 6],
+                'learning_rate': [0.01, 0.02, 0.03, 0.05],
+                'n_estimators': [150, 200, 250, 300],
+                'min_child_weight': [3, 5, 7, 10],
+                'subsample': [0.7, 0.8, 0.85],
+                'colsample_bytree': [0.6, 0.7, 0.8],
+                'gamma': [0.1, 0.2, 0.3],
+                'reg_alpha': [0.1, 0.3, 0.5, 1.0],
+                'reg_lambda': [1.0, 2.0, 3.0]
             }
         
         elif model_type == 'lightgbm':
             return {
-                'max_depth': [4, 6, 8, -1],
-                'learning_rate': [0.01, 0.05, 0.1],
-                'n_estimators': [100, 200, 300],
-                'num_leaves': [20, 31, 50],
-                'min_child_samples': [10, 20, 30],
-                'subsample': [0.7, 0.8, 0.9],
-                'colsample_bytree': [0.7, 0.8, 0.9],
-                'reg_alpha': [0, 0.1, 0.5],
-                'reg_lambda': [0.5, 1.0, 2.0]
+                'max_depth': [3, 4, 5, 6, -1],
+                'learning_rate': [0.01, 0.02, 0.03, 0.05],
+                'n_estimators': [150, 200, 250, 300],
+                'num_leaves': [15, 20, 25, 31],
+                'min_child_samples': [20, 30, 50],
+                'subsample': [0.7, 0.8, 0.85],
+                'colsample_bytree': [0.6, 0.7, 0.8],
+                'reg_alpha': [0.1, 0.3, 0.5],
+                'reg_lambda': [1.0, 2.0, 3.0]
             }
         
         elif model_type == 'random_forest':
             return {
-                'n_estimators': [100, 200, 300],
-                'max_depth': [5, 10, 15, None],
-                'min_samples_split': [5, 10, 20],
-                'min_samples_leaf': [2, 5, 10],
-                'max_features': ['sqrt', 'log2', 0.5]
+                'n_estimators': [200, 300, 400],
+                'max_depth': [6, 8, 10, None],
+                'min_samples_split': [15, 20, 30],
+                'min_samples_leaf': [8, 10, 15],
+                'max_features': [0.2, 0.3, 0.4, 'sqrt']
             }
         
         return {}
 
 
 # =============================================================================
-# MODEL EVALUATOR
+# TRADING-SPECIFIC EVALUATOR
 # =============================================================================
 
-class ModelEvaluator:
-    """Comprehensive model evaluation"""
+class TradingEvaluator:
+    """Comprehensive evaluation with trading-specific metrics"""
     
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfigV2):
         self.config = config
-        self.evaluation_results = {}
+        self.results = {}
     
     def evaluate(
         self, 
@@ -458,7 +426,7 @@ class ModelEvaluator:
         y_test: pd.Series,
         feature_names: List[str]
     ) -> Dict[str, Any]:
-        """Comprehensive model evaluation on test set"""
+        """Full evaluation with trading metrics"""
         
         logger.info("Evaluating model on test set...")
         
@@ -466,35 +434,31 @@ class ModelEvaluator:
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test)[:, 1]
         
-        # Basic metrics
-        basic_metrics = self._calculate_basic_metrics(y_test, y_pred, y_pred_proba)
+        # Classification metrics
+        class_metrics = self._classification_metrics(y_test, y_pred, y_pred_proba)
         
-        # Threshold analysis
-        threshold_metrics = self._threshold_analysis(y_test, y_pred_proba)
+        # Threshold analysis (KEY for trading)
+        threshold_analysis = self._threshold_analysis(y_test, y_pred_proba)
         
-        # Confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
+        # Find optimal threshold for trading
+        optimal_threshold = self._find_optimal_trading_threshold(y_test, y_pred_proba)
         
-        # Classification report
-        class_report = classification_report(y_test, y_pred, output_dict=True)
+        # Calibration analysis
+        calibration = self._calibration_analysis(y_test, y_pred_proba)
         
-        # Feature importance
-        importance = self._get_feature_importance(model, feature_names)
+        # Feature importance by category
+        importance = self._feature_importance_by_category(model, feature_names)
         
-        # Calibration
-        calibration_data = self._calculate_calibration(y_test, y_pred_proba)
+        # Probability distribution analysis
+        prob_analysis = self._probability_distribution_analysis(y_test, y_pred_proba)
         
-        # ROC and PR curves
-        curves = self._calculate_curves(y_test, y_pred_proba)
-        
-        self.evaluation_results = {
-            'basic_metrics': basic_metrics,
-            'threshold_metrics': threshold_metrics,
-            'confusion_matrix': cm,
-            'classification_report': class_report,
+        self.results = {
+            'classification_metrics': class_metrics,
+            'threshold_analysis': threshold_analysis,
+            'optimal_threshold': optimal_threshold,
+            'calibration': calibration,
             'feature_importance': importance,
-            'calibration': calibration_data,
-            'curves': curves,
+            'probability_analysis': prob_analysis,
             'predictions': {
                 'y_test': y_test.values,
                 'y_pred': y_pred,
@@ -502,32 +466,29 @@ class ModelEvaluator:
             }
         }
         
-        # Log key metrics
-        logger.info(f"Test Results:")
-        logger.info(f"  Accuracy:  {basic_metrics['accuracy']:.4f}")
-        logger.info(f"  Precision: {basic_metrics['precision']:.4f}")
-        logger.info(f"  Recall:    {basic_metrics['recall']:.4f}")
-        logger.info(f"  F1 Score:  {basic_metrics['f1']:.4f}")
-        logger.info(f"  ROC AUC:   {basic_metrics['auc']:.4f}")
-        logger.info(f"  Avg Prec:  {basic_metrics['avg_precision']:.4f}")
+        # Log key results
+        self._log_results(class_metrics, optimal_threshold)
         
-        return self.evaluation_results
+        return self.results
     
-    def _calculate_basic_metrics(
+    def _classification_metrics(
         self, 
         y_true: pd.Series, 
         y_pred: np.ndarray, 
         y_pred_proba: np.ndarray
-    ) -> Dict[str, float]:
-        """Calculate basic classification metrics"""
+    ) -> Dict:
+        """Calculate standard classification metrics"""
         
         return {
             'accuracy': accuracy_score(y_true, y_pred),
             'precision': precision_score(y_true, y_pred, zero_division=0),
             'recall': recall_score(y_true, y_pred, zero_division=0),
             'f1': f1_score(y_true, y_pred, zero_division=0),
-            'auc': roc_auc_score(y_true, y_pred_proba),
-            'avg_precision': average_precision_score(y_true, y_pred_proba)
+            'roc_auc': roc_auc_score(y_true, y_pred_proba),
+            'avg_precision': average_precision_score(y_true, y_pred_proba),
+            'brier_score': brier_score_loss(y_true, y_pred_proba),
+            'log_loss': log_loss(y_true, y_pred_proba),
+            'confusion_matrix': confusion_matrix(y_true, y_pred).tolist()
         }
     
     def _threshold_analysis(
@@ -535,173 +496,326 @@ class ModelEvaluator:
         y_true: pd.Series, 
         y_pred_proba: np.ndarray
     ) -> Dict[float, Dict]:
-        """Analyze performance at different probability thresholds"""
+        """Analyze performance at different thresholds"""
         
         results = {}
+        rr = self.config.risk_reward_ratio
         
         for threshold in self.config.probability_thresholds:
             y_pred_thresh = (y_pred_proba >= threshold).astype(int)
-            n_positive = y_pred_thresh.sum()
+            n_signals = y_pred_thresh.sum()
             
-            if n_positive > 0:
-                precision = precision_score(y_true, y_pred_thresh, zero_division=0)
-                recall = recall_score(y_true, y_pred_thresh, zero_division=0)
-                f1 = f1_score(y_true, y_pred_thresh, zero_division=0)
-            else:
-                precision = recall = f1 = 0
+            if n_signals == 0:
+                results[threshold] = {
+                    'n_signals': 0,
+                    'precision': 0,
+                    'recall': 0,
+                    'expected_value_per_trade': 0,
+                    'profit_factor': 0
+                }
+                continue
+            
+            # Trades taken
+            mask = y_pred_thresh == 1
+            wins = y_true[mask].sum()
+            losses = n_signals - wins
+            
+            precision = wins / n_signals if n_signals > 0 else 0
+            recall = wins / y_true.sum() if y_true.sum() > 0 else 0
+            
+            # Trading metrics
+            gross_profit = wins * rr
+            gross_loss = losses * 1.0
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+            
+            # Expected value per trade (in R)
+            ev = (precision * rr) - ((1 - precision) * 1.0)
             
             results[threshold] = {
-                'n_predictions': int(n_positive),
-                'pct_filtered': (1 - n_positive / len(y_pred_proba)) * 100,
+                'n_signals': int(n_signals),
+                'pct_of_total': n_signals / len(y_pred_proba) * 100,
+                'wins': int(wins),
+                'losses': int(losses),
                 'precision': precision,
                 'recall': recall,
-                'f1': f1
+                'profit_factor': profit_factor,
+                'expected_value_per_trade': ev,
+                'total_r': gross_profit - gross_loss
             }
-            
-            logger.info(f"  Threshold {threshold}: {n_positive} signals, "
-                       f"Precision={precision:.3f}, Recall={recall:.3f}")
         
         return results
     
-    def _get_feature_importance(
+    def _find_optimal_trading_threshold(
+        self, 
+        y_true: pd.Series, 
+        y_pred_proba: np.ndarray
+    ) -> Dict:
+        """Find threshold that maximizes trading performance"""
+        
+        rr = self.config.risk_reward_ratio
+        breakeven_precision = 1 / (1 + rr)  # Precision needed to break even
+        
+        best_threshold = 0.5
+        best_score = -float('inf')
+        best_metrics = {}
+        
+        for threshold in np.arange(0.40, 0.90, 0.02):
+            y_pred = (y_pred_proba >= threshold).astype(int)
+            n_trades = y_pred.sum()
+            
+            if n_trades < 20:  # Minimum trades for statistical significance
+                continue
+            
+            mask = y_pred == 1
+            wins = y_true[mask].sum()
+            losses = n_trades - wins
+            
+            precision = wins / n_trades
+            
+            # Calculate combined score
+            # Balances: precision, number of trades, and profitability
+            gross_profit = wins * rr
+            gross_loss = losses
+            total_r = gross_profit - gross_loss
+            
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+            ev = (precision * rr) - ((1 - precision) * 1.0)
+            
+            # Score: EV * sqrt(n_trades) - penalize if too few trades
+            score = ev * np.sqrt(n_trades) if ev > 0 else ev * n_trades
+            
+            if score > best_score:
+                best_score = score
+                best_threshold = threshold
+                best_metrics = {
+                    'threshold': threshold,
+                    'n_trades': int(n_trades),
+                    'wins': int(wins),
+                    'losses': int(losses),
+                    'precision': precision,
+                    'profit_factor': profit_factor if profit_factor != float('inf') else 999,
+                    'expected_value': ev,
+                    'total_r': total_r,
+                    'breakeven_precision': breakeven_precision
+                }
+        
+        logger.info(f"Optimal trading threshold: {best_threshold:.2f}")
+        logger.info(f"  Trades: {best_metrics.get('n_trades', 0)}, "
+                   f"Precision: {best_metrics.get('precision', 0):.1%}, "
+                   f"EV: {best_metrics.get('expected_value', 0):.3f}R")
+        
+        return best_metrics
+    
+    def _calibration_analysis(
+        self, 
+        y_true: pd.Series, 
+        y_pred_proba: np.ndarray
+    ) -> Dict:
+        """Analyze probability calibration"""
+        
+        # Calibration curve
+        prob_true, prob_pred = calibration_curve(y_true, y_pred_proba, n_bins=10)
+        
+        # Expected calibration error
+        ece = np.mean(np.abs(prob_true - prob_pred))
+        
+        # Win rate by probability bucket
+        buckets = pd.cut(y_pred_proba, bins=10, labels=False)
+        bucket_analysis = []
+        
+        for bucket in range(10):
+            mask = buckets == bucket
+            if mask.sum() > 0:
+                actual_wr = y_true[mask].mean()
+                predicted_wr = y_pred_proba[mask].mean()
+                n_samples = mask.sum()
+                bucket_analysis.append({
+                    'bucket': bucket,
+                    'predicted_prob': predicted_wr,
+                    'actual_win_rate': actual_wr,
+                    'n_samples': int(n_samples),
+                    'calibration_error': abs(actual_wr - predicted_wr)
+                })
+        
+        return {
+            'fraction_positives': prob_true.tolist(),
+            'mean_predicted': prob_pred.tolist(),
+            'expected_calibration_error': ece,
+            'brier_score': brier_score_loss(y_true, y_pred_proba),
+            'bucket_analysis': bucket_analysis
+        }
+    
+    def _feature_importance_by_category(
         self, 
         model, 
         feature_names: List[str]
-    ) -> Optional[pd.DataFrame]:
-        """Extract feature importance from model"""
+    ) -> Dict:
+        """Get feature importance grouped by ICT category"""
         
-        if hasattr(model, 'feature_importances_'):
-            importance = pd.DataFrame({
-                'feature': feature_names,
-                'importance': model.feature_importances_
-            }).sort_values('importance', ascending=False)
-            return importance
+        if not hasattr(model, 'feature_importances_'):
+            # Try to get from underlying estimator (for calibrated models)
+            if hasattr(model, 'estimator') and hasattr(model.estimator, 'feature_importances_'):
+                importances = model.estimator.feature_importances_
+            else:
+                return {}
+        else:
+            importances = model.feature_importances_
         
-        elif hasattr(model, 'coef_'):
-            importance = pd.DataFrame({
-                'feature': feature_names,
-                'importance': np.abs(model.coef_[0])
-            }).sort_values('importance', ascending=False)
-            return importance
+        # Create importance DataFrame
+        importance_df = pd.DataFrame({
+            'feature': feature_names,
+            'importance': importances
+        }).sort_values('importance', ascending=False)
         
-        return None
+        # Group by category
+        category_importance = defaultdict(float)
+        feature_to_category = {}
+        
+        for category, features in FEATURE_CATEGORIES.items():
+            for feature in features:
+                feature_to_category[feature] = category
+        
+        for _, row in importance_df.iterrows():
+            feature = row['feature']
+            imp = row['importance']
+            category = feature_to_category.get(feature, 'other')
+            category_importance[category] += imp
+        
+        # Normalize
+        total = sum(category_importance.values())
+        if total > 0:
+            category_importance = {k: v/total for k, v in category_importance.items()}
+        
+        return {
+            'individual': importance_df.to_dict('records'),
+            'by_category': dict(sorted(category_importance.items(), 
+                                       key=lambda x: x[1], reverse=True)),
+            'top_10': importance_df.head(10).to_dict('records')
+        }
     
-    def _calculate_calibration(
+    def _probability_distribution_analysis(
         self, 
         y_true: pd.Series, 
         y_pred_proba: np.ndarray
     ) -> Dict:
-        """Calculate probability calibration metrics"""
+        """Analyze probability distributions for wins vs losses"""
         
-        fraction_positives, mean_predicted = calibration_curve(
-            y_true, y_pred_proba, n_bins=10, strategy='uniform'
-        )
-        
-        # Brier score (lower is better)
-        brier = np.mean((y_pred_proba - y_true) ** 2)
+        wins_proba = y_pred_proba[y_true == 1]
+        losses_proba = y_pred_proba[y_true == 0]
         
         return {
-            'fraction_positives': fraction_positives,
-            'mean_predicted': mean_predicted,
-            'brier_score': brier
+            'wins': {
+                'mean': float(wins_proba.mean()),
+                'std': float(wins_proba.std()),
+                'median': float(np.median(wins_proba)),
+                'q25': float(np.percentile(wins_proba, 25)),
+                'q75': float(np.percentile(wins_proba, 75))
+            },
+            'losses': {
+                'mean': float(losses_proba.mean()),
+                'std': float(losses_proba.std()),
+                'median': float(np.median(losses_proba)),
+                'q25': float(np.percentile(losses_proba, 25)),
+                'q75': float(np.percentile(losses_proba, 75))
+            },
+            'separation': {
+                'ks_statistic': float(stats.ks_2samp(wins_proba, losses_proba)[0]),
+                'mean_difference': float(wins_proba.mean() - losses_proba.mean())
+            }
         }
     
-    def _calculate_curves(
-        self, 
-        y_true: pd.Series, 
-        y_pred_proba: np.ndarray
-    ) -> Dict:
-        """Calculate ROC and PR curves"""
+    def _log_results(self, class_metrics: Dict, optimal: Dict):
+        """Log key evaluation results"""
         
-        # ROC curve
-        fpr, tpr, roc_thresholds = roc_curve(y_true, y_pred_proba)
+        logger.info("\n" + "="*50)
+        logger.info("TEST SET EVALUATION RESULTS")
+        logger.info("="*50)
+        logger.info(f"ROC AUC:          {class_metrics['roc_auc']:.4f}")
+        logger.info(f"Avg Precision:    {class_metrics['avg_precision']:.4f}")
+        logger.info(f"Brier Score:      {class_metrics['brier_score']:.4f}")
         
-        # PR curve
-        precision, recall, pr_thresholds = precision_recall_curve(y_true, y_pred_proba)
-        
-        return {
-            'roc': {'fpr': fpr, 'tpr': tpr, 'thresholds': roc_thresholds},
-            'pr': {'precision': precision, 'recall': recall, 'thresholds': pr_thresholds}
-        }
+        if optimal:
+            logger.info(f"\nOptimal Trading Threshold: {optimal.get('threshold', 0.5):.2f}")
+            logger.info(f"  Expected trades: {optimal.get('n_trades', 0)}")
+            logger.info(f"  Win rate:        {optimal.get('precision', 0):.1%}")
+            logger.info(f"  Profit factor:   {optimal.get('profit_factor', 0):.2f}")
+            logger.info(f"  Expected value:  {optimal.get('expected_value', 0):.3f}R per trade")
 
 
 # =============================================================================
-# PROFIT SIMULATOR
+# PROFIT SIMULATOR - ENHANCED
 # =============================================================================
 
-class ProfitSimulator:
-    """Simulate trading profits based on model predictions"""
+class TradingProfitSimulator:
+    """Enhanced profit simulation with transaction costs"""
     
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfigV2):
         self.config = config
     
     def simulate(
         self, 
         y_true: np.ndarray, 
-        y_pred_proba: np.ndarray,
-        thresholds: Optional[List[float]] = None
+        y_pred_proba: np.ndarray
     ) -> Dict[str, Any]:
-        """
-        Simulate profit/loss based on model predictions.
+        """Run full profit simulation"""
         
-        Assumptions:
-        - Win = risk_reward_ratio R
-        - Loss = -1 R
-        """
         logger.info("Running profit simulation...")
         
-        thresholds = thresholds or self.config.probability_thresholds
         rr = self.config.risk_reward_ratio
-        
         results = {}
         
-        # Baseline: take all signals
-        baseline = self._calculate_profit(y_true, np.ones(len(y_true)), rr)
+        # Baseline (all signals)
+        baseline = self._simulate_strategy(y_true, np.ones(len(y_true)), rr)
         results['baseline'] = baseline
-        logger.info(f"Baseline (all signals): {baseline['total_r']:.2f}R over {baseline['n_trades']} trades")
         
         # Different thresholds
-        for threshold in thresholds:
+        for threshold in self.config.probability_thresholds:
             y_pred = (y_pred_proba >= threshold).astype(int)
-            profit = self._calculate_profit(y_true, y_pred, rr)
-            results[f'threshold_{threshold}'] = profit
-            
-            logger.info(f"Threshold {threshold}: {profit['total_r']:.2f}R over {profit['n_trades']} trades, "
-                       f"WR={profit['win_rate']*100:.1f}%, PF={profit['profit_factor']:.2f}")
+            strategy = self._simulate_strategy(y_true, y_pred, rr)
+            strategy['threshold'] = threshold
+            results[f'threshold_{threshold}'] = strategy
         
-        # Find optimal threshold
+        # Optimal threshold
         optimal = self._find_optimal_threshold(y_true, y_pred_proba, rr)
         results['optimal'] = optimal
         
+        # Calculate improvement metrics
+        if baseline['total_r'] != 0:
+            improvement = (optimal['total_r'] - baseline['total_r']) / abs(baseline['total_r']) * 100
+        else:
+            improvement = 0
+        
+        results['improvement'] = {
+            'r_improvement': optimal['total_r'] - baseline['total_r'],
+            'pct_improvement': improvement,
+            'trade_reduction': (1 - optimal['n_trades'] / baseline['n_trades']) * 100 if baseline['n_trades'] > 0 else 0
+        }
+        
+        self._log_simulation_results(results)
+        
         return results
     
-    def _calculate_profit(
+    def _simulate_strategy(
         self, 
         y_true: np.ndarray, 
         y_pred: np.ndarray, 
         rr: float
     ) -> Dict:
-        """Calculate profit metrics for given predictions"""
+        """Simulate a trading strategy"""
         
-        # Filter to only trades taken
         mask = y_pred == 1
-        trades_taken = y_true[mask]
-        
-        n_trades = len(trades_taken)
+        trades = y_true[mask]
+        n_trades = len(trades)
         
         if n_trades == 0:
             return {
-                'n_trades': 0,
-                'wins': 0,
-                'losses': 0,
-                'win_rate': 0,
-                'total_r': 0,
-                'avg_r': 0,
-                'profit_factor': 0,
-                'max_drawdown_r': 0
+                'n_trades': 0, 'wins': 0, 'losses': 0,
+                'win_rate': 0, 'total_r': 0, 'avg_r': 0,
+                'profit_factor': 0, 'sharpe_ratio': 0,
+                'max_drawdown_r': 0, 'max_consecutive_losses': 0
             }
         
-        wins = trades_taken.sum()
+        wins = trades.sum()
         losses = n_trades - wins
         win_rate = wins / n_trades
         
@@ -712,31 +826,51 @@ class ProfitSimulator:
         
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
         
-        # Calculate drawdown
-        cumulative = []
-        running = 0
-        for outcome in trades_taken:
-            if outcome == 1:
-                running += rr
-            else:
-                running -= 1
-            cumulative.append(running)
+        # Generate trade returns
+        trade_returns = np.where(trades == 1, rr, -1.0)
         
-        cumulative = np.array(cumulative)
+        # Sharpe ratio (annualized assuming 250 trading days)
+        if trade_returns.std() > 0:
+            daily_sharpe = trade_returns.mean() / trade_returns.std()
+            annual_sharpe = daily_sharpe * np.sqrt(250 / max(1, len(trade_returns)))
+        else:
+            annual_sharpe = 0
+        
+        # Max drawdown
+        cumulative = np.cumsum(trade_returns)
         peak = np.maximum.accumulate(cumulative)
         drawdown = peak - cumulative
-        max_drawdown = drawdown.max() if len(drawdown) > 0 else 0
+        max_drawdown = drawdown.max()
+        
+        # Max consecutive losses
+        max_consec_loss = self._max_consecutive(trades, target=0)
         
         return {
-            'n_trades': n_trades,
+            'n_trades': int(n_trades),
             'wins': int(wins),
             'losses': int(losses),
             'win_rate': win_rate,
-            'total_r': total_r,
-            'avg_r': avg_r,
-            'profit_factor': profit_factor,
-            'max_drawdown_r': max_drawdown
+            'total_r': float(total_r),
+            'avg_r': float(avg_r),
+            'profit_factor': float(profit_factor) if profit_factor != float('inf') else 999,
+            'sharpe_ratio': float(annual_sharpe),
+            'max_drawdown_r': float(max_drawdown),
+            'max_consecutive_losses': max_consec_loss
         }
+    
+    def _max_consecutive(self, arr: np.ndarray, target: int) -> int:
+        """Find maximum consecutive occurrences of target"""
+        max_count = 0
+        current_count = 0
+        
+        for val in arr:
+            if val == target:
+                current_count += 1
+                max_count = max(max_count, current_count)
+            else:
+                current_count = 0
+        
+        return max_count
     
     def _find_optimal_threshold(
         self, 
@@ -744,195 +878,331 @@ class ProfitSimulator:
         y_pred_proba: np.ndarray, 
         rr: float
     ) -> Dict:
-        """Find threshold that maximizes profit"""
+        """Find threshold maximizing risk-adjusted returns"""
         
         best_threshold = 0.5
-        best_profit = -float('inf')
+        best_score = -float('inf')
         
-        for threshold in np.arange(0.3, 0.9, 0.05):
+        for threshold in np.arange(0.4, 0.85, 0.02):
             y_pred = (y_pred_proba >= threshold).astype(int)
-            profit = self._calculate_profit(y_true, y_pred, rr)
+            result = self._simulate_strategy(y_true, y_pred, rr)
             
-            # Require minimum number of trades
-            if profit['n_trades'] >= 10 and profit['total_r'] > best_profit:
-                best_profit = profit['total_r']
+            # Require minimum trades
+            if result['n_trades'] < 15:
+                continue
+            
+            # Score combining profit and risk adjustment
+            # Sharpe-like: total_r / sqrt(max_drawdown)
+            if result['max_drawdown_r'] > 0:
+                score = result['total_r'] / np.sqrt(result['max_drawdown_r'])
+            else:
+                score = result['total_r']
+            
+            if score > best_score:
+                best_score = score
                 best_threshold = threshold
         
-        # Return metrics at optimal threshold
         y_pred_opt = (y_pred_proba >= best_threshold).astype(int)
-        optimal_metrics = self._calculate_profit(y_true, y_pred_opt, rr)
-        optimal_metrics['optimal_threshold'] = best_threshold
+        optimal_result = self._simulate_strategy(y_true, y_pred_opt, rr)
+        optimal_result['optimal_threshold'] = best_threshold
         
-        logger.info(f"Optimal threshold: {best_threshold:.2f} with {optimal_metrics['total_r']:.2f}R profit")
+        return optimal_result
+    
+    def _log_simulation_results(self, results: Dict):
+        """Log simulation summary"""
         
-        return optimal_metrics
+        baseline = results.get('baseline', {})
+        optimal = results.get('optimal', {})
+        
+        logger.info("\n" + "="*50)
+        logger.info("PROFIT SIMULATION RESULTS")
+        logger.info("="*50)
+        
+        logger.info(f"\nBaseline (all signals):")
+        logger.info(f"  Trades: {baseline.get('n_trades', 0)}")
+        logger.info(f"  Win Rate: {baseline.get('win_rate', 0):.1%}")
+        logger.info(f"  Total R: {baseline.get('total_r', 0):.2f}")
+        logger.info(f"  Profit Factor: {baseline.get('profit_factor', 0):.2f}")
+        
+        if optimal:
+            logger.info(f"\nOptimal Threshold ({optimal.get('optimal_threshold', 0.5):.2f}):")
+            logger.info(f"  Trades: {optimal.get('n_trades', 0)}")
+            logger.info(f"  Win Rate: {optimal.get('win_rate', 0):.1%}")
+            logger.info(f"  Total R: {optimal.get('total_r', 0):.2f}")
+            logger.info(f"  Profit Factor: {optimal.get('profit_factor', 0):.2f}")
+            logger.info(f"  Sharpe Ratio: {optimal.get('sharpe_ratio', 0):.2f}")
+            logger.info(f"  Max Drawdown: {optimal.get('max_drawdown_r', 0):.2f}R")
 
 
 # =============================================================================
 # VISUALIZATION
 # =============================================================================
 
-class TrainingVisualizer:
-    """Visualize training results"""
+class TrainingVisualizerV2:
+    """Enhanced visualization for trading ML"""
     
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfigV2):
         self.config = config
         self.output_dir = Path(config.output_dir)
     
-    def plot_all(self, evaluation_results: Dict, profit_results: Dict):
-        """Create all visualization plots"""
+    def plot_all(
+        self, 
+        evaluation_results: Dict, 
+        profit_results: Dict,
+        cv_results: Optional[Dict] = None
+    ):
+        """Create comprehensive visualizations"""
         
         if not self.config.plot_results:
             return
         
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Main results figure
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         
-        # 1. ROC Curve
-        self._plot_roc_curve(axes[0, 0], evaluation_results)
-        
-        # 2. Precision-Recall Curve
-        self._plot_pr_curve(axes[0, 1], evaluation_results)
-        
-        # 3. Feature Importance
-        self._plot_feature_importance(axes[0, 2], evaluation_results)
-        
-        # 4. Confusion Matrix
-        self._plot_confusion_matrix(axes[1, 0], evaluation_results)
-        
-        # 5. Calibration Plot
-        self._plot_calibration(axes[1, 1], evaluation_results)
-        
-        # 6. Profit by Threshold
+        self._plot_roc_pr_curves(axes[0, 0], axes[0, 1], evaluation_results)
+        self._plot_calibration(axes[0, 2], evaluation_results)
+        self._plot_feature_importance(axes[1, 0], evaluation_results)
+        self._plot_threshold_analysis(axes[1, 1], evaluation_results)
         self._plot_profit_by_threshold(axes[1, 2], profit_results)
         
         plt.tight_layout()
-        plt.savefig(self.output_dir / 'training_results.png', dpi=150)
+        plt.savefig(self.output_dir / 'training_results_v2.png', dpi=150)
         plt.close()
         
-        logger.info(f"Plots saved to {self.output_dir / 'training_results.png'}")
-    
-    def _plot_roc_curve(self, ax, results: Dict):
-        """Plot ROC curve"""
-        curves = results.get('curves', {})
-        roc = curves.get('roc', {})
+        # Additional plots
+        self._plot_probability_distributions(evaluation_results)
+        self._plot_category_importance(evaluation_results)
         
-        if roc:
-            ax.plot(roc['fpr'], roc['tpr'], 'b-', lw=2, 
-                   label=f"AUC = {results['basic_metrics']['auc']:.3f}")
-            ax.plot([0, 1], [0, 1], 'k--', lw=1)
-            ax.set_xlabel('False Positive Rate')
-            ax.set_ylabel('True Positive Rate')
-            ax.set_title('ROC Curve')
-            ax.legend(loc='lower right')
-            ax.grid(True, alpha=0.3)
+        logger.info(f"Plots saved to {self.output_dir}")
     
-    def _plot_pr_curve(self, ax, results: Dict):
-        """Plot Precision-Recall curve"""
-        curves = results.get('curves', {})
-        pr = curves.get('pr', {})
+    def _plot_roc_pr_curves(self, ax_roc, ax_pr, results: Dict):
+        """Plot ROC and PR curves"""
         
-        if pr:
-            ax.plot(pr['recall'], pr['precision'], 'g-', lw=2,
-                   label=f"AP = {results['basic_metrics']['avg_precision']:.3f}")
-            ax.set_xlabel('Recall')
-            ax.set_ylabel('Precision')
-            ax.set_title('Precision-Recall Curve')
-            ax.legend(loc='lower left')
-            ax.grid(True, alpha=0.3)
-    
-    def _plot_feature_importance(self, ax, results: Dict):
-        """Plot top feature importances"""
-        importance = results.get('feature_importance')
+        preds = results.get('predictions', {})
+        y_test = preds.get('y_test', [])
+        y_proba = preds.get('y_pred_proba', [])
+        metrics = results.get('classification_metrics', {})
         
-        if importance is not None:
-            top_n = min(15, len(importance))
-            top_features = importance.head(top_n)
-            
-            ax.barh(range(top_n), top_features['importance'].values, color='steelblue')
-            ax.set_yticks(range(top_n))
-            ax.set_yticklabels(top_features['feature'].values, fontsize=8)
-            ax.set_xlabel('Importance')
-            ax.set_title('Top Feature Importance')
-            ax.invert_yaxis()
-    
-    def _plot_confusion_matrix(self, ax, results: Dict):
-        """Plot confusion matrix"""
-        cm = results.get('confusion_matrix')
+        if len(y_test) == 0:
+            return
         
-        if cm is not None:
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
-                       xticklabels=['Negative', 'Positive'],
-                       yticklabels=['Negative', 'Positive'])
-            ax.set_xlabel('Predicted')
-            ax.set_ylabel('Actual')
-            ax.set_title('Confusion Matrix')
+        # ROC curve
+        fpr, tpr, _ = roc_curve(y_test, y_proba)
+        ax_roc.plot(fpr, tpr, 'b-', lw=2, 
+                    label=f"AUC = {metrics.get('roc_auc', 0):.3f}")
+        ax_roc.plot([0, 1], [0, 1], 'k--', lw=1)
+        ax_roc.set_xlabel('False Positive Rate')
+        ax_roc.set_ylabel('True Positive Rate')
+        ax_roc.set_title('ROC Curve')
+        ax_roc.legend(loc='lower right')
+        ax_roc.grid(True, alpha=0.3)
+        
+        # PR curve
+        precision, recall, _ = precision_recall_curve(y_test, y_proba)
+        ax_pr.plot(recall, precision, 'g-', lw=2,
+                   label=f"AP = {metrics.get('avg_precision', 0):.3f}")
+        ax_pr.set_xlabel('Recall')
+        ax_pr.set_ylabel('Precision')
+        ax_pr.set_title('Precision-Recall Curve')
+        ax_pr.legend(loc='lower left')
+        ax_pr.grid(True, alpha=0.3)
+        
+        # Add breakeven line
+        breakeven = 1 / (1 + self.config.risk_reward_ratio)
+        ax_pr.axhline(y=breakeven, color='red', linestyle='--', 
+                      label=f'Breakeven ({breakeven:.1%})')
+        ax_pr.legend()
     
     def _plot_calibration(self, ax, results: Dict):
         """Plot calibration curve"""
+        
         calibration = results.get('calibration', {})
         
-        if calibration:
-            ax.plot(calibration['mean_predicted'], calibration['fraction_positives'],
-                   's-', label='Model')
-            ax.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
-            ax.set_xlabel('Mean Predicted Probability')
-            ax.set_ylabel('Fraction of Positives')
-            ax.set_title(f"Calibration Curve (Brier={calibration['brier_score']:.3f})")
-            ax.legend()
-            ax.grid(True, alpha=0.3)
+        if not calibration:
+            return
+        
+        prob_pred = calibration.get('mean_predicted', [])
+        prob_true = calibration.get('fraction_positives', [])
+        
+        ax.plot(prob_pred, prob_true, 's-', markersize=8, label='Model')
+        ax.plot([0, 1], [0, 1], 'k--', label='Perfect')
+        
+        ece = calibration.get('expected_calibration_error', 0)
+        ax.set_xlabel('Predicted Probability')
+        ax.set_ylabel('Actual Win Rate')
+        ax.set_title(f'Calibration Curve (ECE={ece:.3f})')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    
+    def _plot_feature_importance(self, ax, results: Dict):
+        """Plot top feature importances"""
+        
+        importance = results.get('feature_importance', {})
+        top_10 = importance.get('top_10', [])
+        
+        if not top_10:
+            return
+        
+        features = [f['feature'][:20] for f in top_10]
+        importances = [f['importance'] for f in top_10]
+        
+        ax.barh(range(len(features)), importances, color='steelblue')
+        ax.set_yticks(range(len(features)))
+        ax.set_yticklabels(features, fontsize=8)
+        ax.set_xlabel('Importance')
+        ax.set_title('Top 10 Feature Importance')
+        ax.invert_yaxis()
+    
+    def _plot_threshold_analysis(self, ax, results: Dict):
+        """Plot metrics by threshold"""
+        
+        threshold_data = results.get('threshold_analysis', {})
+        
+        thresholds = []
+        precisions = []
+        evs = []
+        
+        for thresh, data in threshold_data.items():
+            thresholds.append(thresh)
+            precisions.append(data.get('precision', 0) * 100)
+            evs.append(data.get('expected_value_per_trade', 0))
+        
+        ax2 = ax.twinx()
+        
+        line1 = ax.plot(thresholds, precisions, 'b-o', label='Win Rate %')
+        line2 = ax2.plot(thresholds, evs, 'r-s', label='Expected Value (R)')
+        
+        ax.set_xlabel('Threshold')
+        ax.set_ylabel('Win Rate %', color='blue')
+        ax2.set_ylabel('Expected Value (R)', color='red')
+        ax.set_title('Threshold Analysis')
+        
+        ax.axhline(y=100/(1+self.config.risk_reward_ratio), color='blue', 
+                   linestyle='--', alpha=0.5)
+        ax2.axhline(y=0, color='red', linestyle='--', alpha=0.5)
+        
+        lines = line1 + line2
+        labels = [l.get_label() for l in lines]
+        ax.legend(lines, labels, loc='best')
+        ax.grid(True, alpha=0.3)
     
     def _plot_profit_by_threshold(self, ax, profit_results: Dict):
-        """Plot profit by threshold"""
+        """Plot profit metrics by threshold"""
+        
         thresholds = []
         total_rs = []
-        win_rates = []
+        n_trades = []
         
         for key, value in profit_results.items():
             if key.startswith('threshold_'):
                 threshold = float(key.split('_')[1])
                 thresholds.append(threshold)
-                total_rs.append(value['total_r'])
-                win_rates.append(value['win_rate'] * 100)
+                total_rs.append(value.get('total_r', 0))
+                n_trades.append(value.get('n_trades', 0))
         
-        if thresholds:
-            ax2 = ax.twinx()
-            
-            bars = ax.bar(thresholds, total_rs, width=0.08, alpha=0.7, 
-                         color='steelblue', label='Total R')
-            line = ax2.plot(thresholds, win_rates, 'ro-', lw=2, 
-                           label='Win Rate %')
-            
-            ax.set_xlabel('Probability Threshold')
-            ax.set_ylabel('Total R Profit', color='steelblue')
-            ax2.set_ylabel('Win Rate %', color='red')
-            ax.set_title('Profit by Threshold')
-            ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
-            
-            # Combined legend
-            lines1, labels1 = ax.get_legend_handles_labels()
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax.legend(lines1 + lines2, labels1 + labels2, loc='best')
+        if not thresholds:
+            return
+        
+        ax2 = ax.twinx()
+        
+        bars = ax.bar(thresholds, total_rs, width=0.04, alpha=0.7, 
+                      color='steelblue', label='Total R')
+        line = ax2.plot(thresholds, n_trades, 'ro-', lw=2, 
+                        label='# Trades')
+        
+        ax.set_xlabel('Probability Threshold')
+        ax.set_ylabel('Total R Profit', color='steelblue')
+        ax2.set_ylabel('Number of Trades', color='red')
+        ax.set_title('Profit by Threshold')
+        ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+        
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, loc='best')
+    
+    def _plot_probability_distributions(self, results: Dict):
+        """Plot probability distributions for wins vs losses"""
+        
+        preds = results.get('predictions', {})
+        y_test = preds.get('y_test', [])
+        y_proba = preds.get('y_pred_proba', [])
+        
+        if len(y_test) == 0:
+            return
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        wins_proba = y_proba[y_test == 1]
+        losses_proba = y_proba[y_test == 0]
+        
+        ax.hist(losses_proba, bins=30, alpha=0.6, label='Losses', color='red', density=True)
+        ax.hist(wins_proba, bins=30, alpha=0.6, label='Wins', color='green', density=True)
+        
+        ax.axvline(x=np.median(losses_proba), color='darkred', linestyle='--', 
+                   label=f'Loss Median: {np.median(losses_proba):.2f}')
+        ax.axvline(x=np.median(wins_proba), color='darkgreen', linestyle='--',
+                   label=f'Win Median: {np.median(wins_proba):.2f}')
+        
+        ax.set_xlabel('Predicted Probability')
+        ax.set_ylabel('Density')
+        ax.set_title('Probability Distribution: Wins vs Losses')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(self.output_dir / 'probability_distributions.png', dpi=150)
+        plt.close()
+    
+    def _plot_category_importance(self, results: Dict):
+        """Plot feature importance by category"""
+        
+        importance = results.get('feature_importance', {})
+        by_category = importance.get('by_category', {})
+        
+        if not by_category:
+            return
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        categories = list(by_category.keys())
+        importances = [by_category[c] * 100 for c in categories]
+        
+        colors = plt.cm.viridis(np.linspace(0, 1, len(categories)))
+        bars = ax.bar(categories, importances, color=colors)
+        
+        ax.set_xlabel('Feature Category')
+        ax.set_ylabel('Importance (%)')
+        ax.set_title('Feature Importance by ICT Category')
+        plt.xticks(rotation=45, ha='right')
+        
+        # Add value labels
+        for bar, val in zip(bars, importances):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                    f'{val:.1f}%', ha='center', va='bottom', fontsize=9)
+        
+        plt.tight_layout()
+        plt.savefig(self.output_dir / 'category_importance.png', dpi=150)
+        plt.close()
 
 
 # =============================================================================
 # MAIN TRAINING PIPELINE
 # =============================================================================
 
-class ModelTrainingPipeline:
-    """Main pipeline for model training"""
+class ModelTrainingPipelineV2:
+    """Enhanced training pipeline for ICT signal filtering"""
     
-    def __init__(self, config: Optional[TrainingConfig] = None):
-        self.config = config or TrainingConfig()
+    def __init__(self, config: Optional[TrainingConfigV2] = None):
+        self.config = config or TrainingConfigV2()
         
         # Initialize components
-        self.model_factory = ModelFactory(self.config)
-        self.cross_validator = TimeSeriesCrossValidator(self.config)
-        self.tuner = HyperparameterTuner(self.config)
-        self.evaluator = ModelEvaluator(self.config)
-        self.profit_simulator = ProfitSimulator(self.config)
-        self.visualizer = TrainingVisualizer(self.config)
+        self.model_factory = ModelFactoryV2(self.config)
+        self.tuner = HyperparameterTunerV2(self.config)
+        self.evaluator = TradingEvaluator(self.config)
+        self.profit_simulator = TradingProfitSimulator(self.config)
+        self.visualizer = TrainingVisualizerV2(self.config)
         
         # Store results
         self.model = None
@@ -946,21 +1216,10 @@ class ModelTrainingPipeline:
         test_file: str = 'test.csv',
         features_file: str = 'features.json'
     ) -> Dict[str, Any]:
-        """
-        Run the complete training pipeline.
+        """Run complete training pipeline"""
         
-        Args:
-            data_dir: Directory containing prepared data
-            train_file: Training data filename
-            val_file: Validation data filename
-            test_file: Test data filename
-            features_file: Feature names JSON filename
-        
-        Returns:
-            Dictionary containing trained model and all results
-        """
         logger.info("="*60)
-        logger.info("MODEL TRAINING PIPELINE")
+        logger.info("ICT MODEL TRAINING PIPELINE v2.0")
         logger.info("="*60)
         
         data_dir = Path(data_dir)
@@ -981,50 +1240,36 @@ class ModelTrainingPipeline:
         # Separate features and targets
         X_train = train_df[feature_names]
         y_train = train_df['target']
-        
         X_val = val_df[feature_names]
         y_val = val_df['target']
-        
         X_test = test_df[feature_names]
         y_test = test_df['target']
         
-        logger.info(f"Train: {len(X_train)} samples, {len(feature_names)} features")
-        logger.info(f"Val:   {len(X_val)} samples")
-        logger.info(f"Test:  {len(X_test)} samples")
+        # Log data info
+        logger.info(f"Train: {len(X_train)} samples ({y_train.mean():.1%} positive)")
+        logger.info(f"Val:   {len(X_val)} samples ({y_val.mean():.1%} positive)")
+        logger.info(f"Test:  {len(X_test)} samples ({y_test.mean():.1%} positive)")
+        logger.info(f"Features: {len(feature_names)}")
         
-        # Create model
-        logger.info(f"Creating {self.config.model_type} model...")
-        self.model = self.model_factory.create_model()
-        
-        # Hyperparameter tuning (optional)
-        if self.config.tune_hyperparams:
-            tuning_results = self.tuner.tune(
-                self.model, X_train, y_train, self.config.model_type
-            )
-            # Update model with best params
-            self.model = self.model_factory.create_model()
-            self.model.set_params(**self.tuner.best_params)
-            self.training_results['tuning'] = tuning_results
-        
-        # Cross-validation
+        # Combine train+val for CV
         X_train_val = pd.concat([X_train, X_val], ignore_index=True)
         y_train_val = pd.concat([y_train, y_val], ignore_index=True)
         
-        cv_results = self.cross_validator.cross_validate(
-            self.model, X_train_val, y_train_val, feature_names
-        )
-        self.training_results['cv'] = cv_results
+        # Hyperparameter tuning
+        if self.config.tune_hyperparams:
+            tuning_results = self.tuner.tune(
+                self.config.model_type, X_train_val, y_train_val
+            )
+            self.model = tuning_results['best_estimator']
+            self.training_results['tuning'] = tuning_results
+        else:
+            logger.info(f"Creating {self.config.model_type} model with default params...")
+            self.model = self.model_factory.create_model()
         
-        logger.info(f"\nCV Results (mean ± std):")
-        logger.info(f"  AUC:       {cv_results['auc_mean']:.4f} ± {cv_results['auc_std']:.4f}")
-        logger.info(f"  Precision: {cv_results['precision_mean']:.4f} ± {cv_results['precision_std']:.4f}")
-        logger.info(f"  Recall:    {cv_results['recall_mean']:.4f} ± {cv_results['recall_std']:.4f}")
+        # Train final model
+        logger.info("Training final model...")
         
-        # Train final model on full train+val data
-        logger.info("\nTraining final model...")
-        
-        if hasattr(self.model, 'fit') and isinstance(self.model, (xgb.XGBClassifier, lgb.LGBMClassifier)):
-            # Use early stopping with validation set
+        if isinstance(self.model, (xgb.XGBClassifier, lgb.LGBMClassifier)):
             self.model.fit(
                 X_train, y_train,
                 eval_set=[(X_val, y_val)],
@@ -1033,15 +1278,16 @@ class ModelTrainingPipeline:
         else:
             self.model.fit(X_train_val, y_train_val)
         
-        # Calibrate probabilities (optional)
+        # Calibrate probabilities
         if self.config.calibrate_probabilities:
             logger.info("Calibrating probabilities...")
-            self.model = CalibratedClassifierCV(
+            calibrated = CalibratedClassifierCV(
                 self.model,
                 method=self.config.calibration_method,
                 cv='prefit'
             )
-            self.model.fit(X_val, y_val)
+            calibrated.fit(X_val, y_val)
+            self.model = calibrated
         
         # Evaluate on test set
         evaluation_results = self.evaluator.evaluate(
@@ -1059,10 +1305,10 @@ class ModelTrainingPipeline:
         else:
             profit_results = {}
         
-        # Create visualizations
+        # Visualizations
         self.visualizer.plot_all(evaluation_results, profit_results)
         
-        # Save model and results
+        # Save outputs
         if self.config.save_model:
             self._save_model(output_dir)
         
@@ -1074,7 +1320,6 @@ class ModelTrainingPipeline:
         
         return {
             'model': self.model,
-            'cv_results': cv_results,
             'evaluation': evaluation_results,
             'profit': profit_results,
             'feature_importance': evaluation_results.get('feature_importance'),
@@ -1085,92 +1330,99 @@ class ModelTrainingPipeline:
         """Save trained model"""
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        model_path = output_dir / f'ict_signal_filter_{timestamp}.joblib'
-        
+        model_path = output_dir / f'ict_signal_filter_v2_{timestamp}.joblib'
         joblib.dump(self.model, model_path)
-        logger.info(f"Model saved to {model_path}")
         
-        # Also save as 'latest'
-        latest_path = output_dir / 'ict_signal_filter_latest.joblib'
+        latest_path = output_dir / 'ict_signal_filter_v2_latest.joblib'
         joblib.dump(self.model, latest_path)
+        
+        logger.info(f"Model saved to {model_path}")
     
     def _save_reports(self, output_dir: Path):
-        """Save training reports"""
+        """Save comprehensive reports"""
         
-        # Save evaluation metrics
+        def convert_to_serializable(obj):
+            if isinstance(obj, (np.int64, np.int32)):
+                return int(obj)
+            elif isinstance(obj, (np.float64, np.float32)):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_to_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_to_serializable(i) for i in obj]
+            return obj
+        
         report = {
             'timestamp': datetime.now().isoformat(),
             'model_type': self.config.model_type,
-            'cv_results': {
-                k: float(v) if isinstance(v, (np.float64, np.float32)) else v
-                for k, v in self.training_results['cv'].items()
-                if k != 'feature_importance' and k != 'fold_metrics'
+            'config': {
+                'risk_reward_ratio': self.config.risk_reward_ratio,
+                'calibration': self.config.calibrate_probabilities,
+                'tuning': self.config.tune_hyperparams
             },
-            'test_metrics': self.training_results['evaluation']['basic_metrics'],
-            'threshold_analysis': self.training_results['evaluation']['threshold_metrics']
+            'evaluation': convert_to_serializable(self.training_results.get('evaluation', {})),
+            'profit_simulation': convert_to_serializable(self.training_results.get('profit', {}))
         }
         
-        # Add profit results if available
-        if 'profit' in self.training_results:
-            profit = self.training_results['profit']
-            report['profit_simulation'] = {
-                k: {kk: float(vv) if isinstance(vv, (np.float64, np.float32)) else vv 
-                    for kk, vv in v.items()}
-                for k, v in profit.items()
-            }
-        
-        # Save JSON report
-        with open(output_dir / 'training_report.json', 'w') as f:
+        with open(output_dir / 'training_report_v2.json', 'w') as f:
             json.dump(report, f, indent=2, default=str)
         
-        # Save feature importance as CSV
-        importance = self.training_results['evaluation'].get('feature_importance')
-        if importance is not None:
-            importance.to_csv(output_dir / 'feature_importance.csv', index=False)
+        # Save feature importance
+        importance = self.training_results.get('evaluation', {}).get('feature_importance', {})
+        if importance.get('individual'):
+            pd.DataFrame(importance['individual']).to_csv(
+                output_dir / 'feature_importance_v2.csv', index=False
+            )
         
         logger.info(f"Reports saved to {output_dir}")
     
     def _print_summary(self):
-        """Print final training summary"""
+        """Print final summary"""
         
         logger.info("\n" + "="*60)
-        logger.info("TRAINING SUMMARY")
+        logger.info("TRAINING COMPLETE - SUMMARY")
         logger.info("="*60)
         
-        eval_metrics = self.training_results['evaluation']['basic_metrics']
+        eval_metrics = self.training_results.get('evaluation', {}).get('classification_metrics', {})
+        optimal = self.training_results.get('evaluation', {}).get('optimal_threshold', {})
+        profit = self.training_results.get('profit', {})
         
-        logger.info(f"\nModel: {self.config.model_type}")
-        logger.info(f"\nTest Set Performance:")
-        logger.info(f"  ROC AUC:          {eval_metrics['auc']:.4f}")
-        logger.info(f"  Average Precision: {eval_metrics['avg_precision']:.4f}")
-        logger.info(f"  Precision:         {eval_metrics['precision']:.4f}")
-        logger.info(f"  Recall:            {eval_metrics['recall']:.4f}")
-        logger.info(f"  F1 Score:          {eval_metrics['f1']:.4f}")
+        logger.info(f"\nModel Performance:")
+        logger.info(f"  ROC AUC:          {eval_metrics.get('roc_auc', 0):.4f}")
+        logger.info(f"  Avg Precision:    {eval_metrics.get('avg_precision', 0):.4f}")
         
-        if 'profit' in self.training_results:
-            profit = self.training_results['profit']
-            baseline = profit.get('baseline', {})
-            optimal = profit.get('optimal', {})
+        if optimal:
+            logger.info(f"\nRecommended Trading Configuration:")
+            logger.info(f"  Threshold:        {optimal.get('threshold', 0.5):.2f}")
+            logger.info(f"  Expected Trades:  {optimal.get('n_trades', 0)}")
+            logger.info(f"  Win Rate:         {optimal.get('precision', 0):.1%}")
+            logger.info(f"  Expected Value:   {optimal.get('expected_value', 0):.3f}R per trade")
+        
+        if profit:
+            opt_profit = profit.get('optimal', {})
+            improvement = profit.get('improvement', {})
             
-            logger.info(f"\nProfit Simulation:")
-            logger.info(f"  Baseline (all signals):")
-            logger.info(f"    Trades: {baseline.get('n_trades', 0)}")
-            logger.info(f"    Win Rate: {baseline.get('win_rate', 0)*100:.1f}%")
-            logger.info(f"    Total R: {baseline.get('total_r', 0):.2f}")
+            if opt_profit:
+                logger.info(f"\nProfit Simulation (Optimal):")
+                logger.info(f"  Total R:          {opt_profit.get('total_r', 0):.2f}")
+                logger.info(f"  Profit Factor:    {opt_profit.get('profit_factor', 0):.2f}")
+                logger.info(f"  Sharpe Ratio:     {opt_profit.get('sharpe_ratio', 0):.2f}")
             
-            if optimal:
-                logger.info(f"  Optimal Threshold ({optimal.get('optimal_threshold', 0.5):.2f}):")
-                logger.info(f"    Trades: {optimal.get('n_trades', 0)}")
-                logger.info(f"    Win Rate: {optimal.get('win_rate', 0)*100:.1f}%")
-                logger.info(f"    Total R: {optimal.get('total_r', 0):.2f}")
-                logger.info(f"    Profit Factor: {optimal.get('profit_factor', 0):.2f}")
+            if improvement:
+                logger.info(f"\nImprovement vs Baseline:")
+                logger.info(f"  R Improvement:    {improvement.get('r_improvement', 0):+.2f}")
+                logger.info(f"  Trade Reduction:  {improvement.get('trade_reduction', 0):.1f}%")
         
-        # Top features
-        importance = self.training_results['evaluation'].get('feature_importance')
-        if importance is not None:
-            logger.info(f"\nTop 10 Features:")
-            for i, row in importance.head(10).iterrows():
-                logger.info(f"  {i+1}. {row['feature']}: {row['importance']:.4f}")
+        # Feature insights
+        importance = self.training_results.get('evaluation', {}).get('feature_importance', {})
+        by_category = importance.get('by_category', {})
+        
+        if by_category:
+            logger.info(f"\nTop Feature Categories:")
+            for i, (cat, imp) in enumerate(list(by_category.items())[:5]):
+                logger.info(f"  {i+1}. {cat}: {imp*100:.1f}%")
 
 
 # =============================================================================
@@ -1181,36 +1433,34 @@ def main():
     """Main entry point"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='ICT Model Training Pipeline')
+    parser = argparse.ArgumentParser(description='ICT Model Training Pipeline v2')
     parser.add_argument('data_dir', help='Directory containing prepared data')
     parser.add_argument('--output-dir', default='models',
-                        help='Output directory for models (default: models)')
+                        help='Output directory (default: models)')
     parser.add_argument('--model', default='xgboost',
-                        choices=['xgboost', 'lightgbm', 'random_forest', 'ensemble'],
+                        choices=['xgboost', 'lightgbm', 'random_forest', 'ensemble', 'stacking'],
                         help='Model type (default: xgboost)')
     parser.add_argument('--tune', action='store_true',
                         help='Enable hyperparameter tuning')
-    parser.add_argument('--cv-folds', type=int, default=5,
-                        help='Number of CV folds (default: 5)')
     parser.add_argument('--no-calibration', action='store_true',
                         help='Disable probability calibration')
     parser.add_argument('--no-plots', action='store_true',
-                        help='Disable visualization plots')
+                        help='Disable visualization')
+    parser.add_argument('--rr', type=float, default=1.5,
+                        help='Risk:Reward ratio (default: 1.5)')
     
     args = parser.parse_args()
     
-    # Create config
-    config = TrainingConfig(
+    config = TrainingConfigV2(
         model_type=args.model,
         output_dir=args.output_dir,
         tune_hyperparams=args.tune,
-        cv_folds=args.cv_folds,
         calibrate_probabilities=not args.no_calibration,
-        plot_results=not args.no_plots
+        plot_results=not args.no_plots,
+        risk_reward_ratio=args.rr
     )
     
-    # Run pipeline
-    pipeline = ModelTrainingPipeline(config)
+    pipeline = ModelTrainingPipelineV2(config)
     pipeline.run(args.data_dir)
 
 

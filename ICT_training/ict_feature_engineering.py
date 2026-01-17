@@ -1,7 +1,19 @@
 """
-ICT Feature Engineering Pipeline
-================================
+ICT Feature Engineering Pipeline - FIXED VERSION
+=================================================
 Transforms raw OHLCV data into ICT-specific features for ML training.
+
+FIXES APPLIED:
+1. Lookahead leakage eliminated in swing detection (shifted by strength bars)
+2. Order Block detection fixed - uses past-only confirmation
+3. Liquidity sweep detection O(N) using incremental last_swing_high/low
+4. body_pct clipped to [0, 1] for sanity
+5. Volatility scaling auto-detects bar frequency
+6. Session flags use minute-of-day for precision
+7. Column naming normalized before reference
+8. Cleanup uses warmup trimming instead of blanket bfill
+9. FVG detection enhanced with displacement direction check
+10. Swing confirmation properly delayed (no lookahead)
 
 Features Built:
 - Market Structure (swings, trends, BOS)
@@ -15,7 +27,7 @@ Input: Raw OHLCV CSV
 Output: Feature-enriched CSV
 
 Author: ICT ML System
-Version: 1.0
+Version: 2.0 (Fixed)
 """
 
 import pandas as pd
@@ -65,18 +77,49 @@ class FeatureConfig:
     volume_lookback: int = 20
     volume_spike_threshold: float = 1.5
     
-    # Time Settings (Eastern Time)
-    broker_gmt_offset: int = 0       # Adjust based on your broker
+    # Session Times (ET hours:minutes) - More precise than hour-only
+    # Asian Session: 7:00 PM - 12:00 AM ET (crosses midnight)
+    asian_start_hour: int = 19
+    asian_start_min: int = 0
+    asian_end_hour: int = 0
+    asian_end_min: int = 0
     
-    # Session Times (ET hours)
-    asian_start: int = 19            # 7 PM ET
-    asian_end: int = 0               # Midnight ET
-    london_kz_start: int = 2         # 2 AM ET
-    london_kz_end: int = 5           # 5 AM ET
-    nyam_kz_start: int = 9           # 9 AM ET
-    nyam_kz_end: int = 12            # 12 PM ET
-    nypm_kz_start: int = 14          # 2 PM ET
-    nypm_kz_end: int = 16            # 4 PM ET
+    # London Kill Zone: 2:00 AM - 5:00 AM ET
+    london_kz_start_hour: int = 2
+    london_kz_start_min: int = 0
+    london_kz_end_hour: int = 5
+    london_kz_end_min: int = 0
+    
+    # NY AM Kill Zone: 9:30 AM - 12:00 PM ET (precise open at 9:30)
+    nyam_kz_start_hour: int = 9
+    nyam_kz_start_min: int = 30
+    nyam_kz_end_hour: int = 12
+    nyam_kz_end_min: int = 0
+    
+    # NY PM Kill Zone: 2:00 PM - 4:00 PM ET
+    nypm_kz_start_hour: int = 14
+    nypm_kz_start_min: int = 0
+    nypm_kz_end_hour: int = 16
+    nypm_kz_end_min: int = 0
+    
+    # Silver Bullet Windows (precise to minute)
+    # London SB: 3:00 AM - 4:00 AM ET (also known as 10-11 AM London)
+    london_sb_start_hour: int = 3
+    london_sb_start_min: int = 0
+    london_sb_end_hour: int = 4
+    london_sb_end_min: int = 0
+    
+    # NY AM SB: 10:00 AM - 11:00 AM ET
+    nyam_sb_start_hour: int = 10
+    nyam_sb_start_min: int = 0
+    nyam_sb_end_hour: int = 11
+    nyam_sb_end_min: int = 0
+    
+    # NY PM SB: 2:00 PM - 3:00 PM ET
+    nypm_sb_start_hour: int = 14
+    nypm_sb_start_min: int = 0
+    nypm_sb_end_hour: int = 15
+    nypm_sb_end_min: int = 0
     
     # Premium/Discount
     pd_lookback: int = 50
@@ -86,6 +129,13 @@ class FeatureConfig:
     # Key Levels
     pdhl_enabled: bool = True        # Previous Day High/Low
     pwhl_enabled: bool = True        # Previous Week High/Low
+    
+    # Order Block confirmation
+    ob_confirmation_bars: int = 3    # Bars to look back for OB confirmation
+    ob_min_displacement_atr: float = 1.5  # Min move after OB for validation
+    
+    # Warmup period (bars to drop at start due to indicator warmup)
+    warmup_period: int = 200
 
 
 # =============================================================================
@@ -105,27 +155,35 @@ class OHLCVLoader:
         Expected format:
         Date,Time,Open,High,Low,Close,Volume
         20241203,08:55:00,1.05226,1.05249,1.05226,1.05238,292
+        
+        Also handles already-lowercase columns.
         """
         logger.info(f"Loading data from {filepath}")
         
         df = pd.read_csv(filepath)
         
-        # Parse datetime
-        df['datetime'] = pd.to_datetime(
-            df['Date'].astype(str) + ' ' + df['Time'].astype(str),
-            format='%Y%m%d %H:%M:%S'
-        )
+        # FIX: Normalize columns BEFORE referencing them
+        df.columns = df.columns.str.lower().str.strip()
+        
+        # Parse datetime - handle both Date/Time and datetime columns
+        if 'datetime' in df.columns:
+            df['datetime'] = pd.to_datetime(df['datetime'])
+        elif 'date' in df.columns and 'time' in df.columns:
+            df['datetime'] = pd.to_datetime(
+                df['date'].astype(str) + ' ' + df['time'].astype(str),
+                format='%Y%m%d %H:%M:%S'
+            )
+        else:
+            raise ValueError("CSV must have either 'datetime' column or 'date' and 'time' columns")
         
         # Set datetime as index but keep as column too
         df = df.set_index('datetime', drop=False)
         df = df.sort_index()
         
-        # Standardize column names
-        df.columns = df.columns.str.lower()
-        
         # Ensure numeric types
         for col in ['open', 'high', 'low', 'close', 'volume']:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         
         # Drop any rows with NaN in OHLCV
         initial_len = len(df)
@@ -138,13 +196,41 @@ class OHLCVLoader:
         df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
         df['range'] = df['high'] - df['low']
         df['body'] = abs(df['close'] - df['open'])
-        df['body_pct'] = df['body'] / df['range'].replace(0, np.nan)
+        
+        # FIX: Clip body_pct to [0, 1] to prevent explosion
+        body_pct_raw = df['body'] / df['range'].replace(0, np.nan)
+        df['body_pct'] = body_pct_raw.clip(0, 1).fillna(0)
         
         # Direction
         df['is_bullish'] = (df['close'] > df['open']).astype(int)
         df['is_bearish'] = (df['close'] < df['open']).astype(int)
         
+        # Detect bar frequency for volatility scaling
+        df = self._detect_bar_frequency(df)
+        
         logger.info(f"Loaded {len(df)} bars from {df.index.min()} to {df.index.max()}")
+        logger.info(f"Detected bar frequency: {df['bar_frequency_minutes'].iloc[0]} minutes")
+        
+        return df
+    
+    def _detect_bar_frequency(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        FIX: Detect bar frequency from timestamps for proper volatility scaling.
+        """
+        time_deltas = df['datetime'].diff().dt.total_seconds() / 60  # in minutes
+        # Use median to handle gaps (weekends, holidays)
+        bar_freq_minutes = time_deltas.median()
+        
+        # Round to nearest standard timeframe
+        standard_tfs = [1, 5, 15, 30, 60, 240, 1440]  # M1, M5, M15, M30, H1, H4, D1
+        bar_freq_minutes = min(standard_tfs, key=lambda x: abs(x - bar_freq_minutes))
+        
+        df['bar_frequency_minutes'] = bar_freq_minutes
+        
+        # Calculate annualization factor based on frequency
+        # Assuming 252 trading days, 24 hours (forex)
+        bars_per_year = (252 * 24 * 60) / bar_freq_minutes
+        df['annualization_factor'] = np.sqrt(bars_per_year)
         
         return df
 
@@ -172,9 +258,13 @@ class TimeFeatureBuilder:
         df['day_of_month'] = df['datetime'].dt.day
         df['month'] = df['datetime'].dt.month
         
-        # Convert to Eastern Time (approximate - adjust broker_gmt_offset as needed)
-        # ET is UTC-5 (EST) or UTC-4 (EDT)
-        df['et_hour'] = (df['hour'] - self.config.broker_gmt_offset - 5) % 24
+        # FIX: Use minute-of-day for precise session tracking
+        df['minute_of_day'] = df['hour'] * 60 + df['minute']
+        
+        # Eastern Time hour (already in ET per user request)
+        df['et_hour'] = df['hour']
+        df['et_minute'] = df['minute']
+        df['et_minute_of_day'] = df['minute_of_day']
         
         # Cyclical encoding for hour (captures circular nature of time)
         df['hour_sin'] = np.sin(2 * np.pi * df['et_hour'] / 24)
@@ -184,7 +274,7 @@ class TimeFeatureBuilder:
         df['dow_sin'] = np.sin(2 * np.pi * df['day_of_week'] / 5)  # 5 trading days
         df['dow_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 5)
         
-        # Session identification
+        # Session identification with minute precision
         df = self._add_session_features(df)
         
         # Trading day features
@@ -195,42 +285,91 @@ class TimeFeatureBuilder:
         # Prime trading hours
         df['is_prime_hour'] = df['et_hour'].isin([9, 10, 11, 14, 15]).astype(int)
         
-        # Session transitions (often volatile)
-        df['london_open_hour'] = (df['et_hour'] == 3).astype(int)  # ~3 AM ET
-        df['ny_open_hour'] = (df['et_hour'] == 9).astype(int)      # 9:30 AM ET approx
+        # Session transitions (often volatile) - using minute ranges
+        df['london_open_window'] = self._in_time_range(
+            df, 3, 0, 3, 30  # 3:00-3:30 AM ET
+        ).astype(int)
+        
+        df['ny_open_window'] = self._in_time_range(
+            df, 9, 30, 10, 0  # 9:30-10:00 AM ET
+        ).astype(int)
         
         return df
     
-    def _add_session_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add kill zone and session flags"""
+    def _in_time_range(self, df: pd.DataFrame, 
+                       start_hour: int, start_min: int,
+                       end_hour: int, end_min: int) -> pd.Series:
+        """
+        FIX: Check if time is in range using minute_of_day for precision.
+        Handles overnight ranges (end < start).
+        """
+        start_mod = start_hour * 60 + start_min
+        end_mod = end_hour * 60 + end_min
+        mod = df['et_minute_of_day']
         
-        et_hour = df['et_hour']
+        if end_mod > start_mod:
+            # Normal range (e.g., 9:30 to 12:00)
+            return (mod >= start_mod) & (mod < end_mod)
+        else:
+            # Overnight range (e.g., 19:00 to 00:00)
+            return (mod >= start_mod) | (mod < end_mod)
+    
+    def _add_session_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add kill zone and session flags with minute precision"""
+        
+        cfg = self.config
         
         # Asian Session (7 PM - 12 AM ET, crosses midnight)
-        df['in_asian'] = ((et_hour >= self.config.asian_start) | 
-                          (et_hour < self.config.asian_end)).astype(int)
+        df['in_asian'] = self._in_time_range(
+            df, cfg.asian_start_hour, cfg.asian_start_min,
+            cfg.asian_end_hour, cfg.asian_end_min
+        ).astype(int)
         
-        # London Kill Zone (2 AM - 5 AM ET)
-        df['in_london_kz'] = ((et_hour >= self.config.london_kz_start) & 
-                              (et_hour < self.config.london_kz_end)).astype(int)
+        # London Kill Zone (2:00 AM - 5:00 AM ET)
+        df['in_london_kz'] = self._in_time_range(
+            df, cfg.london_kz_start_hour, cfg.london_kz_start_min,
+            cfg.london_kz_end_hour, cfg.london_kz_end_min
+        ).astype(int)
         
-        # NY AM Kill Zone (9 AM - 12 PM ET)
-        df['in_nyam_kz'] = ((et_hour >= self.config.nyam_kz_start) & 
-                            (et_hour < self.config.nyam_kz_end)).astype(int)
+        # NY AM Kill Zone (9:30 AM - 12:00 PM ET)
+        df['in_nyam_kz'] = self._in_time_range(
+            df, cfg.nyam_kz_start_hour, cfg.nyam_kz_start_min,
+            cfg.nyam_kz_end_hour, cfg.nyam_kz_end_min
+        ).astype(int)
         
-        # NY PM Kill Zone (2 PM - 4 PM ET)
-        df['in_nypm_kz'] = ((et_hour >= self.config.nypm_kz_start) & 
-                            (et_hour < self.config.nypm_kz_end)).astype(int)
+        # NY PM Kill Zone (2:00 PM - 4:00 PM ET)
+        df['in_nypm_kz'] = self._in_time_range(
+            df, cfg.nypm_kz_start_hour, cfg.nypm_kz_start_min,
+            cfg.nypm_kz_end_hour, cfg.nypm_kz_end_min
+        ).astype(int)
         
         # Combined kill zone flag
         df['in_any_kz'] = (df['in_london_kz'] | df['in_nyam_kz'] | df['in_nypm_kz']).astype(int)
         
-        # Silver Bullet windows (10-11 AM, 2-3 PM ET)
-        df['in_sb_window'] = (((et_hour >= 10) & (et_hour < 11)) |
-                              ((et_hour >= 14) & (et_hour < 15))).astype(int)
+        # FIX: Silver Bullet windows with minute precision
+        # London Silver Bullet (3:00 AM - 4:00 AM ET)
+        df['in_london_sb'] = self._in_time_range(
+            df, cfg.london_sb_start_hour, cfg.london_sb_start_min,
+            cfg.london_sb_end_hour, cfg.london_sb_end_min
+        ).astype(int)
         
-        # London/NY overlap (8 AM - 12 PM ET) - highest liquidity
-        df['in_overlap'] = ((et_hour >= 8) & (et_hour < 12)).astype(int)
+        # NY AM Silver Bullet (10:00 AM - 11:00 AM ET)
+        df['in_nyam_sb'] = self._in_time_range(
+            df, cfg.nyam_sb_start_hour, cfg.nyam_sb_start_min,
+            cfg.nyam_sb_end_hour, cfg.nyam_sb_end_min
+        ).astype(int)
+        
+        # NY PM Silver Bullet (2:00 PM - 3:00 PM ET)
+        df['in_nypm_sb'] = self._in_time_range(
+            df, cfg.nypm_sb_start_hour, cfg.nypm_sb_start_min,
+            cfg.nypm_sb_end_hour, cfg.nypm_sb_end_min
+        ).astype(int)
+        
+        # Combined Silver Bullet flag
+        df['in_sb_window'] = (df['in_london_sb'] | df['in_nyam_sb'] | df['in_nypm_sb']).astype(int)
+        
+        # London/NY overlap (8:00 AM - 12:00 PM ET) - highest liquidity
+        df['in_overlap'] = self._in_time_range(df, 8, 0, 12, 0).astype(int)
         
         return df
 
@@ -326,10 +465,11 @@ class TechnicalIndicatorBuilder:
         df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
         df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
         
-        # Price relative to EMAs
-        df['close_vs_ema8'] = (df['close'] - df['ema_8']) / df['atr']
-        df['close_vs_ema21'] = (df['close'] - df['ema_21']) / df['atr']
-        df['close_vs_ema50'] = (df['close'] - df['ema_50']) / df['atr']
+        # Price relative to EMAs (use ATR with fillna to avoid div by zero)
+        atr_safe = df['atr'].replace(0, np.nan)
+        df['close_vs_ema8'] = (df['close'] - df['ema_8']) / atr_safe
+        df['close_vs_ema21'] = (df['close'] - df['ema_21']) / atr_safe
+        df['close_vs_ema50'] = (df['close'] - df['ema_50']) / atr_safe
         
         # EMA alignment (trend strength)
         df['ema_bullish_stack'] = ((df['ema_8'] > df['ema_21']) & 
@@ -348,7 +488,10 @@ class TechnicalIndicatorBuilder:
         
         # Rolling standard deviation of returns
         df['returns'] = df['close'].pct_change()
-        df['volatility'] = df['returns'].rolling(window=20).std() * np.sqrt(252 * 24 * 60)  # Annualized for minute data
+        
+        # FIX: Use frequency-aware annualization factor
+        annualization_factor = df['annualization_factor'].iloc[0] if 'annualization_factor' in df.columns else np.sqrt(252 * 24 * 60)
+        df['volatility'] = df['returns'].rolling(window=20).std() * annualization_factor
         
         # Volatility regime
         df['vol_sma'] = df['volatility'].rolling(window=50).mean()
@@ -374,7 +517,7 @@ class TechnicalIndicatorBuilder:
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
+        rs = gain / loss.replace(0, np.nan)
         df['rsi'] = 100 - (100 / (1 + rs))
         
         # RSI zones
@@ -385,11 +528,11 @@ class TechnicalIndicatorBuilder:
 
 
 # =============================================================================
-# MARKET STRUCTURE FEATURES
+# MARKET STRUCTURE FEATURES - FIXED FOR LOOKAHEAD
 # =============================================================================
 
 class MarketStructureBuilder:
-    """Build market structure features (swings, BOS, trends)"""
+    """Build market structure features (swings, BOS, trends) - NO LOOKAHEAD"""
     
     def __init__(self, config: FeatureConfig):
         self.config = config
@@ -400,8 +543,8 @@ class MarketStructureBuilder:
         
         df = df.copy()
         
-        # Identify swing points
-        df = self._identify_swings(df)
+        # FIX: Identify swing points with proper confirmation delay (no lookahead)
+        df = self._identify_swings_no_lookahead(df)
         
         # Market structure (HH, HL, LH, LL)
         df = self._add_structure_features(df)
@@ -414,88 +557,113 @@ class MarketStructureBuilder:
         
         return df
     
-    def _identify_swings(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Identify swing highs and lows"""
+    def _identify_swings_no_lookahead(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        FIX: Identify swing highs and lows WITHOUT lookahead.
+        
+        A swing high/low is confirmed only after 'strength' bars have passed,
+        meaning we look back 2*strength bars and confirm the middle point.
+        The signal appears at the CONFIRMATION bar, not the swing bar itself.
+        """
         
         strength = self.config.swing_strength
         
+        # Initialize columns
         df['is_swing_high'] = 0
         df['is_swing_low'] = 0
         df['swing_high_price'] = np.nan
         df['swing_low_price'] = np.nan
+        df['swing_high_bar_idx'] = np.nan  # Which bar was the actual swing
+        df['swing_low_bar_idx'] = np.nan
         
         highs = df['high'].values
         lows = df['low'].values
+        n = len(df)
         
-        for i in range(strength, len(df) - strength):
-            # Check swing high
+        # We can only confirm a swing at bar i if we're looking at bar (i - strength)
+        # meaning bar (i - strength) must have 'strength' bars on each side
+        for i in range(2 * strength, n):
+            # The candidate swing is at position (i - strength)
+            candidate_idx = i - strength
+            
+            # Check swing high at candidate_idx
             is_sh = True
             for j in range(1, strength + 1):
-                if highs[i] <= highs[i - j] or highs[i] <= highs[i + j]:
+                left_idx = candidate_idx - j
+                right_idx = candidate_idx + j
+                if left_idx < 0 or right_idx >= n:
+                    is_sh = False
+                    break
+                if highs[candidate_idx] <= highs[left_idx] or highs[candidate_idx] <= highs[right_idx]:
                     is_sh = False
                     break
             
             if is_sh:
+                # Signal appears at confirmation bar (i), not at swing bar
                 df.iloc[i, df.columns.get_loc('is_swing_high')] = 1
-                df.iloc[i, df.columns.get_loc('swing_high_price')] = highs[i]
+                df.iloc[i, df.columns.get_loc('swing_high_price')] = highs[candidate_idx]
+                df.iloc[i, df.columns.get_loc('swing_high_bar_idx')] = candidate_idx
             
-            # Check swing low
+            # Check swing low at candidate_idx
             is_sl = True
             for j in range(1, strength + 1):
-                if lows[i] >= lows[i - j] or lows[i] >= lows[i + j]:
+                left_idx = candidate_idx - j
+                right_idx = candidate_idx + j
+                if left_idx < 0 or right_idx >= n:
+                    is_sl = False
+                    break
+                if lows[candidate_idx] >= lows[left_idx] or lows[candidate_idx] >= lows[right_idx]:
                     is_sl = False
                     break
             
             if is_sl:
                 df.iloc[i, df.columns.get_loc('is_swing_low')] = 1
-                df.iloc[i, df.columns.get_loc('swing_low_price')] = lows[i]
+                df.iloc[i, df.columns.get_loc('swing_low_price')] = lows[candidate_idx]
+                df.iloc[i, df.columns.get_loc('swing_low_bar_idx')] = candidate_idx
         
-        # Forward fill swing prices for reference
+        # Forward fill swing prices for reference (only use confirmed swings)
         df['last_swing_high'] = df['swing_high_price'].ffill()
         df['last_swing_low'] = df['swing_low_price'].ffill()
         
         # Distance to last swings (in ATR)
-        df['dist_to_swing_high'] = (df['last_swing_high'] - df['close']) / df['atr']
-        df['dist_to_swing_low'] = (df['close'] - df['last_swing_low']) / df['atr']
+        atr_safe = df['atr'].replace(0, np.nan)
+        df['dist_to_swing_high'] = (df['last_swing_high'] - df['close']) / atr_safe
+        df['dist_to_swing_low'] = (df['close'] - df['last_swing_low']) / atr_safe
         
         return df
     
     def _add_structure_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Add HH, HL, LH, LL structure features"""
         
-        # Get swing high/low sequences
-        swing_highs = df[df['is_swing_high'] == 1]['high'].values
-        swing_lows = df[df['is_swing_low'] == 1]['low'].values
-        
         df['higher_high'] = 0
         df['lower_high'] = 0
         df['higher_low'] = 0
         df['lower_low'] = 0
         
-        # Track structure
-        prev_sh = None
-        prev_sl = None
+        # Track structure based on confirmed swings
+        prev_sh_price = None
+        prev_sl_price = None
         
-        sh_indices = df[df['is_swing_high'] == 1].index.tolist()
-        sl_indices = df[df['is_swing_low'] == 1].index.tolist()
-        
-        for idx in sh_indices:
-            curr_sh = df.loc[idx, 'high']
-            if prev_sh is not None:
-                if curr_sh > prev_sh:
-                    df.loc[idx, 'higher_high'] = 1
-                else:
-                    df.loc[idx, 'lower_high'] = 1
-            prev_sh = curr_sh
-        
-        for idx in sl_indices:
-            curr_sl = df.loc[idx, 'low']
-            if prev_sl is not None:
-                if curr_sl > prev_sl:
-                    df.loc[idx, 'higher_low'] = 1
-                else:
-                    df.loc[idx, 'lower_low'] = 1
-            prev_sl = curr_sl
+        for i in range(len(df)):
+            # Check for new swing high confirmation
+            if df.iloc[i]['is_swing_high'] == 1:
+                curr_sh = df.iloc[i]['swing_high_price']
+                if prev_sh_price is not None:
+                    if curr_sh > prev_sh_price:
+                        df.iloc[i, df.columns.get_loc('higher_high')] = 1
+                    else:
+                        df.iloc[i, df.columns.get_loc('lower_high')] = 1
+                prev_sh_price = curr_sh
+            
+            # Check for new swing low confirmation
+            if df.iloc[i]['is_swing_low'] == 1:
+                curr_sl = df.iloc[i]['swing_low_price']
+                if prev_sl_price is not None:
+                    if curr_sl > prev_sl_price:
+                        df.iloc[i, df.columns.get_loc('higher_low')] = 1
+                    else:
+                        df.iloc[i, df.columns.get_loc('lower_low')] = 1
+                prev_sl_price = curr_sl
         
         # Rolling structure assessment
         lookback = self.config.swing_lookback
@@ -506,8 +674,8 @@ class MarketStructureBuilder:
         df['ll_count'] = df['lower_low'].rolling(window=lookback, min_periods=1).sum()
         
         # Trend determination based on structure
-        bullish_structure = (df['hh_count'] + df['hl_count']) 
-        bearish_structure = (df['lh_count'] + df['ll_count'])
+        bullish_structure = df['hh_count'] + df['hl_count']
+        bearish_structure = df['lh_count'] + df['ll_count']
         
         df['structure_bias'] = np.where(
             bullish_structure > bearish_structure + 1, 1,
@@ -517,17 +685,27 @@ class MarketStructureBuilder:
         return df
     
     def _add_bos_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add Break of Structure features"""
+        """Add Break of Structure features - uses only past data"""
         
         df['bos_bullish'] = 0
         df['bos_bearish'] = 0
         
-        # BOS occurs when price closes beyond last swing
-        df['bos_bullish'] = ((df['close'] > df['last_swing_high'].shift(1)) & 
-                             (df['close'].shift(1) <= df['last_swing_high'].shift(1))).astype(int)
+        # BOS occurs when price closes beyond last confirmed swing
+        # Shift by 1 to ensure we're comparing to the swing that was known at prior bar
+        last_sh_shifted = df['last_swing_high'].shift(1)
+        last_sl_shifted = df['last_swing_low'].shift(1)
         
-        df['bos_bearish'] = ((df['close'] < df['last_swing_low'].shift(1)) & 
-                             (df['close'].shift(1) >= df['last_swing_low'].shift(1))).astype(int)
+        df['bos_bullish'] = (
+            (df['close'] > last_sh_shifted) & 
+            (df['close'].shift(1) <= last_sh_shifted) &
+            last_sh_shifted.notna()
+        ).astype(int)
+        
+        df['bos_bearish'] = (
+            (df['close'] < last_sl_shifted) & 
+            (df['close'].shift(1) >= last_sl_shifted) &
+            last_sl_shifted.notna()
+        ).astype(int)
         
         # Bars since last BOS
         df['bars_since_bullish_bos'] = df.groupby(
@@ -549,7 +727,7 @@ class MarketStructureBuilder:
         
         lookback = self.config.pd_lookback
         
-        # Rolling high and low
+        # Rolling high and low (past only)
         df['range_high'] = df['high'].rolling(window=lookback).max()
         df['range_low'] = df['low'].rolling(window=lookback).min()
         df['range_size'] = df['range_high'] - df['range_low']
@@ -564,22 +742,25 @@ class MarketStructureBuilder:
         # Zone classification
         df['in_discount'] = (df['price_position'] < self.config.discount_threshold).astype(int)
         df['in_premium'] = (df['price_position'] > self.config.premium_threshold).astype(int)
-        df['in_equilibrium'] = ((df['price_position'] >= self.config.discount_threshold) & 
-                                 (df['price_position'] <= self.config.premium_threshold)).astype(int)
+        df['in_equilibrium'] = (
+            (df['price_position'] >= self.config.discount_threshold) & 
+            (df['price_position'] <= self.config.premium_threshold)
+        ).astype(int)
         
         # Equilibrium level
         df['equilibrium'] = (df['range_high'] + df['range_low']) / 2
-        df['dist_to_eq'] = (df['close'] - df['equilibrium']) / df['atr']
+        atr_safe = df['atr'].replace(0, np.nan)
+        df['dist_to_eq'] = (df['close'] - df['equilibrium']) / atr_safe
         
         return df
 
 
 # =============================================================================
-# ICT-SPECIFIC FEATURES
+# ICT-SPECIFIC FEATURES - FIXED FOR LOOKAHEAD
 # =============================================================================
 
 class ICTFeatureBuilder:
-    """Build ICT-specific features (FVG, OB, displacement, sweeps)"""
+    """Build ICT-specific features (FVG, OB, displacement, sweeps) - NO LOOKAHEAD"""
     
     def __init__(self, config: FeatureConfig):
         self.config = config
@@ -590,17 +771,17 @@ class ICTFeatureBuilder:
         
         df = df.copy()
         
-        # Fair Value Gaps
+        # Fair Value Gaps (past-only, no lookahead)
         df = self._add_fvg_features(df)
         
-        # Displacement candles
+        # Displacement candles (past-only)
         df = self._add_displacement_features(df)
         
-        # Order Blocks
-        df = self._add_order_block_features(df)
+        # Order Blocks - FIXED: uses past-only confirmation
+        df = self._add_order_block_features_fixed(df)
         
-        # Liquidity sweeps
-        df = self._add_sweep_features(df)
+        # Liquidity sweeps - FIXED: O(N) using incremental tracking
+        df = self._add_sweep_features_optimized(df)
         
         # Key levels (PDH/PDL)
         df = self._add_key_level_features(df)
@@ -608,33 +789,54 @@ class ICTFeatureBuilder:
         return df
     
     def _add_fvg_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Identify Fair Value Gaps"""
+        """
+        Identify Fair Value Gaps - NO LOOKAHEAD.
+        FVG is identified at bar i based on bars i-2, i-1, i (all past).
+        """
         
         df['bullish_fvg'] = 0
         df['bearish_fvg'] = 0
         df['fvg_size'] = 0.0
+        df['fvg_high'] = np.nan
+        df['fvg_low'] = np.nan
         df['in_bullish_fvg'] = 0
         df['in_bearish_fvg'] = 0
         
+        highs = df['high'].values
+        lows = df['low'].values
+        atr_vals = df['atr'].values
+        is_bullish = df['is_bullish'].values
+        is_bearish = df['is_bearish'].values
+        
         # FVG detection requires looking at 3-candle patterns
+        # All candles (i-2, i-1, i) are past/current - no lookahead
         for i in range(2, len(df)):
+            atr = atr_vals[i]
+            if atr <= 0 or np.isnan(atr):
+                continue
+            
             # Bullish FVG: candle[i] low > candle[i-2] high
-            if df.iloc[i]['low'] > df.iloc[i-2]['high']:
-                gap_size = df.iloc[i]['low'] - df.iloc[i-2]['high']
-                atr = df.iloc[i]['atr']
-                
-                if atr > 0 and gap_size / atr >= self.config.min_fvg_atr:
-                    df.iloc[i, df.columns.get_loc('bullish_fvg')] = 1
-                    df.iloc[i, df.columns.get_loc('fvg_size')] = gap_size / atr
+            # Additional check: middle candle should be bullish (displacement direction)
+            if lows[i] > highs[i-2]:
+                gap_size = lows[i] - highs[i-2]
+                if gap_size / atr >= self.config.min_fvg_atr:
+                    # Check for bullish displacement (candle i-1 should be bullish)
+                    if is_bullish[i-1] or is_bullish[i]:
+                        df.iloc[i, df.columns.get_loc('bullish_fvg')] = 1
+                        df.iloc[i, df.columns.get_loc('fvg_size')] = gap_size / atr
+                        df.iloc[i, df.columns.get_loc('fvg_high')] = lows[i]
+                        df.iloc[i, df.columns.get_loc('fvg_low')] = highs[i-2]
             
             # Bearish FVG: candle[i] high < candle[i-2] low
-            if df.iloc[i]['high'] < df.iloc[i-2]['low']:
-                gap_size = df.iloc[i-2]['low'] - df.iloc[i]['high']
-                atr = df.iloc[i]['atr']
-                
-                if atr > 0 and gap_size / atr >= self.config.min_fvg_atr:
-                    df.iloc[i, df.columns.get_loc('bearish_fvg')] = 1
-                    df.iloc[i, df.columns.get_loc('fvg_size')] = gap_size / atr
+            if highs[i] < lows[i-2]:
+                gap_size = lows[i-2] - highs[i]
+                if gap_size / atr >= self.config.min_fvg_atr:
+                    # Check for bearish displacement
+                    if is_bearish[i-1] or is_bearish[i]:
+                        df.iloc[i, df.columns.get_loc('bearish_fvg')] = 1
+                        df.iloc[i, df.columns.get_loc('fvg_size')] = gap_size / atr
+                        df.iloc[i, df.columns.get_loc('fvg_high')] = lows[i-2]
+                        df.iloc[i, df.columns.get_loc('fvg_low')] = highs[i]
         
         # Track if price is currently in an unfilled FVG
         df = self._track_fvg_zones(df)
@@ -651,62 +853,66 @@ class ICTFeatureBuilder:
         return df
     
     def _track_fvg_zones(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Track if price is in an FVG zone"""
+        """Track if price is in an FVG zone - NO LOOKAHEAD"""
         
-        fvg_zones = []  # List of (type, high, low, bar_idx)
+        # Track active FVGs as list of (type, high, low, bar_idx)
+        fvg_zones = []
+        max_lookback = self.config.max_fvg_lookback
+        
+        highs = df['high'].values
+        lows = df['low'].values
+        fvg_high_vals = df['fvg_high'].values
+        fvg_low_vals = df['fvg_low'].values
+        bullish_fvg = df['bullish_fvg'].values
+        bearish_fvg = df['bearish_fvg'].values
+        
+        in_bull_fvg = np.zeros(len(df))
+        in_bear_fvg = np.zeros(len(df))
         
         for i in range(len(df)):
-            row = df.iloc[i]
-            
             # Add new FVGs
-            if row['bullish_fvg']:
-                fvg_high = df.iloc[i]['low']
-                fvg_low = df.iloc[i-2]['high']
-                fvg_zones.append(('bull', fvg_high, fvg_low, i))
+            if bullish_fvg[i]:
+                fvg_zones.append(('bull', fvg_high_vals[i], fvg_low_vals[i], i))
             
-            if row['bearish_fvg']:
-                fvg_high = df.iloc[i-2]['low']
-                fvg_low = df.iloc[i]['high']
-                fvg_zones.append(('bear', fvg_high, fvg_low, i))
+            if bearish_fvg[i]:
+                fvg_zones.append(('bear', fvg_high_vals[i], fvg_low_vals[i], i))
             
-            # Check if price is in any active FVG
-            in_bull_fvg = 0
-            in_bear_fvg = 0
-            
-            # Remove filled FVGs and check current position
+            # Check if price is in any active FVG and filter filled/old ones
             active_zones = []
             for fvg_type, fvg_h, fvg_l, fvg_bar in fvg_zones:
-                # Check if FVG is still valid (not too old, not filled)
-                if i - fvg_bar > self.config.max_fvg_lookback:
+                # Check if FVG is still valid (not too old)
+                if i - fvg_bar > max_lookback:
                     continue
                 
-                # Check if price filled the FVG
-                if fvg_type == 'bull' and row['low'] <= fvg_l:
+                # Check if price filled the FVG (using current bar's action)
+                if fvg_type == 'bull' and lows[i] <= fvg_l:
                     continue  # Filled
-                if fvg_type == 'bear' and row['high'] >= fvg_h:
+                if fvg_type == 'bear' and highs[i] >= fvg_h:
                     continue  # Filled
                 
                 active_zones.append((fvg_type, fvg_h, fvg_l, fvg_bar))
                 
                 # Check if current price is in the FVG
-                if row['low'] <= fvg_h and row['high'] >= fvg_l:
+                if lows[i] <= fvg_h and highs[i] >= fvg_l:
                     if fvg_type == 'bull':
-                        in_bull_fvg = 1
+                        in_bull_fvg[i] = 1
                     else:
-                        in_bear_fvg = 1
+                        in_bear_fvg[i] = 1
             
             fvg_zones = active_zones
-            df.iloc[i, df.columns.get_loc('in_bullish_fvg')] = in_bull_fvg
-            df.iloc[i, df.columns.get_loc('in_bearish_fvg')] = in_bear_fvg
+        
+        df['in_bullish_fvg'] = in_bull_fvg.astype(int)
+        df['in_bearish_fvg'] = in_bear_fvg.astype(int)
         
         return df
     
     def _add_displacement_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Identify displacement candles"""
+        """Identify displacement candles - past-only, no lookahead"""
         
         df['is_displacement'] = 0
         df['displacement_size'] = 0.0
         
+        # FIX: Use clipped body_pct (already fixed in loader)
         body_pct = df['body_pct'].fillna(0)
         range_atr = df['range_atr'].fillna(0)
         
@@ -734,33 +940,67 @@ class ICTFeatureBuilder:
         
         return df
     
-    def _add_order_block_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Identify Order Blocks"""
+    def _add_order_block_features_fixed(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        FIX: Identify Order Blocks using PAST-ONLY confirmation.
+        
+        Instead of looking at future bars to confirm OB, we:
+        1. Look BACKWARD to find the last opposite-color candle before a displacement
+        2. The OB is marked at the bar where we detect the displacement (confirmation bar)
+        
+        This eliminates lookahead while maintaining the ICT concept.
+        """
         
         df['bullish_ob'] = 0
         df['bearish_ob'] = 0
+        df['ob_high'] = np.nan
+        df['ob_low'] = np.nan
         
-        for i in range(1, len(df) - 1):
-            # Bullish OB: bearish candle followed by strong bullish move
-            if df.iloc[i]['is_bearish']:
-                # Check if next candles show strong bullish move
-                if i + 3 < len(df):
-                    future_high = df.iloc[i+1:i+4]['high'].max()
-                    ob_high = df.iloc[i]['high']
-                    atr = df.iloc[i]['atr']
-                    
-                    if atr > 0 and (future_high - ob_high) / atr > 1.5:
-                        df.iloc[i, df.columns.get_loc('bullish_ob')] = 1
+        is_bullish = df['is_bullish'].values
+        is_bearish = df['is_bearish'].values
+        bullish_disp = df['bullish_displacement'].values
+        bearish_disp = df['bearish_displacement'].values
+        highs = df['high'].values
+        lows = df['low'].values
+        opens = df['open'].values
+        closes = df['close'].values
+        atr_vals = df['atr'].values
+        
+        lookback = self.config.ob_confirmation_bars
+        min_disp_atr = self.config.ob_min_displacement_atr
+        
+        for i in range(lookback + 1, len(df)):
+            atr = atr_vals[i]
+            if atr <= 0 or np.isnan(atr):
+                continue
             
-            # Bearish OB: bullish candle followed by strong bearish move
-            if df.iloc[i]['is_bullish']:
-                if i + 3 < len(df):
-                    future_low = df.iloc[i+1:i+4]['low'].min()
-                    ob_low = df.iloc[i]['low']
-                    atr = df.iloc[i]['atr']
-                    
-                    if atr > 0 and (ob_low - future_low) / atr > 1.5:
-                        df.iloc[i, df.columns.get_loc('bearish_ob')] = 1
+            # Check for Bullish Order Block:
+            # Current bar is a bullish displacement -> look back for last bearish candle
+            if bullish_disp[i]:
+                # Find last bearish candle in lookback window
+                for j in range(i - 1, max(i - lookback - 1, 0), -1):
+                    if is_bearish[j]:
+                        # This is a potential bullish OB
+                        # Verify the move from OB to current bar is significant
+                        move = closes[i] - lows[j]
+                        if move / atr >= min_disp_atr:
+                            df.iloc[i, df.columns.get_loc('bullish_ob')] = 1
+                            df.iloc[i, df.columns.get_loc('ob_high')] = highs[j]
+                            df.iloc[i, df.columns.get_loc('ob_low')] = lows[j]
+                        break
+            
+            # Check for Bearish Order Block:
+            # Current bar is a bearish displacement -> look back for last bullish candle
+            if bearish_disp[i]:
+                for j in range(i - 1, max(i - lookback - 1, 0), -1):
+                    if is_bullish[j]:
+                        # This is a potential bearish OB
+                        move = highs[j] - closes[i]
+                        if move / atr >= min_disp_atr:
+                            df.iloc[i, df.columns.get_loc('bearish_ob')] = 1
+                            df.iloc[i, df.columns.get_loc('ob_high')] = highs[j]
+                            df.iloc[i, df.columns.get_loc('ob_low')] = lows[j]
+                        break
         
         # Recent OB
         df['recent_bullish_ob'] = df['bullish_ob'].rolling(
@@ -773,27 +1013,41 @@ class ICTFeatureBuilder:
         
         return df
     
-    def _add_sweep_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Identify liquidity sweeps"""
+    def _add_sweep_features_optimized(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        FIX: Identify liquidity sweeps - O(N) using incremental tracking.
+        
+        Instead of slicing dataframe on every bar (O(N²)), we:
+        1. Track last confirmed swing high/low incrementally
+        2. Check sweep condition: wick beyond swing, close back inside
+        """
         
         df['sweep_high'] = 0
         df['sweep_low'] = 0
         
-        for i in range(self.config.swing_strength + 1, len(df)):
-            # Get last swing high and low
-            sh = df.iloc[:i][df.iloc[:i]['is_swing_high'] == 1]['high']
-            sl = df.iloc[:i][df.iloc[:i]['is_swing_low'] == 1]['low']
+        highs = df['high'].values
+        lows = df['low'].values
+        closes = df['close'].values
+        
+        # Use the already-computed last_swing_high/low (confirmed, no lookahead)
+        last_sh = df['last_swing_high'].values
+        last_sl = df['last_swing_low'].values
+        
+        n = len(df)
+        
+        for i in range(1, n):
+            # Use swing from previous bar to avoid any confusion
+            prev_sh = last_sh[i - 1] if i > 0 else np.nan
+            prev_sl = last_sl[i - 1] if i > 0 else np.nan
             
-            if len(sh) > 0:
-                last_sh = sh.iloc[-1]
-                # Sweep high: wick above swing high, close below
-                if df.iloc[i]['high'] > last_sh and df.iloc[i]['close'] < last_sh:
+            # Sweep high: wick above swing high, close below it (rejection)
+            if not np.isnan(prev_sh):
+                if highs[i] > prev_sh and closes[i] < prev_sh:
                     df.iloc[i, df.columns.get_loc('sweep_high')] = 1
             
-            if len(sl) > 0:
-                last_sl = sl.iloc[-1]
-                # Sweep low: wick below swing low, close above
-                if df.iloc[i]['low'] < last_sl and df.iloc[i]['close'] > last_sl:
+            # Sweep low: wick below swing low, close above it (rejection)
+            if not np.isnan(prev_sl):
+                if lows[i] < prev_sl and closes[i] > prev_sl:
                     df.iloc[i, df.columns.get_loc('sweep_low')] = 1
         
         # Recent sweeps
@@ -826,7 +1080,7 @@ class ICTFeatureBuilder:
         
         daily_hl.columns = ['date', 'day_high', 'day_low', 'day_open', 'day_close']
         
-        # Shift to get previous day
+        # Shift to get previous day (no lookahead - only past days)
         daily_hl['pdh'] = daily_hl['day_high'].shift(1)
         daily_hl['pdl'] = daily_hl['day_low'].shift(1)
         
@@ -834,8 +1088,9 @@ class ICTFeatureBuilder:
         df = df.merge(daily_hl[['date', 'pdh', 'pdl']], on='date', how='left')
         
         # Distance to PDH/PDL
-        df['dist_to_pdh'] = (df['pdh'] - df['close']) / df['atr']
-        df['dist_to_pdl'] = (df['close'] - df['pdl']) / df['atr']
+        atr_safe = df['atr'].replace(0, np.nan)
+        df['dist_to_pdh'] = (df['pdh'] - df['close']) / atr_safe
+        df['dist_to_pdl'] = (df['close'] - df['pdl']) / atr_safe
         
         # Near PDH/PDL
         df['near_pdh'] = (abs(df['dist_to_pdh']) < 1.5).astype(int)
@@ -868,17 +1123,22 @@ class CandlePatternBuilder:
         df['upper_wick'] = df['high'] - df[['open', 'close']].max(axis=1)
         df['lower_wick'] = df[['open', 'close']].min(axis=1) - df['low']
         
-        df['upper_wick_ratio'] = df['upper_wick'] / df['range'].replace(0, np.nan)
-        df['lower_wick_ratio'] = df['lower_wick'] / df['range'].replace(0, np.nan)
+        range_safe = df['range'].replace(0, np.nan)
+        df['upper_wick_ratio'] = (df['upper_wick'] / range_safe).clip(0, 1).fillna(0)
+        df['lower_wick_ratio'] = (df['lower_wick'] / range_safe).clip(0, 1).fillna(0)
         
         # Candle types
         df['is_doji'] = (df['body_pct'] < 0.1).astype(int)
-        df['is_hammer'] = ((df['lower_wick_ratio'] > 0.6) & 
-                           (df['upper_wick_ratio'] < 0.1) &
-                           (df['is_bullish'] == 1)).astype(int)
-        df['is_shooting_star'] = ((df['upper_wick_ratio'] > 0.6) & 
-                                   (df['lower_wick_ratio'] < 0.1) &
-                                   (df['is_bearish'] == 1)).astype(int)
+        df['is_hammer'] = (
+            (df['lower_wick_ratio'] > 0.6) & 
+            (df['upper_wick_ratio'] < 0.1) &
+            (df['is_bullish'] == 1)
+        ).astype(int)
+        df['is_shooting_star'] = (
+            (df['upper_wick_ratio'] > 0.6) & 
+            (df['lower_wick_ratio'] < 0.1) &
+            (df['is_bearish'] == 1)
+        ).astype(int)
         
         df['is_marubozu'] = (df['body_pct'] > 0.9).astype(int)
         
@@ -941,7 +1201,7 @@ class FeatureEngineeringPipeline:
             DataFrame with all features
         """
         logger.info("="*60)
-        logger.info("FEATURE ENGINEERING PIPELINE")
+        logger.info("FEATURE ENGINEERING PIPELINE (FIXED - NO LOOKAHEAD)")
         logger.info("="*60)
         
         # Load data
@@ -958,8 +1218,8 @@ class FeatureEngineeringPipeline:
         # Add final composite features
         df = self._add_composite_features(df)
         
-        # Clean up
-        df = self._cleanup(df)
+        # FIX: Clean up with warmup trimming instead of blanket bfill
+        df = self._cleanup_fixed(df)
         
         final_cols = len(df.columns)
         logger.info(f"Added {final_cols - initial_cols} features")
@@ -1011,21 +1271,40 @@ class FeatureEngineeringPipeline:
         
         return df
     
-    def _cleanup(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean up dataframe"""
+    def _cleanup_fixed(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        FIX: Clean up dataframe with warmup trimming.
         
-        # Remove rows with NaN in critical columns
+        Instead of blanket bfill (which can leak info), we:
+        1. Drop the warmup period at the start
+        2. Only use forward fill for NaN values
+        3. Fill remaining NaN with 0 for numeric columns
+        """
+        
+        warmup = self.config.warmup_period
+        
+        # Drop warmup rows
+        if len(df) > warmup:
+            df = df.iloc[warmup:].reset_index(drop=True)
+            logger.info(f"Dropped {warmup} warmup bars")
+        
+        # Create a mask of rows where critical indicators are valid
         critical_cols = ['atr', 'close', 'volume']
-        df = df.dropna(subset=[c for c in critical_cols if c in df.columns])
+        valid_mask = df[critical_cols].notna().all(axis=1)
         
-        # Fill remaining NaN with appropriate values
+        # Only keep valid rows
+        df = df[valid_mask].reset_index(drop=True)
+        
+        # For remaining NaN values, use forward fill ONLY (no bfill)
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         for col in numeric_cols:
             if df[col].isna().sum() > 0:
-                # Use forward fill then backward fill
-                df[col] = df[col].fillna(method='ffill').fillna(method='bfill')
-                # If still NaN, fill with 0
+                # Forward fill only
+                df[col] = df[col].ffill()
+                # Fill remaining NaN with 0 (will only affect start of series)
                 df[col] = df[col].fillna(0)
+        
+        logger.info(f"Final dataset: {len(df)} bars after cleanup")
         
         return df
 
@@ -1038,20 +1317,20 @@ def main():
     """Main entry point"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='ICT Feature Engineering Pipeline')
+    parser = argparse.ArgumentParser(description='ICT Feature Engineering Pipeline (Fixed)')
     parser.add_argument('input', help='Input OHLCV CSV file')
     parser.add_argument('output', help='Output features CSV file')
-    parser.add_argument('--broker-gmt', type=int, default=0, 
-                        help='Broker GMT offset (default: 0)')
     parser.add_argument('--swing-strength', type=int, default=5,
                         help='Swing detection strength (default: 5)')
+    parser.add_argument('--warmup', type=int, default=200,
+                        help='Warmup period to drop (default: 200)')
     
     args = parser.parse_args()
     
     # Create config
     config = FeatureConfig(
-        broker_gmt_offset=args.broker_gmt,
-        swing_strength=args.swing_strength
+        swing_strength=args.swing_strength,
+        warmup_period=args.warmup
     )
     
     # Run pipeline
