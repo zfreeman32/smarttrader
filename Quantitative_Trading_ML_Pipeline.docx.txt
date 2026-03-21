@@ -1,0 +1,297 @@
+﻿QUANTITATIVE TRADING
+MACHINE LEARNING PIPELINE
+
+
+A Complete Framework for Building, Training, and Deploying
+ML-Driven FX Trading Systems
+
+
+Target Instrument: EUR/USD
+Trading Frequency: 1–2 Trades Per Day (Intraday Swing)
+Data: 1m / 5m / 30m / 1H OHLCV | 2018–2024
+February 2026
+________________
+
+
+Table of Contents
+
+
+
+
+________________
+
+
+1. Executive Summary
+This document defines the complete machine learning pipeline for building an automated or semi-automated EUR/USD trading system. The system targets 1–2 intraday swing trades per day, using multi-timeframe OHLCV data spanning 2018–2024 across four resolutions (1-minute, 5-minute, 30-minute, and 1-hour).
+The pipeline is built on the foundational work of Marcos Lopez de Prado, particularly his triple barrier labeling method and meta-labeling framework, augmented with ICT Smart Money Concepts for signal generation and modern deep learning for pattern recognition. The architecture follows a tiered design: a rule-based market intelligence layer generates candidate signals, a machine learning layer validates and scores those signals, and a risk management layer sizes positions and manages execution.
+Rather than attempting the nearly impossible task of predicting raw price, this framework reframes the problem into a series of tractable sub-problems: detecting tradeable market regimes, generating directional signals from structural patterns, scoring those signals with probabilistic confidence, and sizing positions according to edge magnitude. Each sub-problem maps to a dedicated model, and the ensemble of these models constitutes the trading system.
+The key philosophical principle throughout is that accuracy does not necessarily correlate with profit. Every design decision, from target construction to validation methodology, is oriented toward maximizing risk-adjusted returns in live trading rather than optimizing abstract statistical metrics.
+________________
+
+
+2. Data Foundation and Preprocessing
+2.1 Raw Data Inventory
+The system operates on four timeframes of EUR/USD OHLCV data from January 2018 through December 2024. The 1-minute data serves as the execution-resolution dataset from which trade entries and exits are timed. The 5-minute data provides the primary modeling timeframe, balancing signal density with noise reduction. The 30-minute and 1-hour data provide higher-timeframe (HTF) context, trend direction, and structural levels.
+This multi-timeframe architecture is critical. The higher timeframes identify where institutional activity is occurring (order blocks, fair value gaps, liquidity pools), while the lower timeframes optimize entry timing within those zones. The model should only trade in the direction of the higher-timeframe trend, dramatically reducing false signals.
+2.2 Data Cleaning and Integrity
+2.2.1 Warm-Up Period Removal
+The first 200 rows of each continuous data segment must be removed. Technical indicators require a lookback window to stabilize, and including the initialization period introduces artifacts, particularly for indicators like the 200-period moving average, Bollinger Bands, and ATR. This is not optional; failing to remove warm-up data will introduce systematic bias into every model trained on it.
+2.2.2 Missing Data and Gap Handling
+FX markets close over weekends and certain holidays. Weekend gaps must be handled carefully: do not forward-fill across weekend boundaries as this creates artificial continuity. Instead, mark each trading session explicitly and treat the first bar of each week as a session-open event. For intra-session missing bars (which may indicate low liquidity or data feed issues), use time-aware forward-fill for up to 5 consecutive missing bars, and flag longer gaps for exclusion from the training set.
+2.2.3 Outlier Control
+Following the principles from the Seven Sins of Quantitative Investing, outliers must be controlled to prevent the backtest from relying on unrepeatable events. Apply winsorization at the 1st and 99th percentiles to all return-based features. For volume data, apply log transformation followed by winsorization, as volume distributions in FX are heavily right-skewed. The goal is not to remove outliers from the dataset but to ensure that model performance does not depend on their presence. Keep the outlier events in the data but cap their feature values so they do not dominate gradient updates during training.
+2.2.4 Normalization Strategy
+Use a rolling z-score normalization with a lookback window calibrated to recent market conditions (typically 60–120 bars on the 5-minute timeframe). This approach is critical because financial data is non-stationary: a volatility level that is normal in one regime is extreme in another. Static normalization (fitting a scaler on the full training set) embeds look-ahead bias and fails to adapt to regime changes. The rolling approach ensures every feature is interpreted relative to its recent distribution, which is what the model will encounter in live trading.
+Volume features receive special treatment: apply log transformation first, then winsorization, then percentile ranking over the rolling window. This triple transformation converts a highly skewed, regime-dependent feature into a stable, uniformly distributed signal that indicates relative volume intensity.
+2.3 Multi-Timeframe Data Alignment
+Higher-timeframe features must be aligned to the modeling timeframe (5-minute) without introducing look-ahead bias. The correct approach is to use the most recently completed HTF bar at each 5-minute timestamp. For example, at 10:07 on the 5-minute chart, the most recent completed 30-minute bar is the one that closed at 10:00, and the most recent 1-hour bar closed at 10:00 as well. Never use the currently forming HTF bar, as its OHLC values are not yet finalized.
+HTF features to propagate down include: trend direction (based on swing structure), locations of active order blocks, boundaries of unfilled fair value gaps, nearest liquidity levels, and the current session context (Asian, London, New York). These become contextual features that the model uses to filter and weight its 5-minute signals.
+2.4 Fractional Differentiation
+Raw price series are non-stationary, which violates assumptions of most ML algorithms. Standard differencing (returns) achieves stationarity but destroys memory, the long-range dependence structure that carries predictive information. Fractional differentiation, introduced by de Prado, provides a middle ground: it applies a fractional order of differencing (typically d between 0.3 and 0.5 for FX) that achieves stationarity while preserving as much memory as possible.
+To determine the minimum d required, run the ADF (Augmented Dickey-Fuller) test on progressively differentiated series. The optimal d is the smallest value for which the ADF test rejects the null hypothesis of a unit root at the 5% significance level. Apply this transformation to the close price to create a fractionally differentiated price feature. This feature retains mean-reverting or trend-following memory that raw returns discard, and it should be included alongside standard returns in your feature set.
+________________
+
+
+3. Feature Engineering Pipeline
+3.1 Feature Architecture Overview
+With over 200 indicators already computed, the challenge shifts from feature generation to feature curation. Raw indicator values are inputs to a multi-stage pipeline that transforms, selects, and stabilizes features before they reach the model. The pipeline proceeds in this order: domain-aware transformation, interaction feature construction, stability filtering, collinearity reduction, and importance-based selection.
+3.2 Domain-Aware Feature Transformation
+Not all indicators should enter the model in their raw form. Certain categories of features benefit from specific transformations that encode market-relevant information more effectively.
+* Oscillators (RSI, CCI, Stochastic, CMO, ROC, ROCR): These are already somewhat stationary but benefit from computing their distance from extreme levels and their rate of change. Create delta features (current minus N-bar lagged value) to capture acceleration. Generate binary threshold features (RSI > 70, RSI < 30) as supplementary signals.
+* Trend Indicators (Moving Averages, MACD, ADX): Convert to relative terms: price distance from MA as a percentage of ATR, MACD histogram normalized by trailing volatility. This ensures comparability across regimes.
+* Volatility Features (ATR, Bollinger Width, Keltner Width): Express as ratios to their own rolling averages to capture whether current volatility is expanding or contracting relative to recent history.
+* Volume Features: Apply the log-winsorize-percentile pipeline described in Section 2.2.4. Additionally, create volume imbalance features: ratio of volume on up-bars versus down-bars over rolling windows.
+* Smart Money Concept Features: Encode FVGs, order blocks, and liquidity levels as distance-to-level features normalized by ATR. For example: distance to nearest bullish FVG top, expressed in ATR units. Also encode binary proximity features (price within 0.5 ATR of an order block).
+3.3 Interaction Features
+Domain knowledge suggests specific feature interactions that are more predictive than their components alone. Construct these explicitly rather than relying on the model to discover them.
+* Confluence scores: count of how many HTF structural levels (FVG, OB, liquidity) align within a given price zone.
+* Trend-momentum alignment: product of HTF trend direction and LTF momentum oscillator, capturing whether momentum is confirming the trend.
+* Volatility-adjusted momentum: RSI or CCI divided by current ATR percentile, distinguishing genuine momentum from noise in low-volatility environments.
+* Session-pattern interactions: indicator values conditioned on the current trading session, since the same RSI reading means different things during Asian range-bound conditions versus London breakout conditions.
+* Temporal lag features: lagged versions of key indicators (RSI, CCI, EFI, CMO, ROC, ROCR) at optimized lag periods, along with rolling means and standard deviations of lagged values to capture medium-term signal persistence.
+3.4 Feature Stability Analysis
+A feature that is predictive in one market regime but meaningless in another is dangerous; the model will learn to rely on it during favorable regimes and make confident but wrong predictions when the regime changes. Conduct stability filtering by measuring each feature’s predictive power (mutual information or Spearman correlation with the target) across multiple non-overlapping time windows.
+Retain only features whose predictive power is consistent across at least 70% of windows. Features with high average importance but high variance across windows should be flagged and potentially excluded. This is especially important for candlestick pattern features, which your prior analysis has shown to exhibit instability. Use these unstable features only as supplementary confirmation signals weighted at low importance, never as primary predictors.
+3.5 Collinearity Reduction
+With 200+ indicators, severe multicollinearity is guaranteed. Highly correlated features waste model capacity and make feature importance unreliable. Apply a two-stage reduction process.
+1. Correlation-based pruning: Compute the pairwise Spearman correlation matrix. For each pair with absolute correlation above 0.85, retain the feature with higher individual predictive power (measured by mutual information with the target) and drop the other.
+2. PCA decorrelation (optional second pass): After correlation pruning, optionally apply PCA to groups of remaining correlated features. However, be cautious: PCA components sacrifice interpretability. A useful compromise is to apply PCA only to groups of highly correlated indicators (e.g., the cluster of trend-following MAs) and retain the top principal components alongside non-correlated standalone features. Run experiments both with and without PCA decorrelation to determine which yields better out-of-sample performance.
+3.6 Feature Selection via SHAP and MDA
+After stability filtering and collinearity reduction, perform importance-based selection using two complementary methods.
+Mean Decrease Accuracy (MDA): Train a gradient-boosted model (LightGBM), then for each feature, permute its values across the validation set and measure the decrease in accuracy. Features whose permutation causes negligible accuracy drop are candidates for removal. Critically, this must be done within a proper cross-validation loop to avoid overfitting the feature selection itself.
+SHAP Analysis: Compute SHAP values across the validation folds. SHAP provides not just global importance rankings but also directional information: how each feature value pushes the prediction. This is invaluable for sanity-checking that the model has learned economically meaningful relationships. If SHAP reveals that the model is using a feature in a direction that contradicts market logic, investigate whether the feature is acting as a proxy for something else or is fitting noise.
+The final feature set should contain 40–80 features. Beyond this range, diminishing returns set in rapidly and overfitting risk increases. Fewer, more stable features will almost always outperform a larger feature set in live trading.
+________________
+
+
+4. Target Variable Design
+The target variable is the single most important design decision in the entire pipeline. A well-constructed target transforms an intractable prediction problem into a learnable one. This section details the primary and auxiliary targets that comprise the labeling strategy.
+4.1 Primary Target: Triple Barrier Method
+The triple barrier method, introduced by de Prado, replaces naive direction-based labels with outcome-based labels that directly encode tradeable results. For each candidate entry point, three barriers are defined.
+* Upper barrier (take profit): A horizontal line at entry price plus a profit target, expressed in ATR units. For EUR/USD intraday swing trading at the 5-minute resolution, a profit target of 1.5–2.5x ATR(20) on the 5-minute chart is appropriate. This dynamically adjusts to current volatility.
+* Lower barrier (stop loss): A horizontal line at entry price minus a loss threshold. Set this at 1.0–1.5x ATR(20). The asymmetry between take-profit and stop-loss (wider TP than SL) encodes a minimum acceptable risk-reward ratio directly into the labels.
+* Vertical barrier (max holding time): A time-based expiration. For your trading frequency of 1–2 trades per day, set this at 4–8 hours (48–96 five-minute bars). Trades that hit the vertical barrier without touching either price barrier are labeled according to their unrealized P&L at expiration: positive returns become weak-buy signals, negative returns become weak-sell signals, or they can be assigned a neutral label.
+The output is a three-class label for each candidate entry: {1: profit target hit first, -1: stop loss hit first, 0: vertical barrier hit / neutral}. This labeling scheme has profound advantages: it respects the non-linear, path-dependent nature of trading outcomes, it adapts to volatility through ATR-based barriers, and the labels directly correspond to outcomes a trader cares about.
+4.2 Candidate Entry Point Selection via CUSUM Filter
+Not every bar should be a labeled sample. Markets spend most of their time in noise, and labeling every bar creates a massively imbalanced and redundant training set. De Prado recommends the Symmetric CUSUM Filter to detect meaningful shifts in price that warrant a potential trade entry.
+The CUSUM filter accumulates positive and negative deviations from a running mean. When the accumulated deviation exceeds a threshold h (calibrated to a fraction of ATR, typically 0.5–1.0x ATR), the filter fires an event. Only these events become labeled samples. This has two benefits: it dramatically reduces the number of samples (from hundreds of thousands to thousands), eliminating redundancy, and it ensures that every sample corresponds to a meaningful price movement, improving label quality.
+Calibrate the threshold h to produce approximately 1–3 events per trading day on the 5-minute timeframe, consistent with your target trading frequency. Too many events dilutes signal quality; too few starves the model of training data.
+4.3 Secondary Target: Meta-Labels
+Meta-labeling is a two-stage framework that separates signal generation from signal validation.
+Stage 1 – Base Signal Generation: Use your existing rule-based strategies and ICT Smart Money Concept detectors as the primary signal layer. These generate directional trade signals: long when price enters a bullish FVG near a bullish order block in the direction of the HTF trend, short in the mirror scenario. The base signal layer determines direction only.
+Stage 2 – Meta-Labeling Model: Train a separate ML model that takes the base signal as input along with all features, and predicts whether that specific signal will result in a profitable trade (binary classification: 1 = profitable, 0 = not profitable). The meta-model does not determine direction; it determines confidence.
+The meta-label is derived from the triple barrier outcome: if the base signal was long and the upper barrier was touched first, meta-label = 1. If the stop loss was hit or the trade timed out with a loss, meta-label = 0. This framing is substantially easier to learn than the full directional prediction problem because the base strategy already filters for plausible directional setups. The meta-model only needs to distinguish good setups from bad ones within an already-filtered universe.
+The predicted probability from the meta-model serves directly as position sizing input. High-confidence predictions (probability > 0.7) receive larger allocations; low-confidence predictions (probability 0.5–0.6) receive minimal or zero allocation. This probability-based execution naturally implements a form of Kelly criterion bet sizing.
+4.4 Auxiliary Target: Market Regime Classification
+Train a separate model to classify the current market regime. This model does not generate trade signals; instead, it provides a contextual overlay that the other models use to modulate their behavior. Regime states for EUR/USD typically include: trending-up, trending-down, range-bound/mean-reverting, and high-volatility/chaotic.
+Label regimes using a combination of hidden Markov models or change-point detection algorithms applied retrospectively to the training data. Features for the regime model should emphasize volatility structure (ATR trend, Bollinger Width percentile, ADX level), serial correlation of returns, and volume patterns. The regime classification informs the trading system in two ways: it selects which strategy variants to deploy (trend-following in trending regimes, mean-reversion in ranging regimes), and it provides a global filter that can suppress trading entirely during chaotic regimes where no strategy has an edge.
+4.5 Auxiliary Target: Trend Scanning Labels
+Trend scanning, also from de Prado, provides a regression-based labeling method that complements the classification-based triple barrier. For each observation, fit a series of linear regressions over multiple forward-looking windows (e.g., 12, 24, 48, 96 five-minute bars). The label is the t-statistic of the slope coefficient from the regression that achieves the highest absolute t-value.
+The t-statistic captures both the direction and the statistical significance of the detected trend. A positive, high t-value indicates a strong uptrend; a negative, high t-value indicates a strong downtrend; a low absolute t-value indicates no detectable trend. This label can be used as a regression target (predicting the t-value) or discretized into classification bins. Trend scanning labels are particularly valuable as a cross-validation of triple barrier labels: if the two labeling methods agree on a sample, confidence in that label increases.
+4.6 Risk-Adjusted Return Bins
+As an alternative or supplementary target, compute forward returns normalized by trailing realized volatility. Specifically, for each sample, calculate the return from entry to the vertical barrier horizon, divide by the trailing 20-period ATR, and assign to quantile bins. A five-bin scheme works well: strong sell (bottom 15%), sell (15–35%), neutral (35–65%), buy (65–85%), strong buy (top 15%).
+Critically, discard the neutral bin during training. The model only learns from unambiguous signals, and the discarded neutral samples are precisely the noise that degrades classifier performance. At inference time, samples that the model assigns low confidence are implicitly treated as neutral (no trade).
+________________
+
+
+5. Model Architecture
+5.1 System Overview: Multi-Model Ensemble
+The system comprises multiple specialized models rather than a single monolithic predictor. This modular architecture provides several advantages: each model tackles a tractable sub-problem, individual components can be updated or replaced without rebuilding the entire system, and the ensemble naturally provides uncertainty quantification through agreement/disagreement among components.
+The four core models are: a market regime classifier, a long signal meta-labeler, a short signal meta-labeler, and a trend strength regressor. These are orchestrated by a rule-based ensemble decision layer that combines their outputs with risk management constraints to produce final trade decisions.
+5.2 Model 1: Market Regime Classifier
+This model classifies the current market state into one of three to four regimes. It operates on 30-minute or 1-hour features to capture structural rather than noisy regime shifts.
+Architecture: LightGBM classifier. Tree-based models excel at regime detection because regimes are defined by threshold-like conditions (ADX above/below certain levels, volatility expanding/contracting) that map naturally to decision boundaries. A relatively shallow model (max depth 4–6, 100–300 estimators) is sufficient and resists overfitting.
+Features: ADX and its slope, ATR percentile, Bollinger bandwidth, serial autocorrelation of returns (lag 1–5), volume trend, session context, higher-timeframe trend direction.
+Target: Regime labels derived from HMM or change-point detection applied retrospectively to the training data.
+Output: Regime probabilities that feed into the decision layer as a context signal.
+5.3 Models 2 & 3: Directional Meta-Labelers
+Separate models for long and short signals. Separating by direction is strongly recommended because the market microstructure of bullish and bearish moves in FX is asymmetric: declines tend to be faster and more volatile than advances, and the features predictive of successful longs differ from those predictive of successful shorts.
+Architecture: Two options, to be evaluated empirically.
+* Option A: LightGBM with Bayesian-optimized hyperparameters. This is the recommended starting point. Gradient-boosted trees handle tabular financial data exceptionally well, are fast to train, and provide interpretable feature importances. Use focal loss or balanced class weights to handle the imbalanced meta-labels (more losing trades than winning trades in most strategies).
+* Option B: A neural network with a sliding window input, specifically a 1D-CNN or LSTM that ingests the most recent N bars of features as a sequence. This captures temporal patterns that tree-based models cannot, at the cost of requiring more data and more careful regularization. The optimal window size varies with model hidden size, so this must be tuned jointly.
+If pursuing Option B, the progressive training strategy is valuable: initialize with a warmup phase on 20% of data to establish stable weights, then fine-tune on the full dataset with reduced learning rates. Use learning rate scheduling (cosine annealing with warmup) for stable convergence.
+Features: The full curated feature set from Section 3, including 5-minute indicators, HTF context features, Smart Money Concept distance features, interaction features, and the fractionally differentiated price.
+Target: Meta-labels derived from triple barrier outcomes on the base strategy signals (Section 4.3).
+Output: Predicted probability that the base signal will be profitable. This probability directly informs position sizing.
+5.4 Model 4: Trend Strength Regressor
+A regression model that predicts the trend scanning t-statistic (Section 4.5). This provides a continuous measure of expected trend strength that complements the binary meta-label predictions.
+Architecture: LightGBM regressor or a simple feedforward neural network. The regression target is more forgiving of model complexity than classification.
+Output: A continuous value indicating expected trend magnitude and direction. High absolute values indicate strong directional conviction; values near zero indicate ambiguity.
+5.5 Ensemble Decision Layer
+The decision layer is rule-based, not learned. This is deliberate: the decision rules encode your risk management philosophy and should be transparent, not opaque.
+A trade is executed when the following conditions are simultaneously satisfied:
+1. The base strategy layer (ICT/rule-based) generates a directional signal.
+2. The regime classifier indicates a regime compatible with the base strategy (e.g., trending regime for a trend-following signal).
+3. The directional meta-labeler assigns a probability above the confidence threshold (calibrated, typically 0.55–0.70 depending on desired trade frequency).
+4. The trend strength regressor agrees in direction and exceeds a minimum magnitude.
+5. No more than the maximum allowed concurrent positions are open.
+6. The current session is appropriate for the signal type (e.g., London or NY session for breakout signals).
+Position size is determined by the meta-labeler’s predicted probability, scaled by a fractional Kelly criterion and capped at a hard maximum per-trade risk limit (typically 1–2% of account equity).
+________________
+
+
+6. Training Methodology
+6.1 Sample Weighting: Uniqueness and Concurrency
+Financial time series labels are inherently overlapping. When using the triple barrier method, a sample labeled at time t has an outcome window that may overlap with samples labeled at t+1, t+2, etc. If the model treats all these samples as independent, it will dramatically overweight information from periods with dense overlapping labels and produce inflated performance estimates.
+De Prado’s sample uniqueness weighting addresses this directly. For each sample, compute the average uniqueness: the fraction of its outcome window that does not overlap with any other sample’s outcome window. Use these uniqueness values as sample weights during training. Samples with low uniqueness (high concurrency with other samples) receive lower weight, preventing any single market event from dominating the learned function. This is non-negotiable for any model trained on triple barrier labels.
+6.2 Cross-Validation: Purged K-Fold with Embargo
+Standard k-fold cross-validation is catastrophically flawed for financial data because it allows information leakage between the training and validation folds through overlapping label windows. The solution is purged k-fold cross-validation with embargo.
+Purging: When constructing each fold, remove from the training set any samples whose outcome windows overlap with samples in the validation set. If a validation sample has a triple barrier window extending 50 bars into the future, all training samples within those 50 bars of the fold boundary are purged.
+Embargo: After purging, apply an additional embargo period (typically equal to the average label window duration) to create a buffer zone between training and validation data. This guards against any residual serial correlation bleeding across the fold boundary.
+Use 5–8 folds. For additional robustness, implement combinatorial purged cross-validation (CPCV), which generates all possible train/test combinations from the folds, providing a large number of backtest paths for statistical testing.
+6.3 Walk-Forward Validation
+Purged k-fold provides an unbiased estimate of model performance but does not simulate live trading conditions. Walk-forward validation with rolling windows does. Divide the full dataset into sequential blocks. Train on blocks 1–N, validate on block N+1. Then expand or slide the training window and repeat.
+For your 2018–2024 data, a reasonable scheme is: initial training window of 2 years (2018–2019), validation window of 3 months, step size of 3 months. This yields approximately 16–18 walk-forward folds, enough to assess performance across multiple market regimes including the COVID volatility spike, the 2022 rate-hiking cycle, and the subsequent normalization.
+The walk-forward framework serves as the final arbiter of model quality. A model may perform well in purged k-fold but degrade in walk-forward if it overfits to the specific statistical properties of its training window. Only models that demonstrate consistent performance across walk-forward folds should proceed to live deployment.
+6.4 Hyperparameter Optimization
+Use Bayesian optimization (e.g., Optuna, Keras Tuner Bayesian) for hyperparameter search, not grid search or random search. Bayesian optimization is substantially more sample-efficient for the high-dimensional parameter spaces typical of financial ML models.
+Critically, the optimization objective must be the walk-forward metric, not the training or single-fold validation metric. Optimize for the Sharpe ratio or the profit factor of the simulated walk-forward equity curve, not for accuracy or log-loss. This directly aligns the hyperparameter search with the actual objective, profitability, rather than a statistical proxy.
+For LightGBM models, the key hyperparameters to optimize include: number of estimators (100–1000), max depth (3–8), learning rate (0.01–0.1), feature fraction (0.3–0.8), bagging fraction (0.5–0.9), minimum child samples (20–200), L1 regularization (0–10), and L2 regularization (0–10). The regularization parameters are especially important for preventing overfitting to financial noise.
+For neural network models, optimize: hidden layer sizes, dropout rates (0.1–0.5), learning rate, weight decay, sliding window size, and batch size. Implement early stopping with NaN detection and baseline performance thresholds to skip underperforming configurations quickly.
+6.5 Loss Functions and Class Imbalance
+The meta-labeling target is inherently imbalanced: most base strategy signals will not be profitable (typical win rates for intraday strategies range from 35–55%). Standard cross-entropy loss will bias the model toward predicting the majority class (not profitable).
+Two complementary approaches address this.
+Balanced class weights: Apply inverse-frequency weighting so that minority class samples contribute more to the loss. This is the minimum viable approach and should always be applied.
+Focal loss: A generalization of cross-entropy that down-weights well-classified examples and focuses the model on hard, ambiguous cases. Focal loss is particularly effective for financial data where the decision boundary is inherently noisy. The focusing parameter gamma (typically 1.5–3.0) controls how aggressively easy examples are down-weighted.
+For neural network models, additionally consider gradient clipping (max norm 1.0–5.0) to stabilize training and prevent individual outlier batches from causing catastrophic weight updates. Use bias weight initialization to match the prior class distribution so the model starts from a calibrated baseline.
+6.6 Regularization Strategy
+Overfitting is the default outcome for financial ML. Every regularization tool available should be considered.
+* For tree models: Constrain max depth, increase minimum samples per leaf, use feature subsampling (feature fraction < 0.7) and row subsampling (bagging fraction < 0.8), and apply early stopping based on validation loss. L1 and L2 regularization on leaf weights provide additional control.
+* For neural networks: Apply dropout (0.2–0.5) after each hidden layer, use weight decay (L2 regularization on weights), employ batch normalization for training stability, and use max-norm constraints on weight matrices. The progressive training strategy (warmup on 20% of data, then fine-tune on full data with reduced learning rate) acts as an implicit regularizer by establishing a stable weight basin before full exposure to the training distribution.
+* For all models: The feature stability filtering from Section 3.4 is itself a form of regularization: by excluding unstable features, you prevent the model from learning regime-specific patterns that will not generalize.
+________________
+
+
+7. Signal Generation Layer
+The rule-based signal generation layer provides directional trade candidates that the ML layer subsequently validates. This section details the specific detectors and their integration into the pipeline.
+8. Risk Management and Execution
+8.1 Probability-Based Position Sizing
+The meta-labeler’s output probability translates directly into a bet size via the Kelly criterion. The Kelly fraction is f* = (p * b - q) / b, where p is the predicted win probability, q = 1 - p, and b is the reward-to-risk ratio from the triple barrier parameters. In practice, use fractional Kelly (typically 0.25–0.5 of the full Kelly amount) to reduce variance at the cost of slightly reduced expected returns. This is strongly recommended for live trading: full Kelly produces drawdowns that are psychologically unbearable and can trigger margin issues.
+8.2 Dynamic Stop Loss and Take Profit
+While the triple barrier parameters define the training labels, the live system should use dynamic stops. The initial stop loss is set at the structural level identified by the base strategy (below the order block for longs, above the order block for shorts), capped at a maximum of 2x ATR. As the trade moves into profit, trail the stop using a chandelier-style trailing stop at 1.5x ATR from the highest favorable excursion. Take profit targets can be set at the next opposing structural level (FVG, order block, or liquidity pool) identified by the HTF analysis. This structure-aware approach produces better risk-adjusted returns than fixed pip-based stops.
+8.3 Risk Limits
+Hard constraints that override all model outputs.
+* Maximum risk per trade: 1–2% of account equity.
+* Maximum total exposure: 3–5% of equity across all concurrent positions.
+* Maximum trades per day: 3 (a hard cap to prevent overtrading during high-signal periods).
+* Daily loss limit: 3% of equity. If hit, cease trading for the remainder of the day.
+* Weekly loss limit: 5% of equity. If hit, reduce position sizes by 50% for the following week.
+* Regime filter override: no new trades in chaotic/unclassified regimes regardless of model confidence.
+8.4 Execution Considerations
+For EUR/USD at the intraday swing frequency, execution slippage is minimal but not zero. Account for an expected slippage of 0.3–0.5 pips per trade in all backtests and simulations. Additionally, factor in the spread (typically 0.5–1.0 pips during active sessions, potentially wider during Asian hours or around news events). The backtest should deduct the full round-trip cost (spread + expected slippage) from every trade to produce realistic performance estimates. Many apparently profitable strategies become unprofitable once realistic transaction costs are applied.
+________________
+
+
+9. Validation and Anti-Overfitting Framework
+9.1 The Hierarchy of Validation
+Validation proceeds through four increasingly stringent stages. A model must pass each stage before advancing to the next.
+1. In-sample cross-validation (purged k-fold): Establishes that the model has learned patterns that generalize within the training period. Models that fail this stage have not learned anything useful.
+2. Walk-forward out-of-sample: Establishes that the model generalizes to future, unseen market conditions. Models that pass k-fold but fail walk-forward have overfit to the statistical properties of the training window.
+3. Walk-forward with realistic costs: Identical to stage 2 but with full transaction costs (spread, slippage, overnight financing if applicable). Models that pass stage 2 but fail stage 3 lack sufficient edge to overcome trading friction.
+4. Paper trading / simulated live: Forward testing on live market data without risking capital. This tests for implementation issues, data feed discrepancies, latency, and any gap between backtest assumptions and live conditions.
+9.2 Performance Metrics That Matter
+Accuracy is not a useful metric for trading models. Report and optimize for the following:
+* Sharpe Ratio: Risk-adjusted return. Target minimum 1.5 out-of-sample. Below 1.0, the model does not have a meaningful edge.
+* Profit Factor: Gross profit divided by gross loss. Target minimum 1.3 out-of-sample.
+* Maximum Drawdown: The largest peak-to-trough decline in equity. This is the statistic that determines whether a strategy is psychologically tradeable.
+* Calmar Ratio: Annualized return divided by maximum drawdown. Provides a single number capturing return efficiency relative to drawdown risk.
+* Win Rate × Average Win/Loss Ratio: These two numbers together define the edge. A 40% win rate is fine if the average win is 2.5x the average loss.
+* Stability of Returns: Measure the R-squared of the cumulative return curve. High R-squared (>0.85) indicates consistent, steady returns rather than reliance on a few large winners.
+9.3 Statistical Significance Testing
+Before declaring a model successful, test whether its performance could have arisen by chance.
+Deflated Sharpe Ratio: Adjusts the Sharpe ratio for the number of trials (hyperparameter combinations, model architectures, feature sets) conducted during development. The more configurations tested, the higher the probability that the best result is a fluke. The deflated Sharpe ratio accounts for this multiple-testing problem.
+Combinatorial Purged Cross-Validation: By generating all possible train/test combinations from the purged folds, CPCV produces a distribution of backtest results rather than a single number. If the median of this distribution is profitable and the 5th percentile is near breakeven, the model is robust.
+Walk-Forward Consistency: The percentage of walk-forward folds that are individually profitable. Target at least 65–70% of folds profitable. A model that makes all its returns in one fold and loses in the rest is fragile.
+9.4 Guarding Against the Seven Sins
+Apply the following checks to every backtest result:
+* Verify that no single trade or week accounts for more than 20% of total profit. If it does, the strategy depends on outliers.
+* Confirm that performance is not concentrated in a single regime (e.g., only profitable during COVID volatility). The regime classifier should show positive expectancy across at least two distinct regimes.
+* Ensure the backtest does not benefit from survivorship bias: EUR/USD does not have this issue, but if extending to multiple pairs, verify all pairs were available for the full sample period.
+* Verify that feature importance is stable across walk-forward folds. If the most important features change drastically between folds, the model is likely fitting noise.
+* Run a placebo test: train the model on shuffled labels. If it achieves meaningful out-of-sample performance on random labels, there is a data leakage or methodology error.
+________________
+
+
+10. Deployment and Live Trading Transition
+10.1 Model Retraining Schedule
+Financial relationships decay over time as market structure evolves. Models require periodic retraining on an expanding or sliding window. For intraday EUR/USD, retrain monthly using the most recent 2–3 years of data. After each retraining cycle, validate on the most recent 3-month out-of-sample window before deploying the updated model. Never deploy a retrained model that underperforms the current production model on recent data.
+10.2 Live Monitoring and Drift Detection
+Monitor the following in real-time:
+* Feature distribution drift: Compare the rolling distribution of each input feature to its training distribution. Significant drift (measured by KL divergence or Kolmogorov-Smirnov statistic) indicates that the model is operating in unfamiliar territory.
+* Prediction calibration: The meta-labeler’s predicted probabilities should be well-calibrated: when the model says 70% confident, approximately 70% of those trades should be profitable. Monitor the reliability diagram (predicted probability vs. observed win rate) on a rolling basis.
+* Performance degradation: Track the rolling Sharpe ratio and compare it to the backtest expectation. A sustained Sharpe below 0.5 triggers a review; below 0 triggers an automatic halt.
+10.3 Paper Trading Phase
+Before committing capital, run the complete system in paper trading mode for a minimum of 3 months (approximately 60–130 trades at 1–2 per day). This phase validates: correct implementation of all rules and models, data feed reliability and latency, execution logic including stop management and position sizing, alignment between backtest and live performance, and psychological preparedness for the system’s drawdown characteristics.
+Only proceed to live trading if the paper trading results fall within the statistical bounds predicted by the walk-forward backtest. If paper trading significantly underperforms the backtest, diagnose the gap before risking capital.
+10.4 Scaling Strategy
+Begin live trading at 25% of intended position size. If performance over the first 50 live trades is consistent with paper trading results, increase to 50%. After 100 trades, evaluate again and scale to full size if warranted. This graduated approach limits the financial impact of any remaining implementation issues while building confidence in the system.
+10.5 Transfer Learning and Multi-Pair Extension
+Once the EUR/USD system is validated, consider extending to correlated pairs (GBP/USD, USD/CHF) using transfer learning. Train the base model on EUR/USD, then fine-tune on the target pair with a reduced learning rate. Including multiple pairs in the training set can improve model robustness by exposing it to a wider range of market behaviors, but this should only be attempted after the single-pair system is profitable and stable.
+________________
+
+
+11. Implementation Roadmap
+The following phased approach minimizes risk by validating each component before building the next.
+Phase 1: Data and Labels (Weeks 1–2)
+* Implement data cleaning pipeline (warm-up removal, gap handling, outlier winsorization).
+* Build multi-timeframe alignment with proper look-ahead bias prevention.
+* Implement fractional differentiation and determine optimal d for EUR/USD.
+* Implement CUSUM filter and calibrate threshold to produce 1–3 events per day.
+* Implement triple barrier labeling with ATR-based dynamic barriers.
+* Implement meta-labeling: connect base strategy signals to triple barrier outcomes.
+* Validate label distributions and check for temporal biases.
+Phase 2: Feature Pipeline (Weeks 3–4)
+* Transform existing 200+ indicators through the domain-aware pipeline.
+* Construct interaction features with SMC concept integration.
+* Run stability analysis across rolling windows and filter unstable features.
+* Perform collinearity reduction via correlation pruning and optional PCA.
+* Run SHAP/MDA feature selection to produce the final 40–80 feature set.
+* Document which features survived selection and why (this becomes important during debugging).
+Phase 3: Model Training (Weeks 5–7)
+* Train regime classifier on HTF features. Validate with purged k-fold.
+* Train long and short meta-labelers. Start with LightGBM.
+* Implement sample uniqueness weighting and verify its impact on validation metrics.
+* Run Bayesian hyperparameter optimization with walk-forward objective.
+* Optionally train neural network variants and compare to tree-based models.
+* Train trend strength regressor. Cross-validate against triple barrier labels.
+Phase 4: Integration and Backtesting (Weeks 8–10)
+* Build the ensemble decision layer with all hard risk constraints.
+* Run full walk-forward backtest with realistic transaction costs.
+* Compute all performance metrics and statistical significance tests.
+* Run the Seven Sins checklist against backtest results.
+* Iterate: if results are insufficient, diagnose whether the issue is features, labels, or model capacity.
+Phase 5: Paper Trading (Weeks 11–22)
+* Deploy to paper trading with live data feed.
+* Monitor execution, latency, and feature/prediction drift.
+* Compare live performance to walk-forward expectations.
+* Refine execution logic based on observed slippage and spread.
+Phase 6: Live Deployment (Week 23+)
+* Begin at 25% position size.
+* Implement live monitoring dashboard with drift detection and performance tracking.
+* Scale position size based on sustained performance consistency.
+* Establish monthly retraining cycle.
+
+
+
+
+Final Note: The single greatest risk in this entire pipeline is not model error but information leakage during validation. If your backtest Sharpe ratio exceeds 3.0 or your win rate exceeds 65% on intraday FX, assume there is a bug until proven otherwise. The market is adversarial and efficient; genuine edges are modest. A system that produces a walk-forward Sharpe of 1.5–2.0 with consistent returns across regimes is an exceptional outcome. Design for robustness, not spectacle.

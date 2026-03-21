@@ -3,8 +3,8 @@
 import pandas as pd
 
 # File paths
-input_file = "EURUSD_full_1min.txt"
-output_file = "EURUSD_1min_sampled.csv"
+input_file = r"C:\Users\zebfr\Documents\All_Files\TRADING\datasets\EURUSD_full_1hour.txt"
+output_file = r"C:\Users\zebfr\Documents\All_Files\TRADING\trade_bot\data\currency_data\EURUSD_1hr.csv"
 num_lines = 2_500_000  # Number of lines to sample
 
 # Define column names

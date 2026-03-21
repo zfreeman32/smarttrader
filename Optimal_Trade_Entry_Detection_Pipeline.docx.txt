@@ -1,0 +1,317 @@
+﻿OPTIMAL TRADE ENTRY
+DETECTION SYSTEM
+
+
+A Machine Learning Framework for Identifying
+High-Probability Swing Entry Points in FX Markets
+
+
+Target Instrument: EUR/USD
+Trading Frequency: 1–2 Trades Per Day (Intraday Swing)
+Data: 1m / 5m / 30m / 1H OHLCV | 2018–2024
+February 2026
+________________
+
+
+Table of Contents
+
+
+
+
+________________
+
+
+1. Executive Summary
+This document defines the complete machine learning pipeline for building an Optimal Trade Entry (OTE) detection system for EUR/USD. Unlike a meta-labeling approach where a rule-based strategy generates trade signals and an ML model filters them, the OTE system places machine learning at the center of signal generation. The model’s primary task is to continuously scan the market and identify the precise moments where a high-probability swing entry exists — detecting the turning points where price is about to reverse or accelerate, before that move is confirmed.
+This is a fundamentally harder problem than meta-labeling. The model must learn to recognize the subtle confluence of structural, momentum, and microstructural conditions that precede confirmed swing highs and lows. The positive class is extremely rare (approximately 1–3% of all bars), the labels carry inherent lookahead bias that must be carefully managed, and the sequential nature of the patterns demands architectures that can process temporal context. The reward for solving this problem, however, is substantial: a system that reliably identifies optimal entries before confirmation gives you better risk-reward ratios, tighter stops, and earlier positioning than any reactive system can achieve.
+The system operates on a multi-model architecture with three core components: a pair of directional OTE detectors (one for long entries, one for short entries) that identify candidate turning points, a regime classifier that provides contextual filtering, and a confidence-scoring layer that determines position sizing. The rule-based ICT Smart Money Concept detectors are repositioned from primary signal generators to feature providers and structural validators, enriching the ML model’s input space rather than controlling its output.
+The target trading profile remains 1–2 intraday swing trades per day on EUR/USD during the London-to-New-York session overlap, using multi-timeframe data from 2018–2024.
+________________
+
+
+2. How This Approach Differs from Meta-Labeling
+2.1 The Fundamental Shift
+In a meta-labeling pipeline, the problem is decomposed into two stages: a rule-based system generates directional trade signals, and an ML model predicts whether each signal will be profitable. The ML model is a filter operating on a pre-selected set of events. It never sees the vast majority of market bars because the rule-based system has already discarded them. This makes the classification problem easier because the event universe is small, pre-filtered, and roughly balanced between good and bad setups.
+In the OTE approach, the ML model operates on every bar. It must distinguish the 1–3% of bars that represent genuine optimal entries from the 97–99% that do not. The model is not filtering someone else’s signals; it is generating its own. This changes the class distribution from roughly balanced (meta-labeling) to severely imbalanced (OTE), changes the sample structure from independent events to a continuous autocorrelated stream, and changes the model’s required capabilities from snapshot-based judgment to temporal pattern recognition.
+2.2 What Changes in Practice
+Target variable: Meta-labeling uses triple barrier outcomes on pre-selected events. OTE uses retroactively identified swing points from peak/trough detection algorithms. The labeling process is fundamentally different and introduces unique bias challenges.
+Sample structure: Meta-labeling produces a few hundred to a few thousand samples from CUSUM-filtered events. OTE produces hundreds of thousands of samples (every bar in the dataset), with extreme class imbalance. Sample weighting, resampling, and loss function design all change accordingly.
+Model architecture: Meta-labeling works well with tabular models (LightGBM) operating on single-bar feature snapshots. OTE demands sequence-aware models (temporal CNNs, LSTMs, or Transformers) that can learn the multi-bar patterns preceding turning points.
+Feature emphasis: Meta-labeling features describe setup quality at a specific moment. OTE features must describe the evolving dynamics of a potential turning point: deceleration, exhaustion, structural confluence, and divergence patterns that unfold across multiple bars.
+Validation complexity: Meta-labeling validation is event-level with purged k-fold. OTE validation must handle massive autocorrelation in the continuous bar stream, requiring larger purge/embargo windows and event-level evaluation metrics rather than bar-level accuracy.
+Role of ICT/rule-based systems: In meta-labeling, these are the primary signal generators. In OTE, these become feature providers. Their detections (FVGs, order blocks, liquidity sweeps, structure breaks) are encoded as features that inform the ML model rather than as signals that the ML model judges.
+________________
+
+
+3. Data Foundation and Preprocessing
+3.1 Raw Data and Timeframe Roles
+The four timeframes serve distinct roles in the OTE pipeline. The 1-hour data provides the structural context: trend direction, major order blocks, unfilled fair value gaps, and the regime classification. The 30-minute data bridges structural and tactical information, providing intermediate swing structure and session-level patterns. The 5-minute data is the primary modeling timeframe where the OTE detector operates, balancing sufficient pattern resolution with manageable noise. The 1-minute data serves as the execution refinement layer, used only after the 5-minute model flags a potential entry zone, to optimize the precise entry tick within that zone.
+3.2 Data Cleaning
+All preprocessing from the meta-labeling pipeline applies identically here: warm-up period removal (first 200 rows per continuous segment), weekend gap handling with explicit session marking, winsorization at the 1st/99th percentiles for return-based features, and log-winsorize-percentile transformation for volume. These are not repeated in detail. One additional consideration for OTE: because the model processes every bar rather than filtered events, data quality issues have amplified impact. A single corrupted bar in the meta-labeling pipeline might affect one sample; in OTE, it can corrupt the sliding window for dozens of consecutive predictions. Implement automated anomaly detection on raw OHLCV data before it enters the pipeline: flag bars where the high-low range exceeds 10x the 20-period ATR, where volume is zero, or where the close is outside the high-low range.
+3.3 Multi-Timeframe Alignment
+Higher-timeframe features are propagated to the 5-minute modeling timeframe using the most recently completed HTF bar at each 5-minute timestamp, identical to the meta-labeling pipeline. The critical look-ahead bias prevention rule applies: never use the currently forming HTF bar. For OTE detection, additionally compute time-since-last-HTF-event features: how many 5-minute bars since the last 1-hour swing high/low, how many bars since the last HTF FVG was created, how many bars since the last structural break on the 30-minute chart. These temporal distance features help the model learn the rhythms of institutional activity.
+3.4 Fractional Differentiation
+Apply fractional differentiation exactly as in the meta-labeling pipeline: determine the minimum differencing order d that achieves stationarity via the ADF test (typically 0.3–0.5 for EUR/USD), and include the fractionally differentiated close as a feature. For OTE detection, this feature is especially valuable because it preserves the long-range memory that helps distinguish a genuine trend exhaustion (where the fractionally differentiated series shows deceleration) from a temporary pullback within a strong trend (where the series maintains its trajectory).
+________________
+
+
+4. Target Variable Construction
+The target variable is the defining challenge of OTE detection. Unlike meta-labeling where labels come from forward-looking trade outcomes, OTE labels come from retroactively identified swing points. This section details the labeling algorithm, the critical management of lookahead bias, and the construction of usable training targets.
+4.1 Swing Point Detection via Zigzag Algorithm
+The foundation of OTE labeling is a zigzag algorithm that identifies confirmed swing highs and lows in the historical price series. The algorithm works as follows: starting from any confirmed swing low, it tracks the price upward until price reverses by at least a minimum threshold from the highest point reached. When this reversal threshold is breached, the highest point is labeled as a confirmed swing high, and the algorithm begins tracking downward toward the next swing low. The process alternates between tracking swing highs and swing lows.
+The minimum reversal threshold is the key calibration parameter. For EUR/USD on the 5-minute timeframe targeting intraday swings, a threshold of 1.5–2.5x ATR(20) produces swing points consistent with the magnitude of moves relevant to your trading frequency. Too small a threshold labels minor retracements as swing points, flooding the positive class with noise. Too large a threshold misses the intraday swings you want to trade, leaving too few positive samples for training. Calibrate by visually inspecting the labeled swing points across different market regimes and adjusting until the algorithm consistently marks the turns you would have wanted to trade.
+Run the zigzag independently on both the 5-minute and 30-minute timeframes. The 5-minute zigzag produces the primary labels. The 30-minute zigzag provides an auxiliary confluence signal: an OTE candidate that aligns with a 30-minute swing point is inherently higher quality than one based solely on 5-minute structure.
+4.2 Managing Lookahead Bias
+This is the most critical and most commonly mishandled aspect of OTE labeling. A zigzag-detected swing low is only identifiable after price has moved sufficiently far away from it. At the moment of the actual swing low, there is no way to know it is a swing low — it could simply be a temporary pause before further decline. The label is assigned retroactively, using information that was not available in real time.
+You must build a confirmation lag into the labeling process. Define the confirmation bar as the first bar where the reversal threshold is breached (i.e., the bar where the zigzag algorithm would have recognized the swing point in a causal, streaming implementation). The label is assigned to the bar at the actual swing point (the trough or peak), but the model is evaluated on whether it could have identified that entry in real time, meaning before the confirmation bar.
+During training, this is handled by the structure of the problem: the model receives features up to and including the labeled bar and must predict whether that bar is an optimal entry. During inference, the model makes this prediction in real time without access to the confirmation that comes later. What the model actually learns is to recognize the conditions that precede confirmed turning points — the exhaustion signature, the structural confluence, the momentum divergence — which are present at or near the actual turn, even though the turn is not yet confirmed. This is a subtle but essential distinction: the model is not predicting the future; it is recognizing a pattern that, historically, has resolved into a confirmed swing point.
+To further guard against bias, apply an exclusion zone: do not use the N bars immediately preceding the confirmation bar as negative examples, because these bars are ambiguously close to the positive event and would teach the model to reject entries that are nearly optimal. A buffer of 5–10 bars (25–50 minutes on the 5-minute chart) between the labeled swing point and the nearest negative samples prevents this contamination.
+4.3 Label Construction for Training
+Separate the labels by direction to create two independent detection tasks.
+Long OTE labels: Every confirmed swing low receives a positive label (1). The label zone extends from the actual trough bar to N bars before the trough (typically 1–3 bars), reflecting the reality that an entry a few bars early is still an excellent entry. All other bars outside the exclusion zones receive a negative label (0).
+Short OTE labels: Every confirmed swing high receives a positive label (1), with the same zone extension and exclusion logic applied symmetrically.
+This zone-based labeling is important. A model that identifies the bar two bars before the actual trough as an optimal long entry has found something extremely valuable, even though it is not the exact trough. Penalizing near-misses as false positives would teach the model to be excessively precise at the cost of missing real opportunities. The 1–3 bar zone around each swing point encodes the practical reality that “close to the optimal entry” is nearly as good as the optimal entry itself.
+4.4 Class Imbalance Characterization
+With the zone-based labeling, expect approximately 1–3% of bars to carry positive labels, depending on zigzag threshold and zone width. For 6 years of 5-minute EUR/USD data (approximately 1.5 million bars during market hours), this yields roughly 15,000–45,000 positive samples per direction. This is sufficient for training deep learning models but requires careful handling of the imbalance.
+The imbalance ratio (roughly 50:1 to 100:1 negative-to-positive) is severe enough that naive training will produce a model that predicts “not an entry” for everything and achieves 98%+ accuracy while being completely useless. Every aspect of the training pipeline — loss function, sampling strategy, evaluation metrics — must account for this imbalance.
+4.5 Auxiliary Labels: Trend Scanning Cross-Validation
+As a quality check on the zigzag labels, compute trend scanning t-statistics (from de Prado) at each labeled swing point. A genuine optimal long entry should exhibit a positive, statistically significant t-statistic when scanning forward over 12–96 bar windows, indicating that a real trend emerged from that point. Swing points where the forward trend scanning t-statistic is weak (absolute value below 2.0) may be false positives in the zigzag detection — minor reversals that did not develop into tradeable moves. Consider either removing these weak labels from the training set or down-weighting them. This cross-validation between two independent labeling methods significantly improves label quality.
+________________
+
+
+5. Feature Engineering for OTE Detection
+Feature engineering for OTE detection differs from meta-labeling in emphasis. Where meta-labeling features describe the quality of a setup at a single moment, OTE features must capture the dynamic process of a turning point as it develops across multiple bars. The feature set divides into four categories: structural context, momentum and exhaustion dynamics, microstructural footprint, and temporal sequence features.
+5.1 Structural Context Features (from ICT/SMC Detectors)
+Your existing Smart Money Concept detectors shift from signal generators to feature providers. Each detector’s output is encoded as a set of continuous features that the model consumes.
+* Fair Value Gap proximity: Distance from current price to the nearest bullish FVG top, nearest bullish FVG bottom, nearest bearish FVG top, and nearest bearish FVG bottom, all normalized by ATR. Additionally, binary indicators for whether price is currently inside an FVG zone, the age of the nearest FVG (bars since creation), and whether the FVG originated on the 5-minute, 30-minute, or 1-hour timeframe.
+* Order block proximity: Distance to the nearest bullish and bearish order blocks, normalized by ATR. Volume intensity at the order block (the volume aggregation from the detection algorithm, expressed as a multiple of average volume). Binary indicator for whether the order block has been retested. Age of the order block.
+* Liquidity level proximity: Distance to the nearest cluster of equal highs/lows (buy-side and sell-side liquidity pools). A feature indicating whether a liquidity sweep occurred within the last N bars, and the magnitude of the sweep (how far price penetrated beyond the liquidity level before reversing).
+* Market structure state: Bars since last Break of Structure, bars since last Change of Character, direction of the most recent structural break, whether the current bar is above/below the most recent swing high/low. On the higher timeframe: the current HTF trend direction and whether any HTF structural level is within 2x ATR of current price.
+* Session context: Current session (Asian, London, NY) encoded as one-hot features. Time within the current session (early, mid, late). Binary indicator for high-impact news window (if incorporating an economic calendar).
+5.2 Momentum and Exhaustion Features
+These features are specifically designed to capture the deceleration signature that precedes turning points. This is the category that matters most for OTE detection and should receive the most engineering attention.
+* Momentum oscillator divergence: For each of RSI, CCI, and MACD histogram, compute whether the indicator is making a new extreme in the opposite direction of price. Specifically: price makes a new N-bar low while RSI makes a higher low (bullish divergence). Encode both the presence and the magnitude of the divergence (difference between the two RSI lows, for example). Regular and hidden divergences carry different signals and should be encoded separately.
+* Rate-of-change deceleration: Compute the first and second derivatives of price ROC. A declining first derivative combined with a negative second derivative indicates the current move is losing momentum. Express these as z-scores relative to their rolling distributions.
+* Bar-by-bar compression: Measure the high-low range of each bar relative to the trailing ATR. A sequence of narrowing ranges after a directional move suggests energy compression that often precedes a reversal. Compute the ratio of the last 3 bars’ average range to the last 20 bars’ average range.
+* Volume exhaustion: Climactic volume (a spike above 2x average) during a move often marks its terminal phase. Compute volume relative to its 20-bar average, and create a feature for whether a volume climax occurred within the last 5 bars. Also compute volume trend: is volume increasing or decreasing during the current price move? Declining volume during a price advance is a classic exhaustion signal.
+* Candle morphology: The shape of individual candles near turning points carries information. Long wicks (rejection signals), doji patterns, and engulfing patterns are relevant but should be encoded as continuous features (wick-to-body ratio, close position within the range) rather than binary pattern detections, since the continuous encoding gives the model more granularity to work with.
+5.3 Microstructural and Price-Action Features
+* Failed breakout detection: Price penetrates a recent high/low but closes back within the range. Encode the penetration depth (in ATR units) and whether the failed breakout occurred at a structural level. Failed breakouts at liquidity levels are one of the highest-probability OTE precursors.
+* Displacement measurement: After a sharp move (impulsive candle or series of candles with bodies exceeding 1.5x ATR), measure the retracement depth as a Fibonacci ratio of the displacement. Price approaching the 0.618–0.786 retracement of a displacement, especially within an FVG, is a classic ICT entry zone.
+* Swing structure density: Count the number of swing points within a rolling window. High density indicates a ranging, mean-reverting market; low density indicates trending conditions. The model should behave differently in each environment.
+* Relative price position: Where is the current price relative to the day’s range, the week’s range, and the current swing’s range? Expressed as percentiles. Prices near the extremes of these ranges are more likely to be near turning points.
+5.4 Temporal Sequence Features
+Because OTE detection relies on recognizing how the market evolves into a turning point, the raw feature values at the current bar are insufficient. The model needs to see the trajectory of features over a lookback window.
+Construct the input as a sliding window of the last W bars (where W is a hyperparameter, typically 20–60 bars on the 5-minute chart, representing 100–300 minutes of context). Each sample is a 2D array of shape [W, F] where F is the number of features. This sequential input allows the model to learn patterns like: “RSI was rising for 15 bars, then flattened, then began declining while price made one more push higher” — temporal dynamics that are invisible in a single-bar snapshot.
+Additionally, pre-compute lag features to make certain temporal patterns more accessible to the model: the 3-bar, 6-bar, and 12-bar lagged values of key indicators (RSI, CCI, ROC, CMO), along with rolling 6-bar and 12-bar means and standard deviations of these indicators. These provide explicit representations of recent trend and volatility in each indicator, complementing the implicit temporal learning of the sequence model.
+5.5 Feature Stability, Collinearity, and Selection
+The same stability filtering, collinearity reduction, and SHAP/MDA-based selection from the meta-labeling pipeline apply here, with one important modification: feature importance must be evaluated on the positive class specifically, not on overall classification accuracy. A feature that is critical for correctly identifying the 2% of bars that are optimal entries but irrelevant for the 98% of non-entries will appear unimportant in aggregate metrics. Use class-conditional SHAP values or compute MDA specifically on positive-class recall to avoid discarding features that matter most for the task.
+The final feature set will likely be larger than the meta-labeling set (60–120 features versus 40–80) because the OTE task requires more information to make its determination. This is acceptable given the larger sample size (every bar versus filtered events).
+________________
+
+
+6. Model Architecture
+6.1 System Overview
+The OTE system comprises four models: a long entry detector, a short entry detector, a regime classifier, and an optional confidence scorer. The directional separation is even more important here than in meta-labeling because the turning point signatures for swing highs and swing lows are fundamentally different. Swing lows in EUR/USD often feature sharp capitulation moves followed by rapid reversal (V-bottoms), while swing highs more commonly show gradual deceleration and distribution (rounded tops). Training a single model on both patterns forces it to learn contradictory representations.
+6.2 Models 1 and 2: Directional OTE Detectors
+These are the core models of the system. Each receives a sliding window of features and outputs a probability that the current bar is an optimal entry in its respective direction.
+6.2.1 Primary Architecture: Temporal Convolutional Network
+A 1D Temporal Convolutional Network (TCN) is recommended as the primary architecture for OTE detection. TCNs apply causal convolutions across the time axis, meaning each output at time t depends only on inputs at times t and earlier (no future information leaks through the architecture itself). TCNs have several advantages over LSTMs for this task: they are parallelizable during training, they handle long-range dependencies through dilated convolutions without suffering from vanishing gradients, and they produce more stable gradients during optimization.
+The architecture should use a stack of 4–6 residual blocks, each containing two layers of dilated causal convolution with increasing dilation factors (1, 2, 4, 8, 16, 32). This exponential dilation pattern gives the network a receptive field that grows exponentially with depth, allowing a relatively shallow network to see the entire input window. Each convolutional layer is followed by batch normalization, ReLU activation, and spatial dropout (dropout applied across entire feature channels rather than individual values, which is more appropriate for convolutional architectures).
+The final representation from the TCN is passed through a global average pooling layer and then through two fully connected layers with dropout, producing a single sigmoid output: the probability that the current bar is an optimal entry.
+6.2.2 Alternative Architecture: LSTM with Attention
+As a comparison baseline, train an LSTM variant. Use a bidirectional LSTM (noting that in inference, you only process the causal forward direction, but the backward pass during training helps learn richer representations of the temporal context). Add an attention mechanism over the LSTM hidden states so the model can learn to weight certain parts of the lookback window more heavily. For example, the model might learn that the most recent 5 bars and the bars around the most recent swing point are most informative, while intermediate bars carry less weight.
+The attention-weighted hidden state is passed through fully connected layers to produce the output probability, identical to the TCN output structure.
+6.2.3 Sliding Window Configuration
+The sliding window size W is a critical hyperparameter that must be optimized jointly with the model’s hidden size. Prior research indicates that the optimal window size varies with model capacity: larger models can extract useful information from longer windows, while smaller models perform better with shorter windows that reduce noise. Search the range of W from 20 to 60 bars (100 to 300 minutes on 5-minute data). The Bayesian optimization procedure should treat W as a hyperparameter alongside learning rate, dropout, and layer sizes.
+6.3 Model 3: Regime Classifier
+Identical in design and purpose to the meta-labeling pipeline’s regime classifier. A LightGBM model trained on 30-minute and 1-hour features to classify market conditions as trending-up, trending-down, range-bound, or chaotic. The regime classification serves as a top-level filter: suppress OTE long signals during trending-down regimes and OTE short signals during trending-up regimes. In chaotic regimes, suppress all signals regardless of model confidence.
+6.4 Model 4: Confidence Scorer (Post-Detection Validation)
+This is a second-stage model that takes the OTE detector’s flagged entries and enriches them with a calibrated confidence score for position sizing. Think of it as meta-labeling applied to the OTE detector’s outputs. When the long OTE detector flags a bar with probability above the detection threshold, extract the feature snapshot at that bar and pass it through a LightGBM classifier trained on the triple barrier outcomes of historical OTE detections.
+This hybrid architecture gives you the best of both worlds: the temporal pattern recognition of the deep learning OTE detector identifies where entries exist, and the tabular confidence scorer determines how aggressively to size the position based on the structural and contextual quality of that specific entry. The confidence scorer can also incorporate features that are hard for the temporal model to use, such as cross-timeframe confluence counts and global positioning metrics.
+________________
+
+
+7. Training Methodology
+7.1 Handling Severe Class Imbalance
+The 50:1 to 100:1 imbalance ratio demands a multi-pronged approach. No single technique is sufficient; the combination of the following three strategies is required.
+7.1.1 Focal Loss
+Focal loss is the recommended primary loss function for OTE detection. It modifies standard binary cross-entropy by adding a modulating factor that down-weights well-classified (easy) examples and focuses learning on hard examples near the decision boundary. The focusing parameter gamma should be searched in the range 1.5–3.5. Higher gamma values more aggressively ignore easy negatives, which helps with severe imbalance but can cause training instability if set too high. Combine focal loss with an alpha parameter that upweights the positive class (alpha = 0.75–0.95 for the positive class, reflecting its rarity).
+7.1.2 Balanced Sampling
+During training, construct each mini-batch to contain a balanced ratio of positive and negative samples, regardless of their ratio in the full dataset. A ratio of 1:3 to 1:5 (positive to negative) within each batch works well. Sample negatives with replacement, weighted toward hard negatives: bars that are close to (but outside of) the entry zones, bars where the market showed some characteristics of a turning point but did not actually turn. These hard negatives teach the model to discriminate between genuine entries and near-misses, which is the critical skill.
+7.1.3 Evaluation Metric Alignment
+Never optimize for accuracy. The primary training metric should be the area under the precision-recall curve (AUPRC), not the ROC AUC. With extreme imbalance, ROC AUC can be misleadingly high (above 0.95) even when the model’s positive predictions are mostly wrong. AUPRC directly measures the model’s ability to correctly identify the rare positive class.
+Additionally, monitor precision and recall at the operating threshold: the probability cutoff above which the model’s output is treated as a detected entry. For a trading system targeting 1–2 trades per day, calibrate this threshold so that the model produces approximately 2–4 signals per day (allowing for some to be filtered by the regime classifier and confidence scorer). This typically requires a threshold in the range of 0.3–0.6, depending on model calibration.
+7.2 Progressive Training Strategy
+Deep learning models for financial data benefit from a staged training approach that prevents early convergence to poor local minima.
+1. Warmup phase: Train for 10–20 epochs on a random 20% subset of the training data with a moderate learning rate (1e-3 to 3e-3). This establishes a stable weight initialization without exposing the model to the full data distribution, preventing the network from memorizing easy patterns before learning general features.
+2. Full training phase: Switch to the complete training set with a reduced learning rate (0.3–0.5x the warmup rate). Apply cosine annealing with warm restarts to the learning rate schedule, allowing the model to explore multiple loss basins rather than settling into the first one it finds.
+3. Fine-tuning phase: Reduce the learning rate by another factor of 10 and train for a final 5–10 epochs. This refines the learned representations without making large changes to the weight landscape.
+Throughout all phases, apply early stopping based on AUPRC on the validation fold (not loss, which can be dominated by the negative class). Implement NaN detection to abort configurations that produce unstable gradients.
+7.3 Regularization for OTE Models
+The OTE detection models are more prone to overfitting than meta-labeling models because the extreme class imbalance creates opportunities for the model to memorize the specific feature patterns of individual positive samples rather than learning general turning point signatures.
+* Spatial dropout (for TCN): Apply dropout across entire convolutional channels (dropout rate 0.1–0.3) rather than individual values. This forces the network to learn redundant representations across channels, improving generalization.
+* Recurrent dropout (for LSTM): Apply dropout to the recurrent connections (dropout rate 0.1–0.3), distinct from input dropout. This prevents the LSTM from relying on specific hidden state patterns.
+* Weight decay: L2 regularization on all trainable weights (coefficient 1e-4 to 1e-3).
+* Gradient clipping: Clip gradient norms at 1.0–5.0 to prevent individual outlier batches (which are more common with imbalanced data) from causing catastrophic weight updates.
+* Label smoothing: Apply light label smoothing (epsilon 0.05–0.1) to prevent overconfident predictions. Instead of training toward hard labels of 0 and 1, train toward 0.05 and 0.95 (or similar). This improves calibration and makes the model’s output probabilities more reliable for position sizing.
+* Max-norm constraints: Constrain weight matrices to a maximum norm (2.0–5.0) to prevent individual neurons from growing disproportionately important.
+7.4 Cross-Validation for Continuous Time Series
+Standard purged k-fold must be adapted for the OTE setting where samples are continuous bars rather than discrete events.
+Enlarged purge window: Because each sample depends on a sliding window of W preceding bars, and the model’s output at time t is correlated with outputs at nearby times, the purge window must be at least W + E bars, where W is the sliding window size and E is an additional embargo (set to the average duration between consecutive swing points, typically 50–150 bars on the 5-minute chart). This ensures no temporal leakage between training and validation.
+Event-level evaluation: Within each validation fold, do not evaluate bar-level classification metrics. Instead, convert the continuous predictions into detected entry events (using the operating threshold), and evaluate at the event level: did the model detect an entry within N bars of an actual swing point? This event-level precision and recall is what determines trading performance. A model that triggers one bar early or late is performing well; bar-level metrics would penalize it as a false positive followed by a false negative.
+Fold count and structure: Use 5–8 folds with temporal ordering preserved. Each fold’s validation set should span at least 3 months to include sufficient swing points for meaningful evaluation (minimum 50–100 events per fold per direction).
+7.5 Walk-Forward Validation
+The ultimate validation uses walk-forward with rolling windows, identical in purpose to the meta-labeling pipeline but adapted for the continuous prediction task. Train on 2 years, validate on 3 months, step forward 3 months. At each step, retrain the model from scratch (or fine-tune from the previous step’s weights) and simulate live trading on the validation window.
+During walk-forward evaluation, the model’s detected entries are passed through the full decision pipeline: regime filter, confidence scorer, risk limits. The output is a simulated equity curve with realistic transaction costs. This equity curve, not any statistical metric, is the final arbiter of model quality.
+7.6 Hyperparameter Optimization
+Use Bayesian optimization (Optuna) with the walk-forward Sharpe ratio as the objective. The hyperparameter space includes:
+* Sliding window size W (20–60 bars).
+* TCN/LSTM hidden size (32–256 units per layer).
+* Number of residual blocks or LSTM layers (3–8).
+* Dropout rate (0.1–0.5).
+* Learning rate (1e-4 to 1e-2).
+* Focal loss gamma (1.5–3.5) and alpha (0.75–0.95).
+* Label smoothing epsilon (0.0–0.15).
+* Batch size (32–256).
+* Zigzag threshold (1.5–2.5x ATR) — this is a labeling hyperparameter, not a model hyperparameter, but it should be optimized jointly because the optimal model architecture depends on the label definition.
+* Detection threshold (0.2–0.7).
+Implement early termination of underperforming trials: if a trial’s first walk-forward fold produces a Sharpe below 0.0 (negative returns), abort the trial immediately.
+________________
+
+
+8. Signal Generation and Decision Pipeline
+8.1 Detection-to-Trade Pipeline
+The OTE detector outputs a continuous probability at every bar. This must be converted into discrete trade decisions through a multi-stage pipeline.
+1. Detection firing: When the directional OTE detector’s output probability exceeds the detection threshold, a candidate entry event is flagged. To prevent signal clustering (multiple detections for the same swing point), implement a cooldown: after a detection fires, suppress further detections in the same direction for N bars (calibrated to the average holding time, typically 30–60 bars).
+2. Regime validation: Check the regime classifier’s output. If the current regime is incompatible with the detected direction, the signal is suppressed. If the regime is chaotic, all signals are suppressed.
+3. Confidence scoring: Pass the feature snapshot at the detection bar to the confidence scorer (the LightGBM model trained on triple barrier outcomes of historical detections). This produces a calibrated probability that the detected entry will be profitable.
+4. Structural validation: Check whether the detected entry aligns with any higher-timeframe structural level (order block, FVG, liquidity zone). Entries that align with HTF structure receive a confluence bonus to their confidence score. Entries with zero structural confluence may be suppressed entirely or sized minimally.
+5. Position sizing: Convert the confidence score into a position size via fractional Kelly criterion, subject to the hard risk limits.
+6. Entry refinement (optional): If the 5-minute model flags an entry zone, drop to the 1-minute chart and wait for a confirming micro-structure signal (a 1-minute CHoCH, a 1-minute liquidity sweep and reversal) within a 15-minute window. This can improve entry price by 2–5 pips on average, tightening the effective stop loss.
+8.2 Stop Loss Placement
+Because the OTE model generates entries independently of the rule-based strategy, stop placement cannot rely on a predefined structural setup. Instead, use a hierarchy of stop placement methods.
+1. Structural stop (preferred): Place the stop below/above the nearest structural level: the order block that price is entering, the FVG boundary, or the recent swing extreme. This is the tightest and most logically justified stop, but is only available when the entry aligns with identifiable structure.
+2. ATR-based stop (fallback): If no clear structural level is nearby, use 1.0–1.5x ATR(20) from the entry price. This provides a volatility-adaptive stop that is tight enough for intraday swing trading.
+3. Model-informed stop: An advanced option: train an auxiliary regression model to predict the maximum adverse excursion (MAE) from each detected entry. The predicted MAE, plus a buffer, becomes the stop distance. This requires additional training infrastructure but can produce more optimally placed stops than fixed rules.
+Regardless of method, apply a trailing stop once the trade moves into profit. A chandelier trailing stop at 1.5x ATR from the highest favorable excursion works well for intraday swings.
+8.3 Take Profit Strategy
+Set the initial take profit target at the next opposing structural level identified by the HTF analysis: the nearest opposing order block, the far edge of an FVG, or a significant liquidity pool. If no clear target exists, use a fixed reward-to-risk ratio of 2:1 relative to the stop distance. Implement partial exits: close 50% of the position at 1:1 risk-reward and trail the remainder to the full target. This locks in partial profits while allowing the trade to capture larger moves when available.
+________________
+
+
+9. Risk Management Framework
+9.1 Position Sizing
+Position size is determined by the confidence scorer’s output probability, transformed through a fractional Kelly framework. Use 0.25–0.5 of the full Kelly fraction to reduce variance. The maximum per-trade risk is capped at 1–2% of account equity regardless of model confidence. This hard cap protects against model miscalibration: even a model that is confident and correct 80% of the time will eventually encounter a streak of losses, and the cap ensures no single trade can cause meaningful damage.
+9.2 OTE-Specific Risk Considerations
+The OTE approach introduces risks that meta-labeling does not:
+* False detection risk: Because the model generates signals rather than filtering them, false positives result in trades that have no structural basis. The confidence scorer mitigates this, but the base false positive rate of the detector matters. Monitor the ratio of detected entries that align with at least one HTF structural level; if this ratio drops below 50%, the detector is likely degrading.
+* Early entry risk: The model may detect the turning point several bars early, before the actual trough/peak. While the zone-based labeling accounts for this, early entries accumulate more adverse excursion before the turn materializes. The stop loss must be placed wide enough to survive this temporal imprecision.
+* Regime-dependent false positive rate: The detector’s false positive rate may vary dramatically across regimes. In trending markets, the model may repeatedly detect “entries” at minor retracements that are actually continuation patterns. The regime filter is the primary defense, but also monitor the per-regime false positive rate during walk-forward validation and consider regime-specific detection thresholds.
+9.3 Hard Risk Limits
+These constraints override all model outputs and are identical to those in a meta-labeling system:
+* Maximum risk per trade: 1–2% of account equity.
+* Maximum total exposure: 3–5% of equity across concurrent positions.
+* Maximum trades per day: 3.
+* Daily loss limit: 3% of equity (cease trading for the day if breached).
+* Weekly loss limit: 5% of equity (reduce size by 50% if breached).
+* No new trades in chaotic/unclassified regimes.
+* No new trades within 15 minutes of high-impact economic releases.
+________________
+
+
+10. Validation and Anti-Overfitting Framework
+10.1 The Evaluation Hierarchy
+Validation proceeds through five stages, each more stringent than the last. Advancement requires passing the current stage.
+1. In-sample purged cross-validation: Verifies that the model has learned generalizable patterns within the training period. Evaluate on AUPRC and event-level precision/recall. Minimum threshold: AUPRC above 0.15 (which may seem low but is meaningful given the extreme class imbalance).
+2. Walk-forward out-of-sample: Simulates forward deployment across unseen market conditions. Produce a simulated equity curve at each fold. Minimum threshold: positive Sharpe ratio in at least 60% of folds.
+3. Walk-forward with full costs: Identical to stage 2 but deducting realistic spread (0.7 pips), slippage (0.3–0.5 pips), and any overnight financing. Many strategies that are profitable before costs become unprofitable after. Minimum threshold: Sharpe above 1.0 and profit factor above 1.2.
+4. Placebo and robustness testing: Train the model on shuffled labels to verify it achieves no out-of-sample performance (confirming the model is learning signal, not noise). Perturb the detection threshold, zigzag parameters, and feature set and verify that performance degrades gracefully rather than collapsing (confirming robustness). Verify that no single week or trade accounts for more than 15% of total profit.
+5. Paper trading (minimum 3 months): Forward testing on live data. Compare live detection accuracy and trade outcomes to walk-forward expectations. Performance should fall within the statistical bounds of the backtest distribution.
+10.2 OTE-Specific Evaluation Metrics
+In addition to the standard trading metrics (Sharpe ratio, profit factor, maximum drawdown, Calmar ratio), OTE detection requires metrics that evaluate the model as a detector:
+* Event-level precision: Of all the entries the model detected, what fraction were within N bars of an actual swing point? This measures the false positive rate at the event level. Target: above 40%.
+* Event-level recall: Of all actual swing points, what fraction did the model detect? This measures the miss rate. Target: above 30%. Note that 100% recall is neither achievable nor desirable; the model should miss ambiguous or low-quality swing points.
+* Temporal precision: For correctly detected entries, how many bars away from the actual swing point was the detection? Measure the distribution of this lag. A tight distribution centered near zero indicates the model is consistently timing entries well, not just detecting that a turn happened somewhere in the vicinity.
+* Detection consistency across regimes: Break down precision, recall, and temporal precision by market regime. A model that detects entries well in trending markets but poorly in ranging markets (or vice versa) is fragile.
+10.3 Statistical Significance
+Apply the deflated Sharpe ratio to account for the number of hyperparameter configurations, model architectures, and label definitions tested during development. The OTE pipeline has more degrees of freedom than meta-labeling (zigzag parameters, window size, architecture choice, threshold calibration), so the deflation penalty is larger. A nominally significant Sharpe of 2.0 may deflate to 1.2 after accounting for the search space, which is still a viable strategy but sets realistic expectations.
+Run combinatorial purged cross-validation to produce a distribution of backtest outcomes. The 5th percentile of this distribution should be at or above breakeven. If the 5th percentile is substantially negative, the strategy’s performance depends too heavily on favorable market conditions within specific folds.
+________________
+
+
+11. Deployment and Live Operations
+11.1 Inference Pipeline
+In live operation, the system maintains a rolling buffer of the last W bars of features. At each new 5-minute bar: update the feature buffer, run the long and short OTE detectors, apply the detection threshold, check the cooldown timer, query the regime classifier, and if a detection passes all filters, run the confidence scorer and execute the position sizing and entry logic. The entire inference pipeline must complete within seconds of the bar close to ensure timely execution.
+11.2 Model Retraining
+Retrain monthly on an expanding window (all available data up to the current date). After each retraining: validate on the most recent 3-month out-of-sample window, compare the new model’s event-level metrics to the production model’s metrics, and deploy the new model only if it matches or exceeds the production model’s performance. Keep the previous model available for immediate rollback.
+11.3 Drift Detection and Monitoring
+Monitor the following in production:
+* Detection rate: Track the rolling 20-day average of detections per day. A sustained increase suggests the model is becoming too sensitive (lowering its effective threshold as the market shifts); a sustained decrease suggests it is becoming too conservative. Either direction warrants investigation.
+* Feature distribution drift: Compute the KL divergence of each feature’s rolling distribution versus its training distribution. Features with sustained high divergence indicate the model is operating on data unlike what it was trained on.
+* Event-level precision in production: This can only be computed with a lag (you need the zigzag to confirm the swing point after the fact), but it provides ground truth on whether the model’s detections are aligning with actual turning points.
+* Rolling Sharpe ratio: The 30-trade rolling Sharpe ratio. If it drops below 0.0 for 20 consecutive trades, halt the system for review.
+11.4 Paper Trading Phase
+Run the complete system in paper trading mode for a minimum of 3 months before committing capital. The paper trading phase validates the entire pipeline from data ingestion through execution, reveals implementation bugs that do not appear in backtesting, and establishes a baseline performance expectation under live market conditions. Only proceed to live trading if paper trading results are statistically consistent with walk-forward backtest results.
+11.5 Live Scaling
+Begin at 25% of intended position size for the first 50 live trades. Scale to 50% after confirming performance alignment with paper trading. Scale to full size after 100 trades with consistent results. This graduated approach limits the financial impact of any gap between backtested and live performance.
+11.6 Evolution Path: Hybrid OTE + Meta-Labeling
+Once the standalone OTE system is validated and profitable, consider hybridizing it with the meta-labeling approach from your first pipeline document. Use the OTE detector to identify candidate entry zones, then pass those candidates through the meta-labeling confidence scorer trained on rule-based strategy signals. An entry that is independently identified by both the OTE detector and the rule-based strategy, and confirmed by the meta-labeler, carries substantially higher conviction than either system alone. This fusion represents the highest-confidence configuration and should be reserved for the largest position sizes.
+________________
+
+
+12. Implementation Roadmap
+Phase 1: Labeling Infrastructure (Weeks 1–2)
+* Implement the zigzag algorithm with configurable ATR-based threshold.
+* Generate swing point labels on 5-minute and 30-minute timeframes.
+* Implement zone-based label extension (1–3 bars around each swing point).
+* Implement exclusion zones around confirmation bars.
+* Implement trend scanning cross-validation to filter weak labels.
+* Separate labels by direction (long entry vs. short entry datasets).
+* Visualize labeled data across multiple regimes for sanity checking.
+Phase 2: Feature Engineering (Weeks 3–4)
+* Transform existing 200+ indicators through the domain-aware pipeline.
+* Build momentum/exhaustion feature set (divergences, deceleration, compression, volume exhaustion).
+* Build microstructural features (failed breakouts, displacement retracements, swing density).
+* Encode all ICT/SMC detections as continuous distance and proximity features.
+* Construct sliding window datasets for sequence model input.
+* Run stability analysis with class-conditional importance filtering.
+* Perform collinearity reduction and SHAP-based selection.
+Phase 3: Core Model Training (Weeks 5–8)
+* Implement TCN architecture with residual blocks and dilated causal convolutions.
+* Implement LSTM-attention architecture as comparison baseline.
+* Implement focal loss with alpha and gamma parameters.
+* Implement balanced batch sampling with hard negative mining.
+* Train long and short OTE detectors separately.
+* Implement progressive training strategy (warmup, full, fine-tune).
+* Train regime classifier on HTF features.
+* Run Bayesian hyperparameter optimization with walk-forward Sharpe objective.
+Phase 4: Confidence Scorer and Integration (Weeks 9–10)
+* Generate historical OTE detections using the trained detector.
+* Label these detections with triple barrier outcomes.
+* Train the LightGBM confidence scorer on triple barrier labels.
+* Build the full detection-to-trade pipeline with all filters and rules.
+* Implement cooldown, regime filter, structural validation, and position sizing.
+Phase 5: Backtesting and Validation (Weeks 11–13)
+* Run full walk-forward backtest with realistic transaction costs.
+* Compute all trading metrics and event-level detection metrics.
+* Run placebo tests with shuffled labels.
+* Run robustness tests with perturbed parameters.
+* Apply deflated Sharpe ratio and CPCV.
+* Iterate on model architecture, features, or labels based on diagnostics.
+Phase 6: Paper Trading (Weeks 14–26)
+* Deploy complete system with live data feed.
+* Monitor detection rate, feature drift, and rolling performance.
+* Compare live results to walk-forward expectations.
+* Refine execution logic and slippage estimates.
+Phase 7: Live Deployment (Week 27+)
+* Begin at 25% position size.
+* Scale to 50% after 50 trades with consistent results.
+* Scale to 100% after 100 trades.
+* Establish monthly retraining cycle.
+* Begin development of hybrid OTE + meta-labeling system as the next evolution.
+
+
+
+
+Final Note: OTE detection is the more ambitious and more difficult path. It asks the ML model to solve a harder problem with noisier labels and more potential for overfitting. The potential reward is a system that finds entries you would never have found with rules alone, at turning points that are structurally invisible until they are confirmed after the fact. But this potential is only realized if every layer of the pipeline — labeling, features, architecture, training, validation — is executed with extreme rigor. If at any point the walk-forward results suggest the model is not learning genuine turning point patterns, step back to the meta-labeling framework, which has a lower ceiling but a much higher floor. The best outcome is to eventually run both systems and combine their outputs, giving you a trading system where the rule-based strategies, the OTE detector, and the meta-labeler all independently confirm the same entry. That level of confluence is rare, but when it occurs, it represents the highest-conviction trade you can take.
