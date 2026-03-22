@@ -5,6 +5,7 @@ scipy>=1.10.0
 
 # Technical analysis
 TA-Lib>=0.4.28
+ta>=0.11.0
 
 # Optional: For future ML models
 tensorflow>=2.13.0
