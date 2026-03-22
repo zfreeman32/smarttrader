@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from ta.momentum import StochasticOscillator
-import yfinance as yf
 from scipy.stats import linregress
 
 def calculate_slope(series, periods):
@@ -32,18 +31,15 @@ def get_three_period_divergence(data, dvg_length1=5, dvg_length2=10, dvg_length3
     data['signal'] = data['entry_signal'] + data['exit_signal']
     return data
 
-# Test the function
-data = yf.download('AAPL', start='2020-01-01', end='2022-02-22')
-signals = get_three_period_divergence(data)
 #%% Load data and apply signals
-file_path = r'C:\Users\zebfr\Documents\All_Files\TRADING\Trading_Bot\data\currency_data\sampled2k_EURUSD_1min.csv'
+file_path = r'C:\Users\zebfr\Documents\All_Files\TRADING\trade_bot\data\currency_data\sampled\EURUSD_1min_sampled.csv'
 stock_df = pd.read_csv(file_path, index_col=0)
 
 # Ensure index is in datetime format
 stock_df.index = pd.to_datetime(stock_df.index)
 
 # Call function with correct arguments
-signals_df = three_bar_inside_bar_se(stock_df)
+signals_df = get_three_period_divergence(stock_df)
 
 # Display output
 print(signals_df.head())
