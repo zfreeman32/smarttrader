@@ -11,6 +11,7 @@ __pycache__/
 *.joblib
 *.npy
 *.keras
+*.pt
 
 # Config files
 build_config.json
@@ -28,3 +29,5 @@ model_training/regression/regression_models/
 *_config.json
 *_summary.json
 *_trial.json
+ote_venv/
+*.csv

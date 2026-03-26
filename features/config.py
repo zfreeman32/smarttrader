@@ -52,6 +52,9 @@ class FeatureBuilderConfig:
     drop_warmup_rows: bool = True
     drop_invalid_ohlc: bool = True
     fillna_numeric: bool = True
+    transform_workers: int = 1
+    strategy_timeout_seconds: float | None = 300.0
+    optimize_feature_dtypes: bool = False
 
     enable_lags: bool = True
     lag_columns: List[str] = field(

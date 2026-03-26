@@ -69,38 +69,57 @@ def build_exhaustion(
     bull_divergence_strength = np.zeros(len(df), dtype=float)
     bear_divergence_strength = np.zeros(len(df), dtype=float)
 
-    previous_high_price = np.nan
-    previous_high_rsi = np.nan
-    previous_low_price = np.nan
-    previous_low_rsi = np.nan
+    atr_values = atr.ffill().fillna(0.0).to_numpy(dtype=float, copy=False)
+    confirmed_high_mask = confirmed_highs.to_numpy(dtype=bool, copy=False)
+    confirmed_low_mask = confirmed_lows.to_numpy(dtype=bool, copy=False)
+    confirmed_high_level_values = confirmed_high_levels.to_numpy(dtype=float, copy=False)
+    confirmed_low_level_values = confirmed_low_levels.to_numpy(dtype=float, copy=False)
+    confirmed_high_rsi_values = confirmed_high_rsi.to_numpy(dtype=float, copy=False)
+    confirmed_low_rsi_values = confirmed_low_rsi.to_numpy(dtype=float, copy=False)
 
-    atr_values = atr.ffill().fillna(0.0).to_numpy(dtype=float)
-    for i in range(len(df)):
-        current_atr = atr_values[i] if atr_values[i] > 0 else 1.0
+    valid_high_events = (
+        confirmed_high_mask
+        & np.isfinite(confirmed_high_level_values)
+        & np.isfinite(confirmed_high_rsi_values)
+    )
+    high_event_indices = np.flatnonzero(valid_high_events)
+    if high_event_indices.size > 1:
+        previous_idx = high_event_indices[:-1]
+        current_idx = high_event_indices[1:]
+        previous_price = confirmed_high_level_values[previous_idx]
+        current_price = confirmed_high_level_values[current_idx]
+        previous_rsi = confirmed_high_rsi_values[previous_idx]
+        current_rsi = confirmed_high_rsi_values[current_idx]
+        current_atr = np.where(atr_values[current_idx] > 0, atr_values[current_idx], 1.0)
+        bear_mask = (current_price > previous_price) & (current_rsi < previous_rsi)
+        bear_indices = current_idx[bear_mask]
+        bear_divergence[bear_indices] = 1
+        bear_divergence_strength[bear_indices] = (
+            ((current_price[bear_mask] - previous_price[bear_mask]) / current_atr[bear_mask])
+            * ((previous_rsi[bear_mask] - current_rsi[bear_mask]) / 50.0)
+        )
 
-        if bool(confirmed_highs.iloc[i]) and np.isfinite(confirmed_high_levels.iloc[i]) and np.isfinite(confirmed_high_rsi.iloc[i]):
-            current_price = float(confirmed_high_levels.iloc[i])
-            current_rsi = float(confirmed_high_rsi.iloc[i])
-            if np.isfinite(previous_high_price) and np.isfinite(previous_high_rsi):
-                if current_price > previous_high_price and current_rsi < previous_high_rsi:
-                    bear_divergence[i] = 1
-                    bear_divergence_strength[i] = (
-                        max(current_price - previous_high_price, 0.0) / current_atr
-                    ) * max(previous_high_rsi - current_rsi, 0.0) / 50.0
-            previous_high_price = current_price
-            previous_high_rsi = current_rsi
-
-        if bool(confirmed_lows.iloc[i]) and np.isfinite(confirmed_low_levels.iloc[i]) and np.isfinite(confirmed_low_rsi.iloc[i]):
-            current_price = float(confirmed_low_levels.iloc[i])
-            current_rsi = float(confirmed_low_rsi.iloc[i])
-            if np.isfinite(previous_low_price) and np.isfinite(previous_low_rsi):
-                if current_price < previous_low_price and current_rsi > previous_low_rsi:
-                    bull_divergence[i] = 1
-                    bull_divergence_strength[i] = (
-                        max(previous_low_price - current_price, 0.0) / current_atr
-                    ) * max(current_rsi - previous_low_rsi, 0.0) / 50.0
-            previous_low_price = current_price
-            previous_low_rsi = current_rsi
+    valid_low_events = (
+        confirmed_low_mask
+        & np.isfinite(confirmed_low_level_values)
+        & np.isfinite(confirmed_low_rsi_values)
+    )
+    low_event_indices = np.flatnonzero(valid_low_events)
+    if low_event_indices.size > 1:
+        previous_idx = low_event_indices[:-1]
+        current_idx = low_event_indices[1:]
+        previous_price = confirmed_low_level_values[previous_idx]
+        current_price = confirmed_low_level_values[current_idx]
+        previous_rsi = confirmed_low_rsi_values[previous_idx]
+        current_rsi = confirmed_low_rsi_values[current_idx]
+        current_atr = np.where(atr_values[current_idx] > 0, atr_values[current_idx], 1.0)
+        bull_mask = (current_price < previous_price) & (current_rsi > previous_rsi)
+        bull_indices = current_idx[bull_mask]
+        bull_divergence[bull_indices] = 1
+        bull_divergence_strength[bull_indices] = (
+            ((previous_price[bull_mask] - current_price[bull_mask]) / current_atr[bull_mask])
+            * ((current_rsi[bull_mask] - previous_rsi[bull_mask]) / 50.0)
+        )
 
     out["bullish_divergence_event"] = bull_divergence
     out["bearish_divergence_event"] = bear_divergence

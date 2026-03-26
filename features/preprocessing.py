@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
@@ -96,6 +97,7 @@ class FeaturePreprocessingPipeline:
 
         df = pd.read_csv(input_path)
         df = standardize_market_frame(df)
+        df = self._optimize_loaded_frame(df)
         metadata = self._load_metadata(input_path, metadata_path)
 
         upstream_info = self._detect_upstream_preprocessing(metadata)
@@ -103,8 +105,8 @@ class FeaturePreprocessingPipeline:
 
         feature_columns = self._resolve_feature_columns(df, metadata)
         encoded_features, encoding_info = self._encode_candidate_features(df, feature_columns)
-        encoded_features, duplicate_info = self._remove_exact_duplicate_features(encoded_features)
         encoded_features, constant_info = self._remove_global_constant_features(encoded_features)
+        encoded_features, duplicate_info = self._remove_exact_duplicate_features(encoded_features)
 
         target_specs = self._discover_targets(df)
         if not target_specs:
@@ -113,12 +115,16 @@ class FeaturePreprocessingPipeline:
                 f"Looked for: {self.config.target_columns}"
             )
 
+        target_context = self._build_target_context(df, target_specs)
+        del df
+        gc.collect()
+
         target_results: Dict[str, Any] = {}
         for spec in target_specs:
             target_output_dir = output_dir / spec.name
             target_output_dir.mkdir(parents=True, exist_ok=True)
             target_results[spec.name] = self._prepare_target_dataset(
-                df=df,
+                df=target_context,
                 encoded_features=encoded_features,
                 spec=spec,
                 output_dir=target_output_dir,
@@ -274,20 +280,22 @@ class FeaturePreprocessingPipeline:
 
             series = df[column]
             if pd.api.types.is_bool_dtype(series):
-                encoded_parts.append(series.fillna(False).astype(int).rename(column))
+                encoded_parts.append(series.fillna(False).astype(np.int8).rename(column))
                 continue
 
             if pd.api.types.is_numeric_dtype(series):
-                encoded_parts.append(pd.to_numeric(series, errors="coerce").rename(column))
+                numeric = pd.to_numeric(series, errors="coerce")
+                encoded_parts.append(self._downcast_numeric_series(numeric).rename(column))
                 continue
 
             cleaned = series.fillna("__missing__").astype(str).str.strip()
             if cleaned.nunique(dropna=False) <= 1:
-                encoded_parts.append(pd.Series(0, index=df.index, name=column))
+                encoded_parts.append(pd.Series(0, index=df.index, dtype=np.int8, name=column))
                 continue
 
             encoder = LabelEncoder()
-            encoded_parts.append(pd.Series(encoder.fit_transform(cleaned), index=df.index, name=column))
+            encoded = pd.Series(encoder.fit_transform(cleaned), index=df.index, name=column)
+            encoded_parts.append(self._downcast_numeric_series(encoded))
             encoders[column] = {
                 value: int(code)
                 for code, value in enumerate(encoder.classes_.tolist())
@@ -304,22 +312,33 @@ class FeaturePreprocessingPipeline:
         self,
         df: pd.DataFrame,
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        signatures: Dict[str, str] = {}
+        if df.empty or df.shape[1] < 2:
+            return df, {
+                "probe_rows": int(len(df)),
+                "removed_count": 0,
+                "removed_columns": [],
+            }
+
+        probe_positions = self._analysis_probe_positions(len(df))
+        probe_frame = df.iloc[probe_positions]
+
+        signatures: Dict[str, List[str]] = {}
         keep: List[str] = []
         removed: List[Dict[str, str]] = []
 
         for column in df.columns:
-            signature = self._column_signature(df[column])
-            if signature in signatures:
-                original = signatures[signature]
-                if df[column].equals(df[original]):
-                    removed.append({"dropped": column, "kept": original})
-                    continue
+            signature = self._column_signature(probe_frame[column])
+            candidates = signatures.setdefault(signature, [])
+            original = next((candidate for candidate in candidates if df[column].equals(df[candidate])), None)
+            if original is not None:
+                removed.append({"dropped": column, "kept": original})
+                continue
 
-            signatures[signature] = column
+            candidates.append(column)
             keep.append(column)
 
-        return df[keep].copy(), {
+        return df.loc[:, keep], {
+            "probe_rows": int(len(probe_positions)),
             "removed_count": len(removed),
             "removed_columns": removed,
         }
@@ -331,10 +350,34 @@ class FeaturePreprocessingPipeline:
         nunique = df.nunique(dropna=False)
         constant_columns = nunique[nunique <= 1].index.tolist()
         kept = [column for column in df.columns if column not in constant_columns]
-        return df[kept].copy(), {
+        return df.loc[:, kept], {
             "removed_count": len(constant_columns),
             "removed_columns": constant_columns,
         }
+
+    def _build_target_context(
+        self,
+        df: pd.DataFrame,
+        target_specs: List[TargetDatasetSpec],
+    ) -> pd.DataFrame:
+        required_columns: List[str] = []
+
+        for column in (self.config.time_column, "warmup_mask"):
+            if column in df.columns:
+                required_columns.append(column)
+
+        for spec in target_specs:
+            for column in (
+                spec.target_column,
+                spec.sample_weight_column,
+                spec.quality_column,
+                spec.exclude_column,
+                spec.safe_negative_column,
+            ):
+                if column and column in df.columns:
+                    required_columns.append(column)
+
+        return df.loc[:, list(dict.fromkeys(required_columns))].copy()
 
     def _discover_targets(self, df: pd.DataFrame) -> List[TargetDatasetSpec]:
         specs: List[TargetDatasetSpec] = []
@@ -389,28 +432,29 @@ class FeaturePreprocessingPipeline:
             negative_mask &= ~df[spec.exclude_column].fillna(False).astype(bool)
 
         usable_mask = ~warmup_mask & (positive_mask | negative_mask)
-        target_df = df.loc[usable_mask].copy()
-        features_df = encoded_features.loc[usable_mask].copy()
-        target_series = target_raw.loc[usable_mask].fillna(0)
+        ordered_positions, ordered_time_values = self._ordered_usable_positions(df, usable_mask)
+        target_series = target_raw.iloc[ordered_positions].fillna(0)
 
         is_binary = self._detect_binary_target(target_series)
         if is_binary:
             target_series = target_series.astype(int)
 
-        sample_weight = self._resolve_sample_weight(df.loc[usable_mask], spec, positive_mask.loc[usable_mask])
-        target_df = self._sort_by_time(target_df)
-        features_df = features_df.loc[target_df.index]
-        target_series = target_series.loc[target_df.index]
-        sample_weight = sample_weight.loc[target_df.index]
+        sample_weight = self._resolve_sample_weight(
+            sample_weight_source=df[spec.sample_weight_column]
+            if spec.sample_weight_column and spec.sample_weight_column in df.columns
+            else None,
+            positive_mask=positive_mask,
+        ).iloc[ordered_positions]
 
-        split_indices = self._build_split_indices(len(target_df))
+        usable_rows = int(len(ordered_positions))
+        split_indices = self._build_split_indices(usable_rows)
         train_idx = split_indices["train"]
         val_idx = split_indices["val"]
         test_idx = split_indices["test"]
 
-        X_train_raw = features_df.iloc[train_idx].copy()
-        X_val_raw = features_df.iloc[val_idx].copy()
-        X_test_raw = features_df.iloc[test_idx].copy()
+        X_train_raw = encoded_features.iloc[ordered_positions[train_idx]]
+        X_val_raw = encoded_features.iloc[ordered_positions[val_idx]]
+        X_test_raw = encoded_features.iloc[ordered_positions[test_idx]]
         y_train = target_series.iloc[train_idx].reset_index(drop=True)
         y_val = target_series.iloc[val_idx].reset_index(drop=True)
         y_test = target_series.iloc[test_idx].reset_index(drop=True)
@@ -424,8 +468,8 @@ class FeaturePreprocessingPipeline:
         X_test = self._apply_fill_values(X_test_raw, fill_values)
 
         X_train, low_variance_info = self._remove_low_variance_columns(X_train)
-        X_val = X_val[X_train.columns].copy()
-        X_test = X_test[X_train.columns].copy()
+        X_val = X_val.loc[:, X_train.columns]
+        X_test = X_test.loc[:, X_train.columns]
 
         collinearity_info = self._prune_collinear_features(
             X_train=X_train,
@@ -434,9 +478,9 @@ class FeaturePreprocessingPipeline:
             is_binary=is_binary,
         )
         selected_features = [column for column in X_train.columns if column not in collinearity_info["dropped_columns"]]
-        X_train = X_train[selected_features].copy()
-        X_val = X_val[selected_features].copy()
-        X_test = X_test[selected_features].copy()
+        X_train = X_train.loc[:, selected_features]
+        X_val = X_val.loc[:, selected_features]
+        X_test = X_test.loc[:, selected_features]
 
         scaler, X_train_scaled, X_val_scaled, X_test_scaled = self._maybe_scale(X_train, X_val, X_test)
         importance_df, importance_summary = self._compute_feature_importance(
@@ -446,7 +490,7 @@ class FeaturePreprocessingPipeline:
             is_binary=is_binary,
         )
 
-        split_date_ranges = self._split_date_ranges(target_df, split_indices)
+        split_date_ranges = self._split_date_ranges(ordered_time_values, split_indices)
         class_balance = self._class_balance_report(
             y_all=target_series.reset_index(drop=True),
             y_train=y_train,
@@ -456,7 +500,7 @@ class FeaturePreprocessingPipeline:
             is_binary=is_binary,
         )
         validations = self._validate_target_dataset(
-            usable_rows=len(target_df),
+            usable_rows=usable_rows,
             selected_features=selected_features,
             y_train=y_train,
             y_val=y_val,
@@ -466,7 +510,7 @@ class FeaturePreprocessingPipeline:
             is_binary=is_binary,
         )
         readiness = self._readiness_report(
-            usable_rows=len(target_df),
+            usable_rows=usable_rows,
             positive_count=int((target_series > 0).sum()) if is_binary else None,
             validations=validations,
             class_balance=class_balance,
@@ -487,9 +531,9 @@ class FeaturePreprocessingPipeline:
             "label_kind": spec.label_kind,
             "is_binary": is_binary,
             "row_counts": {
-                "rows_usable": int(len(target_df)),
-                "rows_positive": int(positive_mask.loc[usable_mask].sum()),
-                "rows_negative": int((~positive_mask.loc[usable_mask]).sum()),
+                "rows_usable": usable_rows,
+                "rows_positive": int(positive_mask.iloc[ordered_positions].sum()),
+                "rows_negative": int((~positive_mask.iloc[ordered_positions]).sum()),
                 "rows_excluded_by_warmup": int(warmup_mask.sum()),
                 "rows_excluded_as_ambiguous": int((~warmup_mask & ~(positive_mask | negative_mask)).sum()),
             },
@@ -521,7 +565,7 @@ class FeaturePreprocessingPipeline:
 
         return {
             "target_column": spec.target_column,
-            "usable_rows": int(len(target_df)),
+            "usable_rows": usable_rows,
             "selected_features": int(len(selected_features)),
             "readiness_score": readiness["score"],
             "readiness_grade": readiness["grade"],
@@ -531,27 +575,48 @@ class FeaturePreprocessingPipeline:
 
     def _resolve_sample_weight(
         self,
-        df: pd.DataFrame,
-        spec: TargetDatasetSpec,
+        sample_weight_source: Optional[pd.Series],
         positive_mask: pd.Series,
     ) -> pd.Series:
-        if spec.sample_weight_column and spec.sample_weight_column in df.columns:
-            weights = pd.to_numeric(df[spec.sample_weight_column], errors="coerce").fillna(1.0)
+        if sample_weight_source is not None:
+            weights = pd.to_numeric(sample_weight_source, errors="coerce").fillna(1.0)
         else:
-            weights = pd.Series(1.0, index=df.index)
+            weights = pd.Series(1.0, index=positive_mask.index)
 
         weights = weights.clip(lower=0.0)
         weights = weights.where(weights > 0, 1.0)
         weights.loc[~positive_mask] = weights.loc[~positive_mask].replace(0.0, 1.0)
-        return weights.astype(float)
+        return weights.astype(np.float32)
 
-    def _sort_by_time(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.config.time_column in df.columns:
-            df = df.copy()
-            df[self.config.time_column] = pd.to_datetime(df[self.config.time_column], errors="coerce")
-            df = df.sort_values(self.config.time_column)
-            return df
-        return df.copy()
+    def _ordered_usable_positions(
+        self,
+        df: pd.DataFrame,
+        usable_mask: pd.Series,
+    ) -> Tuple[np.ndarray, Optional[pd.Series]]:
+        usable_positions = np.flatnonzero(usable_mask.to_numpy())
+        if self.config.time_column not in df.columns or len(usable_positions) == 0:
+            return usable_positions, None
+
+        time_values = pd.to_datetime(
+            df[self.config.time_column].iloc[usable_positions],
+            errors="coerce",
+        ).reset_index(drop=True)
+        if time_values.is_monotonic_increasing:
+            return usable_positions, time_values
+        sort_order = time_values.sort_values(kind="stable").index.to_numpy(dtype=int, copy=False)
+        ordered_positions = usable_positions[sort_order]
+        ordered_time_values = time_values.iloc[sort_order].reset_index(drop=True)
+        return ordered_positions, ordered_time_values
+
+    def _analysis_probe_positions(self, n_rows: int) -> np.ndarray:
+        if n_rows <= 0:
+            return np.array([], dtype=int)
+
+        probe_rows = min(n_rows, max(1, int(self.config.max_analysis_rows)))
+        if probe_rows == n_rows:
+            return np.arange(n_rows, dtype=int)
+
+        return np.unique(np.linspace(0, n_rows - 1, num=probe_rows, dtype=int))
 
     def _build_split_indices(self, n_rows: int) -> Dict[str, np.ndarray]:
         if n_rows == 0:
@@ -580,43 +645,58 @@ class FeaturePreprocessingPipeline:
         }
 
     def _build_fill_values(self, df: pd.DataFrame) -> Tuple[Dict[str, float], Dict[str, Any]]:
-        fill_values: Dict[str, float] = {}
-        report: Dict[str, Any] = {"columns_filled": 0, "strategies": {}}
+        if df.empty:
+            return {}, {"columns_filled": 0, "strategies": {}}
 
-        for column in df.columns:
-            series = pd.to_numeric(df[column], errors="coerce")
-            if not series.isna().any():
-                fill_values[column] = 0.0
-                continue
+        clean = df.replace([np.inf, -np.inf], np.nan)
+        missing_mask = clean.isna()
+        has_missing = missing_mask.any(axis=0)
+        all_missing = missing_mask.all(axis=0)
 
-            if series.dropna().empty:
-                fill_value = 0.0
-                strategy = "zero_all_missing"
+        means = clean.mean(axis=0)
+        medians = clean.median(axis=0)
+        valid_counts = clean.notna().sum(axis=0)
+        skews = clean.skew(axis=0).where(valid_counts > 2, other=0.0).fillna(0.0)
+
+        fill_series = means.astype(np.float64, copy=True)
+        fill_series.loc[all_missing] = 0.0
+
+        use_median = has_missing & ~all_missing & (skews.abs() > 1.0)
+        fill_series.loc[use_median] = medians.loc[use_median]
+        fill_series = fill_series.fillna(0.0).astype(np.float32)
+
+        strategies: Dict[str, str] = {}
+        for column in clean.columns[has_missing]:
+            if bool(all_missing.loc[column]):
+                strategies[column] = "zero_all_missing"
+            elif bool(use_median.loc[column]):
+                strategies[column] = "median"
             else:
-                skew = float(series.dropna().skew()) if len(series.dropna()) > 2 else 0.0
-                if abs(skew) > 1.0:
-                    fill_value = float(series.median())
-                    strategy = "median"
-                else:
-                    fill_value = float(series.mean())
-                    strategy = "mean"
+                strategies[column] = "mean"
 
-            fill_values[column] = fill_value
-            report["strategies"][column] = strategy
-            report["columns_filled"] += 1
-
-        return fill_values, report
+        return (
+            {column: float(value) for column, value in fill_series.items()},
+            {
+                "columns_filled": int(has_missing.sum()),
+                "strategies": strategies,
+            },
+        )
 
     def _apply_fill_values(
         self,
         df: pd.DataFrame,
         fill_values: Dict[str, float],
     ) -> pd.DataFrame:
-        clean = df.replace([np.inf, -np.inf], np.nan).copy()
-        for column in clean.columns:
-            value = float(fill_values.get(column, 0.0))
-            clean[column] = pd.to_numeric(clean[column], errors="coerce").fillna(value)
-        return clean
+        if df.empty:
+            return df.copy()
+
+        clean = df.replace([np.inf, -np.inf], np.nan)
+        fill_series = (
+            pd.Series(fill_values, dtype=np.float32)
+            .reindex(clean.columns)
+            .fillna(np.float32(0.0))
+        )
+        return clean.fillna(fill_series).astype(np.float32, copy=False)
 
     def _remove_low_variance_columns(
         self,
@@ -625,7 +705,7 @@ class FeaturePreprocessingPipeline:
         variances = df.var()
         low_variance = variances[variances <= self.config.variance_threshold].index.tolist()
         kept = [column for column in df.columns if column not in low_variance]
-        return df[kept].copy(), {
+        return df.loc[:, kept], {
             "removed_count": len(low_variance),
             "removed_columns": low_variance,
         }
@@ -646,7 +726,7 @@ class FeaturePreprocessingPipeline:
                 "max_remaining_correlation": 0.0,
             }
 
-        analysis_rows = min(len(X_train), self.config.max_analysis_rows)
+        analysis_rows = min(len(X_train), max(1, int(self.config.max_analysis_rows)))
         X_analysis = X_train.iloc[-analysis_rows:].copy()
         y_analysis = y_train.iloc[-analysis_rows:].copy()
 
@@ -728,7 +808,7 @@ class FeaturePreprocessingPipeline:
         elif scaler_type == "standard":
             scaler = StandardScaler()
         else:
-            return None, X_train.copy(), X_val.copy(), X_test.copy()
+            return None, X_train, X_val, X_test
 
         X_train_scaled = pd.DataFrame(
             scaler.fit_transform(X_train),
@@ -758,28 +838,34 @@ class FeaturePreprocessingPipeline:
         if X_train.empty:
             empty = pd.DataFrame(columns=["feature", "association", "mutual_information", "rf_importance", "composite_score"])
             return empty, {
+                "analysis_rows": 0,
                 "max_association": 0.0,
                 "max_mutual_information": 0.0,
                 "rf_oob_score": None,
             }
 
-        association = self._association_scores(X_train, y_train)
+        analysis_rows = min(len(X_train), max(1, int(self.config.max_analysis_rows)))
+        X_analysis = X_train.iloc[-analysis_rows:]
+        y_analysis = y_train.iloc[-analysis_rows:]
+        weight_analysis = sample_weight.iloc[-analysis_rows:]
 
-        mi_scores = pd.Series(0.0, index=X_train.columns, dtype=float)
-        if y_train.nunique(dropna=True) >= 2 and len(X_train) > 3:
+        association = self._association_scores(X_analysis, y_analysis)
+
+        mi_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
+        if y_analysis.nunique(dropna=True) >= 2 and len(X_analysis) > 3:
             try:
-                neighbors = min(self.config.mutual_info_neighbors, max(1, len(X_train) - 1))
+                neighbors = min(self.config.mutual_info_neighbors, max(1, len(X_analysis) - 1))
                 if is_binary:
-                    mi_values = mutual_info_classif(X_train, y_train, random_state=42, n_neighbors=neighbors)
+                    mi_values = mutual_info_classif(X_analysis, y_analysis, random_state=42, n_neighbors=neighbors)
                 else:
-                    mi_values = mutual_info_regression(X_train, y_train, random_state=42, n_neighbors=neighbors)
-                mi_scores = pd.Series(mi_values, index=X_train.columns, dtype=float)
+                    mi_values = mutual_info_regression(X_analysis, y_analysis, random_state=42, n_neighbors=neighbors)
+                mi_scores = pd.Series(mi_values, index=X_analysis.columns, dtype=float)
             except Exception:
-                mi_scores = pd.Series(0.0, index=X_train.columns, dtype=float)
+                mi_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
 
-        rf_scores = pd.Series(0.0, index=X_train.columns, dtype=float)
+        rf_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
         rf_oob_score: Optional[float] = None
-        if y_train.nunique(dropna=True) >= 2 and len(X_train) >= max(25, self.config.rf_min_samples_leaf * 2):
+        if y_analysis.nunique(dropna=True) >= 2 and len(X_analysis) >= max(25, self.config.rf_min_samples_leaf * 2):
             try:
                 if is_binary:
                     model = RandomForestClassifier(
@@ -801,21 +887,21 @@ class FeaturePreprocessingPipeline:
                         oob_score=True,
                     )
 
-                model.fit(X_train, y_train, sample_weight=sample_weight)
-                rf_scores = pd.Series(model.feature_importances_, index=X_train.columns, dtype=float)
+                model.fit(X_analysis, y_analysis, sample_weight=weight_analysis)
+                rf_scores = pd.Series(model.feature_importances_, index=X_analysis.columns, dtype=float)
                 rf_oob_score = float(getattr(model, "oob_score_", np.nan))
                 if np.isnan(rf_oob_score):
                     rf_oob_score = None
             except Exception:
-                rf_scores = pd.Series(0.0, index=X_train.columns, dtype=float)
+                rf_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
                 rf_oob_score = None
 
         importance_df = pd.DataFrame(
             {
-                "feature": X_train.columns,
-                "association": association.reindex(X_train.columns).fillna(0.0).values,
-                "mutual_information": mi_scores.reindex(X_train.columns).fillna(0.0).values,
-                "rf_importance": rf_scores.reindex(X_train.columns).fillna(0.0).values,
+                "feature": X_analysis.columns,
+                "association": association.reindex(X_analysis.columns).fillna(0.0).values,
+                "mutual_information": mi_scores.reindex(X_analysis.columns).fillna(0.0).values,
+                "rf_importance": rf_scores.reindex(X_analysis.columns).fillna(0.0).values,
             }
         )
 
@@ -836,6 +922,7 @@ class FeaturePreprocessingPipeline:
             importance_df["composite_score"] = []
 
         summary = {
+            "analysis_rows": int(analysis_rows),
             "max_association": float(importance_df["association"].abs().max()) if not importance_df.empty else 0.0,
             "max_mutual_information": float(importance_df["mutual_information"].max()) if not importance_df.empty else 0.0,
             "rf_oob_score": rf_oob_score,
@@ -999,17 +1086,17 @@ class FeaturePreprocessingPipeline:
         # We keep temporal ordering through the row sequence and record date ranges
         # in the companion reports, but exclude raw datetime columns from the CSVs
         # to prevent accidental timestamp leakage and to keep training inputs purely numeric.
-        frame = features.reset_index(drop=True).copy()
+        frame = features.reset_index(drop=True)
         frame["target"] = target.reset_index(drop=True)
         frame["sample_weight"] = sample_weight.reset_index(drop=True)
         frame.to_csv(path, index=False)
 
     def _split_date_ranges(
         self,
-        df: pd.DataFrame,
+        time_values: Optional[pd.Series],
         split_indices: Dict[str, np.ndarray],
     ) -> Dict[str, Optional[Dict[str, str]]]:
-        if self.config.time_column not in df.columns:
+        if time_values is None:
             return {"train": None, "val": None, "test": None}
 
         result: Dict[str, Optional[Dict[str, str]]] = {}
@@ -1017,7 +1104,7 @@ class FeaturePreprocessingPipeline:
             if len(indices) == 0:
                 result[split_name] = None
                 continue
-            subset = pd.to_datetime(df.iloc[indices][self.config.time_column], errors="coerce").dropna()
+            subset = pd.to_datetime(time_values.iloc[indices], errors="coerce").dropna()
             if subset.empty:
                 result[split_name] = None
             else:
@@ -1026,6 +1113,23 @@ class FeaturePreprocessingPipeline:
                     "end": subset.max().isoformat(),
                 }
         return result
+
+    def _optimize_loaded_frame(self, df: pd.DataFrame) -> pd.DataFrame:
+        for column in df.columns:
+            df[column] = self._downcast_numeric_series(df[column])
+        return df
+
+    @staticmethod
+    def _downcast_numeric_series(series: pd.Series) -> pd.Series:
+        if pd.api.types.is_datetime64_any_dtype(series) or pd.api.types.is_timedelta64_dtype(series):
+            return series
+        if pd.api.types.is_bool_dtype(series):
+            return series
+        if pd.api.types.is_integer_dtype(series):
+            return pd.to_numeric(series, downcast="integer")
+        if pd.api.types.is_float_dtype(series):
+            return pd.to_numeric(series, downcast="float")
+        return series
 
     def _detect_binary_target(self, target: pd.Series) -> bool:
         unique_values = set(pd.Series(target).dropna().unique().tolist())

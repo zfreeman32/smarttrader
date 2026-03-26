@@ -1,20 +1,14 @@
 """
 OTE model training pipeline for prepared EURUSD datasets.
 
-This module is designed around the current repository constraints:
-- Prepared datasets live under ``data/prepared/<dataset>/<target_name>``
-- TensorFlow/PyTorch are not available in the local environment
-- XGBoost and Optuna are available
+This module keeps the prepared-data contract fixed while supporting
+multiple training backends:
 
-The implementation therefore uses a research-aligned tabular time-series
-pipeline with:
-- causal sparse-window lag features
-- robust scaling fit on each training fold only
-- custom focal loss for extreme class imbalance
-- purged walk-forward cross-validation
-- progressive boosting phases
-- probability calibration and event-level scoring
+- XGBoost with causal sparse lag windows
+- PyTorch sequence models such as TCN and LSTM
 
+Shared pieces such as target loading, fold-safe scaling, event scoring,
+calibration, thresholding, and artifact writing remain in this module.
 The default targets are ``long_ote`` and ``short_ote``.
 """
 
@@ -26,7 +20,7 @@ import json
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import joblib
 import numpy as np
@@ -40,6 +34,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.preprocessing import RobustScaler
 
+from model_training.ote_training.feature_ranking import ranking_sort_column, resolve_ranking_path
 
 LEAKAGE_PATTERNS = (
     "target_profit",
@@ -66,6 +61,8 @@ class OTETrainingConfig:
     prepared_root: str = "data/prepared/eurusd_5min_ote_2000_v2"
     targets: List[str] = field(default_factory=lambda: ["long_ote", "short_ote"])
     output_root: str = "models/ote_xgboost"
+    backend: str = "xgboost"
+    model_type: str = "tcn"
     random_seed: int = 42
     n_trials: int = 20
     cv_splits: int = 3
@@ -74,7 +71,7 @@ class OTETrainingConfig:
     min_positive_per_fold: int = 3
     max_loaded_features: int = 160
     top_feature_min: int = 24
-    top_feature_max: int = 96
+    top_feature_max: int = 128
     top_feature_step: int = 8
     window_min: int = 8
     window_max: int = 40
@@ -92,6 +89,16 @@ class OTETrainingConfig:
     use_balanced_tuning_sample: bool = True
     calibration_method: str = "platt"
     final_refit_on_dev: bool = True
+    batch_size: int = 256
+    epochs: int = 18
+    hidden_size: int = 64
+    num_layers: int = 2
+    dropout: float = 0.20
+    weight_decay: float = 1e-4
+    gradient_clip: float = 1.0
+    use_amp: bool = True
+    learning_rate: float = 1e-3
+    window_size: int = 24
     verbosity: int = 1
 
 
@@ -131,7 +138,18 @@ class TrialArtifacts:
     oof_pred: np.ndarray
     fold_metrics: List[Dict[str, float]]
     selected_feature_names: List[str]
-    lag_steps: List[int]
+    lag_steps: List[int] = field(default_factory=list)
+    backend: str = "xgboost"
+    window_size: int = 1
+    context_rows: int = 0
+
+
+@dataclass
+class ModelTrainingResult:
+    model: object
+    val_probabilities: np.ndarray
+    training_history: List[Dict[str, Any]]
+    checkpoint: Optional[Dict[str, Any]] = None
 
 
 def seed_everything(seed: int) -> None:
@@ -173,19 +191,24 @@ def load_ranked_features(
     max_loaded_features: int,
 ) -> List[str]:
     features_path = prepared_dir / "features.json"
-    ranking_path = prepared_dir / "feature_importance.csv"
+    ranking_path = resolve_ranking_path(prepared_dir)
 
     with features_path.open("r", encoding="utf-8") as handle:
         raw_features = json.load(handle)["features"]
 
     raw_features = [feature for feature in raw_features if not blocked_for_leakage(feature)]
 
-    if ranking_path.exists():
+    if ranking_path is not None and ranking_path.exists():
         ranking_df = pd.read_csv(ranking_path)
         ranking_df = ranking_df[~ranking_df["feature"].map(blocked_for_leakage)]
+        sort_column = ranking_sort_column(ranking_df.columns)
         ranked = [
             feature
-            for feature in ranking_df.sort_values("composite_score", ascending=False)["feature"].tolist()
+            for feature in (
+                ranking_df.sort_values(sort_column, ascending=False)["feature"].tolist()
+                if sort_column is not None
+                else ranking_df["feature"].tolist()
+            )
             if feature in raw_features
         ]
     else:
@@ -292,6 +315,24 @@ def make_windowed_feature_names(
     return names
 
 
+def build_sequence_windows(
+    matrix: np.ndarray,
+    window_size: int,
+) -> np.ndarray:
+    if matrix.ndim != 2:
+        raise ValueError("Expected a 2D feature matrix.")
+    if window_size <= 0:
+        raise ValueError(f"Window size must be positive, got {window_size}.")
+    if matrix.shape[0] < window_size:
+        raise ValueError(
+            f"Need at least {window_size} rows to build sequence windows, got {matrix.shape[0]}."
+        )
+
+    windows = np.lib.stride_tricks.sliding_window_view(matrix, window_shape=window_size, axis=0)
+    windows = np.swapaxes(windows, 1, 2)
+    return np.ascontiguousarray(windows, dtype=np.float32)
+
+
 def build_sparse_lag_view(
     matrix: np.ndarray,
     lag_steps: Sequence[int],
@@ -317,6 +358,23 @@ def build_sparse_lag_view(
             parts.append(current - lagged)
 
     return np.ascontiguousarray(np.concatenate(parts, axis=1), dtype=np.float32)
+
+
+def validate_backend_config(config: OTETrainingConfig) -> None:
+    if config.backend not in {"xgboost", "torch"}:
+        raise ValueError(f"Unsupported backend: {config.backend}")
+    if config.backend == "torch" and config.model_type not in {"tcn", "lstm"}:
+        raise ValueError(f"Unsupported torch model type: {config.model_type}")
+
+
+def resolve_trial_window_size(
+    params: Mapping[str, float],
+    config: OTETrainingConfig,
+) -> int:
+    window_size = int(params.get("window_size", config.window_size))
+    if window_size <= 0:
+        raise ValueError(f"Window size must be positive, got {window_size}.")
+    return window_size
 
 
 def fit_scaler(train_matrix: np.ndarray, config: OTETrainingConfig) -> RobustScaler:
@@ -670,7 +728,7 @@ def make_prediction_dmatrix(
     return xgb.DMatrix(X, **kwargs)
 
 
-def train_progressive_booster(
+def train_xgboost_model(
     X_train: np.ndarray,
     y_train: np.ndarray,
     w_train: np.ndarray,
@@ -679,7 +737,7 @@ def train_progressive_booster(
     w_eval: np.ndarray,
     params: Mapping[str, float],
     verbosity: int,
-) -> xgb.Booster:
+) -> ModelTrainingResult:
     focal_alpha = float(params["focal_alpha"])
     focal_gamma = float(params["focal_gamma"])
     warmup_fraction = float(params["warmup_fraction"])
@@ -754,7 +812,111 @@ def train_progressive_booster(
         verbose_eval=False if verbosity < 2 else 25,
     )
 
-    return booster
+    raw_pred = booster.predict(make_prediction_dmatrix(X_eval))
+    probabilities = sigmoid(raw_pred).astype(np.float32)
+    training_history = [
+        {
+            "phase": "warmup",
+            "epochs": float(warmup_rounds),
+            "train_rows": float(len(warmup_X)),
+            "eval_rows": float(len(X_eval)),
+            "learning_rate": eta,
+        },
+        {
+            "phase": "main",
+            "epochs": float(main_rounds),
+            "train_rows": float(len(X_train)),
+            "eval_rows": float(len(X_eval)),
+            "learning_rate": eta,
+        },
+        {
+            "phase": "fine",
+            "epochs": float(fine_rounds),
+            "train_rows": float(len(X_train)),
+            "eval_rows": float(len(X_eval)),
+            "learning_rate": eta * fine_lr_scale,
+        },
+    ]
+    return ModelTrainingResult(
+        model=booster,
+        val_probabilities=probabilities,
+        training_history=training_history,
+        checkpoint=None,
+    )
+
+
+def build_torch_training_config(
+    input_size: int,
+    params: Mapping[str, float],
+    config: OTETrainingConfig,
+) -> Dict[str, Any]:
+    return {
+        "model_type": config.model_type,
+        "input_size": input_size,
+        "hidden_size": int(config.hidden_size),
+        "num_layers": int(config.num_layers),
+        "dropout": float(config.dropout),
+        "batch_size": int(config.batch_size),
+        "epochs": int(config.epochs),
+        "weight_decay": float(config.weight_decay),
+        "gradient_clip": float(config.gradient_clip),
+        "use_amp": bool(config.use_amp),
+        "learning_rate": float(params.get("learning_rate", config.learning_rate)),
+        "focal_alpha": float(params["focal_alpha"]),
+        "focal_gamma": float(params["focal_gamma"]),
+        "verbosity": int(config.verbosity),
+        "seed": int(config.random_seed),
+    }
+
+
+def train_backend_model(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    w_train: np.ndarray,
+    X_eval: np.ndarray,
+    y_eval: np.ndarray,
+    w_eval: np.ndarray,
+    params: Mapping[str, float],
+    config: OTETrainingConfig,
+    seed: int,
+) -> ModelTrainingResult:
+    if config.backend == "xgboost":
+        return train_xgboost_model(
+            X_train=X_train,
+            y_train=y_train,
+            w_train=w_train,
+            X_eval=X_eval,
+            y_eval=y_eval,
+            w_eval=w_eval,
+            params=params,
+            verbosity=config.verbosity,
+        )
+
+    if config.backend == "torch":
+        try:
+            from model_training.ote_training.torch_trainer import train_torch_model
+        except ModuleNotFoundError as exc:
+            raise ImportError(
+                "Torch backend requested, but PyTorch is not available in the active Python environment."
+            ) from exc
+
+        trainer_config = build_torch_training_config(
+            input_size=X_train.shape[-1],
+            params=params,
+            config=config,
+        )
+        trainer_config["seed"] = seed
+        return train_torch_model(
+            X_train=X_train,
+            y_train=y_train,
+            w_train=w_train,
+            X_eval=X_eval,
+            y_eval=y_eval,
+            w_eval=w_eval,
+            trainer_config=trainer_config,
+        )
+
+    raise ValueError(f"Unsupported backend: {config.backend}")
 
 
 def calibrate_probabilities(
@@ -798,7 +960,7 @@ def apply_calibrator(calibrator, raw_probabilities: np.ndarray) -> np.ndarray:
     return np.asarray(calibrated, dtype=np.float32)
 
 
-def build_fold_datasets(
+def build_xgboost_fold_datasets(
     X_dev: np.ndarray,
     y_dev: np.ndarray,
     w_dev: np.ndarray,
@@ -839,6 +1001,74 @@ def build_fold_datasets(
     return X_train, y_train, w_train, X_val, y_val, w_val
 
 
+def build_sequence_fold_datasets(
+    X_dev: np.ndarray,
+    y_dev: np.ndarray,
+    w_dev: np.ndarray,
+    train_idx: np.ndarray,
+    val_idx: np.ndarray,
+    selected_feature_idx: np.ndarray,
+    window_size: int,
+    config: OTETrainingConfig,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    context_rows = window_size - 1
+
+    if not np.all(np.diff(train_idx) == 1) or not np.all(np.diff(val_idx) == 1):
+        raise ValueError("This pipeline expects contiguous expanding-window folds.")
+
+    train_end = int(train_idx[-1]) + 1
+    val_start = int(val_idx[0])
+    val_end = int(val_idx[-1]) + 1
+
+    X_train_raw = X_dev[:train_end, :][:, selected_feature_idx]
+    scaler = fit_scaler(X_train_raw, config)
+
+    X_train_scaled = transform_matrix(scaler, X_train_raw, clip_value=config.scale_clip)
+    X_train = build_sequence_windows(X_train_scaled, window_size=window_size)
+    y_train = y_dev[context_rows:train_end].astype(np.uint8, copy=False)
+    w_train = w_dev[context_rows:train_end].astype(np.float32, copy=True)
+
+    val_context_start = val_start - context_rows
+    if val_context_start < 0:
+        raise ValueError("Validation fold does not have enough causal context.")
+
+    X_val_context = X_dev[val_context_start:val_end, :][:, selected_feature_idx]
+    X_val_scaled = transform_matrix(scaler, X_val_context, clip_value=config.scale_clip)
+    X_val = build_sequence_windows(X_val_scaled, window_size=window_size)
+    y_val = y_dev[val_start:val_end].astype(np.uint8, copy=False)
+    w_val = w_dev[val_start:val_end].astype(np.float32, copy=True)
+
+    return X_train, y_train, w_train, X_val, y_val, w_val
+
+
+def apply_fold_training_weights(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    w_train: np.ndarray,
+    params: Mapping[str, float],
+    config: OTETrainingConfig,
+    seed: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    hard_radius = int(params["hard_negative_radius"])
+    hard_multiplier = float(params["hard_negative_multiplier"])
+    train_weights = apply_hard_negative_weights(y_train, w_train, hard_radius, hard_multiplier)
+
+    if not config.use_balanced_tuning_sample:
+        return X_train, y_train, train_weights
+
+    hard_mask = build_near_positive_mask(y_train, hard_radius)
+    sampled_idx = sample_balanced_training_indices(
+        y=y_train,
+        hard_negative_mask=hard_mask,
+        negative_ratio=config.tuning_negative_ratio,
+        seed=seed,
+    )
+    if len(sampled_idx) < max(64, int(np.sum(y_train)) * 6):
+        return X_train, y_train, train_weights
+
+    return X_train[sampled_idx], y_train[sampled_idx], train_weights[sampled_idx]
+
+
 def train_and_score_fold(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -850,32 +1080,16 @@ def train_and_score_fold(
     config: OTETrainingConfig,
     seed: int,
 ) -> Tuple[np.ndarray, Dict[str, float]]:
-    hard_radius = int(params["hard_negative_radius"])
-    hard_multiplier = float(params["hard_negative_multiplier"])
-    train_weights = apply_hard_negative_weights(y_train, w_train, hard_radius, hard_multiplier)
+    X_fit, y_fit, w_fit = apply_fold_training_weights(
+        X_train=X_train,
+        y_train=y_train,
+        w_train=w_train,
+        params=params,
+        config=config,
+        seed=seed,
+    )
 
-    if config.use_balanced_tuning_sample:
-        hard_mask = build_near_positive_mask(y_train, hard_radius)
-        sampled_idx = sample_balanced_training_indices(
-            y=y_train,
-            hard_negative_mask=hard_mask,
-            negative_ratio=config.tuning_negative_ratio,
-            seed=seed,
-        )
-        if len(sampled_idx) >= max(64, int(np.sum(y_train)) * 6):
-            X_fit = X_train[sampled_idx]
-            y_fit = y_train[sampled_idx]
-            w_fit = train_weights[sampled_idx]
-        else:
-            X_fit = X_train
-            y_fit = y_train
-            w_fit = train_weights
-    else:
-        X_fit = X_train
-        y_fit = y_train
-        w_fit = train_weights
-
-    booster = train_progressive_booster(
+    training_result = train_backend_model(
         X_train=X_fit,
         y_train=y_fit,
         w_train=w_fit,
@@ -883,11 +1097,10 @@ def train_and_score_fold(
         y_eval=y_val,
         w_eval=w_val,
         params=params,
-        verbosity=config.verbosity,
+        config=config,
+        seed=seed,
     )
-
-    raw_pred = booster.predict(make_prediction_dmatrix(X_val))
-    probabilities = sigmoid(raw_pred).astype(np.float32)
+    probabilities = training_result.val_probabilities
 
     threshold, threshold_metrics = select_operating_threshold(
         y_true=y_val,
@@ -911,7 +1124,7 @@ def train_and_score_fold(
     return probabilities, metrics
 
 
-def build_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
+def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
     max_top_features = min(config.top_feature_max, config.max_loaded_features)
     min_top_features = min(config.top_feature_min, max_top_features)
     return {
@@ -948,17 +1161,56 @@ def build_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[s
     }
 
 
+def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
+    max_top_features = min(config.top_feature_max, config.max_loaded_features)
+    min_top_features = min(config.top_feature_min, max_top_features)
+    default_window = int(np.clip(config.window_size, config.window_min, config.window_max))
+    lower_lr = max(config.learning_rate / 5.0, 1e-5)
+    upper_lr = max(config.learning_rate * 5.0, lower_lr * 1.5)
+    return {
+        "top_features": trial.suggest_int(
+            "top_features",
+            min_top_features,
+            max_top_features,
+            step=config.top_feature_step,
+        ),
+        "window_size": float(default_window),
+        "learning_rate": trial.suggest_float("learning_rate", lower_lr, upper_lr, log=True),
+        "focal_alpha": trial.suggest_float("focal_alpha", 0.70, 0.95),
+        "focal_gamma": trial.suggest_float("focal_gamma", 1.25, 3.75),
+        "hard_negative_radius": trial.suggest_int("hard_negative_radius", 1, 8),
+        "hard_negative_multiplier": trial.suggest_float("hard_negative_multiplier", 1.0, 2.5),
+    }
+
+
+def build_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
+    if config.backend == "xgboost":
+        return build_xgboost_trial_params(trial, config)
+    if config.backend == "torch":
+        return build_torch_trial_params(trial, config)
+    raise ValueError(f"Unsupported backend: {config.backend}")
+
+
 def cross_validate_trial(
     dataset: PreparedTargetDataset,
     params: Mapping[str, float],
     config: OTETrainingConfig,
     trial: Optional[optuna.Trial] = None,
 ) -> TrialArtifacts:
+    validate_backend_config(config)
+
     top_features = min(int(params["top_features"]), len(dataset.ranked_features))
-    window_size = int(params["window_size"])
-    lag_count = int(params["lag_count"])
-    delta_feature_count = min(int(params["delta_feature_count"]), top_features)
-    lag_steps = make_lag_steps(window_size=window_size, lag_count=lag_count)
+    window_size = resolve_trial_window_size(params, config)
+    lag_steps: List[int] = []
+    delta_feature_count = 0
+    context_rows = window_size - 1
+
+    if config.backend == "xgboost":
+        lag_count = int(params["lag_count"])
+        delta_feature_count = min(int(params["delta_feature_count"]), top_features)
+        lag_steps = make_lag_steps(window_size=window_size, lag_count=lag_count)
+        context_rows = max(lag_steps)
+
     purge_bars = max(
         window_size + config.purge_additional_bars,
         config.event_tolerance_bars + config.event_cooldown_bars,
@@ -979,17 +1231,29 @@ def cross_validate_trial(
     fold_metrics: List[Dict[str, float]] = []
 
     for fold_index, (train_idx, val_idx) in enumerate(folds, start=1):
-        X_train, y_train, w_train, X_val, y_val, w_val = build_fold_datasets(
-            X_dev=dataset.dev_X,
-            y_dev=dataset.dev_y,
-            w_dev=dataset.dev_w,
-            train_idx=train_idx,
-            val_idx=val_idx,
-            selected_feature_idx=selected_feature_idx,
-            lag_steps=lag_steps,
-            delta_feature_count=delta_feature_count,
-            config=config,
-        )
+        if config.backend == "xgboost":
+            X_train, y_train, w_train, X_val, y_val, w_val = build_xgboost_fold_datasets(
+                X_dev=dataset.dev_X,
+                y_dev=dataset.dev_y,
+                w_dev=dataset.dev_w,
+                train_idx=train_idx,
+                val_idx=val_idx,
+                selected_feature_idx=selected_feature_idx,
+                lag_steps=lag_steps,
+                delta_feature_count=delta_feature_count,
+                config=config,
+            )
+        else:
+            X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
+                X_dev=dataset.dev_X,
+                y_dev=dataset.dev_y,
+                w_dev=dataset.dev_w,
+                train_idx=train_idx,
+                val_idx=val_idx,
+                selected_feature_idx=selected_feature_idx,
+                window_size=window_size,
+                config=config,
+            )
 
         if int(np.sum(y_train)) < config.min_positive_per_fold or int(np.sum(y_val)) < config.min_positive_per_fold:
             raise optuna.TrialPruned(
@@ -1030,6 +1294,9 @@ def cross_validate_trial(
         fold_metrics=fold_metrics,
         selected_feature_names=selected_feature_names,
         lag_steps=lag_steps,
+        backend=config.backend,
+        window_size=window_size,
+        context_rows=context_rows,
     )
 
 
@@ -1048,31 +1315,51 @@ def fit_final_model(
     artifacts: TrialArtifacts,
     config: OTETrainingConfig,
 ) -> Dict[str, object]:
+    validate_backend_config(config)
+
     params = dict(artifacts.params)
     top_features = min(int(params["top_features"]), len(dataset.ranked_features))
-    delta_feature_count = min(int(params["delta_feature_count"]), top_features)
+    delta_feature_count = min(int(params.get("delta_feature_count", 0)), top_features)
     selected_feature_names = artifacts.selected_feature_names
     selected_feature_idx = np.arange(top_features, dtype=np.int64)
     lag_steps = artifacts.lag_steps
-    max_lag = max(lag_steps)
+    window_size = artifacts.window_size
+    context_rows = artifacts.context_rows
 
     X_dev_raw = dataset.dev_X[:, selected_feature_idx]
     scaler = fit_scaler(X_dev_raw, config)
     X_dev_scaled = transform_matrix(scaler, X_dev_raw, clip_value=config.scale_clip)
-    X_dev_windowed = build_sparse_lag_view(
-        X_dev_scaled,
-        lag_steps=lag_steps,
-        delta_feature_count=delta_feature_count,
-    )
-    y_dev = dataset.dev_y[max_lag:].astype(np.uint8, copy=False)
+
+    if config.backend == "xgboost":
+        X_dev_windowed = build_sparse_lag_view(
+            X_dev_scaled,
+            lag_steps=lag_steps,
+            delta_feature_count=delta_feature_count,
+        )
+        feature_names = make_windowed_feature_names(
+            selected_feature_names=selected_feature_names,
+            lag_steps=lag_steps,
+            delta_feature_count=delta_feature_count,
+        )
+    else:
+        X_dev_windowed = build_sequence_windows(
+            X_dev_scaled,
+            window_size=window_size,
+        )
+        feature_names = list(selected_feature_names)
+
+    y_dev = dataset.dev_y[context_rows:].astype(np.uint8, copy=False)
     w_dev = apply_hard_negative_weights(
-        dataset.dev_y[max_lag:],
-        dataset.dev_w[max_lag:],
+        dataset.dev_y[context_rows:],
+        dataset.dev_w[context_rows:],
         radius=int(params["hard_negative_radius"]),
         multiplier=float(params["hard_negative_multiplier"]),
     )
 
-    eval_rows = max(max_lag + config.min_val_rows, int(len(X_dev_windowed) * 0.15))
+    if len(X_dev_windowed) < 64:
+        raise ValueError("Not enough development rows after windowing to fit the final model.")
+
+    eval_rows = max(context_rows + config.min_val_rows, int(len(X_dev_windowed) * 0.15))
     eval_rows = min(eval_rows, len(X_dev_windowed) - 32)
     if eval_rows < 32:
         eval_rows = min(64, max(32, len(X_dev_windowed) // 4))
@@ -1085,7 +1372,7 @@ def fit_final_model(
     y_eval = y_dev[fit_end:]
     w_eval = w_dev[fit_end:]
 
-    booster = train_progressive_booster(
+    training_result = train_backend_model(
         X_train=X_fit,
         y_train=y_fit,
         w_train=w_fit,
@@ -1093,11 +1380,12 @@ def fit_final_model(
         y_eval=y_eval,
         w_eval=w_eval,
         params=params,
-        verbosity=config.verbosity,
+        config=config,
+        seed=config.random_seed,
     )
 
     if config.final_refit_on_dev:
-        booster = train_progressive_booster(
+        training_result = train_backend_model(
             X_train=X_dev_windowed,
             y_train=y_dev,
             w_train=w_dev,
@@ -1105,17 +1393,29 @@ def fit_final_model(
             y_eval=y_eval,
             w_eval=w_eval,
             params=params,
-            verbosity=config.verbosity,
+            config=config,
+            seed=config.random_seed,
         )
 
-    oof_slice = artifacts.oof_pred[max_lag:]
-    valid_oof_mask = ~np.isnan(oof_slice)
+    final_model_object = training_result.model
+    checkpoint = training_result.checkpoint
+
+    if config.backend == "torch":
+        from model_training.ote_training.torch_trainer import load_torch_model_from_checkpoint, predict_torch_model
+
+        if checkpoint is None:
+            raise RuntimeError("Torch training did not produce a checkpoint.")
+        final_model_object = load_torch_model_from_checkpoint(checkpoint)
+    else:
+        predict_torch_model = None
+
+    valid_oof_mask = ~np.isnan(artifacts.oof_pred)
     if not np.any(valid_oof_mask):
         raise RuntimeError("Cross-validation did not produce any held-out predictions.")
 
-    oof_for_calibration = oof_slice[valid_oof_mask]
-    y_for_calibration = y_dev[valid_oof_mask]
-    w_for_calibration = dataset.dev_w[max_lag:][valid_oof_mask]
+    oof_for_calibration = artifacts.oof_pred[valid_oof_mask]
+    y_for_calibration = dataset.dev_y[valid_oof_mask]
+    w_for_calibration = dataset.dev_w[valid_oof_mask]
 
     if len(np.unique(y_for_calibration)) < 2:
         calibrator = None
@@ -1137,33 +1437,45 @@ def fit_final_model(
         grid_size=config.threshold_grid_size,
     )
 
-    test_context = np.concatenate(
-        [
-            dataset.dev_X[-max_lag:, selected_feature_idx],
-            dataset.X_test[:, selected_feature_idx],
-        ],
-        axis=0,
-    )
+    if context_rows > 0:
+        test_context = np.concatenate(
+            [
+                dataset.dev_X[-context_rows:, selected_feature_idx],
+                dataset.X_test[:, selected_feature_idx],
+            ],
+            axis=0,
+        )
+    else:
+        test_context = dataset.X_test[:, selected_feature_idx]
+
     test_scaled = transform_matrix(scaler, test_context, clip_value=config.scale_clip)
-    X_test_windowed = build_sparse_lag_view(
-        test_scaled,
-        lag_steps=lag_steps,
-        delta_feature_count=delta_feature_count,
-    )
+
+    if config.backend == "xgboost":
+        X_test_windowed = build_sparse_lag_view(
+            test_scaled,
+            lag_steps=lag_steps,
+            delta_feature_count=delta_feature_count,
+        )
+        raw_test = sigmoid(final_model_object.predict(make_prediction_dmatrix(X_test_windowed))).astype(np.float32)
+    else:
+        X_test_windowed = build_sequence_windows(
+            test_scaled,
+            window_size=window_size,
+        )
+        raw_test = predict_torch_model(
+            model=final_model_object,
+            X=X_test_windowed,
+            batch_size=config.batch_size,
+        )
+
     y_test = dataset.y_test.astype(np.uint8, copy=False)
     w_test = dataset.w_test.astype(np.float32, copy=False)
-
-    raw_test = sigmoid(booster.predict(make_prediction_dmatrix(X_test_windowed))).astype(np.float32)
     calibrated_test = apply_calibrator(calibrator, raw_test)
 
-    feature_names = make_windowed_feature_names(
-        selected_feature_names=selected_feature_names,
-        lag_steps=lag_steps,
-        delta_feature_count=delta_feature_count,
-    )
-
     return {
-        "booster": booster,
+        "backend": config.backend,
+        "model": final_model_object,
+        "checkpoint": checkpoint,
         "scaler": scaler,
         "calibrator": calibrator,
         "threshold": threshold,
@@ -1185,10 +1497,35 @@ def fit_final_model(
         "feature_names": feature_names,
         "selected_feature_names": selected_feature_names,
         "lag_steps": lag_steps,
+        "window_size": window_size,
+        "context_rows": context_rows,
         "delta_feature_count": delta_feature_count,
         "oof_calibrated": calibrated_oof,
         "test_raw": raw_test,
         "test_calibrated": calibrated_test,
+        "training_history": training_result.training_history,
+        "model_config": {
+            "backend": config.backend,
+            "model_type": config.model_type if config.backend == "torch" else "xgboost",
+            "window_size": window_size,
+            "context_rows": context_rows,
+            "top_features": top_features,
+            "selected_feature_names": selected_feature_names,
+            "lag_steps": lag_steps,
+            "delta_feature_count": delta_feature_count,
+            "params": params,
+            "trainer": {
+                "batch_size": config.batch_size,
+                "epochs": config.epochs,
+                "hidden_size": config.hidden_size,
+                "num_layers": config.num_layers,
+                "dropout": config.dropout,
+                "weight_decay": config.weight_decay,
+                "gradient_clip": config.gradient_clip,
+                "use_amp": config.use_amp,
+                "learning_rate": config.learning_rate,
+            },
+        },
     }
 
 
@@ -1202,23 +1539,46 @@ def save_training_outputs(
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    final_model["booster"].save_model(output_dir / "model.json")
+    if final_model["backend"] == "xgboost":
+        final_model["model"].save_model(output_dir / "model.json")
+    else:
+        import torch
+
+        if final_model["checkpoint"] is None:
+            raise RuntimeError("Torch final model is missing a checkpoint.")
+        torch.save(final_model["checkpoint"], output_dir / "model.pt")
+        torch.save(final_model["checkpoint"], output_dir / "best_checkpoint.pt")
+
     joblib.dump(final_model["scaler"], output_dir / "scaler.joblib")
     if final_model["calibrator"] is not None:
         joblib.dump(final_model["calibrator"], output_dir / "calibrator.joblib")
 
     study.trials_dataframe().to_csv(output_dir / "optuna_trials.csv", index=False)
 
-    importance = final_model["booster"].get_score(importance_type="gain")
-    importance_rows = [
-        {"feature": final_model["feature_names"][int(name[1:])], "gain": gain}
-        for name, gain in importance.items()
-        if name.startswith("f") and int(name[1:]) < len(final_model["feature_names"])
-    ]
-    importance_frame = pd.DataFrame(importance_rows, columns=["feature", "gain"])
-    if not importance_frame.empty:
-        importance_frame = importance_frame.sort_values("gain", ascending=False)
+    if final_model["backend"] == "xgboost":
+        importance = final_model["model"].get_score(importance_type="gain")
+        importance_rows = [
+            {"feature": final_model["feature_names"][int(name[1:])], "gain": gain}
+            for name, gain in importance.items()
+            if name.startswith("f") and int(name[1:]) < len(final_model["feature_names"])
+        ]
+        importance_frame = pd.DataFrame(importance_rows, columns=["feature", "gain"])
+        if not importance_frame.empty:
+            importance_frame = importance_frame.sort_values("gain", ascending=False)
+    else:
+        importance_frame = pd.DataFrame(columns=["feature", "gain"])
     importance_frame.to_csv(output_dir / "window_feature_importance.csv", index=False)
+
+    history_frame = pd.DataFrame(final_model.get("training_history", []))
+    history_frame.to_csv(output_dir / "training_history.csv", index=False)
+    (output_dir / "training_history.json").write_text(
+        json.dumps(final_model.get("training_history", []), indent=2),
+        encoding="utf-8",
+    )
+    (output_dir / "model_config.json").write_text(
+        json.dumps(final_model["model_config"], indent=2),
+        encoding="utf-8",
+    )
 
     pd.DataFrame(
         {
@@ -1234,13 +1594,17 @@ def save_training_outputs(
     metadata = {
         "config": asdict(config),
         "target": dataset.target_name,
+        "backend": final_model["backend"],
         "prepared_dir": str(dataset.prepared_dir),
         "report": dataset.report,
         "best_params": artifacts.params,
         "selected_feature_names": final_model["selected_feature_names"],
         "lag_steps": final_model["lag_steps"],
+        "window_size": final_model["window_size"],
+        "context_rows": final_model["context_rows"],
         "delta_feature_count": final_model["delta_feature_count"],
         "threshold": final_model["threshold"],
+        "model_config": final_model["model_config"],
         "cv_summary": summarize_fold_metrics(artifacts.fold_metrics),
         "cv_folds": artifacts.fold_metrics,
         "threshold_metrics": final_model["threshold_metrics"],
@@ -1258,6 +1622,7 @@ def train_target_pipeline(
     dataset: PreparedTargetDataset,
     config: OTETrainingConfig,
 ) -> Dict[str, object]:
+    validate_backend_config(config)
     seed_everything(config.random_seed)
 
     def objective(trial: optuna.Trial) -> float:
@@ -1309,6 +1674,8 @@ def parse_args() -> OTETrainingConfig:
     parser = argparse.ArgumentParser(description="Train OTE models on prepared target folders.")
     parser.add_argument("--prepared-root", default="data/prepared/eurusd_5min_ote_2000_v2")
     parser.add_argument("--output-root", default="models/ote_xgboost")
+    parser.add_argument("--backend", choices=["xgboost", "torch"], default="xgboost")
+    parser.add_argument("--model-type", choices=["tcn", "lstm"], default="tcn")
     parser.add_argument("--targets", nargs="+", default=["long_ote", "short_ote"])
     parser.add_argument("--trials", type=int, default=20)
     parser.add_argument("--cv-splits", type=int, default=3)
@@ -1320,12 +1687,26 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--event-tolerance-bars", type=int, default=2)
     parser.add_argument("--event-cooldown-bars", type=int, default=4)
     parser.add_argument("--calibration-method", choices=["platt", "isotonic", "none"], default="platt")
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--epochs", type=int, default=18)
+    parser.add_argument("--hidden-size", type=int, default=64)
+    parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.20)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--gradient-clip", type=float, default=1.0)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--window-size", type=int, default=24)
+    parser.add_argument("--use-amp", dest="use_amp", action="store_true")
+    parser.add_argument("--no-use-amp", dest="use_amp", action="store_false")
     parser.add_argument("--seed", type=int, default=42)
+    parser.set_defaults(use_amp=True)
     args = parser.parse_args()
 
     return OTETrainingConfig(
         prepared_root=args.prepared_root,
         output_root=args.output_root,
+        backend=args.backend,
+        model_type=args.model_type,
         targets=args.targets,
         n_trials=args.trials,
         cv_splits=args.cv_splits,
@@ -1337,6 +1718,16 @@ def parse_args() -> OTETrainingConfig:
         event_tolerance_bars=args.event_tolerance_bars,
         event_cooldown_bars=args.event_cooldown_bars,
         calibration_method=args.calibration_method,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        hidden_size=args.hidden_size,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
+        weight_decay=args.weight_decay,
+        gradient_clip=args.gradient_clip,
+        use_amp=args.use_amp,
+        learning_rate=args.learning_rate,
+        window_size=args.window_size,
         random_seed=args.seed,
     )
 

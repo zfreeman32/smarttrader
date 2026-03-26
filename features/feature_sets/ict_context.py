@@ -7,6 +7,8 @@ from ..config import FeatureBuilderConfig
 from ..registry import register_feature_set
 from ..transforms import bars_since_event, calculate_atr, detect_confirmed_swings, safe_divide
 
+Zone = tuple[float, float, int]
+
 
 def _distance_to_zone(price: float, lower: float, upper: float) -> float:
     if np.isnan(lower) or np.isnan(upper):
@@ -19,7 +21,7 @@ def _distance_to_zone(price: float, lower: float, upper: float) -> float:
 
 
 def _nearest_zone_stats(
-    zones: list[dict[str, float]],
+    zones: list[Zone],
     *,
     price: float,
     atr: float,
@@ -28,10 +30,17 @@ def _nearest_zone_stats(
     if not zones or atr <= 0:
         return np.nan, np.nan
 
-    distances = [_distance_to_zone(price, zone["lower"], zone["upper"]) for zone in zones]
-    nearest_idx = int(np.argmin(distances))
-    nearest = zones[nearest_idx]
-    return distances[nearest_idx] / atr, float(current_index - int(nearest["formed_idx"]))
+    nearest_distance = np.inf
+    nearest_age = np.nan
+    for lower, upper, formed_idx in zones:
+        distance = _distance_to_zone(price, lower, upper)
+        if distance < nearest_distance:
+            nearest_distance = distance
+            nearest_age = float(current_index - formed_idx)
+
+    if not np.isfinite(nearest_distance):
+        return np.nan, np.nan
+    return nearest_distance / atr, nearest_age
 
 
 @register_feature_set(
@@ -98,10 +107,27 @@ def build_ict_context(
     ).fillna(False)
 
     n_rows = len(df)
-    closes = df["close"].to_numpy(dtype=float)
-    highs = df["high"].to_numpy(dtype=float)
-    lows = df["low"].to_numpy(dtype=float)
-    atr_values = atr.ffill().fillna(0.0).to_numpy(dtype=float)
+    closes = df["close"].to_numpy(dtype=float, copy=False)
+    highs = df["high"].to_numpy(dtype=float, copy=False)
+    lows = df["low"].to_numpy(dtype=float, copy=False)
+    atr_values = atr.ffill().fillna(0.0).to_numpy(dtype=float, copy=False)
+    bull_fvg_form_values = bull_fvg_form.to_numpy(dtype=bool, copy=False)
+    bear_fvg_form_values = bear_fvg_form.to_numpy(dtype=bool, copy=False)
+    bull_ob_form_values = bull_ob_form.to_numpy(dtype=bool, copy=False)
+    bear_ob_form_values = bear_ob_form.to_numpy(dtype=bool, copy=False)
+    swing_high_event_values = swing_high_event.to_numpy(dtype=bool, copy=False)
+    swing_low_event_values = swing_low_event.to_numpy(dtype=bool, copy=False)
+    swing_high_levels_values = swing_high_levels.to_numpy(dtype=float, copy=False)
+    swing_low_levels_values = swing_low_levels.to_numpy(dtype=float, copy=False)
+    latest_swing_high_values = latest_swing_high.to_numpy(dtype=float, copy=False)
+    latest_swing_low_values = latest_swing_low.to_numpy(dtype=float, copy=False)
+    prior_high_values = df["high"].shift(1).to_numpy(dtype=float)
+    prior_low_values = df["low"].shift(1).to_numpy(dtype=float)
+    earlier_high_values = df["high"].shift(2).to_numpy(dtype=float)
+    earlier_low_values = df["low"].shift(2).to_numpy(dtype=float)
+    sweep_high_values = pd.to_numeric(sweep_high, errors="coerce").fillna(0).to_numpy(dtype=int, copy=False)
+    sweep_low_values = pd.to_numeric(sweep_low, errors="coerce").fillna(0).to_numpy(dtype=int, copy=False)
+    max_zone_age = config.ict_zone_max_age
 
     bull_fvg_count = np.zeros(n_rows, dtype=float)
     bear_fvg_count = np.zeros(n_rows, dtype=float)
@@ -123,12 +149,12 @@ def build_ict_context(
     choch_bull = np.zeros(n_rows, dtype=int)
     choch_bear = np.zeros(n_rows, dtype=int)
 
-    active_bull_fvgs: list[dict[str, float]] = []
-    active_bear_fvgs: list[dict[str, float]] = []
-    active_bull_obs: list[dict[str, float]] = []
-    active_bear_obs: list[dict[str, float]] = []
-    active_equal_highs: list[dict[str, float]] = []
-    active_equal_lows: list[dict[str, float]] = []
+    active_bull_fvgs: list[Zone] = []
+    active_bear_fvgs: list[Zone] = []
+    active_bull_obs: list[Zone] = []
+    active_bear_obs: list[Zone] = []
+    active_equal_highs: list[Zone] = []
+    active_equal_lows: list[Zone] = []
 
     previous_swing_high_level = np.nan
     previous_swing_high_idx = -1
@@ -148,71 +174,35 @@ def build_ict_context(
         current_low = lows[i]
 
         active_bull_fvgs = [
-            zone
-            for zone in active_bull_fvgs
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_low > zone["lower"]
+            zone for zone in active_bull_fvgs if (i - zone[2]) <= max_zone_age and current_low > zone[0]
         ]
         active_bear_fvgs = [
-            zone
-            for zone in active_bear_fvgs
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_high < zone["upper"]
+            zone for zone in active_bear_fvgs if (i - zone[2]) <= max_zone_age and current_high < zone[1]
         ]
         active_bull_obs = [
-            zone
-            for zone in active_bull_obs
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_close >= zone["lower"]
+            zone for zone in active_bull_obs if (i - zone[2]) <= max_zone_age and current_close >= zone[0]
         ]
         active_bear_obs = [
-            zone
-            for zone in active_bear_obs
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_close <= zone["upper"]
+            zone for zone in active_bear_obs if (i - zone[2]) <= max_zone_age and current_close <= zone[1]
         ]
         active_equal_highs = [
-            zone
-            for zone in active_equal_highs
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_high <= zone["upper"]
+            zone for zone in active_equal_highs if (i - zone[2]) <= max_zone_age and current_high <= zone[1]
         ]
         active_equal_lows = [
-            zone
-            for zone in active_equal_lows
-            if (i - zone["formed_idx"]) <= config.ict_zone_max_age and current_low >= zone["lower"]
+            zone for zone in active_equal_lows if (i - zone[2]) <= max_zone_age and current_low >= zone[0]
         ]
 
-        if bool(bull_fvg_form.iloc[i]):
-            active_bull_fvgs.append(
-                {
-                    "lower": float(df["high"].shift(2).iloc[i]),
-                    "upper": float(df["low"].iloc[i]),
-                    "formed_idx": float(i),
-                }
-            )
-        if bool(bear_fvg_form.iloc[i]):
-            active_bear_fvgs.append(
-                {
-                    "lower": float(df["high"].iloc[i]),
-                    "upper": float(df["low"].shift(2).iloc[i]),
-                    "formed_idx": float(i),
-                }
-            )
-        if bool(bull_ob_form.iloc[i]) and i >= 1:
-            active_bull_obs.append(
-                {
-                    "lower": float(df["low"].shift(1).iloc[i]),
-                    "upper": float(df["high"].shift(1).iloc[i]),
-                    "formed_idx": float(i),
-                }
-            )
-        if bool(bear_ob_form.iloc[i]) and i >= 1:
-            active_bear_obs.append(
-                {
-                    "lower": float(df["low"].shift(1).iloc[i]),
-                    "upper": float(df["high"].shift(1).iloc[i]),
-                    "formed_idx": float(i),
-                }
-            )
+        if bull_fvg_form_values[i] and np.isfinite(earlier_high_values[i]):
+            active_bull_fvgs.append((float(earlier_high_values[i]), float(lows[i]), i))
+        if bear_fvg_form_values[i] and np.isfinite(earlier_low_values[i]):
+            active_bear_fvgs.append((float(highs[i]), float(earlier_low_values[i]), i))
+        if bull_ob_form_values[i] and i >= 1 and np.isfinite(prior_low_values[i]) and np.isfinite(prior_high_values[i]):
+            active_bull_obs.append((float(prior_low_values[i]), float(prior_high_values[i]), i))
+        if bear_ob_form_values[i] and i >= 1 and np.isfinite(prior_low_values[i]) and np.isfinite(prior_high_values[i]):
+            active_bear_obs.append((float(prior_low_values[i]), float(prior_high_values[i]), i))
 
-        if bool(swing_high_event.iloc[i]) and np.isfinite(swing_high_levels.iloc[i]):
-            current_level = float(swing_high_levels.iloc[i])
+        if swing_high_event_values[i] and np.isfinite(swing_high_levels_values[i]):
+            current_level = float(swing_high_levels_values[i])
             tolerance = current_atr * config.ict_liquidity_tolerance_atr
             if (
                 np.isfinite(previous_swing_high_level)
@@ -222,19 +212,13 @@ def build_ict_context(
             ):
                 pool_level = (current_level + previous_swing_high_level) / 2.0
                 zone_tolerance = max(tolerance, previous_swing_high_tolerance)
-                active_equal_highs.append(
-                    {
-                        "lower": pool_level - zone_tolerance,
-                        "upper": pool_level + zone_tolerance,
-                        "formed_idx": float(i),
-                    }
-                )
+                active_equal_highs.append((pool_level - zone_tolerance, pool_level + zone_tolerance, i))
             previous_swing_high_level = current_level
             previous_swing_high_idx = i
             previous_swing_high_tolerance = tolerance
 
-        if bool(swing_low_event.iloc[i]) and np.isfinite(swing_low_levels.iloc[i]):
-            current_level = float(swing_low_levels.iloc[i])
+        if swing_low_event_values[i] and np.isfinite(swing_low_levels_values[i]):
+            current_level = float(swing_low_levels_values[i])
             tolerance = current_atr * config.ict_liquidity_tolerance_atr
             if (
                 np.isfinite(previous_swing_low_level)
@@ -244,19 +228,13 @@ def build_ict_context(
             ):
                 pool_level = (current_level + previous_swing_low_level) / 2.0
                 zone_tolerance = max(tolerance, previous_swing_low_tolerance)
-                active_equal_lows.append(
-                    {
-                        "lower": pool_level - zone_tolerance,
-                        "upper": pool_level + zone_tolerance,
-                        "formed_idx": float(i),
-                    }
-                )
+                active_equal_lows.append((pool_level - zone_tolerance, pool_level + zone_tolerance, i))
             previous_swing_low_level = current_level
             previous_swing_low_idx = i
             previous_swing_low_tolerance = tolerance
 
-        latest_high = latest_swing_high.iloc[i]
-        latest_low = latest_swing_low.iloc[i]
+        latest_high = latest_swing_high_values[i]
+        latest_low = latest_swing_low_values[i]
         break_buffer = current_atr * config.ict_break_buffer_atr
 
         bull_break = (
@@ -348,8 +326,8 @@ def build_ict_context(
 
     bos_any = pd.Series((bos_bull + bos_bear) > 0, index=df.index)
     choch_any = pd.Series((choch_bull + choch_bear) > 0, index=df.index)
-    sweep_any = (sweep_high.fillna(0).astype(int) + sweep_low.fillna(0).astype(int)) > 0
-    out["ict_bars_since_sweep_any"] = bars_since_event(pd.Series(sweep_any, index=df.index))
+    sweep_any = pd.Series((sweep_high_values + sweep_low_values) > 0, index=df.index)
+    out["ict_bars_since_sweep_any"] = bars_since_event(sweep_any)
     out["ict_bars_since_bos_any"] = bars_since_event(bos_any)
     out["ict_bars_since_choch_any"] = bars_since_event(choch_any)
 

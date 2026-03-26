@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import re
 import sys
+import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -28,6 +29,27 @@ def normalize_strategy_name(value: str) -> str:
 def slugify_strategy_name(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
     return slug or "strategy"
+
+
+def _run_strategy_with_legacy_pandas_compat(
+    builder: StrategyBuilder,
+    working: pd.DataFrame,
+) -> pd.DataFrame | pd.Series:
+    chained_assignment_warning = getattr(pd.errors, "ChainedAssignmentError", None)
+    setting_with_copy_warning = getattr(pd.errors, "SettingWithCopyWarning", None)
+
+    with pd.option_context("mode.copy_on_write", False):
+        with warnings.catch_warnings():
+            if chained_assignment_warning is not None:
+                warnings.simplefilter("ignore", chained_assignment_warning)
+            if setting_with_copy_warning is not None:
+                warnings.simplefilter("ignore", setting_with_copy_warning)
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*ChainedAssignmentError.*",
+                category=FutureWarning,
+            )
+            return builder(working)
 
 
 @dataclass(frozen=True)
@@ -97,7 +119,7 @@ class StrategyRegistry:
     ) -> pd.DataFrame:
         builder = self.load(name)
         working = df.copy(deep=True) if copy_input else df
-        built = builder(working)
+        built = _run_strategy_with_legacy_pandas_compat(builder, working)
         if isinstance(built, pd.Series):
             built = built.to_frame()
         if not isinstance(built, pd.DataFrame):
@@ -191,8 +213,17 @@ def _module_name_for_path(module_path: Path) -> str:
 
 def prepare_strategy_input(df: pd.DataFrame) -> pd.DataFrame:
     """Adapt the normalized feature-builder frame to legacy strategy expectations."""
-    prepared = df.copy(deep=True)
+    # Avoid an eager deep copy here; each strategy gets its own defensive copy
+    # right before execution.
+    prepared = df.copy(deep=False)
+    dt_index: pd.Series | None = None
 
+    if "datetime" in prepared.columns:
+        dt_index = pd.to_datetime(prepared["datetime"], errors="coerce")
+        if dt_index.notna().any():
+            prepared.index = dt_index
+
+    additions: dict[str, pd.Series] = {}
     alias_map = {
         "open": "Open",
         "high": "High",
@@ -202,16 +233,20 @@ def prepare_strategy_input(df: pd.DataFrame) -> pd.DataFrame:
     }
     for source, alias in alias_map.items():
         if source in prepared.columns and alias not in prepared.columns:
-            prepared[alias] = prepared[source]
+            additions[alias] = pd.Series(prepared[source].to_numpy(), index=prepared.index, name=alias)
 
-    if "datetime" in prepared.columns:
-        dt_index = pd.to_datetime(prepared["datetime"], errors="coerce")
-        if dt_index.notna().any():
-            prepared.index = dt_index
-            if "Date" not in prepared.columns:
-                prepared["Date"] = dt_index
-            if "Time" not in prepared.columns:
-                prepared["Time"] = dt_index.dt.strftime("%H:%M:%S")
+    if dt_index is not None and dt_index.notna().any():
+        if "Date" not in prepared.columns:
+            additions["Date"] = pd.Series(dt_index.to_numpy(), index=prepared.index, name="Date")
+        if "Time" not in prepared.columns:
+            additions["Time"] = pd.Series(
+                dt_index.dt.strftime("%H:%M:%S").to_numpy(),
+                index=prepared.index,
+                name="Time",
+            )
+
+    if additions:
+        prepared = pd.concat([prepared, pd.DataFrame(additions)], axis=1, copy=False)
 
     return prepared
 

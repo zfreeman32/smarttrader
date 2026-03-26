@@ -1,0 +1,32 @@
+# OTE end-to-end requirements
+# Covers:
+# - OTE labeling and analysis
+# - OTE review/manual labeling apps
+# - OTE feature engineering and preprocessing
+# - OTE XGBoost and PyTorch training
+
+# Core data stack
+numpy
+pandas
+joblib
+
+# Feature preprocessing / model utilities
+scikit-learn
+
+# Training backends and tuning
+optuna
+# xgboost
+# torch
+
+# Label review / analysis / plotting
+matplotlib
+plotly
+dash
+
+# Optional: install if you want to run the OTE test suite in this env
+pytest
+
+# Optional: install if you later enable strategy-signal feature modules
+# from the large features/strategies catalog
+ta
+TA-Lib

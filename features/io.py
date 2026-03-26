@@ -50,7 +50,8 @@ def standardize_market_frame(df: pd.DataFrame) -> pd.DataFrame:
 
     if "datetime" in df.columns:
         df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
-        df = df.sort_values("datetime").reset_index(drop=True)
+        if not df["datetime"].is_monotonic_increasing:
+            df = df.sort_values("datetime").reset_index(drop=True)
 
     for column in ("open", "high", "low", "close", "volume"):
         if column in df.columns:

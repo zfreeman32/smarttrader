@@ -14,9 +14,11 @@ It is designed to work with the newer prepared-data structure rather than the ol
 The trainer in [ote_xgboost_pipeline.py](/C:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/model_training/ote_training/ote_xgboost_pipeline.py) loads one prepared target folder at a time and trains a direction-specific OTE model with:
 
 - time-ordered train/validation/test data from `data/prepared/<dataset>/<target_name>/`
-- ranked feature loading from `features.json` and `feature_importance.csv`
+- ranked feature loading from `features.json` and `feature_importance_merged.csv` when present, otherwise `feature_importance.csv`
 - leakage filtering for obviously future-looking columns
-- causal sparse-window lag features
+- backend-aware temporal representations:
+  - causal sparse-window lag features for XGBoost
+  - dense sequence windows for PyTorch TCN/LSTM models
 - fold-safe robust scaling
 - purged walk-forward cross-validation
 - focal-loss training through a custom XGBoost objective
@@ -25,7 +27,7 @@ The trainer in [ote_xgboost_pipeline.py](/C:/Users/zebfr/Documents/All_Files/TRA
 - probability calibration
 - threshold selection using event-level metrics
 
-The current default backend is XGBoost because it is available in the local environment and runs end-to-end today.
+The current default backend is XGBoost, but the same prepared target folders can now also feed PyTorch TCN/LSTM models without changing the preprocessing output format.
 
 ## Why We Built It This Way
 
@@ -79,7 +81,7 @@ The OTE trainer loads:
 - `test.csv`
 - `report.json`
 - `features.json`
-- `feature_importance.csv`
+- `feature_importance_merged.csv` when present, otherwise `feature_importance.csv`
 
 It uses the feature ranking file to cap the number of loaded base features before window expansion. This keeps memory usage under control for larger datasets.
 
@@ -103,14 +105,19 @@ This is a safety layer on top of the preprocessing stage.
 
 The model does not consume one-row snapshots only.
 
-Instead it builds a sparse lag view:
+The pipeline now supports two temporal views built from the same prepared CSVs:
+
+- XGBoost path: a sparse lag view
+- PyTorch path: true sequence windows shaped like `(samples, window, features)`
+
+The sparse lag view still:
 
 - choose a window size
 - choose a number of lag anchors inside that window
 - keep the current row plus selected historical lag rows
 - optionally add delta features between the current row and older lag rows
 
-This gives temporal context without exploding memory like a fully dense sequence representation.
+The sequence path keeps the full causal window for TCN/LSTM backends.
 
 ### 5. Scaling
 
@@ -148,13 +155,13 @@ The goal is to focus the model on hard discriminations instead of learning to pr
 
 ### 8. Progressive Training
 
-Each booster is trained in phases:
+Each backend is trained in phases:
 
 1. Warmup on an early subset.
 2. Main training on the full fold.
 3. Fine-tuning with a reduced learning rate.
 
-This mirrors the staged-training idea from the OTE design notes while staying compatible with XGBoost.
+For XGBoost this is staged boosting. For PyTorch this is phased optimization with early stopping on validation AUPRC.
 
 ### 9. Calibration and Thresholding
 
@@ -184,10 +191,13 @@ After tuning, the trainer:
 
 Saved outputs include:
 
-- `model.json`
+- `model.json` for XGBoost or `model.pt` / `best_checkpoint.pt` for PyTorch
 - `scaler.joblib`
 - `calibrator.joblib` when calibration is enabled
+- `model_config.json`
 - `optuna_trials.csv`
+- `training_history.csv`
+- `training_history.json`
 - `window_feature_importance.csv`
 - `test_predictions.csv`
 - `training_summary.json`
@@ -228,15 +238,11 @@ No raw datetime column is stored in the split CSVs.
 
 ## Current Limitations
 
-### 1. No deep sequence backend in this environment
-
-The research notes point naturally toward TCN/LSTM-style models, but TensorFlow/PyTorch are not installed in the current environment. That is why the production-ready trainer here uses XGBoost with causal lag windows rather than a neural sequence model.
-
-### 2. Prepared split CSVs do not carry timestamps
+### 1. Prepared split CSVs do not carry timestamps
 
 This is intentional, but it means exported prediction files are row-index keyed unless you rejoin them to the original source dataset using split metadata and row order.
 
-### 3. This sample dataset is small
+### 2. This sample dataset is small
 
 The included `eurusd_5min_ote_2000_v2` dataset is useful for testing the pipeline, but real tuning quality will depend on the much larger dataset you mentioned.
 
@@ -248,6 +254,7 @@ Example:
 python -m model_training.ote_training.ote_xgboost_pipeline ^
   --prepared-root data/prepared/eurusd_5min_ote_2000_v2 ^
   --output-root models/ote_xgboost ^
+  --backend xgboost ^
   --targets long_ote short_ote ^
   --trials 20 ^
   --cv-splits 3
@@ -255,11 +262,16 @@ python -m model_training.ote_training.ote_xgboost_pipeline ^
 
 Useful flags:
 
+- `--backend`
+- `--model-type`
 - `--max-loaded-features`
 - `--top-feature-min`
 - `--top-feature-max`
 - `--window-min`
 - `--window-max`
+- `--window-size`
+- `--epochs`
+- `--batch-size`
 - `--event-tolerance-bars`
 - `--event-cooldown-bars`
 - `--calibration-method`
@@ -272,19 +284,15 @@ It validates:
 
 - lag-step generation
 - sparse lag feature alignment
+- sequence window alignment
 - event-level scoring for zone labels
 - focal-loss gradient behavior
 - a small cross-validation smoke path
+- torch forward passes when PyTorch is installed
+- a torch backend cross-validation smoke path when PyTorch is installed
 
 Run:
 
 ```bash
 pytest tests/test_ote_xgboost_pipeline.py -q
 ```
-
-## Recommended Next Steps
-
-- Add a timestamp rejoin utility for prediction review and debugging.
-- Add a TensorFlow TCN backend once the environment includes TensorFlow.
-- Compare the current XGBoost windowed model against a future deep sequence model on the larger dataset.
-- Add walk-forward trading simulation on top of the exported probabilities and event thresholds.

@@ -141,13 +141,16 @@ python -m features.cli build `
   --output data/features/eurusd_5min_ote_full_dataset.csv `
   --recipe features/recipes/ote_extended.json `
   --all-strategies `
-  --skip-strategy-errors
+  --skip-strategy-errors `
+  --progress
 ```
 
 Notes:
 
 - the output CSV already keeps your original label columns alongside the generated features
 - `--all-strategies` currently runs in best-effort mode and records skipped strategies in the `.metadata.json` sidecar
+- `--progress` prints live phase updates plus per-strategy status so long builds do not look stuck
+- `--strategy-timeout-seconds 300` skips a standalone strategy if it runs longer than five minutes; use `0` to disable the timeout
 - many standalone strategy scripts depend on the external `ta` package or on non-OHLCV inputs, so they will be skipped unless those dependencies and extra columns are available
 
 Compare the monolithic `all_strategies.py` functions against the standalone strategy folder:
