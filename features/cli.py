@@ -6,9 +6,10 @@ from pathlib import Path
 from threading import Lock
 from time import perf_counter
 
+from preprocessing.cli import add_prepare_arguments, run_prepare_command
+
 from .builder import FeatureDatasetBuilder
 from .config import FeatureBuilderConfig
-from .preprocessing import FeaturePreprocessingPipeline, PreprocessingConfig
 from .progress import FeatureBuildProgressEvent
 from .registry import FEATURE_REGISTRY
 from .strategy_registry import STRATEGY_REGISTRY
@@ -37,6 +38,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--recipe",
         default=str(_recipes_dir() / "ote_base.json"),
         help="Recipe JSON path",
+    )
+    build_parser.add_argument(
+        "--source-timezone",
+        default=None,
+        help="Timezone for naive input timestamps, for example UTC, America/New_York, or GMT-6.",
+    )
+    build_parser.add_argument(
+        "--canonical-timezone",
+        default=None,
+        help="Canonical storage timezone for normalized datetimes. Defaults to UTC.",
+    )
+    build_parser.add_argument(
+        "--feature-clock-timezone",
+        default=None,
+        help="Timezone used for cyclical hour/day features and strategy clock fields.",
+    )
+    build_parser.add_argument(
+        "--market-close-timezone",
+        default=None,
+        help="Timezone that defines FX market-day and market-week close boundaries.",
     )
     build_parser.add_argument(
         "--feature-set",
@@ -88,44 +109,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     build_parser.set_defaults(handler=_handle_build)
 
-    preprocess_parser = subparsers.add_parser("preprocess", help="Prepare generated features for model training")
-    preprocess_parser.add_argument("input", help="Input feature CSV")
-    preprocess_parser.add_argument("--output-dir", required=True, help="Directory for prepared datasets and reports")
-    preprocess_parser.add_argument(
-        "--metadata",
-        default=None,
-        help="Optional metadata sidecar path. Defaults to INPUT with .metadata.json",
+    preprocess_parser = subparsers.add_parser(
+        "preprocess",
+        help="Prepare generated features for model training",
     )
-    preprocess_parser.add_argument(
-        "--target",
-        action="append",
-        default=None,
-        help="Specific target column(s) to prepare. Repeatable.",
-    )
-    preprocess_parser.add_argument(
-        "--scaler",
-        default="none",
-        choices=["none", "robust", "standard"],
-        help="Optional feature scaler to fit on the training split",
-    )
-    preprocess_parser.add_argument(
-        "--corr-threshold",
-        type=float,
-        default=0.98,
-        help="Absolute correlation threshold for collinearity pruning",
-    )
-    preprocess_parser.add_argument(
-        "--similarity-threshold",
-        type=float,
-        default=0.995,
-        help="Absolute correlation threshold for near-duplicate similarity reporting",
-    )
-    preprocess_parser.add_argument(
-        "--max-analysis-rows",
-        type=int,
-        default=10_000,
-        help="Cap for expensive analysis steps like correlation and importance scans",
-    )
+    add_prepare_arguments(preprocess_parser)
     preprocess_parser.set_defaults(handler=_handle_preprocess)
 
     return parser
@@ -293,6 +281,14 @@ def _handle_build(args: argparse.Namespace) -> int:
         config.strategy_timeout_seconds = None if args.strategy_timeout_seconds <= 0 else args.strategy_timeout_seconds
     if args.optimize_memory:
         config.optimize_feature_dtypes = True
+    if args.source_timezone is not None:
+        config.source_timezone = args.source_timezone
+    if args.canonical_timezone is not None:
+        config.canonical_timezone = args.canonical_timezone
+    if args.feature_clock_timezone is not None:
+        config.feature_clock_timezone = args.feature_clock_timezone
+    if args.market_close_timezone is not None:
+        config.market_close_timezone = args.market_close_timezone
 
     selected_strategies = list(config.strategy_ids)
     if args.strategy:
@@ -326,30 +322,7 @@ def _handle_build(args: argparse.Namespace) -> int:
 
 
 def _handle_preprocess(args: argparse.Namespace) -> int:
-    config = PreprocessingConfig(
-        target_columns=args.target or PreprocessingConfig().target_columns,
-        scaler_type=args.scaler,
-        correlation_threshold=args.corr_threshold,
-        similarity_threshold=args.similarity_threshold,
-        max_analysis_rows=args.max_analysis_rows,
-    )
-    pipeline = FeaturePreprocessingPipeline(config)
-    summary = pipeline.run(
-        args.input,
-        args.output_dir,
-        metadata_path=args.metadata,
-    )
-
-    print(f"Prepared outputs: {args.output_dir}")
-    print(f"Feature pool:     {summary['feature_pool']['encoded_feature_count']:,} encoded features")
-    print("Targets:")
-    for target_name, result in summary["targets"].items():
-        print(
-            f"  - {target_name:<12} rows={result['usable_rows']:,} "
-            f"features={result['selected_features']:,} "
-            f"readiness={result['readiness_score']:>5.1f} ({result['readiness_grade']})"
-        )
-    return 0
+    return run_prepare_command(args)
 
 
 def main() -> int:

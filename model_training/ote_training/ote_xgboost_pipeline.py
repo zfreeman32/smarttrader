@@ -34,7 +34,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.preprocessing import RobustScaler
 
-from model_training.ote_training.feature_ranking import ranking_sort_column, resolve_ranking_path
+from model_training.ote_training.feature_ranking import (
+    ranking_file_candidates_for_backend,
+    ranking_sort_column,
+    resolve_ranking_path,
+)
 
 LEAKAGE_PATTERNS = (
     "target_profit",
@@ -58,17 +62,22 @@ EPS = 1e-9
 
 @dataclass
 class OTETrainingConfig:
-    prepared_root: str = "data/prepared/eurusd_5min_ote_2000_v2"
+    prepared_root: str = "data/prepared/eurusd_5min_ote_full"
     targets: List[str] = field(default_factory=lambda: ["long_ote", "short_ote"])
-    output_root: str = "models/ote_xgboost"
+    output_root: str = "models/ote_full_xgb_v2"
     backend: str = "xgboost"
     model_type: str = "tcn"
     random_seed: int = 42
     n_trials: int = 20
-    cv_splits: int = 3
-    min_train_rows: int = 350
-    min_val_rows: int = 160
-    min_positive_per_fold: int = 3
+    cv_initial_train_rows: int = 250_000
+    cv_val_rows: int = 100_000
+    cv_step_rows: int = 100_000
+    cv_max_train_rows: Optional[int] = None
+    cv_min_folds: int = 2
+    min_train_positive_rows: int = 1000
+    min_val_positive_rows: int = 300
+    min_val_true_events: int = 50
+    final_eval_min_rows: int = 160
     max_loaded_features: int = 160
     top_feature_min: int = 24
     top_feature_max: int = 128
@@ -81,7 +90,10 @@ class OTETrainingConfig:
     scale_quantile_low: float = 5.0
     scale_quantile_high: float = 95.0
     scale_clip: float = 8.0
-    purge_additional_bars: int = 12
+    label_max_holding_bars: int = 120
+    label_exclusion_pre_bars: int = 10
+    label_zone_pre_bars: int = 2
+    purge_buffer_bars: int = 12
     threshold_grid_size: int = 31
     event_tolerance_bars: int = 2
     event_cooldown_bars: int = 4
@@ -99,6 +111,12 @@ class OTETrainingConfig:
     use_amp: bool = True
     learning_rate: float = 1e-3
     window_size: int = 24
+    torch_warmup_epochs: Optional[int] = None
+    torch_main_epochs: Optional[int] = None
+    torch_fine_epochs: Optional[int] = None
+    torch_tail_epochs: int = 0
+    torch_fine_lr_scale: float = 0.35
+    torch_tail_lr_scale: float = 0.10
     verbosity: int = 1
 
 
@@ -118,6 +136,11 @@ class PreparedTargetDataset:
     X_test: np.ndarray
     y_test: np.ndarray
     w_test: np.ndarray
+    source_row_idx_train: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
+    source_row_idx_val: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
+    source_row_idx_test: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
+    prepared_summary: Dict[str, object] = field(default_factory=dict)
+    prepared_summary_path: str | None = None
 
     @property
     def dev_X(self) -> np.ndarray:
@@ -131,6 +154,34 @@ class PreparedTargetDataset:
     def dev_w(self) -> np.ndarray:
         return np.concatenate([self.w_train, self.w_val], axis=0)
 
+    @property
+    def dev_source_row_idx(self) -> np.ndarray:
+        train = self._normalize_source_row_idx(self.source_row_idx_train, len(self.y_train))
+        val = self._normalize_source_row_idx(self.source_row_idx_val, len(self.y_val))
+        return np.concatenate([train, val], axis=0)
+
+    @property
+    def test_source_row_idx(self) -> np.ndarray:
+        return self._normalize_source_row_idx(self.source_row_idx_test, len(self.y_test))
+
+    @staticmethod
+    def _normalize_source_row_idx(values: np.ndarray, expected_length: int) -> np.ndarray:
+        if expected_length == 0:
+            return np.empty(0, dtype=np.int64)
+        if values.size != expected_length:
+            return np.full(expected_length, -1, dtype=np.int64)
+        return np.ascontiguousarray(values, dtype=np.int64)
+
+
+@dataclass
+class FoldPlan:
+    fold: int
+    train_start: int
+    train_end: int
+    val_start: int
+    val_end: int
+    purge_bars: int
+
 
 @dataclass
 class TrialArtifacts:
@@ -138,10 +189,14 @@ class TrialArtifacts:
     oof_pred: np.ndarray
     fold_metrics: List[Dict[str, float]]
     selected_feature_names: List[str]
+    oof_fold_id: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int16))
+    fold_plans: List[Dict[str, Any]] = field(default_factory=list)
+    fold_diagnostics: List[Dict[str, Any]] = field(default_factory=list)
     lag_steps: List[int] = field(default_factory=list)
     backend: str = "xgboost"
     window_size: int = 1
     context_rows: int = 0
+    resolved_purge_bars: int = 0
 
 
 @dataclass
@@ -189,9 +244,15 @@ def blocked_for_leakage(feature_name: str) -> bool:
 def load_ranked_features(
     prepared_dir: Path,
     max_loaded_features: int,
+    *,
+    backend: str = "xgboost",
+    model_type: str | None = None,
 ) -> List[str]:
     features_path = prepared_dir / "features.json"
-    ranking_path = resolve_ranking_path(prepared_dir)
+    ranking_path = resolve_ranking_path(
+        prepared_dir,
+        candidate_filenames=ranking_file_candidates_for_backend(backend, model_type),
+    )
 
     with features_path.open("r", encoding="utf-8") as handle:
         raw_features = json.load(handle)["features"]
@@ -233,27 +294,55 @@ def load_prepared_target_dataset(
     config: OTETrainingConfig,
 ) -> PreparedTargetDataset:
     prepared_dir = prepared_root / target_name
+    prepared_summary_path = prepared_root / "summary.json"
     report_path = prepared_dir / "report.json"
+    prepared_summary = (
+        json.loads(prepared_summary_path.read_text(encoding="utf-8"))
+        if prepared_summary_path.exists()
+        else {}
+    )
     report = json.loads(report_path.read_text(encoding="utf-8"))
 
-    ranked_features = load_ranked_features(prepared_dir, config.max_loaded_features)
+    ranked_features = load_ranked_features(
+        prepared_dir,
+        config.max_loaded_features,
+        backend=config.backend,
+        model_type=config.model_type,
+    )
     usecols = ranked_features + ["target", "sample_weight"]
 
-    def read_split(split_name: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        frame = pd.read_csv(prepared_dir / f"{split_name}.csv", usecols=usecols)
+    def read_split(split_name: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        split_path = prepared_dir / f"{split_name}.csv"
+        header = pd.read_csv(split_path, nrows=0)
+        split_usecols = list(usecols)
+        has_source_row_idx = "source_row_idx" in header.columns
+        if has_source_row_idx:
+            split_usecols = ["source_row_idx"] + split_usecols
+
+        frame = pd.read_csv(split_path, usecols=split_usecols)
         frame = frame.replace([np.inf, -np.inf], np.nan)
         feature_frame = frame[ranked_features].astype(np.float32).fillna(0.0)
         target = frame["target"].astype(np.uint8).to_numpy(copy=True)
         weight = frame["sample_weight"].astype(np.float32).fillna(1.0).to_numpy(copy=True)
+        if has_source_row_idx:
+            source_row_idx = (
+                pd.to_numeric(frame["source_row_idx"], errors="coerce")
+                .fillna(-1)
+                .astype(np.int64)
+                .to_numpy(copy=True)
+            )
+        else:
+            source_row_idx = np.full(len(frame), -1, dtype=np.int64)
         return (
             np.ascontiguousarray(feature_frame.to_numpy(copy=True), dtype=np.float32),
             np.ascontiguousarray(target, dtype=np.uint8),
             np.ascontiguousarray(weight, dtype=np.float32),
+            np.ascontiguousarray(source_row_idx, dtype=np.int64),
         )
 
-    X_train, y_train, w_train = read_split("train")
-    X_val, y_val, w_val = read_split("val")
-    X_test, y_test, w_test = read_split("test")
+    X_train, y_train, w_train, source_row_idx_train = read_split("train")
+    X_val, y_val, w_val, source_row_idx_val = read_split("val")
+    X_test, y_test, w_test, source_row_idx_test = read_split("test")
 
     return PreparedTargetDataset(
         target_name=target_name,
@@ -261,6 +350,8 @@ def load_prepared_target_dataset(
         feature_names=ranked_features,
         ranked_features=ranked_features,
         report=report,
+        prepared_summary=prepared_summary,
+        prepared_summary_path=str(prepared_summary_path) if prepared_summary_path.exists() else None,
         X_train=X_train,
         y_train=y_train,
         w_train=w_train,
@@ -270,7 +361,30 @@ def load_prepared_target_dataset(
         X_test=X_test,
         y_test=y_test,
         w_test=w_test,
+        source_row_idx_train=source_row_idx_train,
+        source_row_idx_val=source_row_idx_val,
+        source_row_idx_test=source_row_idx_test,
     )
+
+
+def resolve_dataset_timezone_contract(dataset: PreparedTargetDataset) -> Dict[str, object]:
+    report_contract = dataset.report.get("timezone_contract", {})
+    if isinstance(report_contract, dict) and report_contract:
+        return report_contract
+    prepared_summary_contract = dataset.prepared_summary.get("timezone_contract", {})
+    if isinstance(prepared_summary_contract, dict):
+        return prepared_summary_contract
+    return {}
+
+
+def resolve_dataset_source_lineage(dataset: PreparedTargetDataset) -> Dict[str, object]:
+    report_lineage = dataset.report.get("source_lineage", {})
+    if isinstance(report_lineage, dict) and report_lineage:
+        return report_lineage
+    prepared_summary_lineage = dataset.prepared_summary.get("source_lineage", {})
+    if isinstance(prepared_summary_lineage, dict):
+        return prepared_summary_lineage
+    return {}
 
 
 def make_lag_steps(window_size: int, lag_count: int) -> List[int]:
@@ -365,6 +479,45 @@ def validate_backend_config(config: OTETrainingConfig) -> None:
         raise ValueError(f"Unsupported backend: {config.backend}")
     if config.backend == "torch" and config.model_type not in {"tcn", "lstm"}:
         raise ValueError(f"Unsupported torch model type: {config.model_type}")
+    if config.backend != "torch":
+        return
+
+    if config.torch_fine_lr_scale <= 0:
+        raise ValueError("Torch fine LR scale must be positive.")
+    if config.torch_tail_lr_scale <= 0:
+        raise ValueError("Torch tail LR scale must be positive.")
+    if config.torch_tail_epochs < 0:
+        raise ValueError("Torch tail epochs cannot be negative.")
+
+    phase_values = {
+        "torch_warmup_epochs": config.torch_warmup_epochs,
+        "torch_main_epochs": config.torch_main_epochs,
+        "torch_fine_epochs": config.torch_fine_epochs,
+    }
+    explicit_schedule = any(value is not None for value in phase_values.values()) or config.torch_tail_epochs > 0
+    if not explicit_schedule:
+        return
+
+    missing = [name for name, value in phase_values.items() if value is None]
+    if missing:
+        missing_csv = ", ".join(missing)
+        raise ValueError(
+            "Explicit torch phase scheduling requires warmup, main, and fine epoch counts. "
+            f"Missing: {missing_csv}"
+        )
+
+    phase_sum = int(config.torch_tail_epochs)
+    for name, value in phase_values.items():
+        if int(value) < 0:
+            raise ValueError(f"{name} cannot be negative.")
+        phase_sum += int(value)
+    if phase_sum != int(config.epochs):
+        raise ValueError(
+            "Explicit torch phase schedule must sum to total epochs. "
+            f"Got warmup/main/fine/tail={config.torch_warmup_epochs}/"
+            f"{config.torch_main_epochs}/{config.torch_fine_epochs}/{config.torch_tail_epochs} "
+            f"for epochs={config.epochs}."
+        )
 
 
 def resolve_trial_window_size(
@@ -375,6 +528,54 @@ def resolve_trial_window_size(
     if window_size <= 0:
         raise ValueError(f"Window size must be positive, got {window_size}.")
     return window_size
+
+
+def resolve_purge_bars(config: OTETrainingConfig, context_rows: int) -> int:
+    base = max(
+        config.label_max_holding_bars,
+        config.label_exclusion_pre_bars + config.label_zone_pre_bars,
+        context_rows,
+        config.event_tolerance_bars + config.event_cooldown_bars,
+    )
+    return int(base + config.purge_buffer_bars)
+
+
+def max_context_rows_for_config(config: OTETrainingConfig) -> int:
+    max_window_size = max(int(config.window_size), int(config.window_max))
+    return max(max_window_size - 1, 0)
+
+
+def validate_cv_geometry_for_dataset(
+    dataset: PreparedTargetDataset,
+    config: OTETrainingConfig,
+) -> None:
+    max_context_rows = max_context_rows_for_config(config)
+    resolved_purge_bars = resolve_purge_bars(config, context_rows=max_context_rows)
+    required_rows = (
+        int(config.cv_initial_train_rows)
+        + resolved_purge_bars
+        + int(config.cv_val_rows)
+        + max(int(config.cv_min_folds) - 1, 0) * int(config.cv_step_rows)
+    )
+    available_rows = int(len(dataset.dev_X))
+
+    if available_rows < required_rows:
+        suggestion = ""
+        prepared_dir = str(dataset.prepared_dir).replace("\\", "/").lower()
+        if prepared_dir.endswith("eurusd_5min_ote_2000_v2"):
+            suggestion = (
+                " The current V2 geometry is intended for the full prepared dataset. "
+                "Try --prepared-root data/prepared/eurusd_5min_ote_full."
+            )
+
+        raise ValueError(
+            f"Dataset {dataset.target_name!r} at {dataset.prepared_dir} has {available_rows} development rows, "
+            f"but the configured V2 walk-forward geometry needs at least {required_rows} rows "
+            f"(initial_train={config.cv_initial_train_rows}, val_rows={config.cv_val_rows}, "
+            f"step_rows={config.cv_step_rows}, min_folds={config.cv_min_folds}, "
+            f"max_context_rows={max_context_rows}, resolved_purge_bars={resolved_purge_bars})."
+            f"{suggestion}"
+        )
 
 
 def fit_scaler(train_matrix: np.ndarray, config: OTETrainingConfig) -> RobustScaler:
@@ -586,41 +787,65 @@ def select_operating_threshold(
 class PurgedWalkForwardSplitter:
     def __init__(
         self,
-        n_splits: int,
-        min_train_rows: int,
-        min_val_rows: int,
+        initial_train_rows: int,
+        val_rows: int,
+        step_rows: int,
         purge_bars: int,
+        max_train_rows: Optional[int] = None,
+        min_folds: int = 2,
     ) -> None:
-        self.n_splits = n_splits
-        self.min_train_rows = min_train_rows
-        self.min_val_rows = min_val_rows
-        self.purge_bars = purge_bars
+        if initial_train_rows <= 0:
+            raise ValueError(f"Initial train rows must be positive, got {initial_train_rows}.")
+        if val_rows <= 0:
+            raise ValueError(f"Validation rows must be positive, got {val_rows}.")
+        if step_rows <= 0:
+            raise ValueError(f"Step rows must be positive, got {step_rows}.")
+        if purge_bars < 0:
+            raise ValueError(f"Purge bars must be non-negative, got {purge_bars}.")
+        if max_train_rows is not None and max_train_rows <= 0:
+            raise ValueError(f"Max train rows must be positive, got {max_train_rows}.")
+        if min_folds <= 0:
+            raise ValueError(f"Minimum folds must be positive, got {min_folds}.")
 
-    def split(self, n_rows: int) -> List[Tuple[np.ndarray, np.ndarray]]:
-        if n_rows < (self.min_train_rows + self.min_val_rows + self.purge_bars):
+        self.initial_train_rows = initial_train_rows
+        self.val_rows = val_rows
+        self.step_rows = step_rows
+        self.purge_bars = purge_bars
+        self.max_train_rows = max_train_rows
+        self.min_folds = min_folds
+
+    def split(self, n_rows: int) -> List[FoldPlan]:
+        if n_rows < (self.initial_train_rows + self.val_rows + self.purge_bars):
             raise ValueError(
-                f"Not enough rows ({n_rows}) for min_train={self.min_train_rows}, "
-                f"min_val={self.min_val_rows}, purge={self.purge_bars}."
+                f"Not enough rows ({n_rows}) for initial_train={self.initial_train_rows}, "
+                f"val_rows={self.val_rows}, purge={self.purge_bars}."
             )
 
-        usable_after_train = n_rows - self.min_train_rows - self.purge_bars
-        val_rows = max(self.min_val_rows, usable_after_train // self.n_splits)
+        folds: List[FoldPlan] = []
+        train_end = self.initial_train_rows
 
-        folds: List[Tuple[np.ndarray, np.ndarray]] = []
-        train_end = self.min_train_rows
-        while len(folds) < self.n_splits:
+        while True:
+            train_start = 0
+            if self.max_train_rows is not None:
+                train_start = max(0, train_end - self.max_train_rows)
             val_start = train_end + self.purge_bars
-            val_end = min(val_start + val_rows, n_rows)
-            if (val_end - val_start) < self.min_val_rows:
+            val_end = val_start + self.val_rows
+            if val_end > n_rows:
                 break
-            train_idx = np.arange(0, train_end, dtype=np.int64)
-            val_idx = np.arange(val_start, val_end, dtype=np.int64)
-            folds.append((train_idx, val_idx))
-            if val_end >= n_rows:
-                break
-            train_end = val_end
 
-        if len(folds) < 2:
+            folds.append(
+                FoldPlan(
+                    fold=len(folds) + 1,
+                    train_start=int(train_start),
+                    train_end=int(train_end),
+                    val_start=int(val_start),
+                    val_end=int(val_end),
+                    purge_bars=int(self.purge_bars),
+                )
+            )
+            train_end += self.step_rows
+
+        if len(folds) < self.min_folds:
             raise ValueError(
                 f"Unable to create enough temporal folds. Generated {len(folds)} folds for {n_rows} rows."
             )
@@ -854,7 +1079,7 @@ def build_torch_training_config(
         "model_type": config.model_type,
         "input_size": input_size,
         "hidden_size": int(config.hidden_size),
-        "num_layers": int(config.num_layers),
+        "num_layers": int(params.get("num_layers", config.num_layers)),
         "dropout": float(config.dropout),
         "batch_size": int(config.batch_size),
         "epochs": int(config.epochs),
@@ -864,6 +1089,12 @@ def build_torch_training_config(
         "learning_rate": float(params.get("learning_rate", config.learning_rate)),
         "focal_alpha": float(params["focal_alpha"]),
         "focal_gamma": float(params["focal_gamma"]),
+        "warmup_epochs": None if config.torch_warmup_epochs is None else int(config.torch_warmup_epochs),
+        "main_epochs": None if config.torch_main_epochs is None else int(config.torch_main_epochs),
+        "fine_epochs": None if config.torch_fine_epochs is None else int(config.torch_fine_epochs),
+        "tail_epochs": int(config.torch_tail_epochs),
+        "fine_lr_scale": float(config.torch_fine_lr_scale),
+        "tail_lr_scale": float(config.torch_tail_lr_scale),
         "verbosity": int(config.verbosity),
         "seed": int(config.random_seed),
     }
@@ -1041,6 +1272,40 @@ def build_sequence_fold_datasets(
     return X_train, y_train, w_train, X_val, y_val, w_val
 
 
+def build_fold_diagnostics(
+    fold_plan: FoldPlan,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    window_size: int,
+    context_rows: int,
+) -> Dict[str, Any]:
+    train_positive_rows = int(np.sum(y_train))
+    val_positive_rows = int(np.sum(y_val))
+    train_true_events = len(group_positive_zones(y_train))
+    val_true_events = len(group_positive_zones(y_val))
+
+    return {
+        "fold": int(fold_plan.fold),
+        "train_start_row": int(fold_plan.train_start),
+        "train_end_row": int(fold_plan.train_end - 1),
+        "val_start_row": int(fold_plan.val_start),
+        "val_end_row": int(fold_plan.val_end - 1),
+        "train_rows_raw": int(fold_plan.train_end - fold_plan.train_start),
+        "val_rows_raw": int(fold_plan.val_end - fold_plan.val_start),
+        "train_rows_model": int(len(X_train)),
+        "val_rows_model": int(len(X_val)),
+        "train_positive_rows": train_positive_rows,
+        "val_positive_rows": val_positive_rows,
+        "train_true_events": int(train_true_events),
+        "val_true_events": int(val_true_events),
+        "purge_bars": int(fold_plan.purge_bars),
+        "window_size": int(window_size),
+        "context_rows": int(context_rows),
+    }
+
+
 def apply_fold_training_weights(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -1164,7 +1429,20 @@ def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -
 def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
     max_top_features = min(config.top_feature_max, config.max_loaded_features)
     min_top_features = min(config.top_feature_min, max_top_features)
-    default_window = int(np.clip(config.window_size, config.window_min, config.window_max))
+    min_window = int(min(config.window_min, config.window_max))
+    max_window = int(max(config.window_min, config.window_max))
+    if min_window == max_window:
+        window_size = min_window
+    else:
+        window_size = trial.suggest_int("window_size", min_window, max_window, step=4)
+
+    if config.model_type == "tcn":
+        min_num_layers = 2
+        max_num_layers = max(4, int(config.num_layers))
+    else:
+        min_num_layers = 1
+        max_num_layers = max(3, int(config.num_layers))
+
     lower_lr = max(config.learning_rate / 5.0, 1e-5)
     upper_lr = max(config.learning_rate * 5.0, lower_lr * 1.5)
     return {
@@ -1174,7 +1452,8 @@ def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> 
             max_top_features,
             step=config.top_feature_step,
         ),
-        "window_size": float(default_window),
+        "window_size": int(window_size),
+        "num_layers": int(trial.suggest_int("num_layers", min_num_layers, max_num_layers)),
         "learning_rate": trial.suggest_float("learning_rate", lower_lr, upper_lr, log=True),
         "focal_alpha": trial.suggest_float("focal_alpha", 0.70, 0.95),
         "focal_gamma": trial.suggest_float("focal_gamma", 1.25, 3.75),
@@ -1211,26 +1490,30 @@ def cross_validate_trial(
         lag_steps = make_lag_steps(window_size=window_size, lag_count=lag_count)
         context_rows = max(lag_steps)
 
-    purge_bars = max(
-        window_size + config.purge_additional_bars,
-        config.event_tolerance_bars + config.event_cooldown_bars,
-    )
+    purge_bars = resolve_purge_bars(config=config, context_rows=context_rows)
 
     selected_feature_names = dataset.ranked_features[:top_features]
     selected_feature_idx = np.arange(top_features, dtype=np.int64)
 
     splitter = PurgedWalkForwardSplitter(
-        n_splits=config.cv_splits,
-        min_train_rows=max(config.min_train_rows, window_size * 3),
-        min_val_rows=max(config.min_val_rows, window_size * 2),
+        initial_train_rows=max(config.cv_initial_train_rows, context_rows + 1),
+        val_rows=config.cv_val_rows,
+        step_rows=config.cv_step_rows,
         purge_bars=purge_bars,
+        max_train_rows=config.cv_max_train_rows,
+        min_folds=config.cv_min_folds,
     )
     folds = splitter.split(len(dataset.dev_X))
 
     oof_predictions = np.full(len(dataset.dev_y), np.nan, dtype=np.float32)
+    oof_fold_id = np.full(len(dataset.dev_y), -1, dtype=np.int16)
     fold_metrics: List[Dict[str, float]] = []
+    fold_plans = [asdict(fold) for fold in folds]
+    fold_diagnostics: List[Dict[str, Any]] = []
 
-    for fold_index, (train_idx, val_idx) in enumerate(folds, start=1):
+    for fold_plan in folds:
+        train_idx = np.arange(fold_plan.train_start, fold_plan.train_end, dtype=np.int64)
+        val_idx = np.arange(fold_plan.val_start, fold_plan.val_end, dtype=np.int64)
         if config.backend == "xgboost":
             X_train, y_train, w_train, X_val, y_val, w_val = build_xgboost_fold_datasets(
                 X_dev=dataset.dev_X,
@@ -1255,9 +1538,29 @@ def cross_validate_trial(
                 config=config,
             )
 
-        if int(np.sum(y_train)) < config.min_positive_per_fold or int(np.sum(y_val)) < config.min_positive_per_fold:
+        diagnostics = build_fold_diagnostics(
+            fold_plan=fold_plan,
+            X_train=X_train,
+            y_train=y_train,
+            X_val=X_val,
+            y_val=y_val,
+            window_size=window_size,
+            context_rows=context_rows,
+        )
+        if diagnostics["train_positive_rows"] < config.min_train_positive_rows:
             raise optuna.TrialPruned(
-                f"Insufficient positives in fold {fold_index}: train={int(np.sum(y_train))}, val={int(np.sum(y_val))}"
+                f"Insufficient train positives in fold {fold_plan.fold}: "
+                f"{diagnostics['train_positive_rows']} < {config.min_train_positive_rows}."
+            )
+        if diagnostics["val_positive_rows"] < config.min_val_positive_rows:
+            raise optuna.TrialPruned(
+                f"Insufficient validation positives in fold {fold_plan.fold}: "
+                f"{diagnostics['val_positive_rows']} < {config.min_val_positive_rows}."
+            )
+        if diagnostics["val_true_events"] < config.min_val_true_events:
+            raise optuna.TrialPruned(
+                f"Insufficient validation true events in fold {fold_plan.fold}: "
+                f"{diagnostics['val_true_events']} < {config.min_val_true_events}."
             )
 
         probabilities, metrics = train_and_score_fold(
@@ -1269,11 +1572,13 @@ def cross_validate_trial(
             w_val=w_val,
             params=params,
             config=config,
-            seed=config.random_seed + fold_index,
+            seed=config.random_seed + fold_plan.fold,
         )
         oof_predictions[val_idx] = probabilities
-        metrics["fold"] = float(fold_index)
+        oof_fold_id[val_idx] = int(fold_plan.fold)
+        metrics["fold"] = int(fold_plan.fold)
         fold_metrics.append(metrics)
+        fold_diagnostics.append(diagnostics)
 
         if trial is not None:
             running_score = np.mean(
@@ -1282,7 +1587,7 @@ def cross_validate_trial(
                     for fold in fold_metrics
                 ]
             )
-            trial.report(running_score, step=fold_index)
+            trial.report(running_score, step=fold_plan.fold)
             if trial.should_prune():
                 raise optuna.TrialPruned()
 
@@ -1293,10 +1598,14 @@ def cross_validate_trial(
         oof_pred=oof_predictions,
         fold_metrics=fold_metrics,
         selected_feature_names=selected_feature_names,
+        oof_fold_id=oof_fold_id,
+        fold_plans=fold_plans,
+        fold_diagnostics=fold_diagnostics,
         lag_steps=lag_steps,
         backend=config.backend,
         window_size=window_size,
         context_rows=context_rows,
+        resolved_purge_bars=purge_bars,
     )
 
 
@@ -1359,7 +1668,7 @@ def fit_final_model(
     if len(X_dev_windowed) < 64:
         raise ValueError("Not enough development rows after windowing to fit the final model.")
 
-    eval_rows = max(context_rows + config.min_val_rows, int(len(X_dev_windowed) * 0.15))
+    eval_rows = max(context_rows + config.final_eval_min_rows, int(len(X_dev_windowed) * 0.15))
     eval_rows = min(eval_rows, len(X_dev_windowed) - 32)
     if eval_rows < 32:
         eval_rows = min(64, max(32, len(X_dev_windowed) // 4))
@@ -1419,7 +1728,7 @@ def fit_final_model(
 
     if len(np.unique(y_for_calibration)) < 2:
         calibrator = None
-        calibrated_oof = oof_for_calibration.astype(np.float32, copy=False)
+        calibrated_oof_valid = oof_for_calibration.astype(np.float32, copy=False)
     else:
         calibrator = calibrate_probabilities(
             raw_probabilities=oof_for_calibration,
@@ -1427,11 +1736,14 @@ def fit_final_model(
             sample_weight=w_for_calibration,
             method=config.calibration_method,
         )
-        calibrated_oof = apply_calibrator(calibrator, oof_for_calibration)
+        calibrated_oof_valid = apply_calibrator(calibrator, oof_for_calibration)
+
+    calibrated_oof = np.full(len(dataset.dev_y), np.nan, dtype=np.float32)
+    calibrated_oof[valid_oof_mask] = calibrated_oof_valid
 
     threshold, threshold_metrics = select_operating_threshold(
         y_true=y_for_calibration,
-        y_score=calibrated_oof,
+        y_score=calibrated_oof_valid,
         tolerance=config.event_tolerance_bars,
         cooldown=config.event_cooldown_bars,
         grid_size=config.threshold_grid_size,
@@ -1518,12 +1830,18 @@ def fit_final_model(
                 "batch_size": config.batch_size,
                 "epochs": config.epochs,
                 "hidden_size": config.hidden_size,
-                "num_layers": config.num_layers,
+                "num_layers": int(params.get("num_layers", config.num_layers)),
                 "dropout": config.dropout,
                 "weight_decay": config.weight_decay,
                 "gradient_clip": config.gradient_clip,
                 "use_amp": config.use_amp,
-                "learning_rate": config.learning_rate,
+                "learning_rate": float(params.get("learning_rate", config.learning_rate)),
+                "warmup_epochs": config.torch_warmup_epochs,
+                "main_epochs": config.torch_main_epochs,
+                "fine_epochs": config.torch_fine_epochs,
+                "tail_epochs": config.torch_tail_epochs,
+                "fine_lr_scale": config.torch_fine_lr_scale,
+                "tail_lr_scale": config.torch_tail_lr_scale,
             },
         },
     }
@@ -1538,6 +1856,8 @@ def save_training_outputs(
     study: optuna.Study,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
+    timezone_contract = resolve_dataset_timezone_contract(dataset)
+    source_lineage = resolve_dataset_source_lineage(dataset)
 
     if final_model["backend"] == "xgboost":
         final_model["model"].save_model(output_dir / "model.json")
@@ -1575,13 +1895,54 @@ def save_training_outputs(
         json.dumps(final_model.get("training_history", []), indent=2),
         encoding="utf-8",
     )
+    model_config_payload = dict(final_model["model_config"])
+    if timezone_contract:
+        model_config_payload["timezone_contract"] = timezone_contract
+    if source_lineage:
+        model_config_payload["source_lineage"] = source_lineage
+    if dataset.prepared_summary_path:
+        model_config_payload["prepared_summary_file"] = dataset.prepared_summary_path
     (output_dir / "model_config.json").write_text(
-        json.dumps(final_model["model_config"], indent=2),
+        json.dumps(model_config_payload, indent=2),
         encoding="utf-8",
     )
 
+    fold_diagnostics_frame = pd.DataFrame(artifacts.fold_diagnostics)
+    fold_metrics_frame = pd.DataFrame(artifacts.fold_metrics)
+    if not fold_diagnostics_frame.empty:
+        fold_diagnostics_frame["fold"] = fold_diagnostics_frame["fold"].astype(np.int64)
+    if not fold_metrics_frame.empty:
+        fold_metrics_frame["fold"] = fold_metrics_frame["fold"].astype(np.int64)
+
+    cv_fold_manifest = fold_diagnostics_frame.merge(
+        fold_metrics_frame,
+        on="fold",
+        how="left",
+        sort=True,
+    )
+    cv_fold_manifest.to_csv(output_dir / "cv_fold_manifest.csv", index=False)
+    cv_fold_manifest_records = json.loads(cv_fold_manifest.to_json(orient="records"))
+    (output_dir / "cv_fold_manifest.json").write_text(
+        json.dumps(cv_fold_manifest_records, indent=2),
+        encoding="utf-8",
+    )
+
+    oof_predictions_frame = pd.DataFrame(
+        {
+            "source_row_idx": dataset.dev_source_row_idx.astype(np.int64, copy=False),
+            "row_index_in_dev": np.arange(len(dataset.dev_y), dtype=np.int64),
+            "fold": artifacts.oof_fold_id.astype(np.int16, copy=False),
+            "target": dataset.dev_y.astype(np.int64, copy=False),
+            "sample_weight": dataset.dev_w.astype(np.float32, copy=False),
+            "oof_raw_probability": artifacts.oof_pred.astype(np.float32, copy=False),
+            "oof_calibrated_probability": final_model["oof_calibrated"].astype(np.float32, copy=False),
+        }
+    )
+    oof_predictions_frame.to_csv(output_dir / "oof_predictions.csv", index=False)
+
     pd.DataFrame(
         {
+            "source_row_idx": dataset.test_source_row_idx.astype(np.int64, copy=False),
             "row_index": np.arange(len(dataset.y_test), dtype=np.int64),
             "target": dataset.y_test.astype(np.int64),
             "sample_weight": dataset.w_test.astype(np.float32),
@@ -1591,12 +1952,46 @@ def save_training_outputs(
         }
     ).to_csv(output_dir / "test_predictions.csv", index=False)
 
+    valid_oof_mask = ~np.isnan(artifacts.oof_pred)
+    oof_summary = {
+        "dev_rows": int(len(dataset.dev_y)),
+        "oof_rows": int(np.sum(valid_oof_mask)),
+        "missing_oof_rows": int(np.sum(~valid_oof_mask)),
+        "covered_folds": sorted(int(value) for value in np.unique(artifacts.oof_fold_id[artifacts.oof_fold_id >= 0])),
+    }
+    if np.any(valid_oof_mask):
+        oof_summary.update(
+            {
+                "raw_average_precision": safe_average_precision(
+                    dataset.dev_y[valid_oof_mask],
+                    artifacts.oof_pred[valid_oof_mask],
+                    sample_weight=dataset.dev_w[valid_oof_mask],
+                ),
+                "calibrated_average_precision": safe_average_precision(
+                    dataset.dev_y[valid_oof_mask],
+                    final_model["oof_calibrated"][valid_oof_mask],
+                    sample_weight=dataset.dev_w[valid_oof_mask],
+                ),
+            }
+        )
+
     metadata = {
         "config": asdict(config),
         "target": dataset.target_name,
         "backend": final_model["backend"],
         "prepared_dir": str(dataset.prepared_dir),
+        "prepared_summary_file": dataset.prepared_summary_path,
+        "prepared_summary": {
+            "input_file": dataset.prepared_summary.get("input_file"),
+            "metadata_file": dataset.prepared_summary.get("metadata_file"),
+            "timezone_contract": dataset.prepared_summary.get("timezone_contract"),
+            "source_lineage": dataset.prepared_summary.get("source_lineage"),
+        }
+        if dataset.prepared_summary
+        else {},
         "report": dataset.report,
+        "timezone_contract": timezone_contract,
+        "source_lineage": source_lineage,
         "best_params": artifacts.params,
         "selected_feature_names": final_model["selected_feature_names"],
         "lag_steps": final_model["lag_steps"],
@@ -1604,9 +1999,35 @@ def save_training_outputs(
         "context_rows": final_model["context_rows"],
         "delta_feature_count": final_model["delta_feature_count"],
         "threshold": final_model["threshold"],
-        "model_config": final_model["model_config"],
+        "model_config": model_config_payload,
+        "cv_splitter": {
+            "type": "purged_walk_forward_explicit_geometry",
+            "initial_train_rows": config.cv_initial_train_rows,
+            "val_rows": config.cv_val_rows,
+            "step_rows": config.cv_step_rows,
+            "max_train_rows": config.cv_max_train_rows,
+            "min_folds": config.cv_min_folds,
+            "fold_plans": artifacts.fold_plans,
+        },
+        "resolved_purge_bars": artifacts.resolved_purge_bars,
+        "label_horizon_assumptions": {
+            "label_max_holding_bars": config.label_max_holding_bars,
+            "label_exclusion_pre_bars": config.label_exclusion_pre_bars,
+            "label_zone_pre_bars": config.label_zone_pre_bars,
+            "purge_buffer_bars": config.purge_buffer_bars,
+            "event_tolerance_bars": config.event_tolerance_bars,
+            "event_cooldown_bars": config.event_cooldown_bars,
+        },
         "cv_summary": summarize_fold_metrics(artifacts.fold_metrics),
         "cv_folds": artifacts.fold_metrics,
+        "cv_fold_manifest": cv_fold_manifest_records,
+        "row_identity": {
+            "source_row_idx_column": "source_row_idx",
+            "source_row_idx_available": bool(
+                np.all(dataset.dev_source_row_idx >= 0) and np.all(dataset.test_source_row_idx >= 0)
+            ),
+        },
+        "oof_summary": oof_summary,
         "threshold_metrics": final_model["threshold_metrics"],
         "test_metrics": final_model["test_metrics"],
         "study_best_value": float(study.best_value),
@@ -1623,6 +2044,7 @@ def train_target_pipeline(
     config: OTETrainingConfig,
 ) -> Dict[str, object]:
     validate_backend_config(config)
+    validate_cv_geometry_for_dataset(dataset, config)
     seed_everything(config.random_seed)
 
     def objective(trial: optuna.Trial) -> float:
@@ -1672,13 +2094,26 @@ def train_target_pipeline(
 
 def parse_args() -> OTETrainingConfig:
     parser = argparse.ArgumentParser(description="Train OTE models on prepared target folders.")
-    parser.add_argument("--prepared-root", default="data/prepared/eurusd_5min_ote_2000_v2")
-    parser.add_argument("--output-root", default="models/ote_xgboost")
+    parser.add_argument("--prepared-root", default="data/prepared/eurusd_5min_ote_full")
+    parser.add_argument("--output-root", default="models/ote_full_xgb_v2")
     parser.add_argument("--backend", choices=["xgboost", "torch"], default="xgboost")
     parser.add_argument("--model-type", choices=["tcn", "lstm"], default="tcn")
     parser.add_argument("--targets", nargs="+", default=["long_ote", "short_ote"])
     parser.add_argument("--trials", type=int, default=20)
-    parser.add_argument("--cv-splits", type=int, default=3)
+    parser.add_argument("--cv-initial-train-rows", type=int, default=250_000)
+    parser.add_argument("--cv-val-rows", type=int, default=100_000)
+    parser.add_argument("--cv-step-rows", type=int, default=100_000)
+    parser.add_argument("--cv-max-train-rows", type=int, default=None)
+    parser.add_argument("--cv-min-folds", type=int, default=2)
+    parser.add_argument("--cv-splits", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--min-train-positive-rows", type=int, default=1000)
+    parser.add_argument("--min-val-positive-rows", type=int, default=300)
+    parser.add_argument("--min-val-true-events", type=int, default=50)
+    parser.add_argument("--label-max-holding-bars", type=int, default=120)
+    parser.add_argument("--label-exclusion-pre-bars", type=int, default=10)
+    parser.add_argument("--label-zone-pre-bars", type=int, default=2)
+    parser.add_argument("--purge-buffer-bars", type=int, default=12)
+    parser.add_argument("--final-eval-min-rows", type=int, default=160)
     parser.add_argument("--max-loaded-features", type=int, default=160)
     parser.add_argument("--top-feature-max", type=int, default=96)
     parser.add_argument("--top-feature-min", type=int, default=24)
@@ -1696,11 +2131,23 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--gradient-clip", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--window-size", type=int, default=24)
+    parser.add_argument("--torch-warmup-epochs", type=int, default=None)
+    parser.add_argument("--torch-main-epochs", type=int, default=None)
+    parser.add_argument("--torch-fine-epochs", type=int, default=None)
+    parser.add_argument("--torch-tail-epochs", type=int, default=0)
+    parser.add_argument("--torch-fine-lr-scale", type=float, default=0.35)
+    parser.add_argument("--torch-tail-lr-scale", type=float, default=0.10)
     parser.add_argument("--use-amp", dest="use_amp", action="store_true")
     parser.add_argument("--no-use-amp", dest="use_amp", action="store_false")
     parser.add_argument("--seed", type=int, default=42)
     parser.set_defaults(use_amp=True)
     args = parser.parse_args()
+
+    if args.cv_splits is not None:
+        parser.error(
+            "--cv-splits is deprecated in V2. Use --cv-initial-train-rows, --cv-val-rows, "
+            "and --cv-step-rows instead."
+        )
 
     return OTETrainingConfig(
         prepared_root=args.prepared_root,
@@ -1709,12 +2156,24 @@ def parse_args() -> OTETrainingConfig:
         model_type=args.model_type,
         targets=args.targets,
         n_trials=args.trials,
-        cv_splits=args.cv_splits,
+        cv_initial_train_rows=args.cv_initial_train_rows,
+        cv_val_rows=args.cv_val_rows,
+        cv_step_rows=args.cv_step_rows,
+        cv_max_train_rows=args.cv_max_train_rows,
+        cv_min_folds=args.cv_min_folds,
+        min_train_positive_rows=args.min_train_positive_rows,
+        min_val_positive_rows=args.min_val_positive_rows,
+        min_val_true_events=args.min_val_true_events,
+        final_eval_min_rows=args.final_eval_min_rows,
         max_loaded_features=args.max_loaded_features,
         top_feature_max=args.top_feature_max,
         top_feature_min=args.top_feature_min,
         window_max=args.window_max,
         window_min=args.window_min,
+        label_max_holding_bars=args.label_max_holding_bars,
+        label_exclusion_pre_bars=args.label_exclusion_pre_bars,
+        label_zone_pre_bars=args.label_zone_pre_bars,
+        purge_buffer_bars=args.purge_buffer_bars,
         event_tolerance_bars=args.event_tolerance_bars,
         event_cooldown_bars=args.event_cooldown_bars,
         calibration_method=args.calibration_method,
@@ -1728,6 +2187,12 @@ def parse_args() -> OTETrainingConfig:
         use_amp=args.use_amp,
         learning_rate=args.learning_rate,
         window_size=args.window_size,
+        torch_warmup_epochs=args.torch_warmup_epochs,
+        torch_main_epochs=args.torch_main_epochs,
+        torch_fine_epochs=args.torch_fine_epochs,
+        torch_tail_epochs=args.torch_tail_epochs,
+        torch_fine_lr_scale=args.torch_fine_lr_scale,
+        torch_tail_lr_scale=args.torch_tail_lr_scale,
         random_seed=args.seed,
     )
 

@@ -7,9 +7,19 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
-from preprocessing.config import PreprocessingConfig
-from preprocessing.feature_importance import association_scores
-from preprocessing.pipeline import FeaturePreprocessingPipeline as _BaseFeaturePreprocessingPipeline
+from .config import PreprocessingConfig
+
+
+def association_scores(
+    X: pd.DataFrame,
+    y: pd.Series,
+) -> pd.Series:
+    if X.empty or y.nunique(dropna=True) < 2:
+        return pd.Series(0.0, index=X.columns, dtype=float)
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        scores = X.corrwith(pd.Series(y).astype(float)).abs()
+    return scores.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 def compute_feature_importance(
@@ -144,31 +154,7 @@ def compute_feature_importance(
     return importance_df, summary
 
 
-class FeaturePreprocessingPipeline(_BaseFeaturePreprocessingPipeline):
-    def _compute_feature_importance(
-        self,
-        *,
-        X_train: pd.DataFrame,
-        y_train: pd.Series,
-        sample_weight: pd.Series,
-        is_binary: bool,
-    ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        return compute_feature_importance(
-            X_train=X_train,
-            y_train=y_train,
-            sample_weight=sample_weight,
-            is_binary=is_binary,
-            config=self.config,
-        )
-
-
 __all__ = [
-    "FeaturePreprocessingPipeline",
-    "PreprocessingConfig",
-    "RandomForestClassifier",
-    "RandomForestRegressor",
     "association_scores",
     "compute_feature_importance",
-    "mutual_info_classif",
-    "mutual_info_regression",
 ]

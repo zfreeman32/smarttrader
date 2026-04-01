@@ -16,11 +16,11 @@ def test_label_regimes_assigns_expected_primary_buckets() -> None:
         {
             "datetime": pd.to_datetime(
                 [
-                    "2024-01-01 23:00:00",
-                    "2024-01-02 08:00:00",
-                    "2024-01-02 13:00:00",
-                    "2024-01-02 16:30:00",
-                    "2024-01-02 18:00:00",
+                    "2024-01-02 01:00:00",
+                    "2024-01-02 07:30:00",
+                    "2024-01-02 14:00:00",
+                    "2024-01-02 21:00:00",
+                    "2024-01-02 23:00:00",
                 ]
             ),
             "close": [1.10, 1.20, 1.30, 1.15, 1.05],
@@ -90,7 +90,7 @@ def test_label_regimes_uses_hour_sine_cosine_and_close_bias_fallbacks() -> None:
     labeled = label_regimes(frame, config=RegimeLabelConfig(atr_percentile_window=2))
 
     assert labeled["trend_regime"].tolist() == ["weak_up", "weak_down"]
-    assert labeled["session_regime"].tolist() == ["asia", "off_hours"]
+    assert labeled["session_regime"].tolist() == ["london", "asia"]
     assert labeled["stress_regime"].tolist() == ["normal", "high"]
     assert labeled["session_hour_utc"].astype(int).tolist() == [3, 20]
 

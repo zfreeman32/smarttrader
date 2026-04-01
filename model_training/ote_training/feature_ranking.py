@@ -30,6 +30,24 @@ def resolve_ranking_path(
     return None
 
 
+def ranking_file_candidates_for_backend(
+    backend: str,
+    model_type: str | None = None,
+) -> tuple[str, ...]:
+    candidates: list[str] = []
+
+    if backend == "xgboost":
+        candidates.append("feature_importance_merged_xgboost.csv")
+    elif backend == "torch":
+        if model_type == "tcn":
+            candidates.append("feature_importance_merged_tcn.csv")
+        elif model_type == "lstm":
+            candidates.append("feature_importance_merged_lstm.csv")
+
+    candidates.extend(DEFAULT_RANKING_FILE_CANDIDATES)
+    return tuple(dict.fromkeys(candidates))
+
+
 def ranking_sort_column(columns: Iterable[str]) -> str | None:
     available = set(columns)
     for candidate in ("merged_score", "composite_score", "mean_abs_shap_all", "rf_importance", "mutual_information"):

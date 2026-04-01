@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,7 +54,11 @@ class FeatureDatasetBuilder:
     ) -> Tuple[pd.DataFrame, Dict[str, object]]:
         with progress_context(self.progress_callback):
             build_started = perf_counter()
-            working = standardize_market_frame(df.copy())
+            working = standardize_market_frame(
+                df.copy(),
+                source_timezone=self.config.source_timezone,
+                canonical_timezone=self.config.canonical_timezone,
+            )
             working = validate_ohlcv(working, drop_invalid=self.config.drop_invalid_ohlc)
             invalid_rows_removed = int(working.attrs.get("invalid_rows_removed", 0))
 
@@ -151,8 +156,11 @@ class FeatureDatasetBuilder:
                 if generated_columns
                 else 0
             )
+            source_metadata = self._load_source_metadata(source_path)
+            source_metadata_path = self._resolve_source_metadata_path(source_path)
             metadata = {
                 "source_path": str(source_path) if source_path is not None else None,
+                "source_metadata_file": str(source_metadata_path) if source_metadata_path is not None else None,
                 "generated_at_utc": datetime.now(timezone.utc).isoformat(),
                 "rows": int(len(working)),
                 "columns": int(len(working.columns)),
@@ -165,8 +173,24 @@ class FeatureDatasetBuilder:
                 "build_timings_seconds": {key: round(value, 6) for key, value in step_timings.items()},
                 "memory_usage_bytes": memory_usage_bytes,
                 "feature_memory_usage_bytes": feature_memory_usage_bytes,
+                "timezone_contract": {
+                    "source_timezone": self.config.source_timezone,
+                    "canonical_timezone": self.config.canonical_timezone,
+                    "feature_clock_timezone": self.config.feature_clock_timezone,
+                    "london_timezone": self.config.london_timezone,
+                    "new_york_timezone": self.config.new_york_timezone,
+                    "market_close_timezone": self.config.market_close_timezone,
+                    "market_close_time": (
+                        f"{int(self.config.market_close_hour):02d}:{int(self.config.market_close_minute):02d}"
+                    ),
+                },
                 "config": self.config.to_dict(),
             }
+            if source_metadata:
+                metadata["upstream_source_path"] = source_metadata.get("source_path")
+                metadata["upstream_metadata_file"] = str(source_metadata_path) if source_metadata_path is not None else None
+                metadata["upstream_timezone_contract"] = source_metadata.get("timezone_contract")
+                metadata["upstream_bar_timestamp_semantics"] = source_metadata.get("bar_timestamp_semantics")
             if self.config.optimize_feature_dtypes:
                 metadata["memory_usage_bytes_before_dtype_optimization"] = memory_before_dtype_optimization
             if feature_set_reports:
@@ -419,3 +443,20 @@ class FeatureDatasetBuilder:
             elif pd.api.types.is_integer_dtype(series):
                 working[column] = pd.to_numeric(series, downcast="integer")
         return working
+
+    @staticmethod
+    def _resolve_source_metadata_path(source_path: str | Path | None) -> Path | None:
+        if source_path is None:
+            return None
+        candidate = Path(source_path).with_suffix(".metadata.json")
+        return candidate if candidate.exists() else None
+
+    @classmethod
+    def _load_source_metadata(cls, source_path: str | Path | None) -> Dict[str, object]:
+        metadata_path = cls._resolve_source_metadata_path(source_path)
+        if metadata_path is None:
+            return {}
+        try:
+            return json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}

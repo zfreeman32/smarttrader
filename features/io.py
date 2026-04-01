@@ -7,6 +7,8 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
+from .fx_calendar import normalize_datetime_series
+
 
 REQUIRED_PRICE_COLUMNS = ("open", "high", "low", "close")
 
@@ -16,7 +18,12 @@ def load_market_data(path: str | Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def standardize_market_frame(df: pd.DataFrame) -> pd.DataFrame:
+def standardize_market_frame(
+    df: pd.DataFrame,
+    *,
+    source_timezone: str | None = "UTC",
+    canonical_timezone: str = "UTC",
+) -> pd.DataFrame:
     """Normalize common OHLCV column names and sort by time if available."""
     canonical = {
         "date": "date",
@@ -49,7 +56,15 @@ def standardize_market_frame(df: pd.DataFrame) -> pd.DataFrame:
             df["datetime"] = pd.to_datetime(df["date"], errors="coerce")
 
     if "datetime" in df.columns:
-        df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+        df["datetime"] = normalize_datetime_series(
+            df["datetime"],
+            source_timezone=source_timezone,
+            canonical_timezone=canonical_timezone,
+        )
+        if "date" in df.columns:
+            df["date"] = df["datetime"].dt.strftime("%Y-%m-%d")
+        if "time" in df.columns:
+            df["time"] = df["datetime"].dt.strftime("%H:%M:%S")
         if not df["datetime"].is_monotonic_increasing:
             df = df.sort_values("datetime").reset_index(drop=True)
 

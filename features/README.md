@@ -108,7 +108,7 @@ Each build writes:
 Prepare a generated feature dataset for target-specific model training:
 
 ```powershell
-python -m features.cli preprocess `
+python -m preprocessing prepare `
   data/features/eurusd_5min_ote_2000.csv `
   --output-dir data/prepared/eurusd_5min_ote_2000
 ```
@@ -120,6 +120,14 @@ This preprocessing step:
 - removes exact duplicate and low-information columns
 - runs target-aware similarity / collinearity pruning
 - reports class imbalance, feature importance, and dataset readiness per target
+
+The legacy alias still works:
+
+```powershell
+python -m features.cli preprocess `
+  data/features/eurusd_5min_ote_2000.csv `
+  --output-dir data/prepared/eurusd_5min_ote_2000
+```
 
 Build a dataset that also includes selected standalone strategy outputs:
 

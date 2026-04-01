@@ -296,3 +296,9 @@ Run:
 ```bash
 pytest tests/test_ote_xgboost_pipeline.py -q
 ```
+
+## Post-Training Roadmap
+
+The concrete repo plan for moving the current OTE models toward regime-aware production deployment lives in:
+
+- [POST_TRAINING_PRODUCTION_PLAN.md](/C:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/model_training/ote_training/POST_TRAINING_PRODUCTION_PLAN.md)

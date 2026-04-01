@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from ..config import FeatureBuilderConfig
+from ..fx_calendar import build_intraday_calendar_frame
 from ..registry import register_feature_set
 from ..transforms import bars_since_event, calculate_atr, safe_divide
 
@@ -32,7 +33,7 @@ def _last_seen_index(event: pd.Series) -> np.ndarray:
 )
 def build_temporal_context(
     df: pd.DataFrame,
-    _: FeatureBuilderConfig,
+    config: FeatureBuilderConfig,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
 
@@ -131,13 +132,43 @@ def build_temporal_context(
         bear_sequence & near_trend.to_numpy(dtype=bool) & (last_bear_structure >= last_displacement_bear)
     ).astype(int)
 
-    dt = pd.to_datetime(df["datetime"], errors="coerce")
-    hour = dt.dt.hour.fillna(0).astype(int)
-    out["in_london_early"] = ((hour >= 2) & (hour < 5)).astype(int)
-    out["in_london_mid"] = ((hour >= 5) & (hour < 8)).astype(int)
-    out["in_london_late"] = ((hour >= 8) & (hour < 11)).astype(int)
-    out["in_newyork_early"] = ((hour >= 8) & (hour < 11)).astype(int)
-    out["in_newyork_mid"] = ((hour >= 11) & (hour < 14)).astype(int)
-    out["in_newyork_late"] = ((hour >= 14) & (hour < 17)).astype(int)
+    calendar = build_intraday_calendar_frame(
+        df["datetime"],
+        source_timezone=config.source_timezone,
+        canonical_timezone=config.canonical_timezone,
+        feature_clock_timezone=config.feature_clock_timezone,
+        london_timezone=config.london_timezone,
+        new_york_timezone=config.new_york_timezone,
+        asia_session_reference_timezone=config.asia_session_reference_timezone,
+        asia_session_start_hour=config.asia_session_start_hour,
+        asia_session_end_hour=config.asia_session_end_hour,
+        london_session_start_hour=config.london_session_start_hour,
+        london_session_end_hour=config.london_session_end_hour,
+        new_york_session_start_hour=config.new_york_session_start_hour,
+        new_york_session_end_hour=config.new_york_session_end_hour,
+        london_killzone_reference_timezone=config.london_killzone_reference_timezone,
+        london_killzone_start_hour=config.london_killzone_start_hour,
+        london_killzone_end_hour=config.london_killzone_end_hour,
+        new_york_killzone_reference_timezone=config.new_york_killzone_reference_timezone,
+        new_york_killzone_start_hour=config.new_york_killzone_start_hour,
+        new_york_killzone_end_hour=config.new_york_killzone_end_hour,
+    )
+    hour = calendar["feature_hour"].fillna(0).astype(int)
+    out["in_london_early"] = calendar["in_london_killzone"].astype(int)
+    out["in_london_mid"] = (
+        calendar["in_london_session"].astype(bool)
+        & ~calendar["in_london_killzone"].astype(bool)
+        & (hour < 8)
+    ).astype(int)
+    out["in_london_late"] = (
+        calendar["in_london_session"].astype(bool) & ~out["in_london_early"].astype(bool) & (hour >= 8)
+    ).astype(int)
+    out["in_newyork_early"] = calendar["in_newyork_killzone"].astype(int)
+    out["in_newyork_mid"] = (
+        (hour >= config.new_york_killzone_end_hour)
+        & calendar["in_newyork_session"].astype(bool)
+        & (hour < 14)
+    ).astype(int)
+    out["in_newyork_late"] = ((hour >= 14) & calendar["in_newyork_session"].astype(bool)).astype(int)
 
     return out

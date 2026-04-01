@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -59,6 +61,21 @@ def _write_dataset(base_dir: Path) -> Path:
                     "feature_constant",
                     "feature_cat",
                 ],
+                "timezone_contract": {
+                    "source_timezone": "UTC",
+                    "canonical_timezone": "UTC",
+                    "feature_clock_timezone": "America/New_York",
+                    "market_close_timezone": "America/New_York",
+                },
+                "source_path": "data/labeling/labeled_data/sample_labels.csv",
+                "source_metadata_file": "data/labeling/labeled_data/sample_labels.metadata.json",
+                "upstream_source_path": "data/currency_data/sample_raw.csv",
+                "upstream_metadata_file": "data/labeling/labeled_data/sample_labels.metadata.json",
+                "upstream_bar_timestamp_semantics": "bar_open",
+                "upstream_timezone_contract": {
+                    "source_timezone": "GMT-6",
+                    "canonical_timezone": "UTC",
+                },
                 "config": {
                     "drop_warmup_rows": False,
                     "warmup_rows": 0,
@@ -167,6 +184,36 @@ def test_preprocessing_writes_source_row_idx_to_each_split(tmp_path: Path) -> No
 
     report = json.loads((long_dir / "report.json").read_text(encoding="utf-8"))
     assert report["row_identity"]["source_row_idx_column"] == "source_row_idx"
+
+
+def test_preprocessing_propagates_timezone_contract_and_source_lineage() -> None:
+    base_dir = Path(__file__).resolve().parents[1] / "tmp" / f"test_preprocessing_timezone_lineage_{uuid4().hex}"
+    base_dir.mkdir(parents=True)
+
+    try:
+        dataset_path = _write_dataset(base_dir)
+        output_dir = base_dir / "prepared"
+
+        pipeline = FeaturePreprocessingPipeline(
+            PreprocessingConfig(
+                target_columns=["label_long_entry"],
+                min_usable_rows=5,
+                min_train_rows=3,
+                min_positive_samples=1,
+            )
+        )
+        summary = pipeline.run(dataset_path, output_dir)
+        report = json.loads((output_dir / "long_entry" / "report.json").read_text(encoding="utf-8"))
+
+        assert summary["timezone_contract"]["canonical_timezone"] == "UTC"
+        assert summary["timezone_contract"]["feature_clock_timezone"] == "America/New_York"
+        assert summary["source_lineage"]["feature_builder_source_path"] == "data/labeling/labeled_data/sample_labels.csv"
+        assert summary["source_lineage"]["upstream_source_path"] == "data/currency_data/sample_raw.csv"
+        assert report["timezone_contract"]["canonical_timezone"] == "UTC"
+        assert report["source_lineage"]["upstream_bar_timestamp_semantics"] == "bar_open"
+        assert report["source_lineage"]["upstream_timezone_contract"]["source_timezone"] == "GMT-6"
+    finally:
+        shutil.rmtree(base_dir, ignore_errors=True)
 
 
 def test_feature_importance_respects_analysis_row_cap(monkeypatch) -> None:

@@ -38,7 +38,7 @@ def build_strategy_signals(
         return pd.DataFrame(index=df.index)
 
     started = perf_counter()
-    strategy_input = prepare_strategy_input(df)
+    strategy_input = prepare_strategy_input(df, config=config)
     input_columns = set(strategy_input.columns)
     requested_strategy_ids = list(dict.fromkeys(config.strategy_ids))
     worker_count = min(max(1, config.transform_workers), len(requested_strategy_ids))

@@ -429,83 +429,123 @@ def test_load_prepared_target_dataset_reads_source_row_idx(tmp_path: Path):
     np.testing.assert_array_equal(dataset.test_source_row_idx, np.array([30, 31], dtype=np.int64))
 
 
-def test_save_training_outputs_includes_source_row_idx(tmp_path: Path):
-    dataset = make_synthetic_dataset(dev_rows=12, test_rows=4, feature_count=4)
-    dataset.source_row_idx_train = np.array([100, 101, 102, 103, 104, 105], dtype=np.int64)
-    dataset.source_row_idx_val = np.array([200, 201, 202, 203, 204, 205], dtype=np.int64)
-    dataset.source_row_idx_test = np.array([300, 301, 302, 303], dtype=np.int64)
+def test_save_training_outputs_includes_source_row_idx():
+    output_dir = ROOT / "tmp" / f"test_save_training_outputs_{uuid4().hex}"
+    output_dir.mkdir(parents=True)
 
-    artifacts = pipeline.TrialArtifacts(
-        params={"top_features": 4},
-        oof_pred=np.linspace(0.1, 0.9, num=len(dataset.dev_y), dtype=np.float32),
-        fold_metrics=[{"fold": 1, "average_precision": 0.5, "event_fbeta_0_5": 0.6}],
-        selected_feature_names=dataset.feature_names,
-        oof_fold_id=np.full(len(dataset.dev_y), 1, dtype=np.int16),
-        fold_plans=[{"fold": 1}],
-        fold_diagnostics=[{"fold": 1}],
-    )
+    try:
+        dataset = make_synthetic_dataset(dev_rows=12, test_rows=4, feature_count=4)
+        dataset.source_row_idx_train = np.array([100, 101, 102, 103, 104, 105], dtype=np.int64)
+        dataset.source_row_idx_val = np.array([200, 201, 202, 203, 204, 205], dtype=np.int64)
+        dataset.source_row_idx_test = np.array([300, 301, 302, 303], dtype=np.int64)
+        dataset.report = {
+            "timezone_contract": {
+                "source_timezone": "UTC",
+                "canonical_timezone": "UTC",
+                "feature_clock_timezone": "America/New_York",
+                "market_close_timezone": "America/New_York",
+            },
+            "source_lineage": {
+                "feature_csv": "data/features/eurusd_5min_ote_full.csv",
+                "feature_metadata_file": "data/features/eurusd_5min_ote_full.metadata.json",
+                "feature_builder_source_path": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+                "feature_builder_source_metadata_file": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.metadata.json",
+                "upstream_source_path": "data/currency_data/eurusd-5m.csv",
+                "upstream_bar_timestamp_semantics": "bar_open",
+                "upstream_timezone_contract": {
+                    "source_timezone": "GMT-6",
+                    "canonical_timezone": "UTC",
+                },
+            },
+        }
+        dataset.prepared_summary = {
+            "input_file": "data/features/eurusd_5min_ote_full.csv",
+            "metadata_file": "data/features/eurusd_5min_ote_full.metadata.json",
+            "timezone_contract": dataset.report["timezone_contract"],
+            "source_lineage": dataset.report["source_lineage"],
+        }
+        dataset.prepared_summary_path = "data/prepared/eurusd_5min_ote_full/summary.json"
 
-    scaler = RobustScaler().fit(dataset.dev_X)
+        artifacts = pipeline.TrialArtifacts(
+            params={"top_features": 4},
+            oof_pred=np.linspace(0.1, 0.9, num=len(dataset.dev_y), dtype=np.float32),
+            fold_metrics=[{"fold": 1, "average_precision": 0.5, "event_fbeta_0_5": 0.6}],
+            selected_feature_names=dataset.feature_names,
+            oof_fold_id=np.full(len(dataset.dev_y), 1, dtype=np.int16),
+            fold_plans=[{"fold": 1}],
+            fold_diagnostics=[{"fold": 1}],
+        )
 
-    class DummyModel:
-        def save_model(self, path):
-            Path(path).write_text("dummy-model", encoding="utf-8")
+        scaler = RobustScaler().fit(dataset.dev_X)
 
-        def get_score(self, importance_type="gain"):
-            return {}
+        class DummyModel:
+            def save_model(self, path):
+                Path(path).write_text("dummy-model", encoding="utf-8")
 
-    final_model = {
-        "backend": "xgboost",
-        "model": DummyModel(),
-        "checkpoint": None,
-        "scaler": scaler,
-        "calibrator": None,
-        "threshold": 0.5,
-        "threshold_metrics": {"event_fbeta_0_5": 0.6},
-        "test_metrics": {"average_precision": 0.7, "event_fbeta_0_5": 0.65},
-        "feature_names": dataset.feature_names,
-        "selected_feature_names": dataset.feature_names,
-        "lag_steps": [0],
-        "window_size": 1,
-        "context_rows": 0,
-        "delta_feature_count": 0,
-        "oof_calibrated": np.linspace(0.1, 0.9, num=len(dataset.dev_y), dtype=np.float32),
-        "test_raw": np.linspace(0.2, 0.8, num=len(dataset.y_test), dtype=np.float32),
-        "test_calibrated": np.linspace(0.25, 0.85, num=len(dataset.y_test), dtype=np.float32),
-        "training_history": [],
-        "model_config": {"backend": "xgboost", "model_type": "xgboost"},
-    }
+            def get_score(self, importance_type="gain"):
+                return {}
 
-    study = optuna.create_study(direction="maximize")
-    trial = study.ask()
-    study.tell(trial, 0.42)
+        final_model = {
+            "backend": "xgboost",
+            "model": DummyModel(),
+            "checkpoint": None,
+            "scaler": scaler,
+            "calibrator": None,
+            "threshold": 0.5,
+            "threshold_metrics": {"event_fbeta_0_5": 0.6},
+            "test_metrics": {"average_precision": 0.7, "event_fbeta_0_5": 0.65},
+            "feature_names": dataset.feature_names,
+            "selected_feature_names": dataset.feature_names,
+            "lag_steps": [0],
+            "window_size": 1,
+            "context_rows": 0,
+            "delta_feature_count": 0,
+            "oof_calibrated": np.linspace(0.1, 0.9, num=len(dataset.dev_y), dtype=np.float32),
+            "test_raw": np.linspace(0.2, 0.8, num=len(dataset.y_test), dtype=np.float32),
+            "test_calibrated": np.linspace(0.25, 0.85, num=len(dataset.y_test), dtype=np.float32),
+            "training_history": [],
+            "model_config": {"backend": "xgboost", "model_type": "xgboost"},
+        }
 
-    output_dir = tmp_path / "model_outputs"
-    save_training_outputs(
-        output_dir=output_dir,
-        dataset=dataset,
-        config=OTETrainingConfig(verbosity=0),
-        artifacts=artifacts,
-        final_model=final_model,
-        study=study,
-    )
+        study = optuna.create_study(direction="maximize")
+        trial = study.ask()
+        study.tell(trial, 0.42)
 
-    oof_predictions = pd.read_csv(output_dir / "oof_predictions.csv")
-    test_predictions = pd.read_csv(output_dir / "test_predictions.csv")
-    training_summary = json.loads((output_dir / "training_summary.json").read_text(encoding="utf-8"))
+        save_training_outputs(
+            output_dir=output_dir,
+            dataset=dataset,
+            config=OTETrainingConfig(verbosity=0),
+            artifacts=artifacts,
+            final_model=final_model,
+            study=study,
+        )
 
-    assert "source_row_idx" in oof_predictions.columns
-    assert "source_row_idx" in test_predictions.columns
-    np.testing.assert_array_equal(
-        oof_predictions["source_row_idx"].to_numpy(dtype=np.int64),
-        np.array([100, 101, 102, 103, 104, 105, 200, 201, 202, 203, 204, 205], dtype=np.int64),
-    )
-    np.testing.assert_array_equal(
-        test_predictions["source_row_idx"].to_numpy(dtype=np.int64),
-        np.array([300, 301, 302, 303], dtype=np.int64),
-    )
-    assert training_summary["row_identity"]["source_row_idx_column"] == "source_row_idx"
-    assert training_summary["row_identity"]["source_row_idx_available"] is True
+        oof_predictions = pd.read_csv(output_dir / "oof_predictions.csv")
+        test_predictions = pd.read_csv(output_dir / "test_predictions.csv")
+        training_summary = json.loads((output_dir / "training_summary.json").read_text(encoding="utf-8"))
+        model_config = json.loads((output_dir / "model_config.json").read_text(encoding="utf-8"))
+
+        assert "source_row_idx" in oof_predictions.columns
+        assert "source_row_idx" in test_predictions.columns
+        np.testing.assert_array_equal(
+            oof_predictions["source_row_idx"].to_numpy(dtype=np.int64),
+            np.array([100, 101, 102, 103, 104, 105, 200, 201, 202, 203, 204, 205], dtype=np.int64),
+        )
+        np.testing.assert_array_equal(
+            test_predictions["source_row_idx"].to_numpy(dtype=np.int64),
+            np.array([300, 301, 302, 303], dtype=np.int64),
+        )
+        assert training_summary["row_identity"]["source_row_idx_column"] == "source_row_idx"
+        assert training_summary["row_identity"]["source_row_idx_available"] is True
+        assert training_summary["timezone_contract"]["canonical_timezone"] == "UTC"
+        assert training_summary["source_lineage"]["feature_builder_source_path"] == (
+            "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+        )
+        assert training_summary["prepared_summary_file"] == "data/prepared/eurusd_5min_ote_full/summary.json"
+        assert model_config["timezone_contract"]["feature_clock_timezone"] == "America/New_York"
+        assert model_config["source_lineage"]["upstream_source_path"] == "data/currency_data/eurusd-5m.csv"
+    finally:
+        shutil.rmtree(output_dir, ignore_errors=True)
 
 
 def test_cross_validate_trial_smoke():

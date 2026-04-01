@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import hashlib
 import importlib.util
 import re
@@ -13,6 +14,9 @@ from types import ModuleType
 from typing import Callable, Dict, List, Tuple
 
 import pandas as pd
+
+from .config import FeatureBuilderConfig
+from .fx_calendar import normalize_datetime_series
 
 
 StrategyBuilder = Callable[[pd.DataFrame], pd.DataFrame | pd.Series]
@@ -37,8 +41,15 @@ def _run_strategy_with_legacy_pandas_compat(
 ) -> pd.DataFrame | pd.Series:
     chained_assignment_warning = getattr(pd.errors, "ChainedAssignmentError", None)
     setting_with_copy_warning = getattr(pd.errors, "SettingWithCopyWarning", None)
+    pandas_major_version_match = re.match(r"^(\d+)", getattr(pd, "__version__", "0"))
+    pandas_major_version = int(pandas_major_version_match.group(1)) if pandas_major_version_match else 0
+    copy_on_write_context = (
+        contextlib.nullcontext()
+        if pandas_major_version >= 3
+        else pd.option_context("mode.copy_on_write", False)
+    )
 
-    with pd.option_context("mode.copy_on_write", False):
+    with copy_on_write_context:
         with warnings.catch_warnings():
             if chained_assignment_warning is not None:
                 warnings.simplefilter("ignore", chained_assignment_warning)
@@ -211,7 +222,10 @@ def _module_name_for_path(module_path: Path) -> str:
     return f"features_strategy_{slugify_strategy_name(module_path.stem)}_{digest}"
 
 
-def prepare_strategy_input(df: pd.DataFrame) -> pd.DataFrame:
+def prepare_strategy_input(
+    df: pd.DataFrame,
+    config: FeatureBuilderConfig | None = None,
+) -> pd.DataFrame:
     """Adapt the normalized feature-builder frame to legacy strategy expectations."""
     # Avoid an eager deep copy here; each strategy gets its own defensive copy
     # right before execution.
@@ -219,9 +233,15 @@ def prepare_strategy_input(df: pd.DataFrame) -> pd.DataFrame:
     dt_index: pd.Series | None = None
 
     if "datetime" in prepared.columns:
-        dt_index = pd.to_datetime(prepared["datetime"], errors="coerce")
+        dt_index = normalize_datetime_series(
+            prepared["datetime"],
+            source_timezone=config.source_timezone if config is not None else "UTC",
+            canonical_timezone=config.canonical_timezone if config is not None else "UTC",
+        )
+        if config is not None:
+            dt_index = dt_index.dt.tz_convert(config.feature_clock_timezone)
         if dt_index.notna().any():
-            prepared.index = dt_index
+            prepared.index = pd.DatetimeIndex(dt_index)
 
     additions: dict[str, pd.Series] = {}
     alias_map = {
@@ -236,11 +256,12 @@ def prepare_strategy_input(df: pd.DataFrame) -> pd.DataFrame:
             additions[alias] = pd.Series(prepared[source].to_numpy(), index=prepared.index, name=alias)
 
     if dt_index is not None and dt_index.notna().any():
+        display_index = dt_index.dt.tz_localize(None)
         if "Date" not in prepared.columns:
-            additions["Date"] = pd.Series(dt_index.to_numpy(), index=prepared.index, name="Date")
+            additions["Date"] = pd.Series(display_index.to_numpy(), index=prepared.index, name="Date")
         if "Time" not in prepared.columns:
             additions["Time"] = pd.Series(
-                dt_index.dt.strftime("%H:%M:%S").to_numpy(),
+                display_index.dt.strftime("%H:%M:%S").to_numpy(),
                 index=prepared.index,
                 name="Time",
             )

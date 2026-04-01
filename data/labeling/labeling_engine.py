@@ -11,18 +11,25 @@ This script wraps the causal OTE labeling engine into a reusable workflow:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from features.fx_calendar import normalize_datetime_series
 
 try:
     from .ote_labeling_engine import OTEParams, build_ote_labels, plot_swings
 except ImportError:
     from ote_labeling_engine import OTEParams, build_ote_labels, plot_swings
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT_PATH = PROJECT_ROOT / "data" / "currency_data" / "EURUSD_5min.csv"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_labels.csv"
 DEFAULT_SWINGS_PATH = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_swings.csv"
@@ -59,11 +66,35 @@ def parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT / "data" / "labeling" / "plots" / "eurusd_5min_ote_chart.png",
         help="Plot destination when --plot is enabled.",
     )
+    parser.add_argument(
+        "--source-timezone",
+        type=str,
+        default="UTC",
+        help="Timezone of naive timestamps in the raw CSV. Use an IANA timezone or fixed offset like GMT-6.",
+    )
+    parser.add_argument(
+        "--canonical-timezone",
+        type=str,
+        default="UTC",
+        help="Canonical timezone to store during labeling and downstream training. Defaults to UTC.",
+    )
+    parser.add_argument(
+        "--bar-timestamp-semantics",
+        type=str,
+        default="as_provided",
+        help="Metadata-only description of whether timestamps represent bar opens, closes, or another convention.",
+    )
     return parser.parse_args()
 
 
-def load_fx_csv(path: Path) -> pd.DataFrame:
+def load_fx_csv(
+    path: Path,
+    *,
+    source_timezone: str = "UTC",
+    canonical_timezone: str = "UTC",
+) -> pd.DataFrame:
     df = pd.read_csv(path)
+    raw_row_count = int(len(df))
     columns_lower = {col.strip().lower(): col for col in df.columns}
 
     if "date" in columns_lower and "time" in columns_lower:
@@ -100,6 +131,11 @@ def load_fx_csv(path: Path) -> pd.DataFrame:
     if missing:
         raise ValueError(f"Missing required OHLC columns: {missing}")
 
+    df["timestamp"] = normalize_datetime_series(
+        df["timestamp"],
+        source_timezone=source_timezone,
+        canonical_timezone=canonical_timezone,
+    )
     df = df.dropna(subset=["timestamp", "open", "high", "low", "close"])
     df = df.set_index("timestamp").sort_index()
     df = df[~df.index.duplicated(keep="first")]
@@ -114,8 +150,79 @@ def load_fx_csv(path: Path) -> pd.DataFrame:
         df = df.loc[~anomaly_mask].copy()
         df["is_anomaly"] = False
     df.attrs["anomaly_count"] = anomaly_count
+    df.attrs["source_row_count"] = raw_row_count
+    df.attrs["source_timezone"] = source_timezone
+    df.attrs["canonical_timezone"] = canonical_timezone
 
     return df
+
+
+def prepare_frame_for_csv(
+    frame: pd.DataFrame,
+    *,
+    canonical_timezone: str,
+) -> pd.DataFrame:
+    prepared = frame.copy()
+    for column in prepared.columns:
+        series = prepared[column]
+        if not pd.api.types.is_datetime64_any_dtype(series):
+            continue
+        normalized = normalize_datetime_series(
+            series,
+            source_timezone=canonical_timezone,
+            canonical_timezone=canonical_timezone,
+        )
+        prepared[column] = normalized.dt.tz_localize(None)
+    return prepared
+
+
+def write_metadata(path: Path, payload: dict) -> Path:
+    metadata_path = path.with_suffix(".metadata.json")
+    metadata_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return metadata_path
+
+
+def build_output_metadata(
+    *,
+    output_kind: str,
+    source_path: Path,
+    output_path: Path,
+    df_5m: pd.DataFrame,
+    df_30m: pd.DataFrame,
+    df_1hr: pd.DataFrame,
+    params: OTEParams,
+    source_timezone: str,
+    canonical_timezone: str,
+    bar_timestamp_semantics: str,
+    output_rows: int,
+) -> dict:
+    return {
+        "output_kind": output_kind,
+        "source_path": str(source_path),
+        "output_path": str(output_path),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "row_counts": {
+            "source_rows": int(df_5m.attrs.get("source_row_count", len(df_5m))),
+            "rows_5m_after_cleanup": int(len(df_5m)),
+            "rows_30m": int(len(df_30m)),
+            "rows_1h": int(len(df_1hr)),
+            "output_rows": int(output_rows),
+            "anomaly_rows_removed": int(df_5m.attrs.get("anomaly_count", 0)),
+        },
+        "time_range": {
+            "start": df_5m.index.min().isoformat() if not df_5m.empty else None,
+            "end": df_5m.index.max().isoformat() if not df_5m.empty else None,
+        },
+        "timezone_contract": {
+            "source_timezone": source_timezone,
+            "canonical_timezone": canonical_timezone,
+            "csv_timezone": canonical_timezone,
+            "csv_timestamps_are_timezone_aware": False,
+            "timestamp_column": "timestamp" if output_kind == "bar_labels" else None,
+        },
+        "bar_timestamp_semantics": bar_timestamp_semantics,
+        "labeling_params": asdict(params),
+    }
 
 
 def resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
@@ -263,7 +370,11 @@ def main() -> None:
     args = parse_args()
 
     print(f"Loading source data: {args.input}")
-    df_5m = load_fx_csv(args.input)
+    df_5m = load_fx_csv(
+        args.input,
+        source_timezone=args.source_timezone,
+        canonical_timezone=args.canonical_timezone,
+    )
     df_30m = resample_ohlcv(df_5m, "30min")
     df_1hr = resample_ohlcv(df_5m, "1h")
 
@@ -271,6 +382,7 @@ def main() -> None:
     print(f"30m rows: {len(df_30m):,}")
     print(f"1h rows:  {len(df_1hr):,}")
     print(f"Anomaly bars removed: {int(df_5m.attrs.get('anomaly_count', 0)):,}")
+    print(f"Timezone normalization: {args.source_timezone} -> {args.canonical_timezone}")
     print(f"Date range: {df_5m.index[0]} -> {df_5m.index[-1]}")
 
     params = build_default_params()
@@ -284,14 +396,53 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     labeled_to_save = df_labeled.reset_index().rename(columns={"index": "timestamp"})
+    labeled_to_save = prepare_frame_for_csv(
+        labeled_to_save,
+        canonical_timezone=args.canonical_timezone,
+    )
     labeled_to_save.to_csv(args.output, index=False)
 
     swings_df = swings_to_frame(swings)
     args.swings_output.parent.mkdir(parents=True, exist_ok=True)
-    swings_df.to_csv(args.swings_output, index=False)
+    swings_to_save = prepare_frame_for_csv(
+        swings_df,
+        canonical_timezone=args.canonical_timezone,
+    )
+    swings_to_save.to_csv(args.swings_output, index=False)
+
+    labels_metadata = build_output_metadata(
+        output_kind="bar_labels",
+        source_path=args.input,
+        output_path=args.output,
+        df_5m=df_5m,
+        df_30m=df_30m,
+        df_1hr=df_1hr,
+        params=params,
+        source_timezone=args.source_timezone,
+        canonical_timezone=args.canonical_timezone,
+        bar_timestamp_semantics=args.bar_timestamp_semantics,
+        output_rows=len(labeled_to_save),
+    )
+    swings_metadata = build_output_metadata(
+        output_kind="swing_metadata",
+        source_path=args.input,
+        output_path=args.swings_output,
+        df_5m=df_5m,
+        df_30m=df_30m,
+        df_1hr=df_1hr,
+        params=params,
+        source_timezone=args.source_timezone,
+        canonical_timezone=args.canonical_timezone,
+        bar_timestamp_semantics=args.bar_timestamp_semantics,
+        output_rows=len(swings_to_save),
+    )
+    labels_metadata_path = write_metadata(args.output, labels_metadata)
+    swings_metadata_path = write_metadata(args.swings_output, swings_metadata)
 
     print(f"\nSaved bar labels to: {args.output}")
+    print(f"Saved bar-label metadata to: {labels_metadata_path}")
     print(f"Saved swing metadata to: {args.swings_output}")
+    print(f"Saved swing metadata sidecar to: {swings_metadata_path}")
     print(summarize_labels(df_labeled))
 
     if args.plot:

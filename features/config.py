@@ -56,6 +56,28 @@ class FeatureBuilderConfig:
     strategy_timeout_seconds: float | None = 300.0
     optimize_feature_dtypes: bool = False
 
+    source_timezone: str = "UTC"
+    canonical_timezone: str = "UTC"
+    feature_clock_timezone: str = "America/New_York"
+    london_timezone: str = "Europe/London"
+    new_york_timezone: str = "America/New_York"
+    market_close_timezone: str = "America/New_York"
+    market_close_hour: int = 17
+    market_close_minute: int = 0
+    asia_session_reference_timezone: str = "America/New_York"
+    asia_session_start_hour: int = 19
+    asia_session_end_hour: int = 2
+    london_session_start_hour: int = 7
+    london_session_end_hour: int = 16
+    new_york_session_start_hour: int = 8
+    new_york_session_end_hour: int = 17
+    london_killzone_reference_timezone: str = "America/New_York"
+    london_killzone_start_hour: int = 2
+    london_killzone_end_hour: int = 5
+    new_york_killzone_reference_timezone: str = "America/New_York"
+    new_york_killzone_start_hour: int = 8
+    new_york_killzone_end_hour: int = 11
+
     enable_lags: bool = True
     lag_columns: List[str] = field(
         default_factory=lambda: [

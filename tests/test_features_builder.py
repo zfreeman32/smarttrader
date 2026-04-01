@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from features.builder import FeatureDatasetBuilder
 from features.config import FeatureBuilderConfig
 from features.feature_sets.strategy_signals import _execute_strategy_jobs, build_strategy_signals
+from features.io import standardize_market_frame
 from features.progress import progress_context
 from features.strategy_registry import STRATEGY_REGISTRY, prepare_strategy_input
 
@@ -107,6 +108,85 @@ def test_builder_emits_progress_events() -> None:
     )
     assert events[-1].stage == "build"
     assert events[-1].action == "complete"
+
+
+def test_standardize_market_frame_normalizes_gmt_minus_6_source_to_utc() -> None:
+    raw = pd.DataFrame(
+        {
+            "datetime": ["2024-01-01 00:00:00", "2024-01-01 00:05:00"],
+            "open": [1.10, 1.11],
+            "high": [1.12, 1.13],
+            "low": [1.09, 1.10],
+            "close": [1.11, 1.12],
+            "volume": [100, 120],
+        }
+    )
+
+    standardized = standardize_market_frame(raw, source_timezone="GMT-6", canonical_timezone="UTC")
+
+    assert str(standardized["datetime"].iloc[0]) == "2024-01-01 06:00:00+00:00"
+    assert str(standardized["datetime"].iloc[1]) == "2024-01-01 06:05:00+00:00"
+
+
+def test_builder_produces_identical_time_features_for_equivalent_utc_and_gmt_minus_6_inputs() -> None:
+    market_utc = _sample_market_frame(rows=96)
+    market_gmt6 = market_utc.copy()
+    market_gmt6["datetime"] = (
+        pd.to_datetime(market_utc["datetime"], errors="coerce") - pd.Timedelta(hours=6)
+    ).dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    base_config = FeatureBuilderConfig(
+        feature_sets=["session", "temporal_context", "quality"],
+        warmup_rows=0,
+        drop_warmup_rows=False,
+        enable_lags=False,
+        enable_rolling_stats=False,
+        enable_zscores=False,
+        enable_winsorization=False,
+        enable_percentile_ranks=False,
+        enable_atr_normalization=False,
+        enable_sigma_normalization=False,
+        enable_interactions=False,
+        fillna_numeric=False,
+    )
+
+    utc_config = FeatureBuilderConfig.from_dict(base_config.to_dict())
+    utc_config.source_timezone = "UTC"
+    gmt6_config = FeatureBuilderConfig.from_dict(base_config.to_dict())
+    gmt6_config.source_timezone = "GMT-6"
+
+    utc_dataset, _ = FeatureDatasetBuilder(utc_config).build(market_utc)
+    gmt6_dataset, _ = FeatureDatasetBuilder(gmt6_config).build(market_gmt6)
+
+    compare_columns = [
+        "hour",
+        "minute",
+        "day_of_week",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dow_sin",
+        "dow_cos",
+        "in_asian_session",
+        "in_london_session",
+        "in_newyork_session",
+        "in_london_ny_overlap",
+        "in_london_killzone",
+        "in_newyork_killzone",
+        "in_london_early",
+        "in_london_mid",
+        "in_london_late",
+        "in_newyork_early",
+        "in_newyork_mid",
+        "in_newyork_late",
+        "large_time_gap_flag",
+    ]
+
+    np.testing.assert_allclose(
+        utc_dataset.loc[:, compare_columns].to_numpy(dtype=float),
+        gmt6_dataset.loc[:, compare_columns].to_numpy(dtype=float),
+        equal_nan=True,
+    )
 
 
 def test_prepare_strategy_input_preserves_original_columns_and_adds_aliases() -> None:

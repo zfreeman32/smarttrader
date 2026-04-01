@@ -4,6 +4,12 @@ import numpy as np
 import pandas as pd
 
 from ..config import FeatureBuilderConfig
+from ..fx_calendar import (
+    build_market_day_close_labels,
+    build_market_week_close_labels,
+    normalize_datetime_series,
+    resample_ohlcv_by_close_labels,
+)
 from ..registry import register_feature_set
 from ..transforms import bars_since_event, calculate_atr, detect_confirmed_swings, safe_divide
 
@@ -90,7 +96,11 @@ def build_htf_context(
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
 
-    datetime_series = pd.to_datetime(df["datetime"], errors="coerce")
+    datetime_series = normalize_datetime_series(
+        df["datetime"],
+        source_timezone=config.source_timezone,
+        canonical_timezone=config.canonical_timezone,
+    )
     valid_mask = datetime_series.notna()
     if not valid_mask.any():
         return out
@@ -124,7 +134,15 @@ def build_htf_context(
         out[f"{prefix}_bars_since_swing_high_event"] = bars_since_event(aligned_high_event)
         out[f"{prefix}_bars_since_swing_low_event"] = bars_since_event(aligned_low_event)
 
-    daily = _resample_ohlcv(market, "1D")
+    daily_labels = build_market_day_close_labels(
+        pd.Series(market.index, index=market.index),
+        source_timezone=config.canonical_timezone,
+        canonical_timezone=config.canonical_timezone,
+        market_close_timezone=config.market_close_timezone,
+        market_close_hour=config.market_close_hour,
+        market_close_minute=config.market_close_minute,
+    )
+    daily = resample_ohlcv_by_close_labels(market, daily_labels)
     if not daily.empty:
         daily_levels = pd.DataFrame(index=daily.index)
         daily_levels["htf_prev_day_high"] = daily["high"].shift(1)
@@ -133,7 +151,15 @@ def build_htf_context(
         daily_levels["htf_rolling_daily_low"] = daily["low"].shift(1).rolling(5, min_periods=1).min()
         out = out.join(_align_continuous(daily_levels, target_dt_index, output_index))
 
-    weekly = _resample_ohlcv(market, "W-FRI")
+    weekly_labels = build_market_week_close_labels(
+        pd.Series(market.index, index=market.index),
+        source_timezone=config.canonical_timezone,
+        canonical_timezone=config.canonical_timezone,
+        market_close_timezone=config.market_close_timezone,
+        market_close_hour=config.market_close_hour,
+        market_close_minute=config.market_close_minute,
+    )
+    weekly = resample_ohlcv_by_close_labels(market, weekly_labels)
     if not weekly.empty:
         weekly_levels = pd.DataFrame(index=weekly.index)
         weekly_levels["htf_rolling_weekly_high"] = weekly["high"].shift(1).rolling(4, min_periods=1).max()

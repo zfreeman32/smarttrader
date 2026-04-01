@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..config import FeatureBuilderConfig
+from ..fx_calendar import normalize_datetime_series
 from ..registry import register_feature_set
 from ..transforms import safe_divide
 
@@ -15,7 +16,7 @@ from ..transforms import safe_divide
 )
 def build_quality(
     df: pd.DataFrame,
-    _: FeatureBuilderConfig,
+    config: FeatureBuilderConfig,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
 
@@ -33,7 +34,11 @@ def build_quality(
         out["zero_volume_flag"] = 0
 
     if "datetime" in df.columns:
-        dt = pd.to_datetime(df["datetime"], errors="coerce")
+        dt = normalize_datetime_series(
+            df["datetime"],
+            source_timezone=config.source_timezone,
+            canonical_timezone=config.canonical_timezone,
+        )
         out["large_time_gap_flag"] = (dt.diff().dt.total_seconds().fillna(0) > 60 * 60).astype(int)
 
     return out
