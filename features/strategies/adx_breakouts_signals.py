@@ -18,8 +18,8 @@ def adx_breakouts_signals(stock_df, highest_length=15, adx_length=14, adx_level=
     signals['highest'] = highest
     signals['adx_breakout_buy_signal'] = 0
 
-    # Handle potential NaNs by forward-filling
-    signals.fillna(method='bfill', inplace=True)
+    # Backfill the warm-up rows produced by the rolling indicators.
+    signals = signals.bfill()
     
     # Compute the breakout condition
     breakout_condition = (signals['adx'] > adx_level) & (stock_df['Close'] > (signals['highest'] + offset))

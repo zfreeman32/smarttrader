@@ -8,7 +8,7 @@ def bullish_candlestick_patterns(stock_df):
     # Calculate previous day's high and low
     signals['prev_high'] = stock_df['High'].shift(1)
     signals['prev_low'] = stock_df['Low'].shift(1)
-    signals['close'] = stock_df['Close']
+    signals['prev_close'] = stock_df['Close'].shift(1)
     
     # Bearish Engulfing Pattern
     signals['bearish_engulfing'] = (
@@ -40,6 +40,10 @@ def bullish_candlestick_patterns(stock_df):
     # Generate signal column
     signals['signal'] = 'neutral'
     signals.loc[signals['long'], 'signal'] = 'long'
-    signals.drop(['prev_high', 'prev_low', 'bearish_engulfing', 'three_outside_down', 'bullish_harami'], axis=1, inplace=True)
+    signals.drop(
+        ['prev_high', 'prev_low', 'prev_close', 'bearish_engulfing', 'three_outside_down', 'bullish_harami'],
+        axis=1,
+        inplace=True,
+    )
 
     return signals[['signal']]

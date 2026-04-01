@@ -1,9 +1,14 @@
 import pandas as pd
-from ta import trend
+from ta import momentum
 
 def ppo_signals__percentage_price_oscillator_strategy(stock_df, fast_length=12, slow_length=26, signal_length=9):
     signals = pd.DataFrame(index=stock_df.index)
-    ppo_indicator = trend.PPOIndicator(stock_df['Close'], window_slow=slow_length, window_fast=fast_length, window_sign=signal_length)
+    ppo_indicator = momentum.PercentagePriceOscillator(
+        stock_df['Close'],
+        window_slow=slow_length,
+        window_fast=fast_length,
+        window_sign=signal_length,
+    )
     signals['PPO'] = ppo_indicator.ppo()
     signals['Signal_Line'] = ppo_indicator.ppo_signal()
     signals['ppo_signal'] = 'neutral'

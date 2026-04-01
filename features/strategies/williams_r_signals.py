@@ -6,7 +6,12 @@ from ta import momentum
 # Example strategy: Williams %R Strategy
 def williams_r_signals(stock_df, period=14, upper_threshold=-20, lower_threshold=-80):
     signals = pd.DataFrame(index=stock_df.index)
-    williams_r = momentum.WilliamsRIndicator(high=stock_df['High'], low=stock_df['Low'], close=stock_df['Close'], window=period)
+    williams_r = momentum.WilliamsRIndicator(
+        high=stock_df['High'],
+        low=stock_df['Low'],
+        close=stock_df['Close'],
+        lbp=period,
+    )
     signals['Williams %R'] = williams_r.williams_r()
     signals['williams_signal'] = 'neutral'
     

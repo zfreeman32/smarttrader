@@ -1,5 +1,6 @@
 
 import pandas as pd
+import numpy as np
 from ta import momentum, trend
 
 # GBP/CAD Trading Strategy
@@ -23,7 +24,11 @@ def gbp_cad_signals(gbp_cad_df, short_window=5, long_window=20):
     
     # Generate signals
     signals['signal'] = 0
-    signals['signal'][short_window:] = np.where(signals['short_mavg'][short_window:] > signals['long_mavg'][short_window:], 1, 0)
+    signals.loc[signals.index[short_window:], 'signal'] = np.where(
+        signals['short_mavg'].iloc[short_window:] > signals['long_mavg'].iloc[short_window:],
+        1,
+        0,
+    )
     
     # Create trading positions
     signals['position'] = signals['signal'].diff()

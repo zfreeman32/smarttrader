@@ -17,7 +17,7 @@ def breakout_signals(stock_df, breakout_threshold=0.05):
     signals.loc[stock_df['Close'] > stock_df['Resistance'] * (1 + breakout_threshold), 'signal'] = 'long'
     signals.loc[stock_df['Close'] < stock_df['Support'] * (1 - breakout_threshold), 'signal'] = 'short'
     
-    # Forward fill signals to maintain position until criteria changes
-    signals['signal'].fillna(method='ffill', inplace=True)
+    # Forward fill signals to maintain position until criteria changes.
+    signals['signal'] = signals['signal'].ffill()
     
     return signals

@@ -3,7 +3,7 @@ import pandas as pd
 def membership_plans_signals__unlocking_the_power_of_trading_days_analyzing_sp_500_gold_and_treasuries_strategy(stock_df):
     signals = pd.DataFrame(index=stock_df.index)
     signals['signal'] = 'neutral'
-    monthly_groups = stock_df.resample('M')
+    monthly_groups = stock_df.resample('ME')
     for month, group in monthly_groups:
         first_day = group.index[0]
         last_day = group.index[-1]

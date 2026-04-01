@@ -15,7 +15,7 @@ def seasonal_trading_signals__litecoin_trading_strategy_strategy(stock_df, month
     """
     signals = pd.DataFrame(index=stock_df.index)
     signals['signal'] = 'neutral'
-    signals['month'] = signals.index.month
-    signals.loc[signals['month'] == month_to_trade, 'signal'] = 'long'
-    signals.loc[signals['month'] != month_to_trade, 'signal'] = 'short'
-    return signals[['signal']].drop('month', axis=1)
+    months = signals.index.month
+    signals.loc[months == month_to_trade, 'signal'] = 'long'
+    signals.loc[months != month_to_trade, 'signal'] = 'short'
+    return signals[['signal']]

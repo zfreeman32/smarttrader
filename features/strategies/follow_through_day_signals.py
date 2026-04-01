@@ -4,8 +4,12 @@ import pandas as pd
 # Follow Through Day Trading Strategy
 def follow_through_day_signals(stock_df, volume_multiplier=1.5):
     signals = pd.DataFrame(index=stock_df.index)
+    if 'Volume' not in stock_df.columns:
+        signals['trading_signal'] = 'neutral'
+        return signals[['trading_signal']]
+
     signals['Price Change'] = stock_df['Close'].diff()
-    signals['Volume Change'] = stock_df['Volume'].diff()
+    signals['Volume'] = stock_df['Volume']
     
     # 1. Identify the rally attempts (Day 1, Day 2, Day 3)
     signals['Rally Attempt'] = (signals['Price Change'] > 0).astype(int)
@@ -18,7 +22,7 @@ def follow_through_day_signals(stock_df, volume_multiplier=1.5):
         (signals['Valid Rally'].shift(3) == 1) &  # Previous three days valid
         (signals['Rally Attempt'] == 1) &  # Current day is a rally
         (signals['Price Change'] > 0) &  # Today's price is higher than yesterday's
-        (signals['Volume Change'] > signals['Volume'].shift(1) * volume_multiplier)  # Increased volume
+        (signals['Volume'] > signals['Volume'].shift(1) * volume_multiplier)  # Increased volume
     ).astype(int)
 
     # 4. Generate signals

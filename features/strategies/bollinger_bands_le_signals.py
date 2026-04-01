@@ -15,7 +15,7 @@ def bollinger_bands_le_signals(data, length=20, num_devs_dn=2.0):
     signals['bollinger_bands_le_buy_signal'] = 0 # Default all signals to 0.0
 
     # Generate 'Long Entry' signal where price crosses above lower band
-    signals.loc['bollinger_bands_le_buy_signal'][signals['close'] > signals['lower'].shift(1)] = 1
+    signals.loc[signals['close'] > signals['lower'].shift(1), 'bollinger_bands_le_buy_signal'] = 1
     signals.drop(columns=['close', 'lower'], inplace=True)
     # Return only the signal column
     return signals

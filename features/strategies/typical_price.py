@@ -3,24 +3,23 @@ import numpy as np
 from ta import momentum, trend, volatility, volume
 import talib
 
-# Functions from svehatypcross.py
-def typical_price(df):
-    return (df['High'] + df['Low'] + df['Close']) / 3
-
-def HA(df):
-    HA_Close = (df['Open'] + df['High'] + df['Low'] + df['Close']) / 4
-    HA_Open = (df['Open'].shift(1) + df['Close'].shift(1)) / 2
-    HA_High = df[['High', 'Open', 'Close']].max(axis=1)
-    HA_Low = df[['Low', 'Open', 'Close']].min(axis=1)
-    return HA_Open, HA_High, HA_Low, HA_Close
-
 def sve_ha_typ_cross_signals(df, typical_length=14, ha_length=14):
+    def typical_price(frame):
+        return (frame['High'] + frame['Low'] + frame['Close']) / 3
+
+    def heikin_ashi(frame):
+        ha_close = (frame['Open'] + frame['High'] + frame['Low'] + frame['Close']) / 4
+        ha_open = (frame['Open'].shift(1) + frame['Close'].shift(1)) / 2
+        ha_high = frame[['High', 'Open', 'Close']].max(axis=1)
+        ha_low = frame[['Low', 'Open', 'Close']].min(axis=1)
+        return ha_open, ha_high, ha_low, ha_close
+
     signals = pd.DataFrame(index=df.index)
     
     tp = typical_price(df)
     tp_ema = talib.EMA(tp, timeperiod=typical_length)
     
-    ha_open, ha_high, ha_low, ha_close = HA(df)
+    ha_open, ha_high, ha_low, ha_close = heikin_ashi(df)
     ha_avg = (ha_open + ha_high + ha_low + ha_close) / 4
     ha_ema = talib.EMA(ha_avg, timeperiod=ha_length)
 

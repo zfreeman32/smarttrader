@@ -16,7 +16,13 @@ def triple_rsi_signals(stock_df, rsi_period=14, rsi_overbought=70, rsi_oversold=
 
     # Generate signals
     signals['triple_rsi_signal'] = 'neutral'
-    three_down_days = signals['RSI'].rolling(window=3).apply(lambda x: all(x[i] < rsi_oversold for i in range(3)), raw=True)
+    three_down_days = (
+        signals['RSI']
+        .rolling(window=3)
+        .apply(lambda x: float(np.all(x < rsi_oversold)), raw=True)
+        .fillna(0.0)
+        .astype(bool)
+    )
 
     signals.loc[
         (three_down_days) & (stock_df['Close'] < signals['MA200']) & (signals['RSI'] < rsi_oversold),

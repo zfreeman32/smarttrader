@@ -3,6 +3,7 @@ import numpy as np
 
 def ichimoku_signals__ichimoku_strategy_strategy(stock_df):
     signals = pd.DataFrame(index=stock_df.index)
+    close = stock_df['Close']
     high_9 = stock_df['High'].rolling(window=9).max()
     low_9 = stock_df['Low'].rolling(window=9).min()
     signals['Tenkan-sen'] = (high_9 + low_9) / 2
@@ -13,8 +14,8 @@ def ichimoku_signals__ichimoku_strategy_strategy(stock_df):
     high_52 = stock_df['High'].rolling(window=52).max()
     low_52 = stock_df['Low'].rolling(window=52).min()
     signals['Senkou Span B'] = ((high_52 + low_52) / 2).shift(26)
-    signals['Chikou Span'] = stock_df['Close'].shift(-26)
+    signals['Chikou Span'] = close.shift(-26)
     signals['signal'] = 'neutral'
-    signals.loc[(signals['Tenkan-sen'] > signals['Kijun-sen']) & (signals['Chikou Span'] > signals['Close']), 'signal'] = 'long'
-    signals.loc[(signals['Tenkan-sen'] < signals['Kijun-sen']) & (signals['Chikou Span'] < signals['Close']), 'signal'] = 'short'
+    signals.loc[(signals['Tenkan-sen'] > signals['Kijun-sen']) & (signals['Chikou Span'] > close), 'signal'] = 'long'
+    signals.loc[(signals['Tenkan-sen'] < signals['Kijun-sen']) & (signals['Chikou Span'] < close), 'signal'] = 'short'
     return signals[['signal']]

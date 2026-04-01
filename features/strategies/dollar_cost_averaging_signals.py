@@ -17,7 +17,7 @@ def dollar_cost_averaging_signals(stock_df, investment_amount=100, investment_fr
     """
     
     investment_frequency_map = {
-        'monthly': 'M',
+        'monthly': 'ME',
         'weekly': 'W',
         # Future enhancements could allow for daily or custom frequencies.
     }

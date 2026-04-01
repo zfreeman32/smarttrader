@@ -8,8 +8,8 @@ def cmo_absolute_indicator_signals(stock_df, window=14, overbought=70, oversold=
     
     # Calculate the CMO Absolute Indicator
     delta = stock_df['Close'].diff()
-    sum_gain = np.where(delta > 0, delta, 0).rolling(window=window).sum()
-    sum_loss = np.where(delta < 0, -delta, 0).rolling(window=window).sum()
+    sum_gain = delta.clip(lower=0).rolling(window=window).sum()
+    sum_loss = (-delta.clip(upper=0)).rolling(window=window).sum()
     cmo = 100 * (sum_gain - sum_loss) / (sum_gain + sum_loss)
 
     signals['CMO'] = cmo
