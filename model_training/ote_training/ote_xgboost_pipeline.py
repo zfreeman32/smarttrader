@@ -1390,19 +1390,11 @@ def train_and_score_fold(
 
 
 def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
-    max_top_features = min(config.top_feature_max, config.max_loaded_features)
-    min_top_features = min(config.top_feature_min, max_top_features)
     return {
-        "top_features": trial.suggest_int(
-            "top_features",
-            min_top_features,
-            max_top_features,
-            step=config.top_feature_step,
-        ),
         "window_size": trial.suggest_int("window_size", config.window_min, config.window_max, step=4),
         "lag_count": trial.suggest_int("lag_count", config.lag_count_min, config.lag_count_max),
         "delta_feature_count": trial.suggest_int(
-            "delta_feature_count", 0, min(config.delta_feature_cap, config.top_feature_max), step=4
+            "delta_feature_count", 0, min(config.delta_feature_cap, config.max_loaded_features), step=4
         ),
         "learning_rate": trial.suggest_float("learning_rate", 0.015, 0.12, log=True),
         "focal_alpha": trial.suggest_float("focal_alpha", 0.70, 0.95),
@@ -1427,8 +1419,6 @@ def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -
 
 
 def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> Dict[str, float]:
-    max_top_features = min(config.top_feature_max, config.max_loaded_features)
-    min_top_features = min(config.top_feature_min, max_top_features)
     min_window = int(min(config.window_min, config.window_max))
     max_window = int(max(config.window_min, config.window_max))
     if min_window == max_window:
@@ -1446,12 +1436,6 @@ def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> 
     lower_lr = max(config.learning_rate / 5.0, 1e-5)
     upper_lr = max(config.learning_rate * 5.0, lower_lr * 1.5)
     return {
-        "top_features": trial.suggest_int(
-            "top_features",
-            min_top_features,
-            max_top_features,
-            step=config.top_feature_step,
-        ),
         "window_size": int(window_size),
         "num_layers": int(trial.suggest_int("num_layers", min_num_layers, max_num_layers)),
         "learning_rate": trial.suggest_float("learning_rate", lower_lr, upper_lr, log=True),
@@ -1478,22 +1462,23 @@ def cross_validate_trial(
 ) -> TrialArtifacts:
     validate_backend_config(config)
 
-    top_features = min(int(params["top_features"]), len(dataset.ranked_features))
+    if not dataset.ranked_features:
+        raise ValueError("Prepared dataset does not contain any ranked features for training.")
+
     window_size = resolve_trial_window_size(params, config)
     lag_steps: List[int] = []
     delta_feature_count = 0
     context_rows = window_size - 1
+    selected_feature_names = list(dataset.ranked_features)
+    selected_feature_idx = np.arange(len(selected_feature_names), dtype=np.int64)
 
     if config.backend == "xgboost":
         lag_count = int(params["lag_count"])
-        delta_feature_count = min(int(params["delta_feature_count"]), top_features)
+        delta_feature_count = min(int(params["delta_feature_count"]), len(selected_feature_names))
         lag_steps = make_lag_steps(window_size=window_size, lag_count=lag_count)
         context_rows = max(lag_steps)
 
     purge_bars = resolve_purge_bars(config=config, context_rows=context_rows)
-
-    selected_feature_names = dataset.ranked_features[:top_features]
-    selected_feature_idx = np.arange(top_features, dtype=np.int64)
 
     splitter = PurgedWalkForwardSplitter(
         initial_train_rows=max(config.cv_initial_train_rows, context_rows + 1),
@@ -1627,10 +1612,13 @@ def fit_final_model(
     validate_backend_config(config)
 
     params = dict(artifacts.params)
-    top_features = min(int(params["top_features"]), len(dataset.ranked_features))
-    delta_feature_count = min(int(params.get("delta_feature_count", 0)), top_features)
+    if not artifacts.selected_feature_names:
+        raise ValueError("Final model fit requires at least one selected feature.")
+
     selected_feature_names = artifacts.selected_feature_names
-    selected_feature_idx = np.arange(top_features, dtype=np.int64)
+    selected_feature_count = len(selected_feature_names)
+    delta_feature_count = min(int(params.get("delta_feature_count", 0)), selected_feature_count)
+    selected_feature_idx = np.arange(selected_feature_count, dtype=np.int64)
     lag_steps = artifacts.lag_steps
     window_size = artifacts.window_size
     context_rows = artifacts.context_rows
@@ -1821,7 +1809,7 @@ def fit_final_model(
             "model_type": config.model_type if config.backend == "torch" else "xgboost",
             "window_size": window_size,
             "context_rows": context_rows,
-            "top_features": top_features,
+            "feature_count": selected_feature_count,
             "selected_feature_names": selected_feature_names,
             "lag_steps": lag_steps,
             "delta_feature_count": delta_feature_count,
@@ -2115,8 +2103,8 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--purge-buffer-bars", type=int, default=12)
     parser.add_argument("--final-eval-min-rows", type=int, default=160)
     parser.add_argument("--max-loaded-features", type=int, default=160)
-    parser.add_argument("--top-feature-max", type=int, default=96)
-    parser.add_argument("--top-feature-min", type=int, default=24)
+    parser.add_argument("--top-feature-max", type=int, default=96, help=argparse.SUPPRESS)
+    parser.add_argument("--top-feature-min", type=int, default=24, help=argparse.SUPPRESS)
     parser.add_argument("--window-max", type=int, default=40)
     parser.add_argument("--window-min", type=int, default=8)
     parser.add_argument("--event-tolerance-bars", type=int, default=2)

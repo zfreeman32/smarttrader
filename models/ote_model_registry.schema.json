@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.trade_bot/models/ote_model_registry.schema.json",
+  "title": "OTE Model Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "models",
+    "promotion_rules"
+  ],
+  "properties": {
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model_id",
+          "direction",
+          "role",
+          "backend",
+          "artifact_path",
+          "cv_mean_ap",
+          "cv_mean_event_f05",
+          "test_ap",
+          "test_event_f05",
+          "global_threshold",
+          "regime_thresholds",
+          "abstain_policy",
+          "calibration_method",
+          "promotion_date",
+          "promotion_reason",
+          "status"
+        ],
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "champion",
+              "challenger",
+              "candidate",
+              "benchmark"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "xgboost",
+              "tcn",
+              "lstm"
+            ]
+          },
+          "artifact_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cv_mean_ap": {
+            "type": "number"
+          },
+          "cv_mean_event_f05": {
+            "type": "number"
+          },
+          "test_ap": {
+            "type": "number"
+          },
+          "test_event_f05": {
+            "type": "number"
+          },
+          "global_threshold": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "regime_thresholds": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "abstain_policy": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "calibration_method": {
+            "type": "string",
+            "enum": [
+              "platt",
+              "isotonic",
+              "none"
+            ]
+          },
+          "promotion_date": {
+            "type": "string",
+            "minLength": 1
+          },
+          "promotion_reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "deprecated",
+              "candidate"
+            ]
+          }
+        }
+      }
+    },
+    "promotion_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_cv_splits",
+        "min_test_event_f05",
+        "require_regime_robustness",
+        "require_post_cost_profitability",
+        "require_paper_trading_confirmation"
+      ],
+      "properties": {
+        "min_cv_splits": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_test_event_f05": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "require_regime_robustness": {
+          "type": "boolean"
+        },
+        "require_post_cost_profitability": {
+          "type": "boolean"
+        },
+        "require_paper_trading_confirmation": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

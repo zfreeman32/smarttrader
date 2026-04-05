@@ -601,7 +601,10 @@ def add_calendar_columns(
     working = trades.copy()
     working[datetime_column] = pd.to_datetime(working[datetime_column], errors="coerce")
     working["calendar_year"] = working[datetime_column].dt.year.astype("Int64").astype(str)
-    working["calendar_quarter"] = working[datetime_column].dt.to_period("Q").astype(str)
+    quarter_timestamps = working[datetime_column]
+    if quarter_timestamps.dt.tz is not None:
+        quarter_timestamps = quarter_timestamps.dt.tz_localize(None)
+    working["calendar_quarter"] = quarter_timestamps.dt.to_period("Q").astype(str)
     return working
 
 
@@ -677,7 +680,12 @@ def _lookup_policy_evaluation_row(
 
 def _next_quarter_start(timestamp: pd.Timestamp) -> pd.Timestamp:
     quarter_month = ((timestamp.month - 1) // 3) * 3 + 1
-    quarter_start = pd.Timestamp(year=timestamp.year, month=quarter_month, day=1)
+    quarter_start = pd.Timestamp(
+        year=timestamp.year,
+        month=quarter_month,
+        day=1,
+        tz=timestamp.tz if timestamp.tz is not None else None,
+    )
     if timestamp > quarter_start:
         quarter_start = quarter_start + pd.DateOffset(months=3)
     return quarter_start

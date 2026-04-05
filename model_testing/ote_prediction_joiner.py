@@ -10,6 +10,13 @@ import pandas as pd
 
 from features.io import standardize_market_frame
 from features.preprocessing import FeaturePreprocessingPipeline, PreprocessingConfig
+from preprocessing.feature_selection import (
+    build_split_indices,
+    build_target_context,
+    discover_targets,
+    ordered_usable_positions,
+    resolve_source_row_idx,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_TARGETS = {"long_entry", "short_entry", "long_ote", "short_ote"}
@@ -134,15 +141,21 @@ def reconstruct_source_row_idx_mapping(
         metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
 
     upstream_info = pipeline._detect_upstream_preprocessing(metadata)
-    source_frame, _ = pipeline._apply_row_windowing(source_frame, upstream_info)
+    source_row_idx = resolve_source_row_idx(source_frame)
+    source_frame, source_row_idx, _ = pipeline._apply_row_windowing(
+        source_frame,
+        source_row_idx,
+        upstream_info,
+    )
 
-    target_specs = {spec.name: spec for spec in pipeline._discover_targets(source_frame)}
+    target_specs = {spec.name: spec for spec in discover_targets(source_frame, config)}
     if target_name not in target_specs:
         available = ", ".join(sorted(target_specs))
         raise ValueError(f"Target {target_name!r} was not found in source dataset. Available targets: {available}")
 
     spec = target_specs[target_name]
-    target_context = pipeline._build_target_context(source_frame, [spec])
+    target_context = build_target_context(source_frame, [spec], config.time_column)
+    target_context["source_row_idx"] = source_row_idx.to_numpy(copy=False)
     target_raw = pd.to_numeric(target_context[spec.target_column], errors="coerce")
     positive_mask = target_raw.fillna(0).astype(float) > 0
     warmup_mask = (
@@ -158,14 +171,14 @@ def reconstruct_source_row_idx_mapping(
         negative_mask &= ~target_context[spec.exclude_column].fillna(False).astype(bool)
 
     usable_mask = ~warmup_mask & (positive_mask | negative_mask)
-    ordered_positions, _ = pipeline._ordered_usable_positions(target_context, usable_mask)
+    ordered_positions, _ = ordered_usable_positions(target_context, usable_mask, config.time_column)
     ordered_source_row_idx = (
         target_context["source_row_idx"]
         .iloc[ordered_positions]
         .astype(np.int64)
         .to_numpy(copy=True)
     )
-    split_indices = pipeline._build_split_indices(len(ordered_positions))
+    split_indices = build_split_indices(len(ordered_positions), config)
 
     return {
         "prepared_root": prepared_root,

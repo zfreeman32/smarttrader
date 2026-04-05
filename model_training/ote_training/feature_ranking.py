@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterable, List, Sequence
+from typing import Any, Dict, Iterable, List, Sequence
 
 import numpy as np
 import pandas as pd
@@ -186,3 +186,93 @@ def merge_feature_rankings(
 
     merged["merged_rank"] = np.arange(1, len(merged) + 1, dtype=int)
     return merged
+
+
+def filter_features_by_attribution_gates(
+    ranking: pd.DataFrame,
+    *,
+    attribution_column: str = "mean_abs_shap_all",
+    floor_fraction: float = 0.15,
+    cumulative_importance: float = 0.90,
+) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    """Apply sequential attribution gates to a ranking frame.
+
+    The filter first removes features whose attribution is below a fraction of the
+    maximum attribution, then keeps only the highest-attribution features needed
+    to reach the requested cumulative importance share.
+    """
+    if floor_fraction < 0.0 or floor_fraction > 1.0:
+        raise ValueError("floor_fraction must be between 0.0 and 1.0.")
+    if cumulative_importance <= 0.0 or cumulative_importance > 1.0:
+        raise ValueError("cumulative_importance must be in the interval (0.0, 1.0].")
+    if attribution_column not in ranking.columns:
+        raise ValueError(f"Ranking frame must include '{attribution_column}'.")
+
+    frame = ranking.copy().reset_index(drop=True)
+    if frame.empty:
+        return frame, {
+            "filter_applied": False,
+            "reason": "empty_ranking",
+            "input_feature_count": 0,
+            "after_floor_count": 0,
+            "selected_feature_count": 0,
+            "floor_fraction": float(floor_fraction),
+            "cumulative_importance": float(cumulative_importance),
+            "max_attribution": 0.0,
+            "floor_threshold_value": 0.0,
+            "total_attribution": 0.0,
+            "selected_cumulative_importance_share": 0.0,
+        }
+
+    attribution = (
+        pd.to_numeric(frame[attribution_column], errors="coerce")
+        .fillna(0.0)
+        .clip(lower=0.0)
+    )
+    max_attribution = float(attribution.max())
+    total_attribution = float(attribution.sum())
+    floor_threshold_value = float(max_attribution * floor_fraction)
+
+    summary: Dict[str, Any] = {
+        "filter_applied": True,
+        "reason": "ok",
+        "input_feature_count": int(len(frame)),
+        "after_floor_count": 0,
+        "selected_feature_count": 0,
+        "floor_fraction": float(floor_fraction),
+        "cumulative_importance": float(cumulative_importance),
+        "max_attribution": max_attribution,
+        "floor_threshold_value": floor_threshold_value,
+        "total_attribution": total_attribution,
+        "selected_cumulative_importance_share": 0.0,
+    }
+
+    if max_attribution <= 0.0 or total_attribution <= 0.0:
+        summary["filter_applied"] = False
+        summary["reason"] = "non_positive_attribution_signal"
+        summary["after_floor_count"] = int(len(frame))
+        summary["selected_feature_count"] = int(len(frame))
+        summary["selected_cumulative_importance_share"] = 1.0 if len(frame) else 0.0
+        return frame, summary
+
+    floor_mask = attribution >= floor_threshold_value
+    floor_frame = frame.loc[floor_mask].copy()
+    floor_attribution = attribution.loc[floor_mask]
+
+    if floor_frame.empty:
+        top_index = int(attribution.idxmax())
+        floor_frame = frame.loc[[top_index]].copy()
+        floor_attribution = attribution.loc[[top_index]]
+
+    summary["after_floor_count"] = int(len(floor_frame))
+
+    floor_sorted = floor_attribution.sort_values(ascending=False, kind="stable")
+    cumulative_share = floor_sorted.cumsum() / float(max(floor_sorted.sum(), 1e-12))
+    cutoff_position = int(np.searchsorted(cumulative_share.to_numpy(), cumulative_importance, side="left"))
+    cutoff_position = min(max(cutoff_position, 0), len(floor_sorted) - 1)
+    selected_indices = set(floor_sorted.index[: cutoff_position + 1].tolist())
+
+    filtered_frame = frame.loc[[index in selected_indices for index in frame.index]].reset_index(drop=True)
+    summary["selected_feature_count"] = int(len(filtered_frame))
+    summary["selected_cumulative_importance_share"] = float(cumulative_share.iloc[cutoff_position])
+    return filtered_frame, summary

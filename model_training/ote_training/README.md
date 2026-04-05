@@ -83,7 +83,7 @@ The OTE trainer loads:
 - `features.json`
 - `feature_importance_merged.csv` when present, otherwise `feature_importance.csv`
 
-It uses the feature ranking file to cap the number of loaded base features before window expansion. This keeps memory usage under control for larger datasets.
+When a backend-aware merged ranking is present, that file is already threshold-filtered by attribution. The trainer uses the full filtered ranking and only keeps `--max-loaded-features` as a safety cap for memory control.
 
 ### 3. Leakage Filtering
 
@@ -265,8 +265,6 @@ Useful flags:
 - `--backend`
 - `--model-type`
 - `--max-loaded-features`
-- `--top-feature-min`
-- `--top-feature-max`
 - `--window-min`
 - `--window-max`
 - `--window-size`

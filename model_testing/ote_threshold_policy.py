@@ -45,6 +45,17 @@ SHORT_THRESHOLD_HINTS = {
 }
 
 
+def _timestamps_to_period_count(
+    timestamps: pd.Series,
+    *,
+    freq: str,
+) -> int:
+    normalized = timestamps
+    if normalized.dt.tz is not None:
+        normalized = normalized.dt.tz_localize(None)
+    return int(normalized.dt.to_period(freq).nunique())
+
+
 @dataclass(frozen=True)
 class ThresholdSearchConfig:
     probability_column: str
@@ -631,7 +642,7 @@ def _average_events_per_month(
     timestamps = pd.to_datetime(frame[datetime_column], errors="coerce").dropna()
     if timestamps.empty:
         return float(predicted_events)
-    month_count = max(int(timestamps.dt.to_period("M").nunique()), 1)
+    month_count = max(_timestamps_to_period_count(timestamps, freq="M"), 1)
     return float(predicted_events / month_count)
 
 
@@ -648,7 +659,7 @@ def _average_events_per_week(
     timestamps = pd.to_datetime(frame[datetime_column], errors="coerce").dropna()
     if timestamps.empty:
         return float(predicted_events)
-    week_count = max(int(timestamps.dt.to_period("W").nunique()), 1)
+    week_count = max(_timestamps_to_period_count(timestamps, freq="W"), 1)
     return float(predicted_events / week_count)
 
 

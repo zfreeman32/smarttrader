@@ -6,6 +6,18 @@ import numpy as np
 import pandas as pd
 
 
+def _timestamp_to_period(timestamp: pd.Timestamp, *, freq: str) -> pd.Period:
+    normalized = timestamp.tz_localize(None) if timestamp.tz is not None else timestamp
+    return normalized.to_period(freq)
+
+
+def _timestamps_to_period_series(timestamps: pd.Series, *, freq: str) -> pd.Series:
+    normalized = timestamps
+    if normalized.dt.tz is not None:
+        normalized = normalized.dt.tz_localize(None)
+    return normalized.dt.to_period(freq)
+
+
 def compute_period_pnl_series(
     trades: pd.DataFrame,
     *,
@@ -35,7 +47,11 @@ def compute_period_pnl_series(
     if end < start:
         end = start
 
-    full_index = pd.period_range(start=start.to_period(freq), end=end.to_period(freq), freq=freq)
+    full_index = pd.period_range(
+        start=_timestamp_to_period(start, freq=freq),
+        end=_timestamp_to_period(end, freq=freq),
+        freq=freq,
+    )
     if len(full_index) == 0:
         return pd.Series(dtype=float)
 
@@ -49,7 +65,7 @@ def compute_period_pnl_series(
     if working.empty:
         return pd.Series(0.0, index=full_index, dtype=float)
 
-    working["_period"] = working[timestamp_column].dt.to_period(freq)
+    working["_period"] = _timestamps_to_period_series(working[timestamp_column], freq=freq)
     grouped = working.groupby("_period", sort=True)[pnl_column].sum()
     return grouped.reindex(full_index, fill_value=0.0).astype(float)
 
@@ -72,7 +88,7 @@ def compute_buy_hold_period_returns(
     if working.empty:
         return pd.Series(dtype=float)
 
-    working["_period"] = working[datetime_column].dt.to_period(freq)
+    working["_period"] = _timestamps_to_period_series(working[datetime_column], freq=freq)
     period_prices = working.groupby("_period", sort=True)[price_column].agg(["first", "last"])
     returns = (period_prices["last"] - period_prices["first"]) / float(pip_size)
     return returns.astype(float)

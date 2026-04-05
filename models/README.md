@@ -1,209 +1,103 @@
-# Comprehensive Trading Model Strategy Summary
+# OTE Model Artifact Comparison
 
-## Project Goals Recap
+This README documents the six on-disk `v1` and `v2` OTE model roots currently present under `models/` and the comparison registry you can use for `model_testing`.
 
-### Goal 1: Binary Classification Models
-Build separate binary classification models for:
-- **Long Signal Detection**: Predict optimal buy entry points
-- **Short Signal Detection**: Predict optimal sell entry points
-- **Input**: Live EUR/USD OHLCV + technical indicators + strategy signals
-- **Output**: Binary alerts for trade opportunities
+The numbers below are pulled from each artifact's `training_summary.json` and `model_config.json`, not from older planning notes.
 
-### Goal 2: Time-Series Regression Models
-Build regression models for:
-- **Price Forecasting**: Predict future close prices with confidence intervals
-- **Dynamic Updates**: Adjust forecasts as new data emerges
-- **Input**: Live EUR/USD OHLCV + technical indicators + strategy signals
-- **Output**: Price forecasts with confidence bands
+## Scope
 
-## Analysis Summary: Models Studied
+- Six root folders are present:
+  - `ote_full_lstm_v1`
+  - `ote_full_lstm_v2`
+  - `ote_full_tcn_v1`
+  - `ote_full_tcn_v2`
+  - `ote_full_xgb_v1`
+  - `ote_full_xgb_v2`
+- Those six roots contain ten actual model artifacts:
+  - LSTM roots are long-only.
+  - TCN and XGBoost roots each contain both `long_ote` and `short_ote`.
+- The existing `ote_model_registry.json` is your active/promotion-oriented registry.
+- The new `ote_model_registry_v1_v2_candidates.json` is the comparison registry for regime slicing and follow-on testing.
 
-Based on your comprehensive feature importance analysis, you've evaluated:
+## Inventory
 
-### Close Direction Classification Models
-1. **1-Period Direction** (`direction_1`): Next bar price movement
-2. **5-Period Direction** (`direction_5`): 5-bar ahead price movement  
-3. **14-Period Direction** (`direction_14`): 14-bar ahead price movement
-4. **3-Class 5-Period** (`direction_3class_5`): Down/Neutral/Up classification
+| Root | Targets on disk | Backend | Internal `config.output_root` | Notes |
+|---|---|---|---|---|
+| `ote_full_lstm_v1` | `long_ote` | `torch/lstm` | `models/ote_full_lstm_v1` | Older long-only benchmark snapshot. |
+| `ote_full_lstm_v2` | `long_ote` | `torch/lstm` | `models/ote_full_lstm_v2_champion_candidate` | Newer long-only LSTM candidate, but metrics regressed sharply. |
+| `ote_full_tcn_v1` | `long_ote`, `short_ote` | `torch/tcn` | `models/ote_full_tcn_v3_tail` | Saved under a `v1` directory but the training summary points at a later internal run name. |
+| `ote_full_tcn_v2` | `long_ote`, `short_ote` | `torch/tcn` | `models/ote_full_tcn_v4` | Strongest overall root on disk. |
+| `ote_full_xgb_v1` | `long_ote`, `short_ote` | `xgboost` | `models/ote_full_xgb_v2` | Older XGBoost snapshot. |
+| `ote_full_xgb_v2` | `long_ote`, `short_ote` | `xgboost` | `models/ote_full_xgb_v3` | Newer XGBoost snapshot. |
 
-### Close Returns Regression Models
-1. **1-Period Returns** (`returns_1`): Short-term return prediction
-2. **5-Period Returns** (`returns_5`): Medium-term return prediction
+## Long OTE Comparison
 
-### Deep Learning Classification Models
-**Advanced Binary Signal Classification Pipeline** for production-ready trading signal prediction:
+Feature counts for older `v1` artifacts are derived from `selected_feature_names` because those summaries do not persist `model_config.feature_count`.
 
-#### **Long Signal Classification Models**
-- **Target**: `long_signal` (buy entry point prediction)
-- **Optimized Lag Periods**: [61, 93, 64, 60, 77]
-- **Architecture Suite**: LSTM, GRU, Bidirectional LSTM with Attention, Conv1D, Transformer, TCN, MultiStream hybrid
-- **Traditional ML**: CatBoost, LightGBM, XGBoost, Random Forest
+| Artifact | Backend | Window | Features | Trials | Training schedule | Threshold | CV AP | CV event F0.5 | Test AP | Test event F0.5 |
+|---|---|---:|---:|---:|---|---:|---:|---:|---:|---:|
+| `ote_full_tcn_v2/long_ote` | `tcn` | 20 | 59 | 20 | `40 ep, 4/18/10/8` | 0.71 | 0.6254 | 0.7738 | 0.7625 | 0.8518 |
+| `ote_full_tcn_v1/long_ote` | `tcn` | 24 | 48 | 20 | `40 ep, 4/18/10/8` | 0.68 | 0.5693 | 0.7231 | 0.6987 | 0.8013 |
+| `ote_full_lstm_v1/long_ote` | `lstm` | 28 | 40 | 20 | `40 ep, auto schedule` | 0.50 | 0.5186 | 0.6907 | 0.6353 | 0.7968 |
+| `ote_full_xgb_v1/long_ote` | `xgboost` | 8 | 72 | 20 | `18 ep, lag 0/1/3/7, delta 16` | 0.68 | 0.5476 | 0.7068 | 0.6669 | 0.7041 |
+| `ote_full_xgb_v2/long_ote` | `xgboost` | 8 | 23 | 20 | `18 ep, lag 0-7, delta 12` | 0.47 | 0.5138 | 0.6372 | 0.6408 | 0.6889 |
+| `ote_full_lstm_v2/long_ote` | `lstm` | 20 | 13 | 48 | `56 ep, 6/26/14/10` | 0.29 | 0.2770 | 0.4336 | 0.3243 | 0.5043 |
 
-#### **Short Signal Classification Models**  
-- **Target**: `short_signal` (sell entry point prediction)
-- **Optimized Lag Periods**: [70, 24, 10, 74, 39]
-- **Architecture Suite**: Same comprehensive model zoo as long signals
-- **Separate Pipeline**: Independent feature engineering and hyperparameter optimization
+## Short OTE Comparison
 
-#### **Advanced Training Features**
-- **Progressive Training**: Warmup phase (20% data) → Fine-tuning phase (full data)
-- **Bayesian Hyperparameter Optimization**: Comprehensive parameter tuning across all architectures
-- **Focal Loss Implementation**: Handles class imbalance with tunable focusing parameters
-- **Time Series Cross-Validation**: Maintains temporal integrity and prevents data leakage
-- **Memory-Optimized Pipeline**: Chunked processing for production-scale datasets
+| Artifact | Backend | Window | Features | Trials | Training schedule | Threshold | CV AP | CV event F0.5 | Test AP | Test event F0.5 |
+|---|---|---:|---:|---:|---|---:|---:|---:|---:|---:|
+| `ote_full_tcn_v2/short_ote` | `tcn` | 28 | 94 | 20 | `40 ep, 4/18/10/8` | 0.62 | 0.6239 | 0.7473 | 0.7375 | 0.7871 |
+| `ote_full_tcn_v1/short_ote` | `tcn` | 28 | 96 | 20 | `40 ep, 4/18/10/8` | 0.56 | 0.4975 | 0.6674 | 0.6562 | 0.7878 |
+| `ote_full_xgb_v2/short_ote` | `xgboost` | 8 | 16 | 20 | `18 ep, lag 0-7, delta 12` | 0.50 | 0.5544 | 0.6845 | 0.6200 | 0.7201 |
+| `ote_full_xgb_v1/short_ote` | `xgboost` | 8 | 72 | 20 | `18 ep, lag 0/1/3/7, delta 16` | 0.68 | 0.5479 | 0.7008 | 0.6330 | 0.7033 |
 
-## Model Performance Rankings (by predictive power)
-1. **Deep Learning Binary Classifiers**: Production-ready long/short signal detection
-2. **5-Period Direction**: Best balance of predictability and actionability
-3. **14-Period Direction**: Strong for longer-term trends
-4. **5-Period Returns**: Good for magnitude prediction
-5. **3-Class Direction**: Useful for risk management with neutral zone
-6. **1-Period Direction**: High noise, less reliable
+## Config Takeaways
 
-## Recommended Multi-Model Trading Strategy
+- `tcn_v2` is the cleanest upgrade path on the long side. It improved every tracked long metric over `tcn_v1`, including `+0.0561` CV AP, `+0.0638` test AP, and `+0.0505` test event F0.5.
+- `tcn_v2` is also the strongest short-side candidate by AP, but `tcn_v1` is effectively tied on held-out short test event F0.5 (`0.7878` vs `0.7871`). Regime slicing should decide whether `tcn_v2`'s stronger ranking metrics or `tcn_v1`'s slightly higher thresholded short score is more robust by bucket.
+- `xgb_v1` beats `xgb_v2` on every tracked long-side metric, so the newer XGBoost snapshot is not a clear upgrade for long OTE.
+- `xgb_v2` is mixed on short OTE: slightly better held-out short event F0.5 than `xgb_v1`, but worse short test AP and worse short CV event F0.5.
+- `lstm_v1` remains a far better long benchmark than `lstm_v2`. Despite more trials, more epochs, a larger hidden size, and a longer staged schedule, `lstm_v2` regressed hard across CV and test.
+- The saved directory names are the safest source of truth for testing. Several summaries embed later internal run names (`v3`, `v4`, `champion_candidate`) that do not match the folder names currently on disk.
 
-### 🎯 **Enhanced Ensemble Signal Generation System**
+## Recommended Read On Current Artifacts
 
-#### **Tier 1: Primary Signal Models**
-```
-🔥 Deep Learning Long/Short Classifiers - PRIMARY SIGNALS
-✅ 5-Period Direction (Classification) - TREND CONFIRMATION
-✅ 5-Period Returns (Regression) - MAGNITUDE CONFIRMATION  
-✅ 14-Period Direction (Classification) - TREND STRENGTH
-```
+- Long default candidate: `ote_full_tcn_v2/long_ote`
+- Long fallback benchmark: `ote_full_tcn_v1/long_ote`
+- Short comparison pair to settle with regime slices:
+  - `ote_full_tcn_v2/short_ote`
+  - `ote_full_tcn_v1/short_ote`
+- XGBoost should still stay in the comparison set:
+  - `ote_full_xgb_v1/long_ote`
+  - `ote_full_xgb_v1/short_ote`
+  - `ote_full_xgb_v2/short_ote`
+- LSTM should stay in the comparison set as benchmark context, not as the default production path.
 
-#### **Tier 2: Confirmation Models**
-```
-✅ 3-Class 5-Period Direction - RISK FILTER
-✅ 1-Period Returns - IMMEDIATE MOMENTUM
-```
+## Comparison Registry
 
-### 🚀 **Complete Trading Algorithm**
+Use the new comparison registry:
 
-#### **Enhanced Long Signal Generation**
-```python
-def generate_enhanced_long_signal(models, live_data):
-    # Tier 1: Deep Learning Primary Signal
-    dl_long_prob = models['deep_learning_long'].predict_proba(live_data)[0][1]
-    
-    # Tier 1: Direction/Returns Confirmation
-    dir_5_prob = models['direction_5'].predict_proba(live_data)[0][1]
-    returns_5_pred = models['returns_5'].predict(live_data)[0]
-    dir_14_prob = models['direction_14'].predict_proba(live_data)[0][1]
-    
-    # Tier 2: Risk Filters
-    class_3_pred = models['direction_3class_5'].predict(live_data)[0]
-    returns_1_pred = models['returns_1'].predict(live_data)[0]
-    
-    # Enhanced Signal Logic
-    long_signal = (
-        dl_long_prob > 0.70 and         # Strong deep learning signal
-        dir_5_prob > 0.60 and           # Direction confirmation
-        returns_5_pred > 0.002 and      # Positive expected return
-        dir_14_prob > 0.55 and          # Favorable longer-term trend
-        class_3_pred >= 1 and           # Not bearish
-        returns_1_pred > -0.001         # No immediate downward momentum
-    )
-    
-    # Multi-model confidence scoring
-    confidence = (dl_long_prob * 0.4 + dir_5_prob * 0.3 + 
-                 dir_14_prob * 0.2 + (returns_5_pred * 100) * 0.1)
-    
-    return {
-        'signal': long_signal,
-        'confidence': confidence,
-        'primary_model': 'deep_learning',
-        'dl_probability': dl_long_prob,
-        'expected_return': returns_5_pred
-    }
+- `models/ote_model_registry_v1_v2_candidates.json`
+
+Design choices:
+
+- It keeps `models/ote_model_registry.json` untouched.
+- It uses the actual on-disk artifact paths under the six `v1` and `v2` roots.
+- All entries are marked `status: "candidate"` so the regime-slice script will include them by default.
+- `global_threshold` is seeded from each artifact's saved training threshold.
+- `regime_thresholds` and `abstain_policy` remain `null` until post-slice policy work is done.
+
+## First Model Testing Command
+
+Start the next phase with:
+
+```cmd
+python scripts/run_ote_regime_slice_report.py ^
+  --registry-path models/ote_model_registry_v1_v2_candidates.json ^
+  --output-root model_testing/reports/ote_regime_slices/v1_v2_comparison_20260402 ^
+  --bootstrap-iterations 200 ^
+  --min-positive-events 50
 ```
 
-#### **Enhanced Short Signal Generation**
-```python
-def generate_enhanced_short_signal(models, live_data):
-    # Tier 1: Deep Learning Primary Signal
-    dl_short_prob = models['deep_learning_short'].predict_proba(live_data)[0][1]
-    
-    # Tier 1: Direction/Returns Confirmation
-    dir_5_prob = models['direction_5'].predict_proba(live_data)[0][0]
-    returns_5_pred = models['returns_5'].predict(live_data)[0]
-    dir_14_prob = models['direction_14'].predict_proba(live_data)[0][0]
-    
-    # Tier 2: Risk Filters
-    class_3_pred = models['direction_3class_5'].predict(live_data)[0]
-    returns_1_pred = models['returns_1'].predict(live_data)[0]
-    
-    # Enhanced Signal Logic
-    short_signal = (
-        dl_short_prob > 0.70 and        # Strong deep learning signal
-        dir_5_prob > 0.60 and           # Direction confirmation
-        returns_5_pred < -0.002 and     # Negative expected return
-        dir_14_prob > 0.55 and          # Favorable longer-term downtrend
-        class_3_pred <= 1 and           # Not bullish
-        returns_1_pred < 0.001          # No immediate upward momentum
-    )
-    
-    confidence = (dl_short_prob * 0.4 + dir_5_prob * 0.3 + 
-                 dir_14_prob * 0.2 + abs(returns_5_pred * 100) * 0.1)
-    
-    return {
-        'signal': short_signal,
-        'confidence': confidence,
-        'primary_model': 'deep_learning',
-        'dl_probability': dl_short_prob,
-        'expected_return': returns_5_pred
-    }
-```
-
-### 🎛️ **Enhanced Model Pipeline**
-
-#### **Complete Model Ensemble**
-```python
-class EnhancedTradingModelEnsemble:
-    def __init__(self):
-        self.models = {
-            # Deep Learning Primary Signals
-            'deep_learning_long': load_best_dl_model('long_signal'),
-            'deep_learning_short': load_best_dl_model('short_signal'),
-            
-            # Direction Classification Models
-            'direction_5': joblib.load('models/direction_5_classifier.joblib'),
-            'direction_14': joblib.load('models/direction_14_classifier.joblib'),
-            'direction_3class_5': joblib.load('models/direction_3class_5_classifier.joblib'),
-            
-            # Regression Models
-            'returns_5': joblib.load('models/returns_5_regressor.joblib'),
-            'returns_1': joblib.load('models/returns_1_regressor.joblib')
-        }
-        self.feature_columns = load_selected_features()
-        
-    def generate_signals(self, live_data):
-        processed_data = self.preprocess_live_data(live_data)
-        
-        long_result = generate_enhanced_long_signal(self.models, processed_data)
-        short_result = generate_enhanced_short_signal(self.models, processed_data)
-        
-        return {
-            'timestamp': datetime.now(),
-            'long_signal': long_result,
-            'short_signal': short_result,
-            'ensemble_strength': self.calculate_ensemble_agreement(long_result, short_result)
-        }
-```
-
-### 💡 **Final Model Strategy**
-
-#### **Model Hierarchy**
-1. **Deep Learning Classifiers**: Primary signal generation with advanced neural architectures
-2. **Direction Models**: Multi-timeframe trend confirmation 
-3. **Returns Models**: Magnitude and timing validation
-4. **Risk Filters**: 3-class direction for market state assessment
-
-#### **Key Advantages**
-1. **State-of-the-art Signal Detection**: Deep learning models capture complex market patterns
-2. **Multi-Architecture Robustness**: Ensemble of LSTM, Transformer, TCN, and traditional ML
-3. **Signal-Specific Optimization**: Separate long/short models with tailored lag periods
-4. **Production-Ready Pipeline**: Memory-optimized, fault-tolerant training and inference
-5. **Multi-Model Validation**: Cross-confirmation reduces false signals significantly
-
-This enhanced strategy combines cutting-edge deep learning signal detection with robust ensemble confirmation, providing a comprehensive and reliable trading system that leverages both traditional machine learning insights and advanced neural network capabilities.
+If you want to narrow the first pass, add repeated `--model-id` flags for just the TCN and XGBoost short-side candidates.

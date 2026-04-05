@@ -1,0 +1,58 @@
+{
+  "model_id": "long_ote_tcn_v1_candidate",
+  "direction": "long",
+  "backend": "tcn",
+  "fold_count": 49,
+  "available_prediction_start": "2010-09-13T13:35:00+00:00",
+  "available_prediction_end": "2026-03-25T02:45:00+00:00",
+  "selected_policy_counts": {
+    "global_threshold": 5026,
+    "regime_threshold": 114
+  },
+  "overall_test_metrics": {
+    "period_start": "2012-10-01T00:00:00+00:00",
+    "period_end": "2026-03-31T23:59:59.999999+00:00",
+    "period_days": 4929.999999999988,
+    "period_months": 161.97125256673473,
+    "period_years": 13.497604380561228,
+    "trade_count": 5140,
+    "total_net_pnl_pips": 39584.799999999974,
+    "total_gross_pnl_pips": 100393.79999999997,
+    "annualized_net_pnl_pips": 2932.727829614609,
+    "expectancy_pips": 7.701322957198438,
+    "trades_per_month": 31.734026369168433,
+    "profit_factor": 1.9047551023440081,
+    "hit_rate": 0.6056420233463035,
+    "average_win_pips": 26.770558946354008,
+    "average_loss_pips": 21.584583127775065,
+    "average_win_loss_ratio": 1.2402629593483148,
+    "max_drawdown_pips": 1805.0000000000055,
+    "max_drawdown_duration_days": 846.1909722222222,
+    "largest_single_trade_share_of_total_pnl": 0.007665821224308334,
+    "pnl_herfindahl_index": 0.0003932311016247878,
+    "largest_single_trade_share_of_abs_pnl": 0.002387702447188461,
+    "monthly_sharpe": 2.225222323126916,
+    "monthly_sortino": 3.7043594359997005,
+    "profitable_quarter_share": 0.8148148148148148,
+    "profitable_month_share": 0.6975308641975309,
+    "average_positive_month_pnl_pips": 408.23362831858407,
+    "benchmark_monthly_correlation": 0.42653709776595433
+  },
+  "walk_forward_efficiency": {
+    "fold_count": 49,
+    "mean_train_annualized_net_pnl_pips": 1675.6823524686404,
+    "mean_test_annualized_net_pnl_pips": 3231.916730005836,
+    "overall_wfe": 1.9287168151198393,
+    "median_fold_wfe": 2.0075873243024196,
+    "profitable_test_fold_share": 0.8979591836734694
+  },
+  "positive_composite_expectancy_share": 0.875,
+  "acceptance": {
+    "policy_profitable_after_costs": true,
+    "wfe_above_threshold": true,
+    "profitable_quarter_share_above_threshold": true,
+    "positive_composite_expectancy_share_above_threshold": true,
+    "largest_single_trade_share_below_limit": true,
+    "max_drawdown_less_than_two_times_average_monthly_profit": false
+  }
+}

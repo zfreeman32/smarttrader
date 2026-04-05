@@ -1,0 +1,23 @@
+[
+  {
+    "phase": "warmup",
+    "epochs": 70.0,
+    "train_rows": 320277.0,
+    "eval_rows": 171622.0,
+    "learning_rate": 0.05293601816395621
+  },
+  {
+    "phase": "main",
+    "epochs": 330.0,
+    "train_rows": 1144149.0,
+    "eval_rows": 171622.0,
+    "learning_rate": 0.05293601816395621
+  },
+  {
+    "phase": "fine",
+    "epochs": 60.0,
+    "train_rows": 1144149.0,
+    "eval_rows": 171622.0,
+    "learning_rate": 0.01017184886965696
+  }
+]
