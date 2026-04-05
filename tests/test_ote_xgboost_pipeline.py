@@ -33,6 +33,7 @@ from model_training.ote_training.ote_xgboost_pipeline import (
     save_training_outputs,
 )
 from model_training.ote_training.feature_ranking import merge_feature_rankings
+from model_training.ote_training.feature_ranking import filter_features_by_attribution_gates
 
 
 def make_synthetic_dataset(
@@ -102,6 +103,27 @@ def test_merge_feature_rankings_promotes_shap_signal():
 
     assert list(merged["feature"])[:2] == ["feature_b", "feature_a"]
     assert float(merged.loc[0, "merged_score"]) > float(merged.loc[1, "merged_score"])
+
+
+def test_filter_features_by_attribution_gates_applies_floor_and_cumulative_thresholds():
+    merged = pd.DataFrame(
+        {
+            "feature": ["feature_a", "feature_b", "feature_c", "feature_d", "feature_e"],
+            "merged_score": [0.99, 0.90, 0.82, 0.78, 0.70],
+            "mean_abs_shap_all": [1.00, 0.50, 0.20, 0.14, 0.05],
+        }
+    )
+
+    filtered, summary = filter_features_by_attribution_gates(
+        merged,
+        floor_fraction=0.15,
+        cumulative_importance=0.90,
+    )
+
+    assert list(filtered["feature"]) == ["feature_a", "feature_b", "feature_c"]
+    assert summary["after_floor_count"] == 3
+    assert summary["selected_feature_count"] == 3
+    assert summary["selected_cumulative_importance_share"] >= 0.90
 
 
 def test_load_ranked_features_prefers_merged_ranking_file():
@@ -265,8 +287,6 @@ def test_cross_validate_trial_records_fold_diagnostics(monkeypatch: pytest.Monke
         min_train_positive_rows=3,
         min_val_positive_rows=2,
         min_val_true_events=2,
-        top_feature_min=4,
-        top_feature_max=4,
         max_loaded_features=6,
         window_min=4,
         window_max=4,
@@ -278,7 +298,6 @@ def test_cross_validate_trial_records_fold_diagnostics(monkeypatch: pytest.Monke
         verbosity=0,
     )
     params = {
-        "top_features": 4,
         "window_size": 4,
         "lag_count": 3,
         "delta_feature_count": 2,
@@ -310,6 +329,7 @@ def test_cross_validate_trial_records_fold_diagnostics(monkeypatch: pytest.Monke
     assert len(artifacts.fold_diagnostics) == 3
     assert len(artifacts.fold_plans) == 3
     assert artifacts.resolved_purge_bars == 6
+    assert artifacts.selected_feature_names == dataset.ranked_features
     first_fold = artifacts.fold_diagnostics[0]
     assert first_fold["train_rows_raw"] == 40
     assert first_fold["val_rows_raw"] == 20
@@ -328,8 +348,6 @@ def test_cross_validate_trial_records_oof_fold_ids(monkeypatch: pytest.MonkeyPat
         min_train_positive_rows=3,
         min_val_positive_rows=2,
         min_val_true_events=2,
-        top_feature_min=4,
-        top_feature_max=4,
         max_loaded_features=6,
         window_min=4,
         window_max=4,
@@ -341,7 +359,6 @@ def test_cross_validate_trial_records_oof_fold_ids(monkeypatch: pytest.MonkeyPat
         verbosity=0,
     )
     params = {
-        "top_features": 4,
         "window_size": 4,
         "lag_count": 3,
         "delta_feature_count": 2,
@@ -377,56 +394,59 @@ def test_cross_validate_trial_records_oof_fold_ids(monkeypatch: pytest.MonkeyPat
     assert np.all(artifacts.oof_fold_id[:46] == -1)
 
 
-def test_load_prepared_target_dataset_reads_source_row_idx(tmp_path: Path):
-    prepared_root = tmp_path / "prepared"
+def test_load_prepared_target_dataset_reads_source_row_idx():
+    prepared_root = ROOT / "tmp" / f"test_load_prepared_target_dataset_reads_source_row_idx_{uuid4().hex}"
     target_dir = prepared_root / "long_ote"
     target_dir.mkdir(parents=True)
 
-    (target_dir / "features.json").write_text(
-        json.dumps({"features": ["feature_a", "feature_b"], "n_features": 2}),
-        encoding="utf-8",
-    )
-    (target_dir / "report.json").write_text(
-        json.dumps({"target_name": "long_ote", "row_identity": {"source_row_idx_column": "source_row_idx"}}),
-        encoding="utf-8",
-    )
+    try:
+        (target_dir / "features.json").write_text(
+            json.dumps({"features": ["feature_a", "feature_b"], "n_features": 2}),
+            encoding="utf-8",
+        )
+        (target_dir / "report.json").write_text(
+            json.dumps({"target_name": "long_ote", "row_identity": {"source_row_idx_column": "source_row_idx"}}),
+            encoding="utf-8",
+        )
 
-    pd.DataFrame(
-        {
-            "source_row_idx": [10, 11, 12],
-            "feature_a": [0.1, 0.2, 0.3],
-            "feature_b": [1.0, 1.1, 1.2],
-            "target": [0, 1, 0],
-            "sample_weight": [1.0, 2.0, 1.0],
-        }
-    ).to_csv(target_dir / "train.csv", index=False)
-    pd.DataFrame(
-        {
-            "source_row_idx": [20, 21],
-            "feature_a": [0.4, 0.5],
-            "feature_b": [1.3, 1.4],
-            "target": [1, 0],
-            "sample_weight": [1.5, 1.0],
-        }
-    ).to_csv(target_dir / "val.csv", index=False)
-    pd.DataFrame(
-        {
-            "source_row_idx": [30, 31],
-            "feature_a": [0.6, 0.7],
-            "feature_b": [1.5, 1.6],
-            "target": [0, 1],
-            "sample_weight": [1.0, 2.5],
-        }
-    ).to_csv(target_dir / "test.csv", index=False)
+        pd.DataFrame(
+            {
+                "source_row_idx": [10, 11, 12],
+                "feature_a": [0.1, 0.2, 0.3],
+                "feature_b": [1.0, 1.1, 1.2],
+                "target": [0, 1, 0],
+                "sample_weight": [1.0, 2.0, 1.0],
+            }
+        ).to_csv(target_dir / "train.csv", index=False)
+        pd.DataFrame(
+            {
+                "source_row_idx": [20, 21],
+                "feature_a": [0.4, 0.5],
+                "feature_b": [1.3, 1.4],
+                "target": [1, 0],
+                "sample_weight": [1.5, 1.0],
+            }
+        ).to_csv(target_dir / "val.csv", index=False)
+        pd.DataFrame(
+            {
+                "source_row_idx": [30, 31],
+                "feature_a": [0.6, 0.7],
+                "feature_b": [1.5, 1.6],
+                "target": [0, 1],
+                "sample_weight": [1.0, 2.5],
+            }
+        ).to_csv(target_dir / "test.csv", index=False)
 
-    dataset = load_prepared_target_dataset(
-        prepared_root=prepared_root,
-        target_name="long_ote",
-        config=OTETrainingConfig(max_loaded_features=2),
-    )
+        dataset = load_prepared_target_dataset(
+            prepared_root=prepared_root,
+            target_name="long_ote",
+            config=OTETrainingConfig(max_loaded_features=2),
+        )
 
-    np.testing.assert_array_equal(dataset.dev_source_row_idx, np.array([10, 11, 12, 20, 21], dtype=np.int64))
-    np.testing.assert_array_equal(dataset.test_source_row_idx, np.array([30, 31], dtype=np.int64))
+        np.testing.assert_array_equal(dataset.dev_source_row_idx, np.array([10, 11, 12, 20, 21], dtype=np.int64))
+        np.testing.assert_array_equal(dataset.test_source_row_idx, np.array([30, 31], dtype=np.int64))
+    finally:
+        shutil.rmtree(prepared_root, ignore_errors=True)
 
 
 def test_save_training_outputs_includes_source_row_idx():
@@ -467,7 +487,7 @@ def test_save_training_outputs_includes_source_row_idx():
         dataset.prepared_summary_path = "data/prepared/eurusd_5min_ote_full/summary.json"
 
         artifacts = pipeline.TrialArtifacts(
-            params={"top_features": 4},
+            params={},
             oof_pred=np.linspace(0.1, 0.9, num=len(dataset.dev_y), dtype=np.float32),
             fold_metrics=[{"fold": 1, "average_precision": 0.5, "event_fbeta_0_5": 0.6}],
             selected_feature_names=dataset.feature_names,
@@ -560,8 +580,6 @@ def test_cross_validate_trial_smoke():
         min_val_positive_rows=0,
         min_val_true_events=0,
         max_loaded_features=48,
-        top_feature_min=24,
-        top_feature_max=24,
         label_max_holding_bars=8,
         label_exclusion_pre_bars=2,
         label_zone_pre_bars=1,
@@ -569,13 +587,14 @@ def test_cross_validate_trial_smoke():
         calibration_method="none",
         verbosity=0,
     )
+    if not (Path(config.prepared_root) / "long_ote" / "report.json").exists():
+        pytest.skip("Prepared smoke-test dataset is not available in this workspace.")
     dataset = load_prepared_target_dataset(
         prepared_root=Path(config.prepared_root),
         target_name="long_ote",
         config=config,
     )
     params = {
-        "top_features": 24,
         "window_size": 8,
         "lag_count": 4,
         "delta_feature_count": 8,
@@ -656,8 +675,6 @@ def test_build_torch_trial_params_samples_window_and_depth():
     config = OTETrainingConfig(
         backend="torch",
         model_type="tcn",
-        top_feature_min=24,
-        top_feature_max=24,
         max_loaded_features=48,
         window_min=16,
         window_max=32,
@@ -666,7 +683,6 @@ def test_build_torch_trial_params_samples_window_and_depth():
     )
     trial = optuna.trial.FixedTrial(
         {
-            "top_features": 24,
             "window_size": 20,
             "num_layers": 4,
             "learning_rate": 2e-3,
@@ -681,6 +697,7 @@ def test_build_torch_trial_params_samples_window_and_depth():
 
     assert params["window_size"] == 20
     assert params["num_layers"] == 4
+    assert "top_features" not in params
 
 
 def test_build_torch_training_config_uses_tuned_num_layers():
@@ -793,8 +810,6 @@ def test_cross_validate_trial_torch_smoke():
         min_val_positive_rows=0,
         min_val_true_events=0,
         max_loaded_features=32,
-        top_feature_min=16,
-        top_feature_max=16,
         label_max_holding_bars=8,
         label_exclusion_pre_bars=2,
         label_zone_pre_bars=1,
@@ -810,13 +825,14 @@ def test_cross_validate_trial_torch_smoke():
         window_size=8,
         verbosity=0,
     )
+    if not (Path(config.prepared_root) / "long_ote" / "report.json").exists():
+        pytest.skip("Prepared smoke-test dataset is not available in this workspace.")
     dataset = load_prepared_target_dataset(
         prepared_root=Path(config.prepared_root),
         target_name="long_ote",
         config=config,
     )
     params = {
-        "top_features": 16,
         "window_size": 8,
         "learning_rate": 1e-3,
         "focal_alpha": 0.85,

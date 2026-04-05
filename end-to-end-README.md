@@ -180,13 +180,18 @@ python -m preprocessing backend-attribution ^
   --max-features 160 ^
   --base-weight 0.20 ^
   --shap-weight 0.55 ^
-  --shap-positive-weight 0.25
+  --shap-positive-weight 0.25 ^
+  --attribution-floor-fraction 0.15 ^
+  --attribution-cumulative-importance 0.90
 ```
 
 Important implementation detail:
 
 - XGBoost uses TreeSHAP.
 - TCN and LSTM use integrated gradients internally, but the module writes SHAP-compatible ranking columns so the existing merge logic still works.
+- The merged backend ranking is now filtered before training with two gates:
+  - floor gate: keep only features with `mean_abs_shap_all >= 15%` of the max attribution
+  - cumulative gate: from those survivors, keep only the features needed to reach `90%` cumulative attribution share
 
 Primary outputs per target:
 
@@ -205,6 +210,7 @@ Primary outputs per target:
 - Use the same prepared root: `data/prepared/eurusd_5min_ote_full`
 - Keep new retrains in new output roots instead of overwriting the old artifacts
 - Only update the registry after the new candidates clear the testing stack
+- The trainer now uses the full filtered backend ranking instead of tuning a fixed top-N feature count.
 
 ### XGBoost
 
@@ -220,8 +226,6 @@ python -m model_training.ote_training.ote_xgboost_pipeline ^
   --targets long_ote short_ote ^
   --trials 20 ^
   --max-loaded-features 160 ^
-  --top-feature-min 24 ^
-  --top-feature-max 96 ^
   --window-min 8 ^
   --window-max 40 ^
   --batch-size 256 ^
@@ -251,8 +255,6 @@ python -m model_training.ote_training.ote_xgboost_pipeline ^
   --targets long_ote short_ote ^
   --trials 20 ^
   --max-loaded-features 160 ^
-  --top-feature-min 24 ^
-  --top-feature-max 96 ^
   --window-min 16 ^
   --window-max 32 ^
   --epochs 40 ^
@@ -294,8 +296,6 @@ python -m model_training.ote_training.ote_xgboost_pipeline ^
   --targets long_ote ^
   --trials 20 ^
   --max-loaded-features 160 ^
-  --top-feature-min 24 ^
-  --top-feature-max 96 ^
   --window-min 8 ^
   --window-max 40 ^
   --epochs 40 ^

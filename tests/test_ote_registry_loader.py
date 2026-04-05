@@ -27,6 +27,7 @@ def test_default_ote_registry_loads_and_resolves_artifacts() -> None:
     assert champion.backend == "tcn"
     assert champion.resolve_artifact_path().exists()
     assert champion.abstain_policy is None
+    assert short_champion.model_id == "short_ote_candidate_tcn_v2"
     assert short_champion.backend == "tcn"
     assert short_challenger.backend == "xgboost"
 

@@ -36,6 +36,27 @@ def test_build_walk_forward_folds_uses_quarterly_schedule_after_two_year_minimum
     assert folds[-1].scheduled_test_start == pd.Timestamp("2024-01-01 00:00:00")
 
 
+def test_build_walk_forward_folds_supports_timezone_aware_datetimes() -> None:
+    frame, _ = _build_synthetic_walk_forward_data()
+    frame = frame.copy()
+    frame["datetime"] = frame["datetime"].dt.tz_localize("UTC")
+
+    folds = build_walk_forward_folds(
+        frame,
+        config=WalkForwardBacktestConfig(
+            min_train_years=2,
+            test_window_months=3,
+            rolling_step_months=3,
+            purge_gap_bars=1,
+            min_folds=1,
+        ),
+    )
+
+    assert len(folds) == 8
+    assert folds[0].scheduled_test_start == pd.Timestamp("2022-04-01 00:00:00+00:00")
+    assert folds[-1].scheduled_test_start == pd.Timestamp("2024-01-01 00:00:00+00:00")
+
+
 def test_run_walk_forward_backtest_returns_fold_summary_and_selected_trades() -> None:
     frame, market_frame = _build_synthetic_walk_forward_data()
     threshold_config = ThresholdSearchConfig(
