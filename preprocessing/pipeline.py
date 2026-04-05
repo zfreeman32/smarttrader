@@ -13,7 +13,6 @@ from .config import PreprocessingConfig, TargetDatasetSpec
 from .feature_importance import compute_feature_importance
 from .feature_selection import (
     apply_fill_values,
-    attach_source_row_idx,
     build_fill_values,
     build_split_indices,
     build_target_context,
@@ -27,6 +26,7 @@ from .feature_selection import (
     remove_exact_duplicate_features,
     remove_global_constant_features,
     remove_low_variance_columns,
+    resolve_source_row_idx,
     resolve_feature_columns,
     resolve_sample_weight,
 )
@@ -58,7 +58,7 @@ class FeaturePreprocessingPipeline:
 
         df = pd.read_csv(input_path)
         df = standardize_market_frame(df)
-        df = attach_source_row_idx(df)
+        source_row_idx = resolve_source_row_idx(df)
         df = optimize_loaded_frame(df)
         metadata = self._load_metadata(resolved_metadata_path)
         timezone_contract = self._resolve_timezone_contract(metadata)
@@ -69,7 +69,7 @@ class FeaturePreprocessingPipeline:
         )
 
         upstream_info = self._detect_upstream_preprocessing(metadata)
-        df, row_window_info = self._apply_row_windowing(df, upstream_info)
+        df, source_row_idx, row_window_info = self._apply_row_windowing(df, source_row_idx, upstream_info)
 
         feature_columns = resolve_feature_columns(df, metadata, self.config)
         encoded_features, encoding_info = encode_candidate_features(df, feature_columns)
@@ -87,7 +87,9 @@ class FeaturePreprocessingPipeline:
             )
 
         target_context = build_target_context(df, target_specs, self.config.time_column)
+        target_context["source_row_idx"] = source_row_idx.to_numpy(copy=False)
         del df
+        del source_row_idx
         gc.collect()
 
         target_results: Dict[str, Any] = {}
@@ -177,8 +179,9 @@ class FeaturePreprocessingPipeline:
     def _apply_row_windowing(
         self,
         df: pd.DataFrame,
+        source_row_idx: pd.Series,
         upstream_info: Dict[str, Any],
-    ) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    ) -> tuple[pd.DataFrame, pd.Series, Dict[str, Any]]:
         info = {
             "rows_before": int(len(df)),
             "additional_skip_rows_requested": int(self.config.additional_skip_rows),
@@ -195,10 +198,11 @@ class FeaturePreprocessingPipeline:
                 )
             else:
                 df = df.iloc[skip_rows:].reset_index(drop=True)
+                source_row_idx = source_row_idx.iloc[skip_rows:].reset_index(drop=True)
                 info["additional_skip_rows_applied"] = skip_rows
 
         info["rows_after"] = int(len(df))
-        return df, info
+        return df, source_row_idx, info
 
     def _prepare_target_dataset(
         self,
@@ -249,10 +253,17 @@ class FeaturePreprocessingPipeline:
         train_idx = split_indices["train"]
         val_idx = split_indices["val"]
         test_idx = split_indices["test"]
+        train_positions = ordered_positions[train_idx]
+        val_positions = ordered_positions[val_idx]
+        test_positions = ordered_positions[test_idx]
 
-        X_train_raw = encoded_features.iloc[ordered_positions[train_idx]]
-        X_val_raw = encoded_features.iloc[ordered_positions[val_idx]]
-        X_test_raw = encoded_features.iloc[ordered_positions[test_idx]]
+        def take_feature_rows(row_positions: np.ndarray, columns: Optional[List[str]] = None) -> pd.DataFrame:
+            row_index = encoded_features.index.take(row_positions)
+            if columns is None:
+                return encoded_features.loc[row_index]
+            return encoded_features.loc[row_index, columns]
+
+        X_train_raw = take_feature_rows(train_positions)
         y_train = target_series.iloc[train_idx].reset_index(drop=True)
         y_val = target_series.iloc[val_idx].reset_index(drop=True)
         y_test = target_series.iloc[test_idx].reset_index(drop=True)
@@ -265,15 +276,12 @@ class FeaturePreprocessingPipeline:
 
         fill_values, fill_report = build_fill_values(X_train_raw)
         X_train = apply_fill_values(X_train_raw, fill_values)
-        X_val = apply_fill_values(X_val_raw, fill_values)
-        X_test = apply_fill_values(X_test_raw, fill_values)
+        del X_train_raw
 
         X_train, low_variance_info = remove_low_variance_columns(
             X_train,
             self.config.variance_threshold,
         )
-        X_val = X_val.loc[:, X_train.columns]
-        X_test = X_test.loc[:, X_train.columns]
 
         collinearity_info = prune_collinear_features(
             X_train=X_train,
@@ -286,8 +294,20 @@ class FeaturePreprocessingPipeline:
             if column not in collinearity_info["dropped_columns"]
         ]
         X_train = X_train.loc[:, selected_features]
-        X_val = X_val.loc[:, selected_features]
-        X_test = X_test.loc[:, selected_features]
+        selected_fill_values = {
+            column: fill_values[column]
+            for column in selected_features
+            if column in fill_values
+        }
+
+        X_val = apply_fill_values(
+            take_feature_rows(val_positions, selected_features),
+            selected_fill_values,
+        )
+        X_test = apply_fill_values(
+            take_feature_rows(test_positions, selected_features),
+            selected_fill_values,
+        )
 
         scaler, X_train_scaled, X_val_scaled, X_test_scaled = maybe_scale(
             X_train,
@@ -388,6 +408,14 @@ class FeaturePreprocessingPipeline:
 
         if scaler is not None and self.config.save_scaler:
             joblib.dump(scaler, output_dir / "scaler.joblib")
+
+        del X_train
+        del X_val
+        del X_test
+        del X_train_scaled
+        del X_val_scaled
+        del X_test_scaled
+        gc.collect()
 
         return {
             "target_column": spec.target_column,

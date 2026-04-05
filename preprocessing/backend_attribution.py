@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
@@ -12,6 +13,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.preprocessing import RobustScaler
 
 from model_training.ote_training.feature_ranking import (
+    filter_features_by_attribution_gates,
     load_feature_allowlist,
     merge_feature_rankings,
     ranking_sort_column,
@@ -33,6 +35,8 @@ class BackendAttributionConfig:
     base_weight: float = 0.20
     shap_weight: float = 0.55
     shap_positive_weight: float = 0.25
+    attribution_floor_fraction: float = 0.15
+    attribution_cumulative_importance: float = 0.90
 
     random_seed: int = 42
     nthread: int = 0
@@ -590,8 +594,10 @@ def compute_integrated_gradients(
     except StopIteration:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    was_training = bool(getattr(model, "training", False))
     model.eval()
     pin_memory = device.type == "cuda"
+    disable_cudnn = should_disable_cudnn_for_integrated_gradients(model, device)
     features = torch.from_numpy(np.ascontiguousarray(X, dtype=np.float32))
     loader = DataLoader(
         TensorDataset(features),
@@ -605,25 +611,44 @@ def compute_integrated_gradients(
     alpha_values = torch.linspace(0.0, 1.0, int(steps) + 1, device=device)[1:]
     outputs: List[np.ndarray] = []
 
-    for (batch_features,) in loader:
-        batch_features = batch_features.to(device, non_blocking=pin_memory)
-        baseline = torch.zeros_like(batch_features)
-        feature_delta = batch_features - baseline
-        integrated_gradients = torch.zeros_like(batch_features)
+    cudnn_context = (
+        torch.backends.cudnn.flags(enabled=False)
+        if disable_cudnn
+        else nullcontext()
+    )
+    try:
+        with cudnn_context:
+            for (batch_features,) in loader:
+                batch_features = batch_features.to(device, non_blocking=pin_memory)
+                baseline = torch.zeros_like(batch_features)
+                feature_delta = batch_features - baseline
+                integrated_gradients = torch.zeros_like(batch_features)
 
-        for alpha in alpha_values:
-            interpolated = (baseline + (alpha * feature_delta)).detach().requires_grad_(True)
-            model.zero_grad(set_to_none=True)
-            logits = model(interpolated)
-            gradients = torch.autograd.grad(logits.sum(), interpolated, retain_graph=False)[0]
-            integrated_gradients = integrated_gradients + gradients
+                for alpha in alpha_values:
+                    interpolated = (baseline + (alpha * feature_delta)).detach().requires_grad_(True)
+                    model.zero_grad(set_to_none=True)
+                    # cuDNN RNN kernels do not support the input-gradient backward
+                    # path used by integrated gradients while the model is in eval mode.
+                    logits = model(interpolated)
+                    gradients = torch.autograd.grad(logits.sum(), interpolated, retain_graph=False)[0]
+                    integrated_gradients = integrated_gradients + gradients
 
-        attributions = feature_delta * (integrated_gradients / float(len(alpha_values)))
-        outputs.append(attributions.detach().cpu().numpy().astype(np.float32, copy=False))
+                attributions = feature_delta * (integrated_gradients / float(len(alpha_values)))
+                outputs.append(attributions.detach().cpu().numpy().astype(np.float32, copy=False))
+    finally:
+        model.train(was_training)
 
     if not outputs:
         return np.empty((0,) + X.shape[1:], dtype=np.float32)
     return np.concatenate(outputs, axis=0).astype(np.float32, copy=False)
+
+
+def should_disable_cudnn_for_integrated_gradients(model: Any, device: Any) -> bool:
+    import torch
+
+    return getattr(device, "type", None) == "cuda" and any(
+        isinstance(module, torch.nn.RNNBase) for module in model.modules()
+    )
 
 
 def compute_sequence_attribution_stats(
@@ -664,6 +689,17 @@ def save_backend_outputs(
     }
 
 
+def apply_attribution_feature_filter(
+    merged_frame: pd.DataFrame,
+    config: BackendAttributionConfig,
+) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    return filter_features_by_attribution_gates(
+        merged_frame,
+        floor_fraction=float(config.attribution_floor_fraction),
+        cumulative_importance=float(config.attribution_cumulative_importance),
+    )
+
+
 def analyze_xgboost_backend(
     dataset: PreparedAttributionDataset,
     config: BackendAttributionConfig,
@@ -691,18 +727,22 @@ def analyze_xgboost_backend(
         shap_weight=float(config.shap_weight),
         shap_positive_weight=float(config.shap_positive_weight),
     )
+    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, config)
 
     summary = {
         "target": dataset.target_name,
         "backend": "xgboost",
         "attribution_method": "tree_shap",
         "prepared_dir": str(dataset.prepared_dir),
-        "feature_count": int(len(dataset.feature_names)),
+        "candidate_feature_count": int(len(dataset.feature_names)),
+        "selected_feature_count": int(len(filtered_merged_frame)),
+        "feature_count": int(len(filtered_merged_frame)),
         "merge_weights": {
             "base_weight": float(config.base_weight),
             "shap_weight": float(config.shap_weight),
             "shap_positive_weight": float(config.shap_positive_weight),
         },
+        "feature_filter": filter_summary,
         "model_metrics": {
             "average_precision": safe_average_precision(dataset.y_val, val_probabilities, dataset.w_val),
             "roc_auc": safe_roc_auc(dataset.y_val, val_probabilities, dataset.w_val),
@@ -717,9 +757,9 @@ def analyze_xgboost_backend(
             "negative_count": int(np.sum(y_attr == 0)),
         },
         "top_features_overall": top_features(stats_frame, int(config.top_n_features)),
-        "top_features_merged": merged_frame.head(int(config.top_n_features)).to_dict(orient="records"),
+        "top_features_merged": filtered_merged_frame.head(int(config.top_n_features)).to_dict(orient="records"),
     }
-    summary["artifacts"] = save_backend_outputs(dataset, "xgboost", stats_frame, merged_frame)
+    summary["artifacts"] = save_backend_outputs(dataset, "xgboost", stats_frame, filtered_merged_frame)
     Path(summary["artifacts"]["summary_json"]).write_text(
         json.dumps(summary, indent=2),
         encoding="utf-8",
@@ -760,19 +800,23 @@ def analyze_sequence_backend(
         shap_weight=float(config.shap_weight),
         shap_positive_weight=float(config.shap_positive_weight),
     )
+    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, config)
 
     summary = {
         "target": dataset.target_name,
         "backend": model_type,
         "attribution_method": "integrated_gradients",
         "prepared_dir": str(dataset.prepared_dir),
-        "feature_count": int(len(dataset.feature_names)),
+        "candidate_feature_count": int(len(dataset.feature_names)),
+        "selected_feature_count": int(len(filtered_merged_frame)),
+        "feature_count": int(len(filtered_merged_frame)),
         "window_size": int(config.window_size),
         "merge_weights": {
             "base_weight": float(config.base_weight),
             "shap_weight": float(config.shap_weight),
             "shap_positive_weight": float(config.shap_positive_weight),
         },
+        "feature_filter": filter_summary,
         "model_metrics": {
             "average_precision": safe_average_precision(
                 proxy["y_eval_seq"],
@@ -795,9 +839,9 @@ def analyze_sequence_backend(
             "ig_steps": int(config.ig_steps),
         },
         "top_features_overall": top_features(stats_frame, int(config.top_n_features)),
-        "top_features_merged": merged_frame.head(int(config.top_n_features)).to_dict(orient="records"),
+        "top_features_merged": filtered_merged_frame.head(int(config.top_n_features)).to_dict(orient="records"),
     }
-    summary["artifacts"] = save_backend_outputs(dataset, model_type, stats_frame, merged_frame)
+    summary["artifacts"] = save_backend_outputs(dataset, model_type, stats_frame, filtered_merged_frame)
     Path(summary["artifacts"]["summary_json"]).write_text(
         json.dumps(summary, indent=2),
         encoding="utf-8",

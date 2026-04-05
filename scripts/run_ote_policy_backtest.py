@@ -27,10 +27,7 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
             "abstain_composite_regimes": ("strong_up_high",),
             "minimum_probability_quantile": 0.20,
         },
-        "short_ote_candidate_tcn_v1": {
-            "abstain_session_regimes": ("overlap",),
-            "minimum_probability_quantile": 0.40,
-        },
+        "short_ote_candidate_tcn_v2": {},
     }
 }
 

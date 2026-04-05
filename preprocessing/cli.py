@@ -134,6 +134,18 @@ def add_backend_attribution_arguments(parser: argparse.ArgumentParser) -> argpar
         default=0.25,
         help="Weight for the backend attribution positive-class importance component",
     )
+    parser.add_argument(
+        "--attribution-floor-fraction",
+        type=float,
+        default=0.15,
+        help="Drop features below this fraction of the max mean_abs_shap_all value (0.15 = 15%%)",
+    )
+    parser.add_argument(
+        "--attribution-cumulative-importance",
+        type=float,
+        default=0.90,
+        help="Keep features until this cumulative mean_abs_shap_all share is reached after floor filtering",
+    )
     parser.add_argument("--xgb-num-boost-round", type=int, default=300)
     parser.add_argument("--xgb-early-stopping-rounds", type=int, default=40)
     parser.add_argument("--xgb-learning-rate", type=float, default=0.05)
@@ -180,6 +192,8 @@ def build_backend_attribution_config_from_args(args: argparse.Namespace) -> Back
         base_weight=args.base_weight,
         shap_weight=args.shap_weight,
         shap_positive_weight=args.shap_positive_weight,
+        attribution_floor_fraction=args.attribution_floor_fraction,
+        attribution_cumulative_importance=args.attribution_cumulative_importance,
         random_seed=args.random_seed,
         nthread=args.nthread,
         xgb_num_boost_round=args.xgb_num_boost_round,
@@ -220,9 +234,11 @@ def run_backend_attribution_command(args: argparse.Namespace) -> int:
         print(f"Target: {target_name}")
         for backend_name, report in backend_payload.items():
             metrics = report["model_metrics"]
+            selected_count = int(report.get("selected_feature_count", report["feature_count"]))
+            candidate_count = int(report.get("candidate_feature_count", selected_count))
             print(
                 f"  - {backend_name:<8} val_ap={metrics['average_precision']:.4f} "
-                f"features={report['feature_count']:,} "
+                f"features={selected_count:,}/{candidate_count:,} "
                 f"merged={report['artifacts']['merged_csv']}"
             )
     return 0

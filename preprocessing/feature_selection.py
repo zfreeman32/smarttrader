@@ -29,17 +29,24 @@ def optimize_loaded_frame(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def attach_source_row_idx(df: pd.DataFrame) -> pd.DataFrame:
-    frame = df.copy()
-    if "source_row_idx" not in frame.columns:
-        frame.insert(0, "source_row_idx", np.arange(len(frame), dtype=np.int64))
-        return frame
+def resolve_source_row_idx(df: pd.DataFrame) -> pd.Series:
+    if "source_row_idx" not in df.columns:
+        return pd.Series(np.arange(len(df), dtype=np.int64), index=df.index, name="source_row_idx")
 
-    source_row_idx = pd.to_numeric(frame["source_row_idx"], errors="coerce")
+    source_series = df["source_row_idx"]
+    if pd.api.types.is_integer_dtype(source_series) and not bool(source_series.isna().any()):
+        resolved = source_series if source_series.dtype == np.int64 else source_series.astype(np.int64, copy=False)
+        return resolved.rename("source_row_idx")
+
+    source_row_idx = pd.to_numeric(source_series, errors="coerce")
     if source_row_idx.isna().any():
-        source_row_idx = pd.Series(np.arange(len(frame), dtype=np.int64), index=frame.index)
-    frame["source_row_idx"] = source_row_idx.astype(np.int64, copy=False)
-    return frame
+        source_row_idx = pd.Series(np.arange(len(df), dtype=np.int64), index=df.index, name="source_row_idx")
+    return source_row_idx.astype(np.int64, copy=False).rename("source_row_idx")
+
+
+def attach_source_row_idx(df: pd.DataFrame) -> pd.DataFrame:
+    df["source_row_idx"] = resolve_source_row_idx(df).to_numpy(copy=False)
+    return df
 
 
 def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
@@ -102,39 +109,36 @@ def encode_candidate_features(
     df: pd.DataFrame,
     feature_columns: Iterable[str],
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    encoded_parts: List[pd.Series] = []
+    available_columns = [column for column in feature_columns if column in df.columns]
+    encoded = df.loc[:, available_columns].copy(deep=False)
     encoders: Dict[str, Dict[str, int]] = {}
     encoded_columns: List[str] = []
 
-    for column in feature_columns:
-        if column not in df.columns:
-            continue
-
-        series = df[column]
+    for column in available_columns:
+        series = encoded[column]
         if pd.api.types.is_bool_dtype(series):
-            encoded_parts.append(series.fillna(False).astype(np.int8).rename(column))
             continue
 
         if pd.api.types.is_numeric_dtype(series):
-            numeric = pd.to_numeric(series, errors="coerce")
-            encoded_parts.append(downcast_numeric_series(numeric).rename(column))
+            optimized = downcast_numeric_series(pd.to_numeric(series, errors="coerce"))
+            if optimized.dtype != series.dtype:
+                encoded[column] = optimized.rename(column)
             continue
 
         cleaned = series.fillna("__missing__").astype(str).str.strip()
         if cleaned.nunique(dropna=False) <= 1:
-            encoded_parts.append(pd.Series(0, index=df.index, dtype=np.int8, name=column))
+            encoded[column] = pd.Series(0, index=df.index, dtype=np.int8, name=column)
             continue
 
         encoder = LabelEncoder()
-        encoded = pd.Series(encoder.fit_transform(cleaned), index=df.index, name=column)
-        encoded_parts.append(downcast_numeric_series(encoded))
+        encoded_series = pd.Series(encoder.fit_transform(cleaned), index=df.index, name=column)
+        encoded[column] = downcast_numeric_series(encoded_series)
         encoders[column] = {
             value: int(code)
             for code, value in enumerate(encoder.classes_.tolist())
         }
         encoded_columns.append(column)
 
-    encoded = pd.concat(encoded_parts, axis=1) if encoded_parts else pd.DataFrame(index=df.index)
     return encoded, {
         "encoders": encoders,
         "encoded_columns": encoded_columns,
@@ -196,8 +200,15 @@ def remove_exact_duplicate_features(
 def remove_global_constant_features(
     df: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    nunique = df.nunique(dropna=False)
-    constant_columns = nunique[nunique <= 1].index.tolist()
+    constant_columns: List[str] = []
+    for column in df.columns:
+        series = df[column]
+        if pd.api.types.is_float_dtype(series):
+            values = series.to_numpy(copy=False)
+            if np.isinf(values).any():
+                series = series.replace([np.inf, -np.inf], np.nan)
+        if int(series.nunique(dropna=False)) <= 1:
+            constant_columns.append(column)
     kept = [column for column in df.columns if column not in constant_columns]
     return df.loc[:, kept], {
         "removed_count": len(constant_columns),
@@ -342,36 +353,42 @@ def build_fill_values(df: pd.DataFrame) -> Tuple[Dict[str, float], Dict[str, Any
     if df.empty:
         return {}, {"columns_filled": 0, "strategies": {}}
 
-    clean = df.replace([np.inf, -np.inf], np.nan)
-    missing_mask = clean.isna()
-    has_missing = missing_mask.any(axis=0)
-    all_missing = missing_mask.all(axis=0)
-
-    means = clean.mean(axis=0)
-    medians = clean.median(axis=0)
-    valid_counts = clean.notna().sum(axis=0)
-    skews = clean.skew(axis=0).where(valid_counts > 2, other=0.0).fillna(0.0)
-
-    fill_series = means.astype(np.float64, copy=True)
-    fill_series.loc[all_missing] = 0.0
-
-    use_median = has_missing & ~all_missing & (skews.abs() > 1.0)
-    fill_series.loc[use_median] = medians.loc[use_median]
-    fill_series = fill_series.fillna(0.0).astype(np.float32)
-
     strategies: Dict[str, str] = {}
-    for column in clean.columns[has_missing]:
-        if bool(all_missing.loc[column]):
+    fill_values: Dict[str, float] = {}
+    columns_filled = 0
+
+    for column in df.columns:
+        series = df[column]
+        if pd.api.types.is_float_dtype(series):
+            values = series.to_numpy(copy=False)
+            if np.isinf(values).any():
+                series = series.replace([np.inf, -np.inf], np.nan)
+
+        if not bool(series.isna().any()):
+            continue
+
+        columns_filled += 1
+        valid = series.dropna()
+        if valid.empty:
+            fill_values[column] = 0.0
             strategies[column] = "zero_all_missing"
-        elif bool(use_median.loc[column]):
+            continue
+
+        skew = float(valid.skew()) if len(valid) > 2 else 0.0
+        if np.isnan(skew):
+            skew = 0.0
+
+        if abs(skew) > 1.0:
+            fill_values[column] = float(valid.median())
             strategies[column] = "median"
         else:
+            fill_values[column] = float(valid.mean())
             strategies[column] = "mean"
 
     return (
-        {column: float(value) for column, value in fill_series.items()},
+        fill_values,
         {
-            "columns_filled": int(has_missing.sum()),
+            "columns_filled": int(columns_filled),
             "strategies": strategies,
         },
     )
@@ -384,17 +401,37 @@ def apply_fill_values(
     if df.empty:
         return df.copy()
 
-    clean = df.replace([np.inf, -np.inf], np.nan)
-    fill_series = pd.Series(fill_values, dtype=np.float32).reindex(clean.columns).fillna(np.float32(0.0))
-    return clean.fillna(fill_series).astype(np.float32, copy=False)
+    filled = df.copy(deep=False)
+
+    for column in df.columns:
+        series = df[column]
+        clean = series
+        if pd.api.types.is_float_dtype(series):
+            values = series.to_numpy(copy=False)
+            if np.isinf(values).any():
+                clean = series.replace([np.inf, -np.inf], np.nan)
+
+        if not bool(clean.isna().any()):
+            continue
+
+        fill_value = fill_values.get(column, 0.0)
+        repaired = clean.fillna(fill_value)
+        filled[column] = downcast_numeric_series(pd.to_numeric(repaired, errors="coerce")).rename(column)
+
+    return filled
 
 
 def remove_low_variance_columns(
     df: pd.DataFrame,
     variance_threshold: float,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    variances = df.var()
-    low_variance = variances[variances <= variance_threshold].index.tolist()
+    low_variance: List[str] = []
+    for column in df.columns:
+        variance = float(df[column].var())
+        if np.isnan(variance):
+            variance = 0.0
+        if variance <= variance_threshold:
+            low_variance.append(column)
     kept = [column for column in df.columns if column not in low_variance]
     return df.loc[:, kept], {
         "removed_count": len(low_variance),
@@ -542,6 +579,7 @@ __all__ = [
     "remove_exact_duplicate_features",
     "remove_global_constant_features",
     "remove_low_variance_columns",
+    "resolve_source_row_idx",
     "resolve_feature_columns",
     "resolve_sample_weight",
 ]
