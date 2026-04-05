@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "model_id": "short_ote_tcn_v1_candidate",
+  "direction": "short",
+  "backend": "tcn",
+  "calibration_method": "platt",
+  "policy_status": "complete",
+  "thresholds": {
+    "global_threshold": 0.5599999999999999,
+    "regime_thresholds": null
+  },
+  "abstain_policy": {
+    "enabled": true,
+    "abstain_high_stress": true,
+    "abstain_off_hours": true,
+    "cooldown_bars": 4,
+    "minimum_expected_move_to_spread": 2.0,
+    "abstain_session_regimes": [],
+    "abstain_composite_regimes": [],
+    "minimum_probability_quantile": null
+  },
+  "cost_assumptions": {
+    "fixed_slippage_pips_per_trade": 0.3,
+    "commission_pips_per_trade": 0.35,
+    "session_spread_pips": {
+      "overlap": 1.0,
+      "london": 1.5,
+      "new_york": 1.5,
+      "asia": 2.5,
+      "off_hours": 3.0
+    },
+    "targeted_filter_preset": null
+  },
+  "lineage": {
+    "threshold_registry_path": "models/ote_model_registry_v1_v2_candidates.json",
+    "policy_source_type": "active_backtest_fallback",
+    "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
+    "policy_search_summary_path": null,
+    "policy_table_path": null,
+    "policy_evaluation_path": null,
+    "active_registry_path": "models/ote_model_registry.json",
+    "source_model_id": "short_ote_tcn_v1_candidate",
+    "selected_policy_name": null,
+    "qualified_policy_names": [],
+    "source_match_type": "artifact_path",
+    "notes": []
+  }
+}
