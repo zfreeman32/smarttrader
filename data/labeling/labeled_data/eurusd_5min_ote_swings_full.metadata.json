@@ -1,0 +1,69 @@
+{
+  "output_kind": "swing_metadata",
+  "source_path": "data\\currency_data\\eurusd-5m.csv",
+  "output_path": "data\\labeling\\labeled_data\\eurusd_5min_ote_swings_full.csv",
+  "generated_at_utc": "2026-04-01T01:35:53.452531+00:00",
+  "row_counts": {
+    "source_rows": 1446517,
+    "rows_5m_after_cleanup": 1446447,
+    "rows_30m": 242141,
+    "rows_1h": 121295,
+    "output_rows": 20795,
+    "anomaly_rows_removed": 70
+  },
+  "time_range": {
+    "start": "2007-04-01T22:00:00+00:00",
+    "end": "2026-03-25T02:45:00+00:00"
+  },
+  "timezone_contract": {
+    "source_timezone": "GMT-6",
+    "canonical_timezone": "UTC",
+    "csv_timezone": "UTC",
+    "csv_timestamps_are_timezone_aware": false,
+    "timestamp_column": null
+  },
+  "bar_timestamp_semantics": "as_provided",
+  "labeling_params": {
+    "atr_period": 14,
+    "atr_smoothing": "ema",
+    "structural_atr_tf": "1hr",
+    "cusum_atr_mult": 0.5,
+    "cusum_use_dynamic": true,
+    "cusum_fixed_threshold": 0.002,
+    "confirm_atr_mult": 0.8,
+    "confirm_use_close": true,
+    "min_swing_atr": 1.35,
+    "min_swing_distance_atr": 0.75,
+    "min_bars_between_swings": 18,
+    "tb_enable": true,
+    "tb_profit_atr": 1.0,
+    "tb_stop_atr": 2.0,
+    "tb_max_bars": 120,
+    "zone_pre_bars": 2,
+    "zone_post_bars": 0,
+    "entry_lookback_bars": 3,
+    "entry_max_delay_after_swing": 4,
+    "entry_eval_bars_after_confirm": 12,
+    "entry_label_bars": 1,
+    "entry_price_tolerance_atr": 0.35,
+    "entry_min_followthrough_atr": 0.35,
+    "entry_min_rr": 1.25,
+    "trend_scan_windows": [
+      12,
+      24,
+      48,
+      96
+    ],
+    "trend_scan_min_abs_t": 2.0,
+    "trend_scan_enforce": true,
+    "min_label_quality": 0.35,
+    "event_match_bars": 3,
+    "exclusion_pre_bars": 10,
+    "htf_confirm_atr_mult": 0.6,
+    "htf_min_swing_atr": 0.8,
+    "htf_min_bars_between": 4,
+    "htf_confluence_window_minutes": 120,
+    "compute_uniqueness": true,
+    "warmup_bars": 50
+  }
+}

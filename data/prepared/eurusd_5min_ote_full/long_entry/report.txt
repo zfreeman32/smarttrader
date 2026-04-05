@@ -1,0 +1,101 @@
+TARGET REPORT: long_entry
+================================================================================
+Target column: label_long_entry
+Direction: long
+Label kind: entry
+Binary target: True
+Timezone contract: source=UTC canonical=UTC feature_clock=America/New_York
+
+Row counts:
+  - rows_usable: 1330750
+  - rows_positive: 7101
+  - rows_negative: 1323649
+  - rows_excluded_by_warmup: 0
+  - rows_excluded_as_ambiguous: 115447
+
+Split counts:
+  - train: 931524 (2007-04-02T18:50:00+00:00 -> 2020-06-04T12:40:00+00:00)
+  - val: 199613 (2020-06-04T12:45:00+00:00 -> 2023-04-24T07:20:00+00:00)
+  - test: 199613 (2023-04-24T07:25:00+00:00 -> 2026-03-25T02:45:00+00:00)
+
+Class balance:
+  - target_type: classification
+  - positive_count: 7101
+  - negative_count: 1323649
+  - positive_rate: 0.005336088671801615
+  - weighted_positive_rate: 0.004736903589218855
+  - suggested_positive_class_weight: 186.40318265033093
+  - split_positive_rates: {'train': 0.005240874094494613, 'val': 0.005460566195588464, 'test': 0.005655944252127868}
+
+Cleaning:
+  - columns filled: 0
+  - low variance removed: 13
+  - collinear removed: 140
+  - max remaining correlation: 0.9800
+
+Readiness:
+  - score: 91.7
+  - grade: green
+
+Validations:
+  - [PASS] usable_rows: usable_rows=1330750, threshold=250
+  - [PASS] selected_features: selected_features=960
+  - [PASS] train_rows: train_rows=931524, threshold=100
+  - [PASS] val_rows: val_rows=199613
+  - [PASS] test_rows: test_rows=199613
+  - [PASS] max_remaining_correlation: max_remaining_corr=0.9800, threshold=0.9800
+  - [PASS] train_has_both_classes: train_unique_classes=2
+  - [PASS] enough_positive_samples_train: train_positive_count=4882, threshold=25
+  - [PASS] feature_signal: max_mutual_information=0.008969
+
+Top features:
+  - close_vs_ema_21_atr: composite=0.6660, assoc=0.0000, mi=0.0087, rf=0.0241
+  - strategy__disparity_index_signals__disparity_index: composite=0.6646, assoc=0.0000, mi=0.0087, rf=0.0201
+  - rsi_14: composite=0.6635, assoc=0.0000, mi=0.0087, rf=0.0187
+  - strategy__cmo_absolute_indicator_signals__cmo: composite=0.6628, assoc=0.0000, mi=0.0084, rf=0.0177
+  - close_vs_ema_50_atr: composite=0.6625, assoc=0.0000, mi=0.0071, rf=0.0249
+  - close_return_1_roll_mean_20: composite=0.6622, assoc=0.0000, mi=0.0090, rf=0.0150
+  - close_vs_sma_20_atr: composite=0.6618, assoc=0.0000, mi=0.0079, rf=0.0174
+  - macd_line: composite=0.6608, assoc=0.0000, mi=0.0074, rf=0.0169
+  - strategy__coppock_curve_signals__coppock_curve: composite=0.6597, assoc=0.0000, mi=0.0069, rf=0.0218
+  - close_return_5_roll_mean_20: composite=0.6597, assoc=0.0000, mi=0.0069, rf=0.0230
+  - strategy__awesome_oscillator_signals__ao: composite=0.6583, assoc=0.0000, mi=0.0068, rf=0.0190
+  - rsi_14_roll_mean_5: composite=0.6580, assoc=0.0000, mi=0.0071, rf=0.0150
+  - strategy__cci_signals__cci_bullish_signal: composite=0.6569, assoc=0.0000, mi=0.0076, rf=0.0121
+  - close_return_10: composite=0.6566, assoc=0.0000, mi=0.0074, rf=0.0126
+  - rsi_14_lag_1: composite=0.6552, assoc=0.0000, mi=0.0072, rf=0.0118
+  - strategy__audcad_signals__signal__short: composite=0.6549, assoc=0.0000, mi=0.0073, rf=0.0111
+  - rsi_14_zscore_100: composite=0.6545, assoc=0.0000, mi=0.0065, rf=0.0155
+  - dist_to_prior_low_50_atr: composite=0.6545, assoc=0.0000, mi=0.0071, rf=0.0129
+  - ema_spread_8_21_atr: composite=0.6545, assoc=0.0000, mi=0.0068, rf=0.0141
+  - price_position_50: composite=0.6542, assoc=0.0000, mi=0.0083, rf=0.0090
+  - strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short: composite=0.6510, assoc=0.0000, mi=0.0067, rf=0.0116
+  - close_return_5_roll_mean_10: composite=0.6500, assoc=0.0000, mi=0.0062, rf=0.0146
+  - price_position_50_roll_mean_5: composite=0.6493, assoc=0.0000, mi=0.0066, rf=0.0094
+  - ema_slope_21_5: composite=0.6490, assoc=0.0000, mi=0.0061, rf=0.0152
+  - strategy__keltner_channel_strategy__kc_sell_signal: composite=0.6483, assoc=0.0000, mi=0.0071, rf=0.0077
+  - strategy__rei_signals__rei: composite=0.6476, assoc=0.0000, mi=0.0061, rf=0.0129
+  - stoch_position_14: composite=0.6472, assoc=0.0000, mi=0.0063, rf=0.0105
+  - strategy__membership_based_trading_signals__mean_reversion: composite=0.6451, assoc=0.0000, mi=0.0065, rf=0.0084
+  - structure_pressure: composite=0.6448, assoc=0.0000, mi=0.0067, rf=0.0073
+  - roc_10_roll_mean_10: composite=0.6444, assoc=0.0000, mi=0.0059, rf=0.0140
+  - return_slope_8: composite=0.6424, assoc=0.0000, mi=0.0071, rf=0.0046
+  - breakout_low_20: composite=0.6413, assoc=0.0000, mi=0.0065, rf=0.0064
+  - roc_10_lag_1: composite=0.6413, assoc=0.0000, mi=0.0060, rf=0.0091
+  - roc_10_roll_mean_20: composite=0.6410, assoc=0.0000, mi=0.0055, rf=0.0133
+  - dist_to_prior_high_20_atr_lag_1: composite=0.6403, assoc=0.0000, mi=0.0062, rf=0.0075
+  - rsi_14_lag_2: composite=0.6403, assoc=0.0000, mi=0.0059, rf=0.0093
+  - close_vs_ema_21_atr_lag_1: composite=0.6396, assoc=0.0000, mi=0.0061, rf=0.0084
+  - strategy__monthly_trading_strategy_signals__monthly_return: composite=0.6392, assoc=0.0000, mi=0.0061, rf=0.0076
+  - price_position_50_roll_mean_10: composite=0.6389, assoc=0.0000, mi=0.0059, rf=0.0085
+  - strategy__short_wma_signals_ironbot_trend_filter__ironbot_sell_signal: composite=0.6385, assoc=0.0000, mi=0.0065, rf=0.0042
+  - dist_to_prior_high_20_atr: composite=0.6385, assoc=0.0000, mi=0.0058, rf=0.0094
+  - strategy__smi_signals__smi: composite=0.6368, assoc=0.0000, mi=0.0061, rf=0.0060
+  - close_vs_ema_8_atr: composite=0.6361, assoc=0.0000, mi=0.0060, rf=0.0072
+  - price_position_50_lag_1: composite=0.6340, assoc=0.0000, mi=0.0064, rf=0.0038
+  - dist_to_prior_low_20_atr: composite=0.6333, assoc=0.0000, mi=0.0060, rf=0.0050
+  - ict_dist_to_swing_low_atr: composite=0.6326, assoc=0.0000, mi=0.0062, rf=0.0039
+  - price_position_50_zscore_100: composite=0.6316, assoc=0.0000, mi=0.0050, rf=0.0086
+  - rsi_14_roll_mean_10: composite=0.6309, assoc=0.0000, mi=0.0050, rf=0.0078
+  - money_flow_10: composite=0.6306, assoc=0.0000, mi=0.0064, rf=0.0032
+  - strategy__starc_signals__starc_signal__long: composite=0.6302, assoc=0.0000, mi=0.0061, rf=0.0039

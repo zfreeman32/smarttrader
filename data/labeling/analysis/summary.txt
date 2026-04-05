@@ -1,0 +1,30 @@
+OTE Label Deep Analysis
+==============================
+Rows total: 1,121,592
+Rows usable: 1,121,542
+Long zone rate: 1.544%
+Short zone rate: 1.559%
+Long entry rate: 0.499%
+Short entry rate: 0.504%
+Average long label quality: 0.894
+Average short label quality: 0.894
+Override count: 0
+Swing count: 16,575
+Trend-scan pass rate: 86.30%
+Tier A swing share long/short: 52.64% / 54.08%
+
+Backtest
+------------------------------
+Initial capital: $10,000.00
+Final capital: $536,769.27
+Net PnL: $526,769.27
+Total return: 5267.69%
+Total trades: 11,011
+Long / short trades: 5,476 / 5,535
+Win rate: 98.01%
+Profit factor: 136.66
+Average trade: 0.478R
+Max drawdown: -0.18%
+Average bars held: 23.68
+Exit mix TP / SL / timeout: 10,501 / 0 / 510
+Same-bar TP+SL conflicts resolved stop-first: 0

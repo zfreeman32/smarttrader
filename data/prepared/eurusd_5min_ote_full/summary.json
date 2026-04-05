@@ -1,0 +1,119 @@
+{
+  "input_file": "data\\features\\eurusd_5min_ote_full.csv",
+  "metadata_file": "data\\features\\eurusd_5min_ote_full.metadata.json",
+  "config": {
+    "target_columns": [
+      "label_long_entry",
+      "label_short_entry",
+      "label_long_ote",
+      "label_short_ote"
+    ],
+    "time_column": "datetime",
+    "max_analysis_rows": 10000,
+    "additional_skip_rows": 0,
+    "respect_upstream_warmup": true,
+    "train_size": 0.7,
+    "val_size": 0.15,
+    "test_size": 0.15,
+    "use_time_based_split": true,
+    "similarity_threshold": 0.995,
+    "correlation_threshold": 0.98,
+    "variance_threshold": 1e-09,
+    "min_usable_rows": 250,
+    "min_train_rows": 100,
+    "min_positive_samples": 25,
+    "top_n_features": 50,
+    "scaler_type": "none",
+    "rf_n_estimators": 250,
+    "rf_max_depth": 8,
+    "rf_min_samples_leaf": 8,
+    "mutual_info_neighbors": 5,
+    "include_base_price_columns": false,
+    "save_scaler": true
+  },
+  "upstream_preprocessing": {
+    "metadata_detected": true,
+    "feature_columns_from_metadata": 1461,
+    "warmup_rows_already_dropped": true,
+    "warmup_rows_configured": 250,
+    "numeric_fill_applied_upstream": true,
+    "duplicate_column_names_blocked_in_builder": true
+  },
+  "row_windowing": {
+    "rows_before": 1446197,
+    "additional_skip_rows_requested": 0,
+    "additional_skip_rows_applied": 0,
+    "analysis_row_cap": 10000,
+    "rows_after": 1446197
+  },
+  "feature_pool": {
+    "metadata_feature_count": 1461,
+    "encoded_feature_count": 1113,
+    "encoded_categorical_columns": [],
+    "duplicate_columns_removed": 232,
+    "constant_columns_removed": 116
+  },
+  "timezone_contract": {
+    "source_timezone": "UTC",
+    "canonical_timezone": "UTC",
+    "feature_clock_timezone": "America/New_York",
+    "london_timezone": "Europe/London",
+    "new_york_timezone": "America/New_York",
+    "market_close_timezone": "America/New_York",
+    "market_close_time": "17:00"
+  },
+  "source_lineage": {
+    "feature_csv": "data\\features\\eurusd_5min_ote_full.csv",
+    "feature_metadata_file": "data\\features\\eurusd_5min_ote_full.metadata.json",
+    "feature_builder_source_path": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+    "feature_builder_source_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_source_path": "data\\currency_data\\eurusd-5m.csv",
+    "upstream_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_bar_timestamp_semantics": "as_provided",
+    "upstream_timezone_contract": {
+      "source_timezone": "GMT-6",
+      "canonical_timezone": "UTC",
+      "csv_timezone": "UTC",
+      "csv_timestamps_are_timezone_aware": false,
+      "timestamp_column": "timestamp"
+    }
+  },
+  "targets": {
+    "long_entry": {
+      "target_column": "label_long_entry",
+      "usable_rows": 1330750,
+      "selected_features": 960,
+      "readiness_score": 91.7,
+      "readiness_grade": "green",
+      "positive_rate": 0.005336088671801615,
+      "positive_count": 7101
+    },
+    "short_entry": {
+      "target_column": "label_short_entry",
+      "usable_rows": 1331930,
+      "selected_features": 964,
+      "readiness_score": 92.1,
+      "readiness_grade": "green",
+      "positive_rate": 0.005404187907772931,
+      "positive_count": 7198
+    },
+    "long_ote": {
+      "target_column": "label_long_ote",
+      "usable_rows": 1346067,
+      "selected_features": 960,
+      "readiness_score": 100.0,
+      "readiness_grade": "green",
+      "positive_rate": 0.016309737925378157,
+      "positive_count": 21954
+    },
+    "short_ote": {
+      "target_column": "label_short_ote",
+      "usable_rows": 1347322,
+      "selected_features": 961,
+      "readiness_score": 100.0,
+      "readiness_grade": "green",
+      "positive_rate": 0.016434824043547125,
+      "positive_count": 22143
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "input_file": "data\\features\\eurusd_5min_ote_2000.csv",
+  "metadata_file": "data\\features\\eurusd_5min_ote_2000.metadata.json",
+  "config": {
+    "target_columns": [
+      "label_long_entry",
+      "label_short_entry",
+      "label_long_ote",
+      "label_short_ote"
+    ],
+    "time_column": "datetime",
+    "max_analysis_rows": 2000,
+    "additional_skip_rows": 0,
+    "respect_upstream_warmup": true,
+    "train_size": 0.7,
+    "val_size": 0.15,
+    "test_size": 0.15,
+    "use_time_based_split": true,
+    "similarity_threshold": 0.995,
+    "correlation_threshold": 0.98,
+    "variance_threshold": 1e-09,
+    "min_usable_rows": 250,
+    "min_train_rows": 100,
+    "min_positive_samples": 25,
+    "top_n_features": 50,
+    "scaler_type": "none",
+    "rf_n_estimators": 250,
+    "rf_max_depth": 8,
+    "rf_min_samples_leaf": 8,
+    "mutual_info_neighbors": 5,
+    "include_base_price_columns": false,
+    "save_scaler": true
+  },
+  "upstream_preprocessing": {
+    "metadata_detected": true,
+    "feature_columns_from_metadata": 1475,
+    "warmup_rows_already_dropped": true,
+    "warmup_rows_configured": 250,
+    "numeric_fill_applied_upstream": true,
+    "duplicate_column_names_blocked_in_builder": true
+  },
+  "row_windowing": {
+    "rows_before": 1750,
+    "additional_skip_rows_requested": 0,
+    "additional_skip_rows_applied": 0,
+    "analysis_row_cap": 2000,
+    "rows_after": 1750
+  },
+  "feature_pool": {
+    "metadata_feature_count": 1475,
+    "encoded_feature_count": 973,
+    "encoded_categorical_columns": [],
+    "duplicate_columns_removed": 314,
+    "constant_columns_removed": 188
+  },
+  "timezone_contract": {},
+  "source_lineage": {
+    "feature_csv": "data\\features\\eurusd_5min_ote_2000.csv",
+    "feature_metadata_file": "data\\features\\eurusd_5min_ote_2000.metadata.json",
+    "feature_builder_source_path": "C:\\Users\\zebfr\\Documents\\All_Files\\TRADING\\trade_bot\\data\\features\\_tmp_eurusd_5min_ote_labels_2000.csv",
+    "feature_builder_source_metadata_file": null,
+    "upstream_source_path": null,
+    "upstream_metadata_file": null,
+    "upstream_bar_timestamp_semantics": null,
+    "upstream_timezone_contract": null
+  },
+  "targets": {
+    "long_entry": {
+      "target_column": "label_long_entry",
+      "usable_rows": 1581,
+      "selected_features": 851,
+      "readiness_score": 59.0,
+      "readiness_grade": "red",
+      "positive_rate": 0.0056925996204933585,
+      "positive_count": 9
+    },
+    "short_entry": {
+      "target_column": "label_short_entry",
+      "usable_rows": 1598,
+      "selected_features": 848,
+      "readiness_score": 59.0,
+      "readiness_grade": "red",
+      "positive_rate": 0.006257822277847309,
+      "positive_count": 10
+    },
+    "long_ote": {
+      "target_column": "label_long_ote",
+      "usable_rows": 1600,
+      "selected_features": 849,
+      "readiness_score": 59.0,
+      "readiness_grade": "red",
+      "positive_rate": 0.016875,
+      "positive_count": 27
+    },
+    "short_ote": {
+      "target_column": "label_short_ote",
+      "usable_rows": 1623,
+      "selected_features": 846,
+      "readiness_score": 59.0,
+      "readiness_grade": "red",
+      "positive_rate": 0.02033271719038817,
+      "positive_count": 33
+    }
+  }
+}
