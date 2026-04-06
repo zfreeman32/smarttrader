@@ -15,13 +15,18 @@ scikit-learn
 
 # Training backends and tuning
 optuna
-# xgboost
-# torch
+xgboost
+torch
 
 # Label review / analysis / plotting
 matplotlib
 plotly
 dash
+Pillow
+kaleido
+
+# Runtime env / service orchestration
+python-dotenv
 
 # Optional: install if you want to run the OTE test suite in this env
 pytest
@@ -30,3 +35,11 @@ pytest
 # from the large features/strategies catalog
 ta
 TA-Lib
+
+# Live runtime / Phase 1 ingestion
+pydantic
+httpx
+websockets
+tenacity
+twilio
+pyarrow

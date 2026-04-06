@@ -1,3 +1,5 @@
+from importlib import import_module
+
 from .aggregator import MultiTimeframeBarAggregator, aggregate_bar_sequence
 from .base import (
     AbstractBackfillConnector,
@@ -28,14 +30,6 @@ from .normalizer import (
     normalize_twelvedata_time_series_response,
     twelvedata_interval_to_canonical_timeframe,
 )
-from .runtime import (
-    DEFAULT_DB_PATH,
-    BootstrapSummary,
-    CollectorRunSummary,
-    LiveCollectorConfig,
-    LiveCollectorRuntime,
-)
-from .service import CollectorCycleResult, LiveBarIngestionService
 
 __all__ = [
     "AbstractBackfillConnector",
@@ -72,3 +66,22 @@ __all__ = [
     "timeframe_to_timedelta",
     "twelvedata_interval_to_canonical_timeframe",
 ]
+
+
+def __getattr__(name: str):
+    if name in {
+        "CollectorCycleResult",
+        "LiveBarIngestionService",
+    }:
+        module = import_module(".service", __name__)
+        return getattr(module, name)
+    if name in {
+        "DEFAULT_DB_PATH",
+        "BootstrapSummary",
+        "CollectorRunSummary",
+        "LiveCollectorConfig",
+        "LiveCollectorRuntime",
+    }:
+        module = import_module(".runtime", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

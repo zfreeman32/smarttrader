@@ -28,8 +28,8 @@ class TwelveDataPollingBarStream(AbstractBarStream):
         *,
         asset: str = "EURUSD",
         timeframe: str = "1m",
-        outputsize: int = 10,
-        poll_interval_seconds: float = 5.0,
+        outputsize: int = 2,
+        poll_interval_seconds: float = 60.0,
         last_emitted_timestamp: datetime | None = None,
     ) -> None:
         self.client = client

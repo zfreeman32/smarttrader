@@ -52,6 +52,9 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
                 gap_size=2,
             )
         )
+        unresolved_gaps = store.fetch_gaps(asset="EURUSD", timeframe="1m", unresolved_only=True)
+        store.mark_gap_resolved(unresolved_gaps[0].gap_id)
+        resolved_gaps = store.fetch_gaps(asset="EURUSD", timeframe="1m", unresolved_only=False)
         store.record_heartbeat(
             HeartbeatStatus(
                 source="twelvedata.polling",
@@ -80,4 +83,9 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
         "feature_seed_offsets": {"foo": 1.5},
         "latest_timestamp": bar.timestamp.isoformat(),
     }
+    assert len(unresolved_gaps) == 1
+    assert unresolved_gaps[0].gap_size == 2
+    assert unresolved_gaps[0].resolved_at_utc is None
+    assert len(resolved_gaps) == 1
+    assert resolved_gaps[0].resolved_at_utc is not None
     assert deleted_runtime_state is None

@@ -47,7 +47,7 @@ NON_LIVE_SAFE_SELECTED_FEATURE_NAMES = frozenset(
     }
 )
 
-_VERSION_PATTERN = re.compile(r"_v(?P<version>\d+)_")
+_VERSION_PATTERN = re.compile(r"_v(?P<version>\d+)(?:_|$)")
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -11,11 +12,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ote_live.contracts.market_data import MarketBar
+from ote_live.ingestion.base import IngestionGap
 from ote_live.ingestion.aggregator import MultiTimeframeBarAggregator
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
 from ote_live.ingestion.runtime import LiveCollectorConfig, LiveCollectorRuntime
 from ote_live.ingestion.service import LiveBarIngestionService
+from ote_live.storage.repositories import LiveAuditRepository
 from ote_live.storage.db import SQLiteLiveDataStore
 
 
@@ -64,6 +67,107 @@ def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
     assert backfill.windows[0][1] == fixed_now
 
 
+def test_runtime_bootstrap_recovers_unresolved_gaps_before_resuming(monkeypatch) -> None:
+    fixed_now = datetime(2024, 1, 2, 10, 5, tzinfo=timezone.utc)
+    monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
+
+    runtime, store, stream, backfill = _build_runtime(
+        client=_FakeClient(seed_bars=[]),
+        stream=_FakeStream([]),
+        backfill=_FakeBackfill(
+            {
+                (
+                    datetime(2024, 1, 2, 10, 1, tzinfo=timezone.utc),
+                    datetime(2024, 1, 2, 10, 1, tzinfo=timezone.utc),
+                ): [_bar(1)],
+            }
+        ),
+    )
+    for minute in (0, 2, 3, 4, 5):
+        store.upsert_bar(_bar(minute))
+    store.record_gap(
+        IngestionGap(
+            asset="EURUSD",
+            timeframe="1m",
+            expected_timestamp=datetime(2024, 1, 2, 10, 1, tzinfo=timezone.utc),
+            observed_timestamp=datetime(2024, 1, 2, 10, 2, tzinfo=timezone.utc),
+            missing_timestamps=[datetime(2024, 1, 2, 10, 1, tzinfo=timezone.utc)],
+            gap_size=1,
+        )
+    )
+
+    summary = asyncio.run(runtime.bootstrap())
+    source_bars = store.fetch_bars(asset="EURUSD", timeframe="1m")
+    repaired_five_minute_bars = store.fetch_bars(asset="EURUSD", timeframe="5m")
+    gaps = store.fetch_gaps(asset="EURUSD", timeframe="1m", unresolved_only=False)
+    asyncio.run(runtime.close())
+
+    assert summary.startup_gap_recovery_attempts == 1
+    assert summary.startup_gap_backfilled_bars == 1
+    assert summary.resolved_startup_gaps == 1
+    assert summary.remaining_unresolved_gaps == 0
+    assert len(source_bars) == 6
+    assert len(repaired_five_minute_bars) == 1
+    assert repaired_five_minute_bars[0].timestamp == datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)
+    assert gaps[0].resolved_at_utc is not None
+    assert stream.last_emitted_timestamp == fixed_now
+
+
+def test_runtime_bootstrap_records_health_event_when_seed_fetch_fails() -> None:
+    runtime, store, _, _ = _build_runtime(
+        client=_FailingClient(RuntimeError("seed fetch failed")),
+        stream=_FakeStream([]),
+        backfill=_FakeBackfill({}),
+    )
+    audit = LiveAuditRepository(store)
+
+    try:
+        asyncio.run(runtime.bootstrap())
+    except RuntimeError as exc:
+        assert "seed fetch failed" in str(exc)
+    else:
+        raise AssertionError("Expected bootstrap to propagate the client failure.")
+
+    health_events = audit.fetch_health_events(component="collector.bootstrap", event_type="bootstrap_failed")
+    asyncio.run(runtime.close())
+
+    assert len(health_events) == 1
+    assert health_events[0].severity == "error"
+    assert health_events[0].payload["error_type"] == "RuntimeError"
+
+
+def test_runtime_run_invokes_before_close_and_closes_store_when_bootstrap_fails() -> None:
+    runtime, store, _, _ = _build_runtime(
+        client=_FailingClient(RuntimeError("seed fetch failed")),
+        stream=_FakeStream([]),
+        backfill=_FakeBackfill({}),
+    )
+    captured: dict[str, object] = {}
+
+    async def _before_close(summary) -> None:
+        captured["terminal_status"] = summary.terminal_status
+        captured["terminal_error"] = dict(summary.terminal_error or {})
+
+    try:
+        asyncio.run(runtime.run(before_close=_before_close))
+    except RuntimeError as exc:
+        assert "seed fetch failed" in str(exc)
+    else:
+        raise AssertionError("Expected runtime.run() to propagate the bootstrap failure.")
+
+    assert captured["terminal_status"] == "failed"
+    assert captured["terminal_error"] == {
+        "error_type": "RuntimeError",
+        "error_message": "seed fetch failed",
+    }
+    try:
+        store.connection.execute("SELECT 1")
+    except sqlite3.ProgrammingError:
+        pass
+    else:
+        raise AssertionError("Expected runtime.run() to close the SQLite store on failure.")
+
+
 class _FakeClient:
     def __init__(self, *, seed_bars: list[MarketBar]) -> None:
         self.seed_bars = seed_bars
@@ -73,6 +177,15 @@ class _FakeClient:
 
     async def aclose(self) -> None:
         return None
+
+
+class _FailingClient(_FakeClient):
+    def __init__(self, exc: Exception) -> None:
+        super().__init__(seed_bars=[])
+        self.exc = exc
+
+    async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
+        raise self.exc
 
 
 class _FakeStream:
@@ -104,6 +217,7 @@ def _build_runtime(
     tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
     store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
     service = LiveBarIngestionService(
         stream=stream,
         backfill=backfill,
@@ -111,6 +225,7 @@ def _build_runtime(
         gap_detector=GapDetector(asset="EURUSD", timeframe="1m"),
         aggregator=MultiTimeframeBarAggregator(target_timeframes=("5m",)),
         heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
     )
     runtime = LiveCollectorRuntime(
         config=LiveCollectorConfig(
@@ -124,6 +239,7 @@ def _build_runtime(
         backfill_connector=backfill,  # type: ignore[arg-type]
         store=store,
         service=service,
+        audit_repository=audit,
     )
     return runtime, store, stream, backfill
 

@@ -1,0 +1,63 @@
+{
+  "asset": "EURUSD",
+  "bootstrap": {
+    "catchup_bars": 23,
+    "latest_stored_timestamp": "2026-04-06T20:45:00+00:00",
+    "remaining_unresolved_gaps": 0,
+    "resolved_startup_gaps": 0,
+    "seeded_history_bars": 0,
+    "startup_gap_backfilled_bars": 0,
+    "startup_gap_recovery_attempts": 0,
+    "stored_aggregated_bars": 6,
+    "stored_source_bars": 23
+  },
+  "db_path": "C:\\Users\\zebfr\\Documents\\All_Files\\TRADING\\trade_bot\\ote_live\\runtime_data\\live_market_data.sqlite3",
+  "disk_statuses": [
+    {
+      "below_threshold": false,
+      "free_bytes": 248748204032,
+      "minimum_free_bytes": 2147483648,
+      "path": "C:\\Users\\zebfr\\Documents\\All_Files\\TRADING\\trade_bot\\ote_live\\runtime_data",
+      "total_bytes": 998730887168,
+      "used_bytes": 749982683136,
+      "volume": "C:\\"
+    }
+  ],
+  "generated_at_utc": "2026-04-06T22:06:14.563305+00:00",
+  "health_state": "degraded",
+  "heartbeat_is_stale": false,
+  "heartbeat_lag_seconds": 0.0,
+  "hostname": "ZebsPC",
+  "latest_heartbeat_observed_at": "2026-04-06T22:05:01.414885+00:00",
+  "latest_heartbeat_source": "twelvedata.polling",
+  "latest_prediction_timestamp": "2026-04-06T21:55:00+00:00",
+  "latest_signal_timestamp": "2026-04-06T21:55:00+00:00",
+  "latest_source_bar_timestamp": "2026-04-06T22:00:00+00:00",
+  "process_id": 23280,
+  "recent_error_count_24h": 3,
+  "recent_warning_count_24h": 15,
+  "runtime": {
+    "captured_media_artifacts": 0,
+    "cycles_run": 41,
+    "emitted_signals": 0,
+    "evaluated_signals": 99,
+    "flushed_aggregated_bars": 0,
+    "latest_cycle": {
+      "backfilled_bars": 0,
+      "duplicates": 0,
+      "gaps_detected": 0,
+      "out_of_order": 0,
+      "polled_bars": 1,
+      "stored_aggregated_bars": 3,
+      "stored_source_bars": 1
+    },
+    "sent_notifications": 0,
+    "terminal_error": {},
+    "terminal_status": "running"
+  },
+  "service_name": "ote-live-signal-service",
+  "service_status": "running",
+  "signal_timeframe": "5m",
+  "source_timeframe": "1m",
+  "unresolved_gap_count": 0
+}

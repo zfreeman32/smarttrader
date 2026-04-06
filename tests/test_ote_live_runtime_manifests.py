@@ -12,11 +12,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ote_live.features.manifest import LivePolicy
 from ote_live.models.registry import (
+    DEFAULT_ACTIVE_REGISTRY_PATH,
+    DEFAULT_CANDIDATE_REGISTRY_PATH,
     build_direction_runtime_manifests,
     validate_manifest_for_live_decisions,
     write_direction_runtime_manifests,
 )
 from ote_live.policies.packager import package_candidate_policy_artifacts
+from ote_live.scripts.export_live_runtime_manifests import build_parser as build_export_manifest_parser
 
 
 def _make_local_tmp_dir() -> Path:
@@ -105,3 +108,46 @@ def test_written_policy_file_is_versioned_json() -> None:
 
     assert payload["schema_version"] == "1.0.0"
     assert payload["model_id"] == "long_ote_tcn_v2_candidate"
+
+
+def test_active_registry_exports_promoted_direction_manifests() -> None:
+    packaged_policy_dir = _make_local_tmp_dir()
+    package_candidate_policy_artifacts(output_dir=packaged_policy_dir)
+    manifests = build_direction_runtime_manifests(
+        registry_path=DEFAULT_ACTIVE_REGISTRY_PATH,
+        packaged_policy_dir=packaged_policy_dir,
+    )
+
+    assert set(manifests) == {"long", "short"}
+
+    long_manifest = manifests["long"]
+    short_manifest = manifests["short"]
+    long_ids = {model.model_id for model in long_manifest.models}
+    short_ids = {model.model_id for model in short_manifest.models}
+
+    assert long_manifest.recommendations.recommended_primary_model_id == "long_ote_champion_v1"
+    assert long_manifest.recommendations.recommended_strongest_overall_model_id == "long_ote_champion_v1"
+    assert long_manifest.recommendations.recommended_strongest_v2_model_id is None
+    assert short_manifest.recommendations.recommended_primary_model_id == "short_ote_candidate_tcn_v2"
+    assert short_manifest.recommendations.recommended_strongest_overall_model_id == "short_ote_candidate_tcn_v2"
+    assert short_manifest.recommendations.recommended_strongest_v2_model_id == "short_ote_candidate_tcn_v2"
+
+    assert long_ids == {"long_ote_champion_v1", "long_ote_benchmark_lstm_v1"}
+    assert short_ids == {"short_ote_candidate_tcn_v2", "short_ote_candidate_xgb_v1"}
+
+    long_champion = next(model for model in long_manifest.models if model.model_id == "long_ote_champion_v1")
+    long_benchmark = next(model for model in long_manifest.models if model.model_id == "long_ote_benchmark_lstm_v1")
+    short_champion = next(model for model in short_manifest.models if model.model_id == "short_ote_candidate_tcn_v2")
+    short_challenger = next(model for model in short_manifest.models if model.model_id == "short_ote_candidate_xgb_v1")
+
+    assert long_champion.live_policy.policy_status == "complete"
+    assert short_champion.live_policy.policy_status == "complete"
+    assert long_benchmark.live_policy.policy_status == "provisional"
+    assert short_challenger.live_policy.policy_status == "provisional"
+
+
+def test_export_script_defaults_to_candidate_registry() -> None:
+    parser = build_export_manifest_parser()
+    args = parser.parse_args([])
+
+    assert Path(args.registry_path).resolve() == DEFAULT_CANDIDATE_REGISTRY_PATH.resolve()

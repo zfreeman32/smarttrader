@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from ote_live.env import env_path, load_repo_env
 from ote_live.policies.packager import (
     DEFAULT_POLICY_ARTIFACT_DIR,
     DEFAULT_REGISTRY_PATH,
@@ -12,17 +13,22 @@ from ote_live.policies.packager import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    load_repo_env()
     parser = argparse.ArgumentParser(
         description="Package model-specific threshold/abstain policy artifacts into ote_live/policy_artifacts.",
     )
-    parser.add_argument("--threshold-policy-root", default=str(DEFAULT_THRESHOLD_POLICY_ROOT))
-    parser.add_argument("--output-dir", default=str(DEFAULT_POLICY_ARTIFACT_DIR))
-    parser.add_argument("--registry-path", default=str(DEFAULT_REGISTRY_PATH))
+    parser.add_argument(
+        "--threshold-policy-root",
+        default=str(env_path("OTE_LIVE_THRESHOLD_POLICY_ROOT", DEFAULT_THRESHOLD_POLICY_ROOT)),
+    )
+    parser.add_argument("--output-dir", default=str(env_path("OTE_LIVE_POLICY_ARTIFACT_DIR", DEFAULT_POLICY_ARTIFACT_DIR)))
+    parser.add_argument("--registry-path", default=str(env_path("OTE_LIVE_REGISTRY_PATH", DEFAULT_REGISTRY_PATH)))
     parser.add_argument("--model-id", action="append", dest="model_ids", default=None)
     return parser
 
 
 def main() -> int:
+    load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
 

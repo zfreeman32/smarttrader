@@ -31,3 +31,6 @@ model_training/regression/regression_models/
 *_trial.json
 ote_venv/
 *.csv
+
+tmp/
+*.sql

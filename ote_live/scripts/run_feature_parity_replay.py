@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from ote_live.env import load_repo_env
 from ote_live.features.manifest import LiveRuntimeManifest
 from ote_live.features.parity_replay import replay_feature_parity
 
 
 def build_parser() -> argparse.ArgumentParser:
+    load_repo_env()
     parser = argparse.ArgumentParser(
         description="Replay historical bars through the live subset feature engine and compare selected features to the canonical offline feature dataset.",
     )
@@ -27,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
 

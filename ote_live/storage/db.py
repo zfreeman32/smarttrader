@@ -2,27 +2,64 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from ote_live.contracts.market_data import MarketBar
-from ote_live.ingestion.base import HeartbeatStatus, IngestionGap, ensure_utc, utc_now
+from ote_live.ingestion.base import BackfillWindow, HeartbeatStatus, IngestionGap, ensure_utc, utc_now
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+MIGRATIONS_DIR = Path(__file__).with_name("migrations")
+
+
+@dataclass(frozen=True)
+class StoredIngestionGap:
+    gap_id: int
+    asset: str
+    timeframe: str
+    expected_timestamp: datetime
+    observed_timestamp: datetime
+    missing_timestamps: tuple[datetime, ...]
+    gap_size: int
+    detected_at_utc: datetime
+    resolved_at_utc: datetime | None = None
+
+    def to_ingestion_gap(self) -> IngestionGap:
+        return IngestionGap(
+            asset=self.asset,
+            timeframe=self.timeframe,  # type: ignore[arg-type]
+            expected_timestamp=self.expected_timestamp,
+            observed_timestamp=self.observed_timestamp,
+            missing_timestamps=list(self.missing_timestamps),
+            gap_size=self.gap_size,
+            detected_at_utc=self.detected_at_utc,
+        )
+
+    def to_backfill_window(self) -> BackfillWindow:
+        return self.to_ingestion_gap().to_backfill_window()
 
 
 class SQLiteLiveDataStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = sqlite3.connect(self.path)
+        # The dashboard serves requests on worker threads, so its read path must
+        # be able to reuse the same SQLite connection safely across threads.
+        self._connection = sqlite3.connect(
+            self.path,
+            timeout=30.0,
+            check_same_thread=False,
+        )
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA journal_mode=WAL;")
+        self._connection.execute("PRAGMA busy_timeout=30000;")
         self.initialize()
 
     def initialize(self) -> None:
         self._connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        self._apply_pending_migrations()
         self._connection.commit()
 
     def close(self) -> None:
@@ -33,6 +70,10 @@ class SQLiteLiveDataStore:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
+
+    @property
+    def connection(self) -> sqlite3.Connection:
+        return self._connection
 
     def upsert_bar(self, bar: MarketBar) -> None:
         now = _isoformat(utc_now())
@@ -126,6 +167,48 @@ class SQLiteLiveDataStore:
         )
         self._connection.commit()
         return int(cursor.lastrowid)
+
+    def fetch_gaps(
+        self,
+        *,
+        asset: str | None = None,
+        timeframe: str | None = None,
+        unresolved_only: bool = False,
+    ) -> tuple[StoredIngestionGap, ...]:
+        query = """
+            SELECT id, asset, timeframe, expected_timestamp_utc, observed_timestamp_utc,
+                   missing_timestamps_json, gap_size, detected_at_utc, resolved_at_utc
+            FROM ingestion_gaps
+            WHERE 1 = 1
+        """
+        params: list[Any] = []
+        if asset is not None:
+            query += " AND asset = ?"
+            params.append(asset)
+        if timeframe is not None:
+            query += " AND timeframe = ?"
+            params.append(timeframe)
+        if unresolved_only:
+            query += " AND resolved_at_utc IS NULL"
+        query += " ORDER BY expected_timestamp_utc ASC, id ASC"
+        rows = self._connection.execute(query, params).fetchall()
+        return tuple(_gap_row_to_record(row) for row in rows)
+
+    def mark_gap_resolved(
+        self,
+        gap_id: int,
+        *,
+        resolved_at_utc: datetime | None = None,
+    ) -> None:
+        self._connection.execute(
+            """
+            UPDATE ingestion_gaps
+            SET resolved_at_utc = ?
+            WHERE id = ?
+            """,
+            (_isoformat(resolved_at_utc or utc_now()), int(gap_id)),
+        )
+        self._connection.commit()
 
     def record_heartbeat(self, status: HeartbeatStatus, *, metadata: dict[str, Any] | None = None) -> int:
         cursor = self._connection.execute(
@@ -268,6 +351,27 @@ class SQLiteLiveDataStore:
             return None
         return _parse_datetime(row["timestamp_utc"])
 
+    def _apply_pending_migrations(self) -> None:
+        if not MIGRATIONS_DIR.exists():
+            return
+
+        applied = {
+            row["migration_id"]
+            for row in self._connection.execute("SELECT migration_id FROM schema_migrations").fetchall()
+        }
+        for migration_path in sorted(MIGRATIONS_DIR.glob("*.sql")):
+            migration_id = migration_path.name
+            if migration_id in applied:
+                continue
+            self._connection.executescript(migration_path.read_text(encoding="utf-8"))
+            self._connection.execute(
+                """
+                INSERT INTO schema_migrations (migration_id, applied_at_utc)
+                VALUES (?, ?)
+                """,
+                (migration_id, _isoformat(utc_now())),
+            )
+
 
 def _isoformat(value: datetime) -> str:
     return ensure_utc(value).isoformat()
@@ -275,3 +379,23 @@ def _isoformat(value: datetime) -> str:
 
 def _parse_datetime(value: str) -> datetime:
     return ensure_utc(datetime.fromisoformat(value))
+
+
+def _gap_row_to_record(row) -> StoredIngestionGap:
+    missing_payload = json.loads(row["missing_timestamps_json"])
+    missing_timestamps = tuple(_parse_datetime(str(item)) for item in missing_payload)
+    return StoredIngestionGap(
+        gap_id=int(row["id"]),
+        asset=str(row["asset"]),
+        timeframe=str(row["timeframe"]),
+        expected_timestamp=_parse_datetime(row["expected_timestamp_utc"]),
+        observed_timestamp=_parse_datetime(row["observed_timestamp_utc"]),
+        missing_timestamps=missing_timestamps,
+        gap_size=int(row["gap_size"]),
+        detected_at_utc=_parse_datetime(row["detected_at_utc"]),
+        resolved_at_utc=(
+            _parse_datetime(row["resolved_at_utc"])
+            if row["resolved_at_utc"] is not None
+            else None
+        ),
+    )

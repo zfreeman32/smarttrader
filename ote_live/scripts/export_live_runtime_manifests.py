@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from ote_live.env import env_path, load_repo_env
 from ote_live.models.registry import (
     DEFAULT_CANDIDATE_REGISTRY_PATH,
     DEFAULT_FEATURE_METADATA_PATH,
@@ -17,21 +18,41 @@ from ote_live.models.registry import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    load_repo_env()
     parser = argparse.ArgumentParser(
-        description="Export Phase 0 live runtime manifests and policy packages into ote_live/runtime_manifests.",
+        description="Export live runtime manifests and policy packages into ote_live/runtime_manifests.",
     )
-    parser.add_argument("--registry-path", default=str(DEFAULT_CANDIDATE_REGISTRY_PATH))
-    parser.add_argument("--prepared-summary-path", default=str(DEFAULT_PREPARED_SUMMARY_PATH))
-    parser.add_argument("--feature-metadata-path", default=str(DEFAULT_FEATURE_METADATA_PATH))
-    parser.add_argument("--long-feature-path", default=str(DEFAULT_LONG_FEATURE_PATH))
-    parser.add_argument("--short-feature-path", default=str(DEFAULT_SHORT_FEATURE_PATH))
-    parser.add_argument("--policy-backtest-summary-path", default=str(DEFAULT_POLICY_BACKTEST_SUMMARY_PATH))
-    parser.add_argument("--packaged-policy-dir", default=str(DEFAULT_POLICY_ARTIFACT_DIR))
-    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument("--registry-path", default=str(env_path("OTE_LIVE_REGISTRY_PATH", DEFAULT_CANDIDATE_REGISTRY_PATH)))
+    parser.add_argument(
+        "--prepared-summary-path",
+        default=str(env_path("OTE_LIVE_PREPARED_SUMMARY_PATH", DEFAULT_PREPARED_SUMMARY_PATH)),
+    )
+    parser.add_argument(
+        "--feature-metadata-path",
+        default=str(env_path("OTE_LIVE_FEATURE_METADATA_PATH", DEFAULT_FEATURE_METADATA_PATH)),
+    )
+    parser.add_argument("--long-feature-path", default=str(env_path("OTE_LIVE_LONG_FEATURE_PATH", DEFAULT_LONG_FEATURE_PATH)))
+    parser.add_argument(
+        "--short-feature-path",
+        default=str(env_path("OTE_LIVE_SHORT_FEATURE_PATH", DEFAULT_SHORT_FEATURE_PATH)),
+    )
+    parser.add_argument(
+        "--policy-backtest-summary-path",
+        default=str(env_path("OTE_LIVE_POLICY_BACKTEST_SUMMARY_PATH", DEFAULT_POLICY_BACKTEST_SUMMARY_PATH)),
+    )
+    parser.add_argument(
+        "--packaged-policy-dir",
+        default=str(env_path("OTE_LIVE_POLICY_ARTIFACT_DIR", DEFAULT_POLICY_ARTIFACT_DIR)),
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(env_path("OTE_LIVE_RUNTIME_MANIFEST_OUTPUT_DIR", DEFAULT_OUTPUT_DIR)),
+    )
     return parser
 
 
 def main() -> int:
+    load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
 

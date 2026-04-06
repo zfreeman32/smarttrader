@@ -9,4 +9,3 @@ __all__ = [
     "DEFAULT_THRESHOLD_POLICY_ROOT",
     "package_candidate_policy_artifacts",
 ]
-

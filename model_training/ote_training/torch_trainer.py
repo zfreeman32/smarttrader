@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
@@ -78,6 +79,24 @@ def safe_average_precision(
 
 def choose_device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+@contextmanager
+def temporary_mkldnn_disabled(disable: bool):
+    if not disable or not hasattr(torch.backends, "mkldnn"):
+        yield
+        return
+
+    original_state = bool(torch.backends.mkldnn.enabled)
+    torch.backends.mkldnn.enabled = False
+    try:
+        yield
+    finally:
+        torch.backends.mkldnn.enabled = original_state
+
+
+def model_uses_lstm(model: nn.Module) -> bool:
+    return any(isinstance(module, nn.LSTM) for module in model.modules())
 
 
 def checkpoint_state_dict(model: nn.Module) -> Dict[str, torch.Tensor]:
@@ -485,7 +504,7 @@ def predict_torch_model(
 
     model.eval()
     pin_memory = device.type == "cuda"
-    features = torch.from_numpy(np.ascontiguousarray(X, dtype=np.float32))
+    features = torch.from_numpy(np.array(X, dtype=np.float32, copy=True, order="C"))
     loader = DataLoader(
         TensorDataset(features),
         batch_size=batch_size,
@@ -496,17 +515,31 @@ def predict_torch_model(
     )
 
     predictions: List[np.ndarray] = []
-    with torch.no_grad():
-        for (batch_features,) in loader:
-            batch_features = batch_features.to(device, non_blocking=pin_memory)
-            with torch.amp.autocast(device_type=device.type, enabled=use_amp):
-                logits = model(batch_features)
-            if not torch.isfinite(logits).all():
-                raise FloatingPointError("Torch model produced non-finite logits during prediction.")
-            probabilities = torch.sigmoid(logits).detach().cpu().numpy().astype(np.float32, copy=False)
-            if not np.isfinite(probabilities).all():
-                raise FloatingPointError("Torch model produced non-finite probabilities during prediction.")
-            predictions.append(probabilities)
+    disable_mkldnn = device.type == "cpu" and model_uses_lstm(model)
+    with temporary_mkldnn_disabled(disable_mkldnn):
+        with torch.no_grad():
+            for (batch_features,) in loader:
+                batch_features = batch_features.to(device, non_blocking=pin_memory)
+                if use_amp:
+                    with torch.amp.autocast(device_type=device.type, enabled=True):
+                        logits = model(batch_features)
+                else:
+                    logits = model(batch_features)
+                if logits.dtype in {torch.float16, torch.bfloat16}:
+                    logits = logits.to(torch.float32)
+                if not torch.isfinite(logits).all():
+                    raise FloatingPointError("Torch model produced non-finite logits during prediction.")
+                probabilities = (
+                    torch.sigmoid(logits)
+                    .detach()
+                    .to(torch.float32)
+                    .cpu()
+                    .numpy()
+                    .astype(np.float32, copy=False)
+                )
+                if not np.isfinite(probabilities).all():
+                    raise FloatingPointError("Torch model produced non-finite probabilities during prediction.")
+                predictions.append(probabilities)
 
     if not predictions:
         return np.empty(0, dtype=np.float32)

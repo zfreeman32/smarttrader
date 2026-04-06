@@ -1,6 +1,6 @@
 {
   "manifest_version": "1.0.0",
-  "generated_at_utc": "2026-04-03T18:31:19.286419Z",
+  "generated_at_utc": "2026-04-06T21:13:28.276134Z",
   "registry_path": "models/ote_model_registry_v1_v2_candidates.json",
   "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
   "direction": "short",
@@ -14,7 +14,7 @@
   "models": [
     {
       "manifest_version": "1.0.0",
-      "generated_at_utc": "2026-04-03T18:31:19.286419Z",
+      "generated_at_utc": "2026-04-06T21:13:28.276134Z",
       "registry_path": "models/ote_model_registry_v1_v2_candidates.json",
       "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
       "asset": "EURUSD",
@@ -270,7 +270,7 @@
     },
     {
       "manifest_version": "1.0.0",
-      "generated_at_utc": "2026-04-03T18:31:19.286419Z",
+      "generated_at_utc": "2026-04-06T21:13:28.276134Z",
       "registry_path": "models/ote_model_registry_v1_v2_candidates.json",
       "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
       "asset": "EURUSD",
@@ -517,7 +517,7 @@
     },
     {
       "manifest_version": "1.0.0",
-      "generated_at_utc": "2026-04-03T18:31:19.286419Z",
+      "generated_at_utc": "2026-04-06T21:13:28.276134Z",
       "registry_path": "models/ote_model_registry_v1_v2_candidates.json",
       "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
       "asset": "EURUSD",
@@ -749,7 +749,7 @@
     },
     {
       "manifest_version": "1.0.0",
-      "generated_at_utc": "2026-04-03T18:31:19.286419Z",
+      "generated_at_utc": "2026-04-06T21:13:28.276134Z",
       "registry_path": "models/ote_model_registry_v1_v2_candidates.json",
       "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/run_summary.json",
       "asset": "EURUSD",
