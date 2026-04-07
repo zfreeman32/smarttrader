@@ -19,7 +19,7 @@ Optional launcher settings:
 ```dotenv
 OTE_LIVE_ASSET=EURUSD
 OTE_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
-OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=60
+OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=120
 OTE_LIVE_STREAM_OUTPUTSIZE=2
 OTE_LIVE_REGISTRY_PATH=models/ote_model_registry_v1_v2_candidates.json
 OTE_LIVE_DASHBOARD_HOST=127.0.0.1
@@ -62,11 +62,12 @@ What the launcher does:
 3. Starts the Dash dashboard.
 4. Starts the live collector with signal generation and SQLite storage.
 
-The dashboard now defaults its model confidence and signal inspection views to the current long and short primary models from the runtime manifests, while the main price chart shows all stored model signals.
+The dashboard now stays pinned to the configured long and short primary models from the runtime manifests. If a configured primary has not produced stored live predictions yet, its primary confidence and inspection panels stay empty instead of silently switching to another model. The main price chart still shows all stored model signals.
 
-The live collector now defaults to one TwelveData poll per minute with a small
-`outputsize`, which is much safer for low-credit plans than the old 5-second
-poll loop.
+The live collector now defaults to one TwelveData poll every two minutes with a
+small `outputsize`, which keeps steady-state polling near 720 requests per day
+and leaves some room under an 800-credit plan for restarts or occasional gap
+backfills.
 
 ## Useful options
 

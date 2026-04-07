@@ -65,7 +65,7 @@ class LiveSignalProcessor:
         )
         self.decision_engine = decision_engine or LiveDecisionEngine(
             audit_repository=audit_repository,
-            persist_decisions=("emit", "shadow"),
+            persist_decisions=("emit", "shadow", "hold", "abstain"),
         )
         self.emailer = emailer
         self.sms_sender = sms_sender
@@ -104,7 +104,17 @@ class LiveSignalProcessor:
                 skip_unavailable_backends=skip_unavailable_backends,
                 require_complete_policy=require_complete_policy,
             )
+            configured_primary_id = bundle.direction_manifest.recommendations.recommended_primary_model_id
             primary = bundle.primary_model
+            if configured_primary_id is not None and primary is None:
+                loaded_model_ids = ", ".join(sorted(bundle.loaded_models)) or "none"
+                unavailable_reason = bundle.unavailable_models.get(configured_primary_id)
+                detail = unavailable_reason or "configured primary model was not loaded from the direction bundle"
+                raise RuntimeError(
+                    "Configured primary model "
+                    f"{configured_primary_id!r} could not be loaded from {manifest_path!s}. "
+                    f"Loaded models: {loaded_model_ids}. Reason: {detail}"
+                )
             if primary is not None:
                 bindings.append(
                     SignalRuntimeModelBinding(

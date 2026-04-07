@@ -4,6 +4,13 @@ import pandas as pd
 
 from ote_live.storage import SignalAuditTrail
 
+CHART_BACKGROUND_COLOR = "#111a2b"
+CHART_PLOT_COLOR = "#0f1726"
+CHART_GRID_COLOR = "#23314c"
+CHART_TEXT_COLOR = "#e5edf7"
+CHART_MUTED_TEXT_COLOR = "#9fb0c5"
+CHART_BORDER_COLOR = "#2a3a58"
+
 
 def build_price_signal_figure(
     bars: pd.DataFrame,
@@ -85,7 +92,7 @@ def build_price_signal_figure(
             )
 
     fig.update_layout(
-        template="plotly_white",
+        template="plotly_dark",
         title=title,
         height=620,
         margin=dict(l=30, r=20, t=60, b=30),
@@ -93,6 +100,7 @@ def build_price_signal_figure(
         xaxis_rangeslider_visible=False,
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
     )
+    _apply_dark_chart_theme(fig)
     return fig
 
 
@@ -115,6 +123,11 @@ def build_confidence_figure(
                 line=dict(color=line_color, width=2),
                 marker=dict(size=6),
                 name="Calibrated probability",
+                text=[
+                    _confidence_hover_text(row)
+                    for row in confidence.itertuples(index=False)
+                ],
+                hoverinfo="text",
             )
         )
         if confidence["threshold_applied"].notna().any():
@@ -145,13 +158,15 @@ def build_confidence_figure(
             )
 
     fig.update_layout(
-        template="plotly_white",
+        template="plotly_dark",
         title=title,
         height=320,
         margin=dict(l=30, r=20, t=50, b=30),
         hovermode="x unified",
         yaxis=dict(range=[0.0, 1.0]),
+        showlegend=False,
     )
+    _apply_dark_chart_theme(fig)
     return fig
 
 
@@ -187,7 +202,7 @@ def build_markout_figure(
             )
 
     fig.update_layout(
-        template="plotly_white",
+        template="plotly_dark",
         title=title,
         height=320,
         margin=dict(l=30, r=20, t=50, b=30),
@@ -195,6 +210,7 @@ def build_markout_figure(
         yaxis=dict(title="Per signal"),
         yaxis2=dict(title="Cumulative", overlaying="y", side="right"),
     )
+    _apply_dark_chart_theme(fig)
     return fig
 
 
@@ -220,12 +236,13 @@ def build_health_figure(
         ]
     )
     fig.update_layout(
-        template="plotly_white",
+        template="plotly_dark",
         title=title,
         height=280,
         margin=dict(l=30, r=20, t=50, b=30),
         showlegend=False,
     )
+    _apply_dark_chart_theme(fig)
     return fig
 
 
@@ -280,6 +297,38 @@ def _plotly_go():
             "Dashboard chart rendering requires the 'plotly' package."
         ) from exc
     return go
+
+
+def _apply_dark_chart_theme(fig) -> None:
+    fig.update_layout(
+        paper_bgcolor=CHART_BACKGROUND_COLOR,
+        plot_bgcolor=CHART_PLOT_COLOR,
+        font=dict(color=CHART_TEXT_COLOR),
+        title_font=dict(color=CHART_TEXT_COLOR),
+        hoverlabel=dict(
+            bgcolor=CHART_BACKGROUND_COLOR,
+            bordercolor=CHART_BORDER_COLOR,
+            font=dict(color=CHART_TEXT_COLOR),
+        ),
+        legend=dict(
+            bgcolor="rgba(0, 0, 0, 0)",
+            font=dict(color=CHART_MUTED_TEXT_COLOR),
+        ),
+    )
+    fig.update_xaxes(
+        gridcolor=CHART_GRID_COLOR,
+        linecolor=CHART_BORDER_COLOR,
+        zerolinecolor=CHART_GRID_COLOR,
+        tickfont=dict(color=CHART_MUTED_TEXT_COLOR),
+        title_font=dict(color=CHART_MUTED_TEXT_COLOR),
+    )
+    fig.update_yaxes(
+        gridcolor=CHART_GRID_COLOR,
+        linecolor=CHART_BORDER_COLOR,
+        zerolinecolor=CHART_GRID_COLOR,
+        tickfont=dict(color=CHART_MUTED_TEXT_COLOR),
+        title_font=dict(color=CHART_MUTED_TEXT_COLOR),
+    )
 
 
 def _signal_hover_text(row) -> str:

@@ -7,8 +7,11 @@ from pathlib import Path
 
 from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_repo_env
 from ote_live.ingestion.runtime import (
+    DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS,
     DEFAULT_DB_PATH,
+    DEFAULT_LONG_RUNTIME_MANIFEST_PATH,
     DEFAULT_SIGNAL_CHART_OUTPUT_ROOT,
+    DEFAULT_SHORT_RUNTIME_MANIFEST_PATH,
     LiveCollectorConfig,
     LiveCollectorRuntime,
 )
@@ -48,9 +51,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--poll-interval-seconds",
         type=float,
-        default=env_float("OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS", 60.0),
+        default=env_float("OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS", DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS),
     )
     parser.add_argument("--stream-outputsize", type=int, default=env_int("OTE_LIVE_STREAM_OUTPUTSIZE", 2))
+    parser.add_argument(
+        "--long-runtime-manifest-path",
+        default=str(env_path("OTE_LIVE_LONG_RUNTIME_MANIFEST_PATH", DEFAULT_LONG_RUNTIME_MANIFEST_PATH)),
+    )
+    parser.add_argument(
+        "--short-runtime-manifest-path",
+        default=str(env_path("OTE_LIVE_SHORT_RUNTIME_MANIFEST_PATH", DEFAULT_SHORT_RUNTIME_MANIFEST_PATH)),
+    )
     parser.add_argument("--startup-history-bars", type=int, default=env_int("OTE_LIVE_STARTUP_HISTORY_BARS", 240))
     parser.add_argument(
         "--startup-warmup-lookback-bars",
@@ -65,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--heartbeat-stale-after-seconds",
         type=float,
-        default=env_float("OTE_LIVE_HEARTBEAT_STALE_AFTER_SECONDS", 90.0),
+        default=env_float("OTE_LIVE_HEARTBEAT_STALE_AFTER_SECONDS"),
     )
     parser.add_argument("--timezone", default=env_str("OTE_LIVE_TIMEZONE", "UTC"))
     parser.add_argument("--api-key", default=env_str("TWELVEDATA_API_KEY"))
@@ -129,6 +140,8 @@ async def _run(args: argparse.Namespace) -> int:
         log_level=args.log_level,
         max_cycles=args.max_cycles,
         enable_signal_runtime=bool(args.enable_signal_runtime),
+        long_runtime_manifest_path=Path(args.long_runtime_manifest_path),
+        short_runtime_manifest_path=Path(args.short_runtime_manifest_path),
         enable_signal_chart_capture=bool(args.enable_signal_chart_capture),
         signal_chart_output_root=Path(args.signal_chart_output_root) if args.signal_chart_output_root else DEFAULT_SIGNAL_CHART_OUTPUT_ROOT,
         signal_chart_lookback_bars=args.signal_chart_lookback_bars,

@@ -40,6 +40,22 @@ def test_runtime_bootstrap_seeds_empty_database_with_recent_history() -> None:
     assert backfill.windows == []
 
 
+def test_live_collector_config_defaults_to_two_minute_polls_with_heartbeat_headroom() -> None:
+    config = LiveCollectorConfig()
+
+    assert config.poll_interval_seconds == 120.0
+    assert config.heartbeat_stale_after_seconds == 150.0
+
+
+def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:
+    config = LiveCollectorConfig(
+        poll_interval_seconds=120.0,
+        heartbeat_stale_after_seconds=240.0,
+    )
+
+    assert config.heartbeat_stale_after_seconds == 240.0
+
+
 def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
     fixed_now = datetime(2024, 1, 2, 10, 3, tzinfo=timezone.utc)
     monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)

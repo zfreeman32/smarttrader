@@ -38,6 +38,17 @@ DEFAULT_DB_PATH = REPO_ROOT / "ote_live" / "runtime_data" / "live_market_data.sq
 DEFAULT_LONG_RUNTIME_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "live_runtime_manifest_long.json"
 DEFAULT_SHORT_RUNTIME_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "live_runtime_manifest_short.json"
 DEFAULT_SIGNAL_CHART_OUTPUT_ROOT = REPO_ROOT / "ote_live" / "runtime_data" / "charts"
+DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS = 120.0
+DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS = 30.0
+
+
+def resolve_heartbeat_stale_after_seconds(
+    poll_interval_seconds: float,
+    explicit_stale_after_seconds: float | None = None,
+) -> float:
+    if explicit_stale_after_seconds is not None:
+        return float(explicit_stale_after_seconds)
+    return max(90.0, float(poll_interval_seconds) + DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS)
 
 
 @dataclass(frozen=True)
@@ -46,11 +57,11 @@ class LiveCollectorConfig:
     source_timeframe: CanonicalTimeframe = "1m"
     aggregation_timeframes: tuple[CanonicalTimeframe, ...] = ("5m", "30m", "1h")
     db_path: Path = DEFAULT_DB_PATH
-    poll_interval_seconds: float = 60.0
+    poll_interval_seconds: float = DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS
     stream_outputsize: int = 2
     startup_history_bars: int = 240
     startup_warmup_lookback_bars: int = 90
-    heartbeat_stale_after_seconds: float = 90.0
+    heartbeat_stale_after_seconds: float | None = None
     startup_backfill_chunk_bars: int = 1000
     default_timezone: str = "UTC"
     log_level: str = "INFO"
@@ -66,6 +77,18 @@ class LiveCollectorConfig:
     dashboard_url: str | None = None
     alert_email_recipients: tuple[str, ...] = ()
     alert_sms_recipients: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        poll_interval_seconds = max(0.0, float(self.poll_interval_seconds))
+        object.__setattr__(self, "poll_interval_seconds", poll_interval_seconds)
+        object.__setattr__(
+            self,
+            "heartbeat_stale_after_seconds",
+            resolve_heartbeat_stale_after_seconds(
+                poll_interval_seconds,
+                self.heartbeat_stale_after_seconds,
+            ),
+        )
 
 
 @dataclass
@@ -216,8 +239,34 @@ class LiveCollectorRuntime:
                 )
                 if signal_processor is None:
                     LOGGER.warning("Live signal runtime is enabled, but no eligible runtime models were loaded.")
+                    audit_repository.record_health_event(
+                        component="collector.signal_runtime",
+                        event_type="signal_runtime_unavailable",
+                        severity="warning",
+                        message="Live signal runtime is enabled, but no eligible runtime models were loaded.",
+                        payload={
+                            "asset": config.asset,
+                            "timeframe": config.signal_timeframe,
+                            "long_runtime_manifest_path": str(config.long_runtime_manifest_path),
+                            "short_runtime_manifest_path": str(config.short_runtime_manifest_path),
+                        },
+                    )
             except Exception as exc:
                 LOGGER.warning("Live signal runtime initialization failed: %s", exc)
+                audit_repository.record_health_event(
+                    component="collector.signal_runtime",
+                    event_type="signal_runtime_initialization_failed",
+                    severity="error",
+                    message="Live signal runtime initialization failed.",
+                    payload={
+                        "asset": config.asset,
+                        "timeframe": config.signal_timeframe,
+                        "long_runtime_manifest_path": str(config.long_runtime_manifest_path),
+                        "short_runtime_manifest_path": str(config.short_runtime_manifest_path),
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                    },
+                )
 
         return cls(
             config=config,

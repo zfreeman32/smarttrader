@@ -6,8 +6,10 @@ import sys
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -19,7 +21,7 @@ from ote_live.alerts import (
     NotificationThrottle,
     NotificationThrottlePolicy,
 )
-from ote_live.dashboard import fetch_recent_signals
+from ote_live.dashboard import fetch_confidence_history, fetch_recent_signals
 from ote_live.ingestion.aggregator import MultiTimeframeBarAggregator
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
@@ -27,6 +29,7 @@ from ote_live.ingestion.runtime import LiveCollectorConfig, LiveCollectorRuntime
 from ote_live.ingestion.service import LiveBarIngestionService
 from ote_live.ingestion.signals import LiveSignalProcessor, SignalRuntimeModelBinding
 from ote_live.media import SignalChartCaptureService
+from ote_live.models.ensemble import LoadedDirectionModels
 from ote_live.models.loaders import LoadedRuntimeModel, load_live_runtime_manifest
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
 from ote_live.contracts.market_data import MarketBar
@@ -166,6 +169,107 @@ def test_runtime_emits_signal_and_automatically_persists_notification_and_screen
     assert Path(reconstructed.media_artifacts[0].file_path).exists()
 
 
+def test_live_signal_processor_requires_the_configured_primary_model(monkeypatch) -> None:
+    configured_primary_id = "long_ote_tcn_v2_candidate"
+    fallback_model_id = "long_ote_tcn_v1_candidate"
+    bundle = LoadedDirectionModels(
+        direction_manifest=SimpleNamespace(
+            recommendations=SimpleNamespace(recommended_primary_model_id=configured_primary_id),
+            models=(
+                SimpleNamespace(model_id=configured_primary_id),
+                SimpleNamespace(model_id=fallback_model_id),
+            ),
+        ),
+        loaded_models={
+            fallback_model_id: SimpleNamespace(model_id=fallback_model_id),
+        },
+        unavailable_models={
+            configured_primary_id: "configured primary backend is unavailable",
+        },
+    )
+    monkeypatch.setattr("ote_live.ingestion.signals.load_direction_models", lambda *args, **kwargs: bundle)
+
+    with pytest.raises(RuntimeError, match=configured_primary_id):
+        LiveSignalProcessor.from_direction_manifest_paths(
+            audit_repository=SimpleNamespace(),
+            long_manifest_path="ote_live/runtime_manifests/live_runtime_manifest_long.json",
+            short_manifest_path=None,
+        )
+
+
+def test_runtime_persists_primary_hold_decisions_for_dashboard_confidence() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    chart_root = tmp_root / "charts"
+
+    seed_bars = [_minute_bar(offset) for offset in range(1_250)]
+    live_cycle_bars = [_minute_bar(offset) for offset in range(1_250, 1_255)]
+
+    store = SQLiteLiveDataStore(db_path)
+    audit = LiveAuditRepository(store)
+    signal_processor = _build_signal_processor(
+        store=store,
+        audit=audit,
+        email_transport=_RecordingEmailTransport(),
+        sms_transport=_RecordingSmsTransport(),
+        chart_root=chart_root,
+        global_threshold=0.99,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="1m",
+            aggregation_timeframes=("5m",),
+            startup_history_bars=len(seed_bars),
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=_FakeClient(seed_bars=seed_bars),  # type: ignore[arg-type]
+        stream=_FakeStream(live_cycle_bars),  # type: ignore[arg-type]
+        backfill_connector=_FakeBackfill(),  # type: ignore[arg-type]
+        store=store,
+        service=LiveBarIngestionService(
+            stream=_FakeStream([]),
+            backfill=_FakeBackfill(),
+            store=store,
+            gap_detector=GapDetector(asset="EURUSD", timeframe="1m"),
+            aggregator=MultiTimeframeBarAggregator(target_timeframes=("5m",)),
+            heartbeat_monitor=HeartbeatMonitor(source="runtime-signal-test"),
+            audit_repository=audit,
+        ),
+        audit_repository=audit,
+        signal_processor=signal_processor,
+    )
+    runtime.service.stream = runtime.stream
+    runtime.service.backfill = runtime.backfill_connector
+
+    summary = asyncio.run(runtime.run())
+
+    assert summary.evaluated_signals == 1
+    assert summary.emitted_signals == 0
+
+    with SQLiteLiveDataStore(db_path) as reopened_store:
+        reopened_audit = LiveAuditRepository(reopened_store)
+        confidence = fetch_confidence_history(
+            reopened_audit,
+            model_id="short_ote_xgb_v1_candidate",
+            direction="short",
+            limit=10,
+        )
+        signals = fetch_recent_signals(
+            reopened_audit,
+            model_ids=("short_ote_xgb_v1_candidate",),
+            decisions=("hold",),
+            limit=10,
+        )
+
+    assert len(confidence) == 1
+    assert confidence.iloc[0]["decision"] == "hold"
+    assert len(signals) == 1
+    assert signals.iloc[0]["decision"] == "hold"
+
+
 def _build_signal_processor(
     *,
     store: SQLiteLiveDataStore,
@@ -173,6 +277,7 @@ def _build_signal_processor(
     email_transport: _RecordingEmailTransport,
     sms_transport: _RecordingSmsTransport,
     chart_root: Path,
+    global_threshold: float = 0.0,
 ) -> LiveSignalProcessor:
     base_manifest = load_live_runtime_manifest(SHORT_XGB_V1_MANIFEST_PATH)
     selected_feature_names = [
@@ -187,7 +292,7 @@ def _build_signal_processor(
                 update={
                     "thresholds": manifest.live_policy.thresholds.model_copy(
                         update={
-                            "global_threshold": 0.0,
+                            "global_threshold": float(global_threshold),
                             "regime_thresholds": {},
                         }
                     ),

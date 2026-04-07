@@ -20,8 +20,8 @@ class LoadedDirectionModels:
     @property
     def primary_model(self) -> LoadedRuntimeModel | None:
         primary_id = self.direction_manifest.recommendations.recommended_primary_model_id
-        if primary_id and primary_id in self.loaded_models:
-            return self.loaded_models[primary_id]
+        if primary_id:
+            return self.loaded_models.get(primary_id)
 
         for manifest in self.direction_manifest.models:
             loaded = self.loaded_models.get(manifest.model_id)

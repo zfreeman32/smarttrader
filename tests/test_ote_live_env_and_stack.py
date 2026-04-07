@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ote_live.env import load_repo_env
+from ote_live.scripts.run_live_collector import build_parser as build_live_collector_parser
 from ote_live.scripts.run_live_stack import build_process_plan
 from ote_live.storage import SQLiteLiveDataStore
 
@@ -76,6 +77,18 @@ def test_build_process_plan_includes_dashboard_url_and_runtime_commands() -> Non
     assert "--dashboard-url" in plan.collector_command
     assert "--max-cycles" in plan.collector_command
     assert "DEBUG" in plan.collector_command
+
+
+def test_live_collector_parser_accepts_runtime_manifest_paths_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("OTE_LIVE_LONG_RUNTIME_MANIFEST_PATH", "ote_live/runtime_manifests/live_runtime_manifest_long.json")
+    monkeypatch.setenv("OTE_LIVE_SHORT_RUNTIME_MANIFEST_PATH", "ote_live/runtime_manifests/live_runtime_manifest_short.json")
+    monkeypatch.setenv("TWELVEDATA_API_KEY", "test-key")
+
+    parser = build_live_collector_parser()
+    args = parser.parse_args([])
+
+    assert Path(args.long_runtime_manifest_path).name == "live_runtime_manifest_long.json"
+    assert Path(args.short_runtime_manifest_path).name == "live_runtime_manifest_short.json"
 
 
 def test_sqlite_live_data_store_connection_can_be_read_from_another_thread() -> None:
