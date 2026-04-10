@@ -306,10 +306,17 @@ class LiveSignalProcessor:
     def _build_policy_frame(self, feature_frame: pd.DataFrame) -> pd.DataFrame:
         market_frame = self.feature_engine.state.to_frame()
         aligned_market = market_frame.iloc[-len(feature_frame) :].reset_index(drop=True)
-        policy_frame = aligned_market.copy()
-        for column in feature_frame.columns:
-            policy_frame[column] = feature_frame[column].values
-        return policy_frame
+        aligned_features = feature_frame.reset_index(drop=True)
+        overlapping_columns = aligned_market.columns.intersection(aligned_features.columns)
+        if not overlapping_columns.empty:
+            aligned_market = aligned_market.drop(columns=list(overlapping_columns))
+
+        policy_frame = pd.concat([aligned_market, aligned_features], axis=1)
+        ordered_columns = [
+            *market_frame.columns,
+            *[column for column in aligned_features.columns if column not in market_frame.columns],
+        ]
+        return policy_frame.loc[:, ordered_columns]
 
     def _resolve_source_row_idx(self, bar: MarketBar) -> int:
         row = self.audit_repository.store.connection.execute(

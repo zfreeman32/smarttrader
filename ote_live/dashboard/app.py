@@ -290,7 +290,9 @@ def create_dashboard_app(
             recent_signal_lines = [
                 (
                     f"{row.timestamp.isoformat()} | {row.model_id} | "
-                    f"{row.direction} {row.decision} | p={row.probability:.4f} | "
+                    f"{row.direction} {row.decision} | "
+                    f"p={_format_probability_value(row.probability)} | "
+                    f"raw={_format_probability_value(getattr(row, 'raw_score', None))} | "
                     f"notif={row.notification_count} | media={row.media_artifact_count}"
                 )
                 for row in signals.tail(12).itertuples(index=False)
@@ -709,7 +711,8 @@ def _format_signal_details(audit_trail) -> str:
             f"model_id: {signal.model_id}",
             f"direction: {signal.direction}",
             f"decision: {signal.decision}",
-            f"probability: {signal.probability:.4f}",
+            f"probability: {_format_probability_value(signal.probability)}",
+            f"raw_score: {_format_probability_value(prediction.raw_score)}",
             f"threshold: {signal.threshold if signal.threshold is not None else 'n/a'}",
             f"regime: {signal.regime or 'unknown'}",
             f"backend: {prediction.backend}",
@@ -733,3 +736,15 @@ def _load_signal_image(audit_trail) -> tuple[str, str]:
         f"data:image/png;base64,{encoded}",
         f"Showing {artifact.artifact_type}: {path}",
     )
+
+
+def _format_probability_value(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    resolved = float(value)
+    magnitude = abs(resolved)
+    if magnitude >= 0.01:
+        return f"{resolved:.4f}"
+    if magnitude >= 0.001:
+        return f"{resolved:.6f}"
+    return f"{resolved:.6e}"

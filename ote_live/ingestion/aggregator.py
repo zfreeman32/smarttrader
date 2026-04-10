@@ -97,7 +97,7 @@ class _BucketState:
 
 
 class MultiTimeframeBarAggregator:
-    """Incrementally roll finalized 1m bars into larger local bars."""
+    """Incrementally roll finalized source bars into larger local bars."""
 
     def __init__(
         self,
@@ -108,10 +108,20 @@ class MultiTimeframeBarAggregator:
         self.target_timeframes = target_timeframes
         self.source_name = source_name
         self._states: dict[CanonicalTimeframe, _BucketState] = {}
+        self._source_timeframe: CanonicalTimeframe | None = None
 
     def ingest_bar(self, bar: MarketBar) -> list[MarketBar]:
         finalized: list[MarketBar] = []
+        if self._source_timeframe is None:
+            self._source_timeframe = bar.timeframe
+        elif bar.timeframe != self._source_timeframe:
+            raise ValueError(
+                "MultiTimeframeBarAggregator expected a single source timeframe, "
+                f"but received {bar.timeframe!r} after {self._source_timeframe!r}."
+            )
         for timeframe in self.target_timeframes:
+            if timeframe == bar.timeframe:
+                continue
             bucket_start = floor_timestamp_to_timeframe(bar.timestamp, timeframe)
             state = self._states.get(timeframe)
             if state is None:
@@ -135,6 +145,7 @@ class MultiTimeframeBarAggregator:
             )
         ]
         self._states.clear()
+        self._source_timeframe = None
         return finalized
 
     def _finalize_state(
@@ -144,6 +155,11 @@ class MultiTimeframeBarAggregator:
         sample_bar: MarketBar | None = None,
     ) -> MarketBar:
         asset = sample_bar.asset if sample_bar is not None else "EURUSD"
+        source_timeframe = (
+            sample_bar.timeframe
+            if sample_bar is not None
+            else (self._source_timeframe or "1m")
+        )
         return MarketBar(
             asset=asset,
             timeframe=timeframe,
@@ -156,7 +172,7 @@ class MultiTimeframeBarAggregator:
             bid=state.bid,
             ask=state.ask,
             spread=state.spread,
-            source=f"{self.source_name}:1m->{timeframe}",
+            source=f"{self.source_name}:{source_timeframe}->{timeframe}",
         )
 
 

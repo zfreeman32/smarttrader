@@ -8,12 +8,15 @@ from .emailer import (
     render_signal_email_message,
 )
 from .sms import (
+    EmailGatewaySmsTransport,
     LiveSignalSmsSender,
     NoOpSmsTransport,
+    RoutedSmsTransport,
     SmsAlertMessage,
     SmsDispatchResult,
     SmsTransport,
     TwilioSmsTransport,
+    is_email_gateway_sms_recipient,
     render_signal_sms_message,
 )
 from .throttling import (
@@ -28,6 +31,7 @@ __all__ = [
     "EmailAlertMessage",
     "EmailDispatchResult",
     "EmailTransport",
+    "EmailGatewaySmsTransport",
     "LiveSignalEmailer",
     "LiveSignalSmsSender",
     "NoOpEmailTransport",
@@ -36,12 +40,14 @@ __all__ = [
     "NotificationThrottleDecision",
     "NotificationThrottlePolicy",
     "SmtpEmailTransport",
+    "RoutedSmsTransport",
     "SmsAlertMessage",
     "SmsDispatchResult",
     "SmsTransport",
     "TwilioSmsTransport",
     "build_model_cooldown_scope",
     "build_signal_dedupe_key",
+    "is_email_gateway_sms_recipient",
     "render_signal_email_message",
     "render_signal_sms_message",
 ]

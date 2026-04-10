@@ -274,6 +274,7 @@ def build_audit_trail_figure(
                 "direction": signal.direction,
                 "decision": signal.decision,
                 "probability": signal.probability,
+                "raw_score": audit_trail.prediction.raw_score,
                 "threshold": signal.threshold,
                 "regime": signal.regime,
                 "bar_low": matching_bar.low if matching_bar is not None else None,
@@ -333,22 +334,39 @@ def _apply_dark_chart_theme(fig) -> None:
 
 def _signal_hover_text(row) -> str:
     threshold = "n/a" if row.threshold is None else f"{row.threshold:.4f}"
-    return (
-        f"Model: {getattr(row, 'model_id', 'unknown')}<br>"
-        f"{row.direction} {row.decision}<br>"
-        f"Probability: {row.probability:.4f}<br>"
-        f"Threshold: {threshold}<br>"
-        f"Regime: {row.regime or 'unknown'}"
-    )
+    lines = [
+        f"Model: {getattr(row, 'model_id', 'unknown')}",
+        f"{row.direction} {row.decision}",
+        f"Probability: {_format_probability(getattr(row, 'probability', None))}",
+        f"Threshold: {threshold}",
+        f"Regime: {row.regime or 'unknown'}",
+    ]
+    raw_score = getattr(row, "raw_score", None)
+    if raw_score is not None:
+        lines.insert(3, f"Raw score: {_format_probability(raw_score)}")
+    return "<br>".join(lines)
 
 
 def _confidence_hover_text(row) -> str:
     threshold = "n/a" if row.threshold_applied is None else f"{row.threshold_applied:.4f}"
     decision = row.decision or "hold/unpersisted"
     return (
-        f"Model: {row.model_id}<br>"
-        f"Probability: {row.calibrated_probability:.4f}<br>"
+        f"Model: {getattr(row, 'model_id', 'unknown')}<br>"
+        f"Probability: {_format_probability(row.calibrated_probability)}<br>"
+        f"Raw score: {_format_probability(getattr(row, 'raw_score', None))}<br>"
         f"Threshold: {threshold}<br>"
         f"Decision: {decision}<br>"
         f"Regime: {row.regime or 'unknown'}"
     )
+
+
+def _format_probability(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    resolved = float(value)
+    magnitude = abs(resolved)
+    if magnitude >= 0.01:
+        return f"{resolved:.4f}"
+    if magnitude >= 0.001:
+        return f"{resolved:.6f}"
+    return f"{resolved:.6e}"

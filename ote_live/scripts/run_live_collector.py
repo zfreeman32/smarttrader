@@ -37,7 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run the OTE live collector with runtime supervision hooks and local operator artifacts.",
     )
     parser.add_argument("--asset", default=env_str("OTE_LIVE_ASSET", "EURUSD"))
-    parser.add_argument("--source-timeframe", default="1m", choices=("1m",))
+    parser.add_argument(
+        "--source-timeframe",
+        default=env_str("OTE_LIVE_SOURCE_TIMEFRAME", "5m"),
+        choices=("1m", "5m"),
+    )
     parser.add_argument("--db-path", default=str(env_path("OTE_LIVE_DB_PATH", DEFAULT_DB_PATH)))
     parser.add_argument("--service-name", default=env_str("OTE_LIVE_SERVICE_NAME", DEFAULT_SERVICE_NAME))
     parser.add_argument(
@@ -79,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=env_float("OTE_LIVE_HEARTBEAT_STALE_AFTER_SECONDS"),
     )
     parser.add_argument("--timezone", default=env_str("OTE_LIVE_TIMEZONE", "UTC"))
-    parser.add_argument("--api-key", default=env_str("TWELVEDATA_API_KEY"))
+    parser.add_argument("--api-key", default=env_str("FMP_API_KEY") or env_str("TWELVEDATA_API_KEY"))
     parser.add_argument("--max-cycles", type=int, default=env_int("OTE_LIVE_MAX_CYCLES"))
     parser.add_argument("--log-level", default=env_str("OTE_LIVE_LOG_LEVEL", "INFO"))
     signal_runtime_group = parser.add_mutually_exclusive_group()
@@ -120,7 +124,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--alert-sms-recipients",
         default=env_str("OTE_LIVE_ALERT_SMS_RECIPIENTS", ""),
-        help="Comma-separated SMS recipients. Twilio config is read from OTE_ALERT_SMS_* env vars.",
+        help=(
+            "Comma-separated SMS recipients. Phone numbers use OTE_ALERT_SMS_* Twilio config; "
+            "email-style gateway addresses like 15555550123@vtext.com use OTE_ALERT_EMAIL_* SMTP config."
+        ),
     )
     return parser
 
@@ -247,7 +254,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     if args.api_key is None:
-        parser.error("Provide --api-key or set TWELVEDATA_API_KEY in the environment.")
+        parser.error("Provide --api-key or set FMP_API_KEY in the environment.")
     configure_live_logging(
         args.log_level,
         log_path=Path(args.log_file),

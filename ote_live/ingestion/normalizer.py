@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import pandas as pd
 
@@ -10,62 +11,66 @@ from features.io import validate_ohlcv
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import CanonicalTimeframe, canonical_asset_symbol
 
-_TWELVEDATA_TO_CANONICAL_INTERVAL: dict[str, CanonicalTimeframe] = {
+_FMP_TO_CANONICAL_INTERVAL: dict[str, CanonicalTimeframe] = {
     "1min": "1m",
     "5min": "5m",
     "30min": "30m",
-    "1h": "1h",
+    "1hour": "1h",
 }
 
-_CANONICAL_TO_TWELVEDATA_INTERVAL = {
-    value: key for key, value in _TWELVEDATA_TO_CANONICAL_INTERVAL.items()
+_CANONICAL_TO_FMP_INTERVAL = {
+    value: key for key, value in _FMP_TO_CANONICAL_INTERVAL.items()
 }
 
 
-def twelvedata_interval_to_canonical_timeframe(interval: str) -> CanonicalTimeframe:
+def fmp_interval_to_canonical_timeframe(interval: str) -> CanonicalTimeframe:
     normalized = interval.strip().lower()
-    if normalized not in _TWELVEDATA_TO_CANONICAL_INTERVAL:
-        raise ValueError(f"Unsupported Twelve Data interval: {interval!r}")
-    return _TWELVEDATA_TO_CANONICAL_INTERVAL[normalized]
+    if normalized not in _FMP_TO_CANONICAL_INTERVAL:
+        raise ValueError(f"Unsupported Financial Modeling Prep interval: {interval!r}")
+    return _FMP_TO_CANONICAL_INTERVAL[normalized]
 
 
-def canonical_timeframe_to_twelvedata_interval(timeframe: CanonicalTimeframe) -> str:
-    return _CANONICAL_TO_TWELVEDATA_INTERVAL[timeframe]
+def canonical_timeframe_to_fmp_interval(timeframe: CanonicalTimeframe) -> str:
+    return _CANONICAL_TO_FMP_INTERVAL[timeframe]
 
 
-def canonical_asset_to_twelvedata_symbol(asset: str) -> str:
-    normalized = canonical_asset_symbol(asset)
-    if len(normalized) == 6 and normalized.isalpha():
-        return f"{normalized[:3]}/{normalized[3:]}"
-    return normalized
+def canonical_asset_to_fmp_symbol(asset: str) -> str:
+    return canonical_asset_symbol(asset)
 
 
-def normalize_twelvedata_time_series_response(
-    payload: Mapping[str, Any],
+def normalize_fmp_historical_chart_response(
+    payload: Any,
     *,
-    source: str = "twelvedata.rest.time_series",
+    symbol: str,
+    interval: str,
+    source_timezone: str = "UTC",
+    source: str = "fmp.rest.historical_chart",
 ) -> list[MarketBar]:
-    status = str(payload.get("status", "")).lower()
-    if status and status != "ok":
-        message = payload.get("message") or payload.get("code") or "Unknown Twelve Data API error."
-        raise ValueError(f"Twelve Data returned an error response: {message}")
+    rows: list[Any]
+    if isinstance(payload, Mapping):
+        message = payload.get("Error Message") or payload.get("message") or payload.get("error")
+        if message:
+            raise ValueError(f"Financial Modeling Prep returned an error response: {message}")
+        if "historical" in payload and isinstance(payload.get("historical"), list):
+            rows = list(payload["historical"])
+        elif "data" in payload and isinstance(payload.get("data"), list):
+            rows = list(payload["data"])
+        else:
+            raise ValueError("Financial Modeling Prep response did not contain a candle array.")
+    elif isinstance(payload, list):
+        rows = list(payload)
+    else:
+        raise ValueError("Financial Modeling Prep response must be a list of candles or a mapping containing one.")
 
-    meta = payload.get("meta") or {}
-    symbol = meta.get("symbol")
-    interval = meta.get("interval")
-    if not symbol or not interval:
-        raise ValueError("Twelve Data response is missing meta.symbol or meta.interval.")
-
-    source_timezone = str(meta.get("exchange_timezone") or "UTC")
     bars = [
-        _normalize_twelvedata_bar(
+        _normalize_fmp_bar(
             row,
             symbol=symbol,
             interval=interval,
             source_timezone=source_timezone,
             source=source,
         )
-        for row in payload.get("values", []) or []
+        for row in rows
     ]
     bars.sort(key=lambda bar: bar.timestamp)
     return bars
@@ -190,7 +195,7 @@ def load_local_csv_bars(
     )
 
 
-def _normalize_twelvedata_bar(
+def _normalize_fmp_bar(
     payload: Mapping[str, Any],
     *,
     symbol: str,
@@ -199,14 +204,14 @@ def _normalize_twelvedata_bar(
     source: str,
 ) -> MarketBar:
     timestamp = normalize_datetime_series(
-        pd.Series([payload["datetime"]]),
+        pd.Series([payload["date"]]),
         source_timezone=source_timezone,
         canonical_timezone="UTC",
     ).iloc[0]
 
     return MarketBar(
         asset=canonical_asset_symbol(symbol),
-        timeframe=twelvedata_interval_to_canonical_timeframe(interval),
+        timeframe=fmp_interval_to_canonical_timeframe(interval),
         timestamp=timestamp,
         open=float(payload["open"]),
         high=float(payload["high"]),

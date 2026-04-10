@@ -231,6 +231,23 @@ class LiveBarIngestionService:
             stored += 1
         return stored
 
+    def repair_source_bars(self, bars: list[MarketBar]) -> CollectorCycleResult:
+        """Overwrite recent source bars with finalized values and rebuild dependent aggregates."""
+        if not bars:
+            return CollectorCycleResult()
+
+        deduped_by_timestamp: dict[datetime, MarketBar] = {}
+        for bar in sorted(bars, key=lambda item: item.timestamp):
+            deduped_by_timestamp[bar.timestamp] = bar
+        repaired_bars = [deduped_by_timestamp[timestamp] for timestamp in sorted(deduped_by_timestamp)]
+
+        result = CollectorCycleResult(polled_bars=len(repaired_bars))
+        for bar in repaired_bars:
+            self._store_source_bar(bar)
+            result.stored_source_bars += 1
+        result.stored_aggregated_bars += self._repair_aggregates_for_gap_bars(repaired_bars)
+        return result
+
     def _store_source_bar(self, bar: MarketBar) -> None:
         self.store.upsert_bar(bar)
 

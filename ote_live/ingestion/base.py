@@ -36,6 +36,59 @@ def timeframe_to_timedelta(timeframe: CanonicalTimeframe) -> timedelta:
     return timedelta(minutes=timeframe_to_minutes(timeframe))
 
 
+def floor_timestamp_to_timeframe_start(value: datetime, timeframe: CanonicalTimeframe) -> datetime:
+    resolved = ensure_utc(value)
+    step_seconds = int(timeframe_to_timedelta(timeframe).total_seconds())
+    epoch_seconds = int(resolved.timestamp())
+    floored_epoch = epoch_seconds - (epoch_seconds % step_seconds)
+    return datetime.fromtimestamp(floored_epoch, tz=timezone.utc)
+
+
+def latest_finalized_bar_start(
+    timeframe: CanonicalTimeframe,
+    *,
+    now: datetime | None = None,
+    grace_period_seconds: float = 0.0,
+) -> datetime:
+    resolved_now = ensure_utc(now or utc_now()) - timedelta(seconds=max(0.0, float(grace_period_seconds)))
+    latest_complete_reference = resolved_now - timeframe_to_timedelta(timeframe)
+    return floor_timestamp_to_timeframe_start(latest_complete_reference, timeframe)
+
+
+def is_bar_finalized(
+    bar: MarketBar,
+    *,
+    timeframe: CanonicalTimeframe | None = None,
+    now: datetime | None = None,
+    grace_period_seconds: float = 0.0,
+) -> bool:
+    resolved_timeframe = timeframe or bar.timeframe  # type: ignore[assignment]
+    return ensure_utc(bar.timestamp) <= latest_finalized_bar_start(
+        resolved_timeframe,  # type: ignore[arg-type]
+        now=now,
+        grace_period_seconds=grace_period_seconds,
+    )
+
+
+def filter_finalized_bars(
+    bars: list[MarketBar],
+    *,
+    timeframe: CanonicalTimeframe | None = None,
+    now: datetime | None = None,
+    grace_period_seconds: float = 0.0,
+) -> list[MarketBar]:
+    return [
+        bar
+        for bar in bars
+        if is_bar_finalized(
+            bar,
+            timeframe=timeframe,
+            now=now,
+            grace_period_seconds=grace_period_seconds,
+        )
+    ]
+
+
 def canonical_asset_symbol(symbol: str) -> str:
     return "".join(ch for ch in symbol.upper() if ch.isalnum())
 

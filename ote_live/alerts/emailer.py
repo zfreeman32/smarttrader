@@ -97,7 +97,8 @@ class SmtpEmailTransport:
         payload = EmailMessage()
         payload["From"] = self.sender
         payload["To"] = ", ".join(message.recipients)
-        payload["Subject"] = message.subject
+        if message.subject:
+            payload["Subject"] = message.subject
         payload.set_content(message.body_text)
 
         with smtplib.SMTP(self.host, self.port, timeout=self.timeout_seconds) as client:

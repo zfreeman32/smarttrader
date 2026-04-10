@@ -9,10 +9,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ote_live.alerts import (
+    EmailGatewaySmsTransport,
     LiveSignalEmailer,
     LiveSignalSmsSender,
     NotificationThrottle,
     NotificationThrottlePolicy,
+    RoutedSmsTransport,
+    SmsAlertMessage,
 )
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
@@ -275,6 +278,54 @@ def test_sms_sender_persists_sms_alerts_with_dedupe() -> None:
     assert len(sms_notifications) == 2
     assert sms_notifications[0].status == "sent"
     assert sms_notifications[1].status == "skipped"
+
+
+def test_email_gateway_sms_transport_sends_text_only_payload_via_email() -> None:
+    email_transport = DummyEmailTransport()
+    sms_transport = EmailGatewaySmsTransport(
+        email_transport=email_transport,
+        subject="",
+    )
+
+    response = sms_transport.send_sms(
+        SmsAlertMessage(
+            recipients=("15555550123@vtext.com",),
+            body_text="OTE LONG EMIT p=0.820 thr=0.680 regime=strong_up_medium id=123",
+        )
+    )
+
+    assert response == "email-1"
+    assert len(email_transport.messages) == 1
+    assert email_transport.messages[0].recipients == ("15555550123@vtext.com",)
+    assert email_transport.messages[0].subject == ""
+    assert "OTE LONG EMIT" in email_transport.messages[0].body_text
+
+
+def test_routed_sms_transport_splits_phone_and_email_gateway_recipients() -> None:
+    phone_transport = DummySmsTransport()
+    email_transport = DummyEmailTransport()
+    routed_transport = RoutedSmsTransport(
+        phone_transport=phone_transport,
+        email_gateway_transport=EmailGatewaySmsTransport(
+            email_transport=email_transport,
+            subject="",
+        ),
+    )
+
+    response = routed_transport.send_sms(
+        SmsAlertMessage(
+            recipients=("+15550001111", "15555550123@vtext.com"),
+            body_text="OTE SHORT EMIT p=0.790 thr=0.750 regime=strong_down_medium id=456",
+        )
+    )
+
+    assert response is not None
+    assert "sms-1" in response
+    assert "email-1" in response
+    assert len(phone_transport.messages) == 1
+    assert phone_transport.messages[0].recipients == ("+15550001111",)
+    assert len(email_transport.messages) == 1
+    assert email_transport.messages[0].recipients == ("15555550123@vtext.com",)
 
 
 def _seed_signal_audit(

@@ -4,26 +4,36 @@ import asyncio
 import inspect
 import logging
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from ote_live.alerts import (
+    EmailGatewaySmsTransport,
     LiveSignalEmailer,
     LiveSignalSmsSender,
     NotificationThrottle,
+    RoutedSmsTransport,
     SmtpEmailTransport,
     TwilioSmsTransport,
+    is_email_gateway_sms_recipient,
 )
 from ote_live.ingestion.aggregator import MultiTimeframeBarAggregator
-from ote_live.ingestion.base import BackfillWindow, CanonicalTimeframe, timeframe_to_timedelta, utc_now
-from ote_live.ingestion.connector_backfill import (
-    TwelveDataBackfillConnector,
-    TwelveDataConfig,
-    TwelveDataRESTClient,
+from ote_live.ingestion.base import (
+    BackfillWindow,
+    CanonicalTimeframe,
+    filter_finalized_bars,
+    latest_finalized_bar_start,
+    timeframe_to_timedelta,
+    utc_now,
 )
-from ote_live.ingestion.connector_stream import TwelveDataPollingBarStream
-from ote_live.ingestion.normalizer import canonical_asset_to_twelvedata_symbol, canonical_timeframe_to_twelvedata_interval
+from ote_live.ingestion.connector_backfill import (
+    FMPBackfillConnector,
+    FMPConfig,
+    FMPRESTClient,
+)
+from ote_live.ingestion.connector_stream import FMPPollingBarStream
+from ote_live.ingestion.normalizer import canonical_asset_to_fmp_symbol, canonical_timeframe_to_fmp_interval
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
 from ote_live.ingestion.signals import LiveSignalProcessor, RuntimeSignalResult
@@ -38,23 +48,29 @@ DEFAULT_DB_PATH = REPO_ROOT / "ote_live" / "runtime_data" / "live_market_data.sq
 DEFAULT_LONG_RUNTIME_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "live_runtime_manifest_long.json"
 DEFAULT_SHORT_RUNTIME_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "live_runtime_manifest_short.json"
 DEFAULT_SIGNAL_CHART_OUTPUT_ROOT = REPO_ROOT / "ote_live" / "runtime_data" / "charts"
-DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS = 120.0
+DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS = 300.0
 DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS = 30.0
 
 
 def resolve_heartbeat_stale_after_seconds(
     poll_interval_seconds: float,
+    source_timeframe: CanonicalTimeframe = "5m",
     explicit_stale_after_seconds: float | None = None,
 ) -> float:
     if explicit_stale_after_seconds is not None:
         return float(explicit_stale_after_seconds)
-    return max(90.0, float(poll_interval_seconds) + DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS)
+    source_timeframe_seconds = timeframe_to_timedelta(source_timeframe).total_seconds()
+    # For direct 5m ingestion, receiving no new bars for a couple of minutes is normal.
+    return max(
+        90.0,
+        max(float(source_timeframe_seconds), float(poll_interval_seconds)) + DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS,
+    )
 
 
 @dataclass(frozen=True)
 class LiveCollectorConfig:
     asset: str = "EURUSD"
-    source_timeframe: CanonicalTimeframe = "1m"
+    source_timeframe: CanonicalTimeframe = "5m"
     aggregation_timeframes: tuple[CanonicalTimeframe, ...] = ("5m", "30m", "1h")
     db_path: Path = DEFAULT_DB_PATH
     poll_interval_seconds: float = DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS
@@ -81,11 +97,20 @@ class LiveCollectorConfig:
     def __post_init__(self) -> None:
         poll_interval_seconds = max(0.0, float(self.poll_interval_seconds))
         object.__setattr__(self, "poll_interval_seconds", poll_interval_seconds)
+        resolved_aggregation_timeframes = tuple(
+            dict.fromkeys(
+                timeframe
+                for timeframe in self.aggregation_timeframes
+                if timeframe != self.source_timeframe
+            )
+        )
+        object.__setattr__(self, "aggregation_timeframes", resolved_aggregation_timeframes)
         object.__setattr__(
             self,
             "heartbeat_stale_after_seconds",
             resolve_heartbeat_stale_after_seconds(
                 poll_interval_seconds,
+                self.source_timeframe,
                 self.heartbeat_stale_after_seconds,
             ),
         )
@@ -128,9 +153,9 @@ class LiveCollectorRuntime:
         self,
         *,
         config: LiveCollectorConfig,
-        client: TwelveDataRESTClient,
-        stream: TwelveDataPollingBarStream,
-        backfill_connector: TwelveDataBackfillConnector,
+        client: FMPRESTClient,
+        stream: FMPPollingBarStream,
+        backfill_connector: FMPBackfillConnector,
         store: SQLiteLiveDataStore,
         service: LiveBarIngestionService,
         audit_repository: LiveAuditRepository | None = None,
@@ -155,25 +180,25 @@ class LiveCollectorRuntime:
         signal_sms_sender: LiveSignalSmsSender | None = None,
         signal_chart_capture_service: SignalChartCaptureService | None = None,
     ) -> "LiveCollectorRuntime":
-        td_config = TwelveDataConfig(
-            api_key=api_key or TwelveDataConfig().api_key,
+        fmp_config = FMPConfig(
+            api_key=api_key or FMPConfig().api_key,
             default_timezone=config.default_timezone,
         )
-        client = TwelveDataRESTClient(td_config)
-        stream = TwelveDataPollingBarStream(
+        client = FMPRESTClient(fmp_config)
+        stream = FMPPollingBarStream(
             client,
             asset=config.asset,
             timeframe=config.source_timeframe,
             outputsize=config.stream_outputsize,
             poll_interval_seconds=config.poll_interval_seconds,
         )
-        backfill_connector = TwelveDataBackfillConnector(client)
+        backfill_connector = FMPBackfillConnector(client)
         store = SQLiteLiveDataStore(config.db_path)
         audit_repository = LiveAuditRepository(store)
         gap_detector = GapDetector(asset=config.asset, timeframe=config.source_timeframe)
         aggregator = MultiTimeframeBarAggregator(target_timeframes=config.aggregation_timeframes)
         heartbeat_monitor = HeartbeatMonitor(
-            source="twelvedata.polling",
+            source="fmp.polling",
             stale_after=timedelta(seconds=config.heartbeat_stale_after_seconds),
         )
         service = LiveBarIngestionService(
@@ -203,7 +228,7 @@ class LiveCollectorRuntime:
                 resolved_sms_sender = LiveSignalSmsSender(
                     audit_repository=audit_repository,
                     throttle=NotificationThrottle(store),
-                    transport=TwilioSmsTransport.from_environment(),
+                    transport=_build_sms_transport(config.alert_sms_recipients),
                     recipients=config.alert_sms_recipients,
                 )
             except Exception as exc:
@@ -288,13 +313,13 @@ class LiveCollectorRuntime:
             summary = BootstrapSummary(latest_stored_timestamp=latest_stored_timestamp)
 
             if latest_stored_timestamp is None:
-                seed_bars = await self.client.fetch_time_series(
-                    symbol=canonical_asset_to_twelvedata_symbol(self.config.asset),
-                    interval=canonical_timeframe_to_twelvedata_interval(self.config.source_timeframe),
-                    timezone=self.config.default_timezone,
-                    outputsize=self.config.startup_history_bars,
-                    order="asc",
+                startup_history_bars = self._resolve_startup_history_bars()
+                seed_bars = await self.client.fetch_historical_chart(
+                    symbol=canonical_asset_to_fmp_symbol(self.config.asset),
+                    interval=canonical_timeframe_to_fmp_interval(self.config.source_timeframe),
+                    outputsize=startup_history_bars,
                 )
+                seed_bars = self._filter_finalized_source_bars(seed_bars)
                 processed = await self.service.process_bars(seed_bars)
                 summary.seeded_history_bars = len(seed_bars)
                 summary.stored_source_bars += processed.stored_source_bars
@@ -352,34 +377,43 @@ class LiveCollectorRuntime:
                         f"Startup gap recovery left {len(remaining_unresolved)} unresolved ingestion gaps."
                     )
 
-            self._warm_runtime_state(latest_stored_timestamp)
-            self.stream.last_emitted_timestamp = latest_stored_timestamp
+            refresh_result = await self._refresh_recent_finalized_source_bars(latest_stored_timestamp)
+            summary.stored_source_bars += refresh_result.stored_source_bars
+            summary.stored_aggregated_bars += refresh_result.stored_aggregated_bars
 
-            start = latest_stored_timestamp + timeframe_to_timedelta(self.config.source_timeframe)
+            latest_finalized_timestamp = self._latest_finalized_source_timestamp()
+            if latest_finalized_timestamp is None:
+                LOGGER.info("Live collector resumed with no finalized %s bars ready yet.", self.config.source_timeframe)
+                return summary
+            summary.latest_stored_timestamp = latest_finalized_timestamp
+
+            self._warm_runtime_state(latest_finalized_timestamp)
+            self.stream.last_emitted_timestamp = latest_finalized_timestamp
+
+            start = latest_finalized_timestamp + timeframe_to_timedelta(self.config.source_timeframe)
             end = utc_now()
             if start > end:
                 self._warm_signal_processor()
-                LOGGER.info("Live collector resumed at %s with no startup catch-up needed.", latest_stored_timestamp)
+                LOGGER.info("Live collector resumed at %s with no startup catch-up needed.", latest_finalized_timestamp)
                 return summary
 
             for window in self._build_catchup_windows(start=start, end=end):
                 recovered_bars = await self.backfill_connector.backfill_bars(window)
+                recovered_bars = self._filter_finalized_source_bars(recovered_bars)
                 processed = await self.service.process_bars(recovered_bars)
                 summary.catchup_bars += len(recovered_bars)
                 summary.stored_source_bars += processed.stored_source_bars
                 summary.stored_aggregated_bars += processed.stored_aggregated_bars
 
-            refreshed_timestamp = self.store.get_latest_bar_timestamp(
-                asset=self.config.asset,
-                timeframe=self.config.source_timeframe,
-            )
-            self.stream.last_emitted_timestamp = refreshed_timestamp or latest_stored_timestamp
+            refreshed_timestamp = self._latest_finalized_source_timestamp()
+            self.stream.last_emitted_timestamp = refreshed_timestamp or latest_finalized_timestamp
+            summary.latest_stored_timestamp = self.stream.last_emitted_timestamp
             self._warm_signal_processor()
             LOGGER.info(
                 "Recovered %s startup catch-up bars for %s since %s.",
                 summary.catchup_bars,
                 self.config.asset,
-                latest_stored_timestamp,
+                latest_finalized_timestamp,
             )
             return summary
         except Exception as exc:
@@ -525,6 +559,58 @@ class LiveCollectorRuntime:
             self.service.gap_detector.observe(bar)
             self.service.aggregator.ingest_bar(bar)
 
+    def _filter_finalized_source_bars(self, bars: list) -> list:
+        return filter_finalized_bars(
+            bars,
+            timeframe=self.config.source_timeframe,
+        )
+
+    def _latest_finalized_source_timestamp(self):
+        cutoff = latest_finalized_bar_start(self.config.source_timeframe)
+        row = self.store.connection.execute(
+            """
+            SELECT timestamp_utc
+            FROM canonical_bars
+            WHERE asset = ? AND timeframe = ? AND timestamp_utc <= ?
+            ORDER BY timestamp_utc DESC
+            LIMIT 1
+            """,
+            (
+                self.config.asset,
+                self.config.source_timeframe,
+                cutoff.isoformat(),
+            ),
+        ).fetchone()
+        if row is None:
+            return None
+        return datetime.fromisoformat(str(row["timestamp_utc"]))
+
+    async def _refresh_recent_finalized_source_bars(self, latest_stored_timestamp) -> CollectorCycleResult:
+        lookback_bars = max(2, int(self.config.startup_history_bars))
+        source_step = timeframe_to_timedelta(self.config.source_timeframe)
+        refresh_start = latest_stored_timestamp - (source_step * max(0, lookback_bars - 1))
+        refreshed_bars = await self.client.fetch_historical_chart(
+            symbol=canonical_asset_to_fmp_symbol(self.config.asset),
+            interval=canonical_timeframe_to_fmp_interval(self.config.source_timeframe),
+            start_date=refresh_start,
+            end_date=utc_now(),
+        )
+        refreshed_bars = [
+            bar
+            for bar in self._filter_finalized_source_bars(refreshed_bars)
+            if bar.timestamp >= refresh_start
+        ]
+        if not refreshed_bars:
+            return CollectorCycleResult()
+        result = self.service.repair_source_bars(refreshed_bars)
+        LOGGER.info(
+            "Refreshed %s recent finalized %s bars for %s.",
+            result.stored_source_bars,
+            self.config.source_timeframe,
+            self.config.asset,
+        )
+        return result
+
     def _build_catchup_windows(self, *, start, end) -> list[BackfillWindow]:
         if start > end:
             return []
@@ -586,10 +672,33 @@ class LiveCollectorRuntime:
                 },
             )
 
+    def _resolve_startup_history_bars(self) -> int:
+        startup_history_bars = int(self.config.startup_history_bars)
+        if self.signal_processor is None:
+            return startup_history_bars
+        if self.config.source_timeframe != self.config.signal_timeframe:
+            return startup_history_bars
+        if not hasattr(self.signal_processor, "bindings"):
+            return startup_history_bars
+
+        required_signal_bars = max(
+            (
+                int(binding.loaded_model.manifest.context_requirements.minimum_runtime_history_bars)
+                for binding in self.signal_processor.bindings
+            ),
+            default=0,
+        )
+        # Add a small cushion so the first live bar after bootstrap can evaluate immediately.
+        return max(startup_history_bars, required_signal_bars + 10)
+
     def _process_signal_cycle(self, cycle_result: CollectorCycleResult) -> tuple[RuntimeSignalResult, ...]:
         if self.signal_processor is None:
             return ()
-        if cycle_result.stored_aggregated_bars <= 0:
+        has_new_signal_timeframe_data = cycle_result.stored_aggregated_bars > 0 or (
+            self.config.source_timeframe == self.config.signal_timeframe
+            and cycle_result.stored_source_bars > 0
+        )
+        if not has_new_signal_timeframe_data:
             return ()
 
         emit_operator_artifacts = cycle_result.gaps_detected == 0 and cycle_result.backfilled_bars == 0
@@ -647,3 +756,30 @@ def _error_payload(exc: BaseException) -> dict[str, Any]:
         "error_type": type(exc).__name__,
         "error_message": str(exc),
     }
+
+
+def _build_sms_transport(recipients: tuple[str, ...]):
+    phone_recipients = tuple(
+        recipient for recipient in recipients if not is_email_gateway_sms_recipient(recipient)
+    )
+    email_gateway_recipients = tuple(
+        recipient for recipient in recipients if is_email_gateway_sms_recipient(recipient)
+    )
+
+    phone_transport = TwilioSmsTransport.from_environment() if phone_recipients else None
+    email_gateway_transport = (
+        EmailGatewaySmsTransport.from_environment()
+        if email_gateway_recipients
+        else None
+    )
+
+    if phone_transport is not None and email_gateway_transport is not None:
+        return RoutedSmsTransport(
+            phone_transport=phone_transport,
+            email_gateway_transport=email_gateway_transport,
+        )
+    if phone_transport is not None:
+        return phone_transport
+    if email_gateway_transport is not None:
+        return email_gateway_transport
+    raise ValueError("At least one SMS recipient is required to build an SMS transport.")

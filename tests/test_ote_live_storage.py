@@ -32,7 +32,7 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
         )
         store.upsert_bar(bar)
         store.record_raw_event(
-            provider="twelvedata",
+            provider="fmp",
             event_type="time_series",
             payload={"ok": True},
             asset="EURUSD",
@@ -57,7 +57,7 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
         resolved_gaps = store.fetch_gaps(asset="EURUSD", timeframe="1m", unresolved_only=False)
         store.record_heartbeat(
             HeartbeatStatus(
-                source="twelvedata.polling",
+                source="fmp.polling",
                 observed_at_utc=bar.timestamp,
                 stale_after_seconds=30.0,
                 lag_seconds=0.0,

@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,8 +47,11 @@ class _FakeClient:
     def __init__(self, *, seed_bars: list[MarketBar]) -> None:
         self.seed_bars = seed_bars
 
-    async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
+    async def fetch_historical_chart(self, **kwargs) -> list[MarketBar]:
         return self.seed_bars
+
+    async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
+        return await self.fetch_historical_chart(**kwargs)
 
     async def aclose(self) -> None:
         return None
@@ -268,6 +272,52 @@ def test_runtime_persists_primary_hold_decisions_for_dashboard_confidence() -> N
     assert confidence.iloc[0]["decision"] == "hold"
     assert len(signals) == 1
     assert signals.iloc[0]["decision"] == "hold"
+
+
+def test_build_policy_frame_batches_feature_columns_without_changing_overwrite_behavior() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    chart_root = tmp_root / "charts"
+
+    store = SQLiteLiveDataStore(db_path)
+    audit = LiveAuditRepository(store)
+    signal_processor = _build_signal_processor(
+        store=store,
+        audit=audit,
+        email_transport=_RecordingEmailTransport(),
+        sms_transport=_RecordingSmsTransport(),
+        chart_root=chart_root,
+    )
+    signal_processor.feature_engine.state.extend([_minute_bar(offset) for offset in range(3)])
+
+    feature_frame = pd.DataFrame(
+        {
+            "open": [10.0, 11.0],
+            "custom_feature": [0.25, 0.50],
+        }
+    )
+
+    policy_frame = signal_processor._build_policy_frame(feature_frame)
+
+    assert list(policy_frame.columns) == [
+        "asset",
+        "timeframe",
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "bid",
+        "ask",
+        "spread",
+        "source",
+        "custom_feature",
+    ]
+    assert policy_frame["open"].tolist() == [10.0, 11.0]
+    assert policy_frame["custom_feature"].tolist() == [0.25, 0.50]
+    assert policy_frame["timestamp"].tolist() == [_minute_bar(1).timestamp, _minute_bar(2).timestamp]
 
 
 def _build_signal_processor(

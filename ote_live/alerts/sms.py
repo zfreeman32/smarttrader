@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from typing import Any, Mapping, Protocol, Sequence
 
+from ote_live.alerts.emailer import EmailAlertMessage, EmailTransport, SmtpEmailTransport
 from ote_live.alerts.throttling import (
     NotificationThrottle,
     NotificationThrottlePolicy,
@@ -39,6 +40,37 @@ class SmsTransport(Protocol):
 class NoOpSmsTransport:
     def send_sms(self, message: SmsAlertMessage) -> str | None:
         return f"noop-sms:{len(message.recipients)}"
+
+
+class EmailGatewaySmsTransport:
+    def __init__(
+        self,
+        *,
+        email_transport: EmailTransport,
+        subject: str = "",
+    ) -> None:
+        self.email_transport = email_transport
+        self.subject = str(subject or "").strip()
+
+    @classmethod
+    def from_environment(
+        cls,
+        *,
+        email_prefix: str = "OTE_ALERT_EMAIL",
+        subject_env_var: str = "OTE_ALERT_SMS_EMAIL_SUBJECT",
+    ) -> "EmailGatewaySmsTransport":
+        return cls(
+            email_transport=SmtpEmailTransport.from_environment(prefix=email_prefix),
+            subject=os.getenv(subject_env_var, ""),
+        )
+
+    def send_sms(self, message: SmsAlertMessage) -> str | None:
+        email_message = EmailAlertMessage(
+            recipients=message.recipients,
+            subject=self.subject,
+            body_text=message.body_text,
+        )
+        return self.email_transport.send_email(email_message)
 
 
 class TwilioSmsTransport:
@@ -100,6 +132,54 @@ class TwilioSmsTransport:
             response = client.messages.create(**payload)
             last_sid = getattr(response, "sid", None)
         return last_sid
+
+
+class RoutedSmsTransport:
+    def __init__(
+        self,
+        *,
+        phone_transport: SmsTransport | None = None,
+        email_gateway_transport: SmsTransport | None = None,
+    ) -> None:
+        if phone_transport is None and email_gateway_transport is None:
+            raise ValueError("RoutedSmsTransport requires at least one underlying transport.")
+        self.phone_transport = phone_transport
+        self.email_gateway_transport = email_gateway_transport
+
+    def send_sms(self, message: SmsAlertMessage) -> str | None:
+        phone_recipients = tuple(
+            recipient for recipient in message.recipients if not is_email_gateway_sms_recipient(recipient)
+        )
+        email_gateway_recipients = tuple(
+            recipient for recipient in message.recipients if is_email_gateway_sms_recipient(recipient)
+        )
+        responses: list[str] = []
+
+        if phone_recipients:
+            if self.phone_transport is None:
+                raise ValueError("Phone SMS recipients were supplied, but no phone transport is configured.")
+            phone_response = self.phone_transport.send_sms(
+                SmsAlertMessage(
+                    recipients=phone_recipients,
+                    body_text=message.body_text,
+                )
+            )
+            if phone_response:
+                responses.append(phone_response)
+
+        if email_gateway_recipients:
+            if self.email_gateway_transport is None:
+                raise ValueError("Email gateway SMS recipients were supplied, but no email gateway transport is configured.")
+            email_response = self.email_gateway_transport.send_sms(
+                SmsAlertMessage(
+                    recipients=email_gateway_recipients,
+                    body_text=message.body_text,
+                )
+            )
+            if email_response:
+                responses.append(email_response)
+
+        return ",".join(responses) if responses else None
 
 
 class LiveSignalSmsSender:
@@ -256,3 +336,11 @@ def _format_optional_float(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"{value:.3f}"
+
+
+def is_email_gateway_sms_recipient(value: str) -> bool:
+    candidate = str(value or "").strip()
+    if "@" not in candidate:
+        return False
+    local, _, domain = candidate.partition("@")
+    return bool(local and "." in domain)

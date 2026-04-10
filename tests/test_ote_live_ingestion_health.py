@@ -35,7 +35,7 @@ def test_gap_detector_flags_missing_duplicate_and_out_of_order_bars() -> None:
 
 
 def test_heartbeat_monitor_marks_source_stale_after_threshold() -> None:
-    monitor = HeartbeatMonitor(source="twelvedata.polling", stale_after=timedelta(seconds=30))
+    monitor = HeartbeatMonitor(source="fmp.polling", stale_after=timedelta(seconds=30))
     beat_at = datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)
 
     healthy = monitor.beat(observed_at_utc=beat_at)

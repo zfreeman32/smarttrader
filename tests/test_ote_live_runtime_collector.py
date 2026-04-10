@@ -4,8 +4,9 @@ import asyncio
 import sqlite3
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -40,11 +41,12 @@ def test_runtime_bootstrap_seeds_empty_database_with_recent_history() -> None:
     assert backfill.windows == []
 
 
-def test_live_collector_config_defaults_to_two_minute_polls_with_heartbeat_headroom() -> None:
+def test_live_collector_config_defaults_to_five_minute_polls_with_heartbeat_headroom() -> None:
     config = LiveCollectorConfig()
 
-    assert config.poll_interval_seconds == 120.0
-    assert config.heartbeat_stale_after_seconds == 150.0
+    assert config.source_timeframe == "5m"
+    assert config.poll_interval_seconds == 300.0
+    assert config.heartbeat_stale_after_seconds == 330.0
 
 
 def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:
@@ -59,6 +61,7 @@ def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:
 def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
     fixed_now = datetime(2024, 1, 2, 10, 3, tzinfo=timezone.utc)
     monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("ote_live.ingestion.base.utc_now", lambda: fixed_now)
 
     runtime, store, stream, backfill = _build_runtime(
         client=_FakeClient(seed_bars=[]),
@@ -76,9 +79,9 @@ def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
     asyncio.run(runtime.close())
 
     assert summary.seeded_history_bars == 0
-    assert summary.catchup_bars == 3
-    assert len(stored_bars) == 4
-    assert stream.last_emitted_timestamp == fixed_now
+    assert summary.catchup_bars == 2
+    assert len(stored_bars) == 3
+    assert stream.last_emitted_timestamp == datetime(2024, 1, 2, 10, 2, tzinfo=timezone.utc)
     assert backfill.windows[0][0] == datetime(2024, 1, 2, 10, 1, tzinfo=timezone.utc)
     assert backfill.windows[0][1] == fixed_now
 
@@ -86,6 +89,7 @@ def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
 def test_runtime_bootstrap_recovers_unresolved_gaps_before_resuming(monkeypatch) -> None:
     fixed_now = datetime(2024, 1, 2, 10, 5, tzinfo=timezone.utc)
     monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("ote_live.ingestion.base.utc_now", lambda: fixed_now)
 
     runtime, store, stream, backfill = _build_runtime(
         client=_FakeClient(seed_bars=[]),
@@ -126,7 +130,7 @@ def test_runtime_bootstrap_recovers_unresolved_gaps_before_resuming(monkeypatch)
     assert len(repaired_five_minute_bars) == 1
     assert repaired_five_minute_bars[0].timestamp == datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)
     assert gaps[0].resolved_at_utc is not None
-    assert stream.last_emitted_timestamp == fixed_now
+    assert stream.last_emitted_timestamp == datetime(2024, 1, 2, 10, 4, tzinfo=timezone.utc)
 
 
 def test_runtime_bootstrap_records_health_event_when_seed_fetch_fails() -> None:
@@ -184,12 +188,153 @@ def test_runtime_run_invokes_before_close_and_closes_store_when_bootstrap_fails(
         raise AssertionError("Expected runtime.run() to close the SQLite store on failure.")
 
 
+def test_runtime_bootstrap_expands_seed_history_to_cover_signal_warmup_requirement() -> None:
+    client = _FakeClient(seed_bars=[_five_minute_bar(index) for index in range(260)])
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    stream = _FakeStream([])
+    backfill = _FakeBackfill({})
+    service = LiveBarIngestionService(
+        stream=stream,
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="EURUSD", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="5m",
+            aggregation_timeframes=("30m",),
+            signal_timeframe="5m",
+            startup_history_bars=240,
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=client,  # type: ignore[arg-type]
+        stream=stream,  # type: ignore[arg-type]
+        backfill_connector=backfill,  # type: ignore[arg-type]
+        store=store,
+        service=service,
+        audit_repository=audit,
+    )
+    runtime.signal_processor = _WarmupAwareSignalProcessor(minimum_runtime_history_bars=250)  # type: ignore[assignment]
+
+    summary = asyncio.run(runtime.bootstrap())
+    asyncio.run(runtime.close())
+
+    assert summary.seeded_history_bars == 260
+    assert client.last_fetch_kwargs["outputsize"] == 260
+
+
+def test_runtime_bootstrap_refreshes_recent_finalized_source_bars(monkeypatch) -> None:
+    fixed_now = datetime(2024, 1, 2, 10, 7, tzinfo=timezone.utc)
+    monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("ote_live.ingestion.base.utc_now", lambda: fixed_now)
+
+    finalized_bar = _five_minute_bar(0)
+    partial_bar = finalized_bar.model_copy(update={"close": finalized_bar.open})
+
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    stream = _FakeStream([])
+    backfill = _FakeBackfill({})
+    client = _FakeClient(seed_bars=[finalized_bar])
+    service = LiveBarIngestionService(
+        stream=stream,
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="EURUSD", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="5m",
+            aggregation_timeframes=("30m",),
+            signal_timeframe="5m",
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=client,  # type: ignore[arg-type]
+        stream=stream,  # type: ignore[arg-type]
+        backfill_connector=backfill,  # type: ignore[arg-type]
+        store=store,
+        service=service,
+        audit_repository=audit,
+    )
+    store.upsert_bar(partial_bar)
+
+    summary = asyncio.run(runtime.bootstrap())
+    repaired_bars = store.fetch_bars(asset="EURUSD", timeframe="5m")
+    asyncio.run(runtime.close())
+
+    assert summary.stored_source_bars >= 1
+    assert repaired_bars[0].close == finalized_bar.close
+    assert stream.last_emitted_timestamp == finalized_bar.timestamp
+
+
+def test_runtime_processes_signal_cycle_when_source_and_signal_timeframes_match() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    stream = _FakeStream([_five_minute_bar(0)])
+    backfill = _FakeBackfill({})
+    signal_processor = _RecordingSignalProcessor()
+    service = LiveBarIngestionService(
+        stream=stream,
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="EURUSD", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="5m",
+            aggregation_timeframes=("30m",),
+            signal_timeframe="5m",
+            startup_history_bars=0,
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=_FakeClient(seed_bars=[]),  # type: ignore[arg-type]
+        stream=stream,  # type: ignore[arg-type]
+        backfill_connector=backfill,  # type: ignore[arg-type]
+        store=store,
+        service=service,
+        audit_repository=audit,
+        signal_processor=signal_processor,  # type: ignore[arg-type]
+    )
+
+    summary = asyncio.run(runtime.run())
+
+    assert summary.cycles_run == 1
+    assert signal_processor.process_calls == 1
+
+
 class _FakeClient:
     def __init__(self, *, seed_bars: list[MarketBar]) -> None:
         self.seed_bars = seed_bars
+        self.last_fetch_kwargs = {}
+
+    async def fetch_historical_chart(self, **kwargs) -> list[MarketBar]:
+        self.last_fetch_kwargs = dict(kwargs)
+        return self.seed_bars
 
     async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
-        return self.seed_bars
+        return await self.fetch_historical_chart(**kwargs)
 
     async def aclose(self) -> None:
         return None
@@ -200,8 +345,11 @@ class _FailingClient(_FakeClient):
         super().__init__(seed_bars=[])
         self.exc = exc
 
-    async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
+    async def fetch_historical_chart(self, **kwargs) -> list[MarketBar]:
         raise self.exc
+
+    async def fetch_time_series(self, **kwargs) -> list[MarketBar]:
+        return await self.fetch_historical_chart(**kwargs)
 
 
 class _FakeStream:
@@ -222,6 +370,38 @@ class _FakeBackfill:
         key = (window.start, window.end)
         self.windows.append(key)
         return self.responses.get(key, [])
+
+
+class _RecordingSignalProcessor:
+    def __init__(self) -> None:
+        self.process_calls = 0
+
+    def warm_from_store(self) -> int:
+        return 0
+
+    def process_new_bars_from_store(self, *, emit_operator_artifacts: bool):
+        self.process_calls += 1
+        return ()
+
+
+class _WarmupAwareSignalProcessor:
+    def __init__(self, *, minimum_runtime_history_bars: int) -> None:
+        self.bindings = [
+            SimpleNamespace(
+                loaded_model=SimpleNamespace(
+                    manifest=SimpleNamespace(
+                        context_requirements=SimpleNamespace(
+                            minimum_runtime_history_bars=minimum_runtime_history_bars
+                        )
+                    )
+                )
+            )
+        ]
+        self.warm_calls = 0
+
+    def warm_from_store(self) -> int:
+        self.warm_calls += 1
+        return 0
 
 
 def _build_runtime(
@@ -271,4 +451,18 @@ def _bar(minute: int) -> MarketBar:
         low=price - 0.0002,
         close=price + 0.0001,
         volume=10.0 + minute,
+    )
+
+
+def _five_minute_bar(index: int) -> MarketBar:
+    price = 1.1000 + (index * 0.0005)
+    return MarketBar(
+        asset="EURUSD",
+        timeframe="5m",
+        timestamp=datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc) + timedelta(minutes=index * 5),
+        open=price,
+        high=price + 0.0003,
+        low=price - 0.0002,
+        close=price + 0.0001,
+        volume=20.0 + index,
     )

@@ -4,7 +4,7 @@ param(
     [string]$DbPath = "",
     [string]$LogFile = "",
     [string]$HeartbeatFile = "",
-    [double]$PollIntervalSeconds = 120.0,
+    [double]$PollIntervalSeconds = 300.0,
     [double]$MinDiskFreeGb = 2.0,
     [int]$RestartDelaySeconds = 15,
     [int]$MaxRestartCount = 10,

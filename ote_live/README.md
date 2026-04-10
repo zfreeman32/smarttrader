@@ -11,7 +11,7 @@ pip install -r ote_requirements.txt
 ## Minimum `.env`
 
 ```dotenv
-TWELVEDATA_API_KEY=replace_me
+FMP_API_KEY=replace_me
 ```
 
 Optional launcher settings:
@@ -19,7 +19,8 @@ Optional launcher settings:
 ```dotenv
 OTE_LIVE_ASSET=EURUSD
 OTE_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
-OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=120
+OTE_LIVE_SOURCE_TIMEFRAME=5m
+OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=300
 OTE_LIVE_STREAM_OUTPUTSIZE=2
 OTE_LIVE_REGISTRY_PATH=models/ote_model_registry_v1_v2_candidates.json
 OTE_LIVE_DASHBOARD_HOST=127.0.0.1
@@ -34,6 +35,8 @@ OTE_LIVE_OPEN_BROWSER=1
 OTE_LIVE_ALERT_EMAIL_RECIPIENTS=
 OTE_LIVE_ALERT_SMS_RECIPIENTS=
 ```
+
+`OTE_LIVE_ALERT_SMS_RECIPIENTS` now accepts either normal SMS destinations for the Twilio path or email-to-text gateway addresses such as `15555550123@vtext.com`. Gateway-style recipients reuse the `OTE_ALERT_EMAIL_*` SMTP settings and send a compact text-only alert body with no screenshot attachments.
 
 ## One-command startup
 
@@ -64,10 +67,9 @@ What the launcher does:
 
 The dashboard now stays pinned to the configured long and short primary models from the runtime manifests. If a configured primary has not produced stored live predictions yet, its primary confidence and inspection panels stay empty instead of silently switching to another model. The main price chart still shows all stored model signals.
 
-The live collector now defaults to one TwelveData poll every two minutes with a
-small `outputsize`, which keeps steady-state polling near 720 requests per day
-and leaves some room under an 800-credit plan for restarts or occasional gap
-backfills.
+The live collector now defaults to the Financial Modeling Prep `5min` forex
+chart endpoint for `EURUSD`, polling every five minutes with a small
+`outputsize` so the runtime only inspects the newest finalized candles.
 
 ## Useful options
 

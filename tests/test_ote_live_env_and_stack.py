@@ -22,8 +22,8 @@ def test_load_repo_env_reads_explicit_env_file(monkeypatch) -> None:
     tmp_root = ROOT / "tmp" / "ote_live_env_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
     env_path = tmp_root / f"{uuid.uuid4().hex}.env"
-    env_path.write_text("TWELVEDATA_API_KEY=test-key\nOTE_LIVE_ASSET=GBPUSD\n", encoding="utf-8")
-    monkeypatch.delenv("TWELVEDATA_API_KEY", raising=False)
+    env_path.write_text("FMP_API_KEY=test-key\nOTE_LIVE_ASSET=GBPUSD\n", encoding="utf-8")
+    monkeypatch.delenv("FMP_API_KEY", raising=False)
     monkeypatch.delenv("OTE_LIVE_ASSET", raising=False)
 
     def _fake_load_dotenv(path, override=False):
@@ -40,7 +40,7 @@ def test_load_repo_env_reads_explicit_env_file(monkeypatch) -> None:
     loaded_path = load_repo_env(env_path)
 
     assert loaded_path == env_path
-    assert os.environ["TWELVEDATA_API_KEY"] == "test-key"
+    assert os.environ["FMP_API_KEY"] == "test-key"
     assert os.environ["OTE_LIVE_ASSET"] == "GBPUSD"
 
 
@@ -82,7 +82,7 @@ def test_build_process_plan_includes_dashboard_url_and_runtime_commands() -> Non
 def test_live_collector_parser_accepts_runtime_manifest_paths_from_env(monkeypatch) -> None:
     monkeypatch.setenv("OTE_LIVE_LONG_RUNTIME_MANIFEST_PATH", "ote_live/runtime_manifests/live_runtime_manifest_long.json")
     monkeypatch.setenv("OTE_LIVE_SHORT_RUNTIME_MANIFEST_PATH", "ote_live/runtime_manifests/live_runtime_manifest_short.json")
-    monkeypatch.setenv("TWELVEDATA_API_KEY", "test-key")
+    monkeypatch.setenv("FMP_API_KEY", "test-key")
 
     parser = build_live_collector_parser()
     args = parser.parse_args([])
