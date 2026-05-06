@@ -26,7 +26,7 @@ SUPPORTED_BACKENDS: tuple[str, ...] = ("xgboost", "tcn", "lstm")
 @dataclass
 class BackendAttributionConfig:
     prepared_root: str = "data/prepared/eurusd_5min_ote_full"
-    targets: List[str] = field(default_factory=lambda: ["long_ote", "short_ote"])
+    targets: List[str] = field(default_factory=list)
     backends: List[str] = field(default_factory=lambda: list(SUPPORTED_BACKENDS))
     max_features: int = 160
     attribution_max_rows: int = 25_000

@@ -1,5 +1,5 @@
 """
-Interactive reviewer for OTE labels on EURUSD 5-minute data.
+Interactive reviewer for reversal labels on EURUSD 5-minute data.
 
 Workflow:
 1. Load the auto-labeled CSV.
@@ -28,15 +28,26 @@ except ImportError as exc:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LABELS_PATH = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_labels.csv"
-DEFAULT_OVERRIDES_PATH = PROJECT_ROOT / "data" / "labeling" / "review" / "ote_label_overrides.csv"
-DEFAULT_REVIEWED_OUTPUT = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_labels_reviewed.csv"
+DEFAULT_LABELS_PATH = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels.csv"
+DEFAULT_OVERRIDES_PATH = PROJECT_ROOT / "data" / "labeling" / "review" / "reversal_label_overrides.csv"
+DEFAULT_REVIEWED_OUTPUT = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels_reversal_reviewed.csv"
+
+LEGACY_REVERSAL_COLUMN_MAP = {
+    "label_long_ote": "label_long_reversal",
+    "label_short_ote": "label_short_reversal",
+    "label_long_entry": "label_long_reversal_entry",
+    "label_short_entry": "label_short_reversal_entry",
+    "label_quality_long": "label_quality_long_reversal",
+    "label_quality_short": "label_quality_short_reversal",
+    "entry_quality_long": "entry_quality_long_reversal",
+    "entry_quality_short": "entry_quality_short_reversal",
+}
 
 LABEL_TARGETS = [
-    ("label_long_ote", "Long Zone"),
-    ("label_short_ote", "Short Zone"),
-    ("label_long_entry", "Long Entry"),
-    ("label_short_entry", "Short Entry"),
+    ("label_long_reversal", "Long Reversal Zone"),
+    ("label_short_reversal", "Short Reversal Zone"),
+    ("label_long_reversal_entry", "Long Reversal Entry"),
+    ("label_short_reversal_entry", "Short Reversal Entry"),
 ]
 
 DEFAULT_CHUNK = 2_000
@@ -46,7 +57,7 @@ DEFAULT_EMA_PERIOD = 50
 def load_labels(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
-    return df
+    return normalize_reversal_columns(df)
 
 
 def load_overrides(path: Path) -> pd.DataFrame:
@@ -57,7 +68,16 @@ def load_overrides(path: Path) -> pd.DataFrame:
     missing = expected - set(df.columns)
     if missing:
         raise ValueError(f"Overrides file missing columns: {missing}")
+    df["target_label"] = df["target_label"].replace(LEGACY_REVERSAL_COLUMN_MAP)
     return df.sort_values("timestamp").reset_index(drop=True)
+
+
+def normalize_reversal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    normalized = df.copy()
+    for legacy, current in LEGACY_REVERSAL_COLUMN_MAP.items():
+        if legacy in normalized.columns and current not in normalized.columns:
+            normalized = normalized.rename(columns={legacy: current})
+    return normalized
 
 
 def apply_overrides(df: pd.DataFrame, overrides: pd.DataFrame) -> pd.DataFrame:
@@ -131,8 +151,8 @@ def make_review_figure(
         )
 
     if show_zone_labels:
-        long_zone = view["label_long_ote"].astype(bool)
-        short_zone = view["label_short_ote"].astype(bool)
+        long_zone = view["label_long_reversal"].astype(bool)
+        short_zone = view["label_short_reversal"].astype(bool)
         if long_zone.any():
             fig.add_trace(
                 go.Scatter(
@@ -140,7 +160,7 @@ def make_review_figure(
                     y=view.loc[long_zone, "low"] * 0.99995,
                     mode="markers",
                     marker=dict(color="#198754", size=7, symbol="circle"),
-                    name="Long Zone",
+                    name="Long Reversal Zone",
                 )
             )
         if short_zone.any():
@@ -150,13 +170,13 @@ def make_review_figure(
                     y=view.loc[short_zone, "high"] * 1.00005,
                     mode="markers",
                     marker=dict(color="#dc3545", size=7, symbol="circle"),
-                    name="Short Zone",
+                    name="Short Reversal Zone",
                 )
             )
 
     if show_entry_labels:
-        long_entry = view["label_long_entry"].astype(bool)
-        short_entry = view["label_short_entry"].astype(bool)
+        long_entry = view["label_long_reversal_entry"].astype(bool)
+        short_entry = view["label_short_reversal_entry"].astype(bool)
         if long_entry.any():
             fig.add_trace(
                 go.Scatter(
@@ -164,7 +184,7 @@ def make_review_figure(
                     y=view.loc[long_entry, "low"] * 0.9998,
                     mode="markers",
                     marker=dict(color="#0d6efd", size=11, symbol="triangle-up"),
-                    name="Long Entry",
+                    name="Long Reversal Entry",
                 )
             )
         if short_entry.any():
@@ -174,7 +194,7 @@ def make_review_figure(
                     y=view.loc[short_entry, "high"] * 1.0002,
                     mode="markers",
                     marker=dict(color="#6f42c1", size=11, symbol="triangle-down"),
-                    name="Short Entry",
+                    name="Short Reversal Entry",
                 )
             )
 
@@ -199,7 +219,7 @@ def make_review_figure(
         hovermode="x unified",
         xaxis_rangeslider_visible=False,
         margin=dict(l=30, r=20, t=50, b=30),
-        title=f"OTE Label Review | rows {start_idx:,}-{end_idx:,} of {len(df):,}",
+        title=f"Reversal Label Review | rows {start_idx:,}-{end_idx:,} of {len(df):,}",
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
     )
     return fig
@@ -214,9 +234,9 @@ def selected_bar_summary(df: pd.DataFrame, ts: pd.Timestamp | None) -> str:
     row = row.iloc[0]
     return (
         f"{row['timestamp']} | O:{row['open']:.5f} H:{row['high']:.5f} L:{row['low']:.5f} C:{row['close']:.5f} | "
-        f"LZ={int(row['label_long_ote'])} SZ={int(row['label_short_ote'])} "
-        f"LE={int(row['label_long_entry'])} SE={int(row['label_short_entry'])} | "
-        f"QL={row.get('label_quality_long', 0):.2f} QS={row.get('label_quality_short', 0):.2f}"
+        f"LZ={int(row['label_long_reversal'])} SZ={int(row['label_short_reversal'])} "
+        f"LE={int(row['label_long_reversal_entry'])} SE={int(row['label_short_reversal_entry'])} | "
+        f"QL={row.get('label_quality_long_reversal', 0):.2f} QS={row.get('label_quality_short_reversal', 0):.2f}"
     )
 
 
@@ -242,12 +262,12 @@ def main() -> None:
     )
 
     app = Dash(__name__, suppress_callback_exceptions=True)
-    app.title = "OTE Label Review"
+    app.title = "Reversal Label Review"
 
     app.layout = html.Div(
         style={"maxWidth": "1700px", "margin": "0 auto", "padding": "12px", "fontFamily": "Segoe UI, sans-serif"},
         children=[
-            html.H3("EURUSD 5m OTE Label Review", style={"marginBottom": "4px"}),
+            html.H3("EURUSD 5m Reversal Label Review", style={"marginBottom": "4px"}),
             html.P(
                 "Click a bar to inspect it. Save edits as overrides, then export a reviewed label file when you're happy.",
                 style={"marginTop": "0", "color": "#555"},
@@ -310,7 +330,7 @@ def main() -> None:
                                     dcc.RadioItems(
                                         id="edit-target",
                                         options=[{"label": label, "value": value} for value, label in LABEL_TARGETS],
-                                        value="label_long_entry",
+                                        value="label_long_reversal_entry",
                                     ),
                                     html.Strong("Action", style={"marginTop": "8px", "display": "block"}),
                                     dcc.RadioItems(
@@ -475,7 +495,7 @@ def main() -> None:
 
         return fig, start_val, end_val, summary
 
-    print(f"Launching OTE review app for: {labels_path}")
+    print(f"Launching reversal review app for: {labels_path}")
     print(f"Overrides file: {overrides_path}")
     print(f"Reviewed export: {reviewed_output}")
     app.run(debug=False)

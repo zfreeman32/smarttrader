@@ -50,6 +50,9 @@ DEFAULT_SHORT_RUNTIME_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifest
 DEFAULT_SIGNAL_CHART_OUTPUT_ROOT = REPO_ROOT / "ote_live" / "runtime_data" / "charts"
 DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS = 300.0
 DEFAULT_HEARTBEAT_STALE_GRACE_SECONDS = 30.0
+DEFAULT_FINALIZED_BAR_GRACE_SECONDS = 90.0
+DEFAULT_SIGNAL_PROCESSING_EXTRA_DELAY_SECONDS = 30.0
+DEFAULT_CYCLE_FINALIZED_REFRESH_LOOKBACK_BARS = 6
 
 
 def resolve_heartbeat_stale_after_seconds(
@@ -75,6 +78,9 @@ class LiveCollectorConfig:
     db_path: Path = DEFAULT_DB_PATH
     poll_interval_seconds: float = DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS
     stream_outputsize: int = 2
+    finalized_bar_grace_seconds: float = DEFAULT_FINALIZED_BAR_GRACE_SECONDS
+    signal_processing_delay_seconds: float | None = None
+    cycle_finalized_refresh_lookback_bars: int = DEFAULT_CYCLE_FINALIZED_REFRESH_LOOKBACK_BARS
     startup_history_bars: int = 240
     startup_warmup_lookback_bars: int = 90
     heartbeat_stale_after_seconds: float | None = None
@@ -97,6 +103,24 @@ class LiveCollectorConfig:
     def __post_init__(self) -> None:
         poll_interval_seconds = max(0.0, float(self.poll_interval_seconds))
         object.__setattr__(self, "poll_interval_seconds", poll_interval_seconds)
+        finalized_bar_grace_seconds = max(0.0, float(self.finalized_bar_grace_seconds))
+        object.__setattr__(self, "finalized_bar_grace_seconds", finalized_bar_grace_seconds)
+        signal_processing_delay_seconds = self.signal_processing_delay_seconds
+        if signal_processing_delay_seconds is None:
+            signal_processing_delay_seconds = finalized_bar_grace_seconds + min(
+                poll_interval_seconds,
+                DEFAULT_SIGNAL_PROCESSING_EXTRA_DELAY_SECONDS,
+            )
+        object.__setattr__(
+            self,
+            "signal_processing_delay_seconds",
+            max(0.0, float(signal_processing_delay_seconds)),
+        )
+        object.__setattr__(
+            self,
+            "cycle_finalized_refresh_lookback_bars",
+            max(0, int(self.cycle_finalized_refresh_lookback_bars)),
+        )
         resolved_aggregation_timeframes = tuple(
             dict.fromkeys(
                 timeframe
@@ -191,6 +215,7 @@ class LiveCollectorRuntime:
             timeframe=config.source_timeframe,
             outputsize=config.stream_outputsize,
             poll_interval_seconds=config.poll_interval_seconds,
+            finalized_bar_grace_seconds=config.finalized_bar_grace_seconds,
         )
         backfill_connector = FMPBackfillConnector(client)
         store = SQLiteLiveDataStore(config.db_path)
@@ -467,6 +492,26 @@ class LiveCollectorRuntime:
                         },
                     )
                     raise
+                try:
+                    refresh_result = await self._refresh_recent_finalized_cycle_bars()
+                except Exception as exc:
+                    self._record_health_event(
+                        component="collector.runtime",
+                        event_type="cycle_reconciliation_failed",
+                        severity="error",
+                        message="Refreshing recent finalized source bars failed during a live cycle.",
+                        payload={
+                            "cycle_index": cycle_index,
+                            "asset": self.config.asset,
+                            "source_timeframe": self.config.source_timeframe,
+                            "lookback_bars": int(self.config.cycle_finalized_refresh_lookback_bars),
+                            "error_type": type(exc).__name__,
+                            "error_message": str(exc),
+                        },
+                    )
+                    raise
+                result.reconciled_source_bars = refresh_result.stored_source_bars
+                result.reconciled_aggregated_bars = refresh_result.stored_aggregated_bars
                 summary.cycles_run = cycle_index
                 summary.cycle_results.append(result)
                 signal_results = self._process_signal_cycle(result)
@@ -485,11 +530,13 @@ class LiveCollectorRuntime:
                 )
                 LOGGER.info(
                     "Collector cycle %s: polled=%s stored_source=%s stored_aggregated=%s "
-                    "backfilled=%s gaps=%s dup=%s out_of_order=%s",
+                    "reconciled_source=%s reconciled_aggregated=%s backfilled=%s gaps=%s dup=%s out_of_order=%s",
                     cycle_index,
                     result.polled_bars,
                     result.stored_source_bars,
                     result.stored_aggregated_bars,
+                    result.reconciled_source_bars,
+                    result.reconciled_aggregated_bars,
                     result.backfilled_bars,
                     result.gaps_detected,
                     result.duplicates,
@@ -563,10 +610,14 @@ class LiveCollectorRuntime:
         return filter_finalized_bars(
             bars,
             timeframe=self.config.source_timeframe,
+            grace_period_seconds=self.config.finalized_bar_grace_seconds,
         )
 
     def _latest_finalized_source_timestamp(self):
-        cutoff = latest_finalized_bar_start(self.config.source_timeframe)
+        cutoff = latest_finalized_bar_start(
+            self.config.source_timeframe,
+            grace_period_seconds=self.config.finalized_bar_grace_seconds,
+        )
         row = self.store.connection.execute(
             """
             SELECT timestamp_utc
@@ -585,10 +636,19 @@ class LiveCollectorRuntime:
             return None
         return datetime.fromisoformat(str(row["timestamp_utc"]))
 
-    async def _refresh_recent_finalized_source_bars(self, latest_stored_timestamp) -> CollectorCycleResult:
-        lookback_bars = max(2, int(self.config.startup_history_bars))
+    async def _refresh_recent_finalized_source_bars(
+        self,
+        latest_stored_timestamp,
+        *,
+        lookback_bars: int | None = None,
+    ) -> CollectorCycleResult:
+        resolved_lookback_bars = (
+            max(2, int(self.config.startup_history_bars))
+            if lookback_bars is None
+            else max(2, int(lookback_bars))
+        )
         source_step = timeframe_to_timedelta(self.config.source_timeframe)
-        refresh_start = latest_stored_timestamp - (source_step * max(0, lookback_bars - 1))
+        refresh_start = latest_stored_timestamp - (source_step * max(0, resolved_lookback_bars - 1))
         refreshed_bars = await self.client.fetch_historical_chart(
             symbol=canonical_asset_to_fmp_symbol(self.config.asset),
             interval=canonical_timeframe_to_fmp_interval(self.config.source_timeframe),
@@ -603,13 +663,34 @@ class LiveCollectorRuntime:
         if not refreshed_bars:
             return CollectorCycleResult()
         result = self.service.repair_source_bars(refreshed_bars)
-        LOGGER.info(
-            "Refreshed %s recent finalized %s bars for %s.",
+        log_method = LOGGER.info if lookback_bars is None else LOGGER.debug
+        message = (
+            "Refreshed %s recent finalized %s bars for %s."
+            if lookback_bars is None
+            else "Reconciled %s recent finalized %s bars for %s."
+        )
+        log_method(
+            message,
             result.stored_source_bars,
             self.config.source_timeframe,
             self.config.asset,
         )
         return result
+
+    async def _refresh_recent_finalized_cycle_bars(self) -> CollectorCycleResult:
+        lookback_bars = int(self.config.cycle_finalized_refresh_lookback_bars)
+        if lookback_bars <= 0:
+            return CollectorCycleResult()
+        latest_stored_timestamp = self.store.get_latest_bar_timestamp(
+            asset=self.config.asset,
+            timeframe=self.config.source_timeframe,
+        )
+        if latest_stored_timestamp is None:
+            return CollectorCycleResult()
+        return await self._refresh_recent_finalized_source_bars(
+            latest_stored_timestamp,
+            lookback_bars=lookback_bars,
+        )
 
     def _build_catchup_windows(self, *, start, end) -> list[BackfillWindow]:
         if start > end:
@@ -694,17 +775,12 @@ class LiveCollectorRuntime:
     def _process_signal_cycle(self, cycle_result: CollectorCycleResult) -> tuple[RuntimeSignalResult, ...]:
         if self.signal_processor is None:
             return ()
-        has_new_signal_timeframe_data = cycle_result.stored_aggregated_bars > 0 or (
-            self.config.source_timeframe == self.config.signal_timeframe
-            and cycle_result.stored_source_bars > 0
-        )
-        if not has_new_signal_timeframe_data:
-            return ()
 
         emit_operator_artifacts = cycle_result.gaps_detected == 0 and cycle_result.backfilled_bars == 0
         try:
             return self.signal_processor.process_new_bars_from_store(
                 emit_operator_artifacts=emit_operator_artifacts,
+                max_timestamp=self._latest_signal_processing_timestamp(),
             )
         except Exception as exc:
             self._record_health_event(
@@ -723,6 +799,11 @@ class LiveCollectorRuntime:
                 },
             )
             return ()
+
+    def _latest_signal_processing_timestamp(self) -> datetime:
+        return utc_now() - timeframe_to_timedelta(self.config.signal_timeframe) - timedelta(
+            seconds=float(self.config.signal_processing_delay_seconds or 0.0)
+        )
 
     async def _invoke_runtime_hook(
         self,

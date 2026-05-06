@@ -13,6 +13,7 @@ from ote_live.ingestion.aggregator import (
 from ote_live.ingestion.base import AbstractBackfillConnector, AbstractBarStream, IngestionGap, ensure_utc, timeframe_to_timedelta
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
+from ote_live.ingestion.market_calendar import filter_expected_market_bar_timestamps
 from ote_live.storage.repositories import LiveAuditRepository
 from ote_live.storage.db import SQLiteLiveDataStore, StoredIngestionGap
 
@@ -22,6 +23,8 @@ class CollectorCycleResult:
     polled_bars: int = 0
     stored_source_bars: int = 0
     stored_aggregated_bars: int = 0
+    reconciled_source_bars: int = 0
+    reconciled_aggregated_bars: int = 0
     backfilled_bars: int = 0
     gaps_detected: int = 0
     duplicates: int = 0
@@ -172,6 +175,15 @@ class LiveBarIngestionService:
     async def recover_unresolved_gaps(self, gaps: list[StoredIngestionGap]) -> CollectorCycleResult:
         result = CollectorCycleResult()
         for gap in sorted(gaps, key=lambda item: item.expected_timestamp):
+            if not self._recoverable_missing_timestamp_set(gap):
+                self.store.mark_gap_resolved(gap.gap_id)
+                self._record_gap_resolved_by_market_calendar(
+                    component="collector.bootstrap",
+                    gap_id=gap.gap_id,
+                    gap=gap,
+                )
+                continue
+
             existing_gap_bars = self._fetch_gap_source_bars(gap)
             complete_gap_bars: list[MarketBar]
             new_gap_bars: list[MarketBar] = []
@@ -259,15 +271,16 @@ class LiveBarIngestionService:
         return stored
 
     def _fetch_gap_source_bars(self, gap: IngestionGap | StoredIngestionGap) -> tuple[MarketBar, ...]:
-        if not gap.missing_timestamps:
+        missing_timestamps = sorted(self._recoverable_missing_timestamp_set(gap))
+        if not missing_timestamps:
             return ()
         relevant_bars = self.store.fetch_bars(
             asset=gap.asset,
             timeframe=gap.timeframe,
-            start=gap.missing_timestamps[0],
-            end=gap.missing_timestamps[-1],
+            start=missing_timestamps[0],
+            end=missing_timestamps[-1],
         )
-        missing_timestamp_set = {ensure_utc(item) for item in gap.missing_timestamps}
+        missing_timestamp_set = set(missing_timestamps)
         filtered = [bar for bar in relevant_bars if ensure_utc(bar.timestamp) in missing_timestamp_set]
         return tuple(sorted(filtered, key=lambda item: item.timestamp))
 
@@ -303,7 +316,8 @@ class LiveBarIngestionService:
             for bar in existing_bars
         }
         recovered_by_timestamp: dict[datetime, MarketBar] = {}
-        missing_timestamp_set = {ensure_utc(item) for item in gap.missing_timestamps}
+        missing_timestamp_set = self._recoverable_missing_timestamp_set(gap)
+        skipped_market_closed_bar_count = self._market_closed_missing_timestamp_count(gap)
         for bar in recovered_bars:
             timestamp = ensure_utc(bar.timestamp)
             if timestamp in missing_timestamp_set:
@@ -311,6 +325,9 @@ class LiveBarIngestionService:
 
         merged = dict(existing_by_timestamp)
         merged.update(recovered_by_timestamp)
+        if not missing_timestamp_set:
+            return [], []
+
         missing_after_recovery = [
             timestamp.isoformat()
             for timestamp in sorted(missing_timestamp_set)
@@ -330,6 +347,7 @@ class LiveBarIngestionService:
                     "missing_after_recovery": missing_after_recovery,
                     "recovered_bar_count": len(recovered_by_timestamp),
                     "existing_bar_count": len(existing_by_timestamp),
+                    "skipped_market_closed_bar_count": skipped_market_closed_bar_count,
                 },
             )
             raise RuntimeError(
@@ -349,7 +367,20 @@ class LiveBarIngestionService:
 
     def _has_full_gap_coverage(self, gap: IngestionGap | StoredIngestionGap, bars: tuple[MarketBar, ...]) -> bool:
         covered_timestamps = {ensure_utc(bar.timestamp) for bar in bars}
-        return all(ensure_utc(timestamp) in covered_timestamps for timestamp in gap.missing_timestamps)
+        return all(timestamp in covered_timestamps for timestamp in self._recoverable_missing_timestamp_set(gap))
+
+    def _recoverable_missing_timestamp_set(self, gap: IngestionGap | StoredIngestionGap) -> set[datetime]:
+        return {
+            ensure_utc(timestamp)
+            for timestamp in filter_expected_market_bar_timestamps(
+                gap.missing_timestamps,
+                asset=gap.asset,
+            )
+        }
+
+    def _market_closed_missing_timestamp_count(self, gap: IngestionGap | StoredIngestionGap) -> int:
+        raw_timestamps = {ensure_utc(timestamp) for timestamp in gap.missing_timestamps}
+        return len(raw_timestamps - self._recoverable_missing_timestamp_set(gap))
 
     def _repair_aggregates_for_gap_bars(self, bars: list[MarketBar]) -> int:
         if not bars:
@@ -424,6 +455,29 @@ class LiveBarIngestionService:
                 "recovered_bar_count": len(recovered_bars),
                 "repaired_aggregated_bars": int(repaired_aggregated_bars),
                 "recovery_source": recovery_source,
+            },
+        )
+
+    def _record_gap_resolved_by_market_calendar(
+        self,
+        *,
+        component: str,
+        gap_id: int,
+        gap: IngestionGap | StoredIngestionGap,
+    ) -> None:
+        self._record_health_event(
+            component=component,
+            event_type="gap_resolved_market_closed",
+            severity="info",
+            message="Marked a recorded ingestion gap resolved because its missing timestamps fell outside market hours.",
+            payload={
+                "gap_id": gap_id,
+                "asset": gap.asset,
+                "timeframe": gap.timeframe,
+                "gap_size": gap.gap_size,
+                "market_closed_timestamp_count": self._market_closed_missing_timestamp_count(gap),
+                "expected_timestamp_utc": gap.expected_timestamp.isoformat(),
+                "observed_timestamp_utc": gap.observed_timestamp.isoformat(),
             },
         )
 

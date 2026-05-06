@@ -18,7 +18,8 @@ from ote_live.ingestion.aggregator import MultiTimeframeBarAggregator
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
 from ote_live.ingestion.runtime import LiveCollectorConfig, LiveCollectorRuntime
-from ote_live.ingestion.service import LiveBarIngestionService
+from ote_live.ingestion.service import CollectorCycleResult, LiveBarIngestionService
+from ote_live.ingestion.signals import LiveSignalProcessor
 from ote_live.storage.repositories import LiveAuditRepository
 from ote_live.storage.db import SQLiteLiveDataStore
 
@@ -47,6 +48,9 @@ def test_live_collector_config_defaults_to_five_minute_polls_with_heartbeat_head
     assert config.source_timeframe == "5m"
     assert config.poll_interval_seconds == 300.0
     assert config.heartbeat_stale_after_seconds == 330.0
+    assert config.finalized_bar_grace_seconds == 90.0
+    assert config.signal_processing_delay_seconds == 120.0
+    assert config.cycle_finalized_refresh_lookback_bars == 6
 
 
 def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:
@@ -56,6 +60,17 @@ def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:
     )
 
     assert config.heartbeat_stale_after_seconds == 240.0
+
+
+def test_live_collector_config_preserves_explicit_signal_processing_delay() -> None:
+    config = LiveCollectorConfig(
+        poll_interval_seconds=30.0,
+        finalized_bar_grace_seconds=75.0,
+        signal_processing_delay_seconds=150.0,
+    )
+
+    assert config.finalized_bar_grace_seconds == 75.0
+    assert config.signal_processing_delay_seconds == 150.0
 
 
 def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:
@@ -324,6 +339,78 @@ def test_runtime_processes_signal_cycle_when_source_and_signal_timeframes_match(
     assert signal_processor.process_calls == 1
 
 
+def test_runtime_signal_cycle_passes_processing_cutoff_without_new_cycle_data(monkeypatch) -> None:
+    fixed_now = datetime(2024, 1, 2, 10, 7, tzinfo=timezone.utc)
+    monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
+
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    stream = _FakeStream([])
+    backfill = _FakeBackfill({})
+    signal_processor = _RecordingSignalProcessor()
+    service = LiveBarIngestionService(
+        stream=stream,
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="EURUSD", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="5m",
+            aggregation_timeframes=("30m",),
+            signal_timeframe="5m",
+            poll_interval_seconds=30.0,
+            finalized_bar_grace_seconds=90.0,
+            signal_processing_delay_seconds=120.0,
+            max_cycles=1,
+        ),
+        client=_FakeClient(seed_bars=[]),  # type: ignore[arg-type]
+        stream=stream,  # type: ignore[arg-type]
+        backfill_connector=backfill,  # type: ignore[arg-type]
+        store=store,
+        service=service,
+        audit_repository=audit,
+        signal_processor=signal_processor,  # type: ignore[arg-type]
+    )
+
+    runtime._process_signal_cycle(CollectorCycleResult())
+    asyncio.run(runtime.close())
+
+    assert signal_processor.process_calls == 1
+    assert signal_processor.max_timestamps == [datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)]
+
+
+def test_live_signal_processor_fetch_signal_bars_after_honors_max_timestamp() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    for index in range(3):
+        store.upsert_bar(_five_minute_bar(index))
+
+    processor = LiveSignalProcessor.__new__(LiveSignalProcessor)
+    processor.audit_repository = audit
+    processor.asset = "EURUSD"
+    processor.timeframe = "5m"
+
+    selected = processor._fetch_signal_bars_after(
+        datetime(2024, 1, 2, 9, 55, tzinfo=timezone.utc),
+        max_timestamp=datetime(2024, 1, 2, 10, 5, tzinfo=timezone.utc),
+    )
+    store.close()
+
+    assert [bar.timestamp for bar in selected] == [
+        datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc),
+        datetime(2024, 1, 2, 10, 5, tzinfo=timezone.utc),
+    ]
+
+
 class _FakeClient:
     def __init__(self, *, seed_bars: list[MarketBar]) -> None:
         self.seed_bars = seed_bars
@@ -375,12 +462,14 @@ class _FakeBackfill:
 class _RecordingSignalProcessor:
     def __init__(self) -> None:
         self.process_calls = 0
+        self.max_timestamps: list[datetime | None] = []
 
     def warm_from_store(self) -> int:
         return 0
 
-    def process_new_bars_from_store(self, *, emit_operator_artifacts: bool):
+    def process_new_bars_from_store(self, *, emit_operator_artifacts: bool, max_timestamp=None):
         self.process_calls += 1
+        self.max_timestamps.append(max_timestamp)
         return ()
 
 
@@ -428,6 +517,9 @@ def _build_runtime(
             asset="EURUSD",
             source_timeframe="1m",
             poll_interval_seconds=0.0,
+            finalized_bar_grace_seconds=0.0,
+            signal_processing_delay_seconds=0.0,
+            cycle_finalized_refresh_lookback_bars=0,
             max_cycles=1,
         ),
         client=client,  # type: ignore[arg-type]

@@ -1,5 +1,5 @@
 """
-OTE (Optimal Trade Entry) Labeling Engine — v2
+Reversal Labeling Engine v2
 ================================================
 A fully causal, backtest-safe labeling pipeline for FX swing-entry detection.
 
@@ -37,8 +37,8 @@ import warnings
 # ============================================================================
 
 @dataclass
-class OTEParams:
-    """All configurable parameters for the OTE labeling pipeline."""
+class ReversalParams:
+    """All configurable parameters for the reversal labeling pipeline."""
     
     # --- ATR Configuration ---
     atr_period: int = 14
@@ -958,7 +958,7 @@ def run_diagnostics(df, swings, ll, ls, el, es, nl, ns, satr, params,
 
 def print_diagnostics(d):
     print("\n" + "=" * 70)
-    print("OTE LABELING DIAGNOSTICS (v2 — Structural ATR)")
+    print("REVERSAL LABELING DIAGNOSTICS (v2 - Structural ATR)")
     print("=" * 70)
     
     if "satr_mean" in d:
@@ -1023,7 +1023,7 @@ def print_diagnostics(d):
 # VISUALIZATION
 # ============================================================================
 
-def plot_swings(df, swings, ll, ls, start_date=None, end_date=None, save_path=None):
+def plot_reversal_swings(df, swings, ll, ls, start_date=None, end_date=None, save_path=None):
     try:
         import matplotlib; matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -1058,7 +1058,7 @@ def plot_swings(df, swings, ll, ls, start_date=None, end_date=None, save_path=No
             ax.plot(sp.confirm_time, cl[sp.confirm_index], "x", color=cc,
                     markersize=8, markeredgewidth=2, zorder=4)
     
-    ax.set_title("OTE v2: Structural Swing Detection (1hr ATR thresholds)", fontsize=14)
+    ax.set_title("Reversal v2: Structural Swing Detection (1hr ATR thresholds)", fontsize=14)
     ax.set_xlabel("Time"); ax.set_ylabel("Price"); ax.grid(True, alpha=0.3)
     ax.legend(handles=[
         Line2D([0],[0], color="#333", lw=1, label="Close"),
@@ -1076,19 +1076,19 @@ def plot_swings(df, swings, ll, ls, start_date=None, end_date=None, save_path=No
 # ORCHESTRATOR
 # ============================================================================
 
-def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbose=True):
+def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbose=True):
     """
-    Master pipeline for OTE labels.
+    Master pipeline for reversal labels.
     
     v2: Uses structural ATR from 1hr timeframe for all thresholds.
     """
-    if params is None: params = OTEParams()
+    if params is None: params = ReversalParams()
     params.validate()
     
     df_5m = _prep(df_5m); df_30m = _prep(df_30m)
     anomaly_count = int(df_5m.attrs.get("anomaly_count", 0))
     n = len(df_5m)
-    if verbose: print(f"[OTE v2] {n:,} bars on 5m")
+    if verbose: print(f"[Reversal v2] {n:,} bars on 5m")
     
     # ATR
     atr_5m = compute_atr(df_5m, params.atr_period, params.atr_smoothing)
@@ -1102,20 +1102,20 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
         satr_30m = map_htf_atr_to_ltf(atr_1hr, df_30m.index)
         if verbose:
             v = satr_5m.dropna()
-            if len(v): print(f"[OTE v2] Structural ATR (1hr→5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
+            if len(v): print(f"[Reversal v2] Structural ATR (1hr->5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
     else:
         satr_5m = map_htf_atr_to_ltf(atr_30m, df_5m.index)
         satr_30m = atr_30m
         if verbose:
             v = satr_5m.dropna()
-            if len(v): print(f"[OTE v2] Structural ATR (30m→5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
+            if len(v): print(f"[Reversal v2] Structural ATR (30m->5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
     
     df_5m["atr"] = atr_5m; df_5m["structural_atr"] = satr_5m
     
     # CUSUM
     ct = satr_5m * params.cusum_atr_mult
     cusum_ev = cusum_filter(df_5m["close"], ct, params.cusum_use_dynamic, params.cusum_fixed_threshold)
-    if verbose: print(f"[OTE v2] CUSUM events: {len(cusum_ev):,}")
+    if verbose: print(f"[Reversal v2] CUSUM events: {len(cusum_ev):,}")
     
     # 5m swings with structural ATR
     sw5 = detect_swings_zigzag(
@@ -1123,7 +1123,7 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
         params.min_swing_distance_atr, params.min_bars_between_swings,
         params.warmup_bars, params.confirm_use_close, "5m"
     )
-    if verbose: print(f"[OTE v2] 5m swings: {len(sw5)}")
+    if verbose: print(f"[Reversal v2] 5m swings: {len(sw5)}")
     
     # 30m swings
     sw30 = detect_swings_zigzag(
@@ -1131,7 +1131,7 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
         params.min_swing_distance_atr * 0.8, params.htf_min_bars_between,
         params.warmup_bars, params.confirm_use_close, "30m"
     )
-    if verbose: print(f"[OTE v2] 30m swings: {len(sw30)}")
+    if verbose: print(f"[Reversal v2] 30m swings: {len(sw30)}")
     
     # 1hr swings
     sw1h = []
@@ -1143,7 +1143,7 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
             max(2, params.htf_min_bars_between // 2), params.warmup_bars,
             params.confirm_use_close, "1hr"
         )
-        if verbose: print(f"[OTE v2] 1hr swings: {len(sw1h)}")
+        if verbose: print(f"[Reversal v2] 1hr swings: {len(sw1h)}")
 
     # HTF matching / timing metadata
     htf_match = compute_htf_swing_match(sw5, sw30, params.htf_confluence_window_minutes)
@@ -1154,7 +1154,7 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
     sw5 = validate_swings_triple_barrier(df_5m, sw5, satr_5m, params)
     if params.tb_enable:
         nv = sum(1 for s in sw5 if s.tb_outcome != "sl")
-        if verbose: print(f"[OTE v2] TB validation: {nv}/{len(sw5)} passed")
+        if verbose: print(f"[Reversal v2] TB validation: {nv}/{len(sw5)} passed")
 
     # Trend scanning validation and entry scoring
     sw5 = trend_scan_swings(df_5m, sw5, params)
@@ -1164,24 +1164,24 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
     
     # Labels
     ll, ls = create_zone_labels(n, sw5, params)
-    df_5m["label_long_ote"] = ll; df_5m["label_short_ote"] = ls
-    df_5m["label_long_entry"] = entry_long; df_5m["label_short_entry"] = entry_short
+    df_5m["label_long_reversal"] = ll; df_5m["label_short_reversal"] = ls
+    df_5m["label_long_reversal_entry"] = entry_long; df_5m["label_short_reversal_entry"] = entry_short
     ql, qs, eql, eqs = create_quality_arrays(n, sw5, params)
-    df_5m["label_quality_long"] = ql; df_5m["label_quality_short"] = qs
-    df_5m["entry_quality_long"] = eql; df_5m["entry_quality_short"] = eqs
+    df_5m["label_quality_long_reversal"] = ql; df_5m["label_quality_short_reversal"] = qs
+    df_5m["entry_quality_long_reversal"] = eql; df_5m["entry_quality_short_reversal"] = eqs
     
     # Exclusion
     el, es, nl, ns = create_exclusion_masks(n, sw5, ll, ls, params)
-    df_5m["exclude_long"] = el; df_5m["exclude_short"] = es
-    df_5m["neg_ok_long"] = nl; df_5m["neg_ok_short"] = ns
+    df_5m["exclude_long_reversal"] = el; df_5m["exclude_short_reversal"] = es
+    df_5m["neg_ok_long_reversal"] = nl; df_5m["neg_ok_short_reversal"] = ns
     
     # HTF confluence
     hcl, hcs = compute_htf_confluence(sw5, sw30, n, df_5m.index, params.htf_confluence_window_minutes)
-    df_5m["htf_confluence_long"] = hcl; df_5m["htf_confluence_short"] = hcs
+    df_5m["htf_confluence_long_reversal"] = hcl; df_5m["htf_confluence_short_reversal"] = hcs
     
     if sw1h:
         h1l, h1s = compute_htf_confluence(sw5, sw1h, n, df_5m.index, params.htf_confluence_window_minutes * 2)
-        df_5m["htf_confluence_long_1hr"] = h1l; df_5m["htf_confluence_short_1hr"] = h1s
+        df_5m["htf_confluence_long_reversal_1hr"] = h1l; df_5m["htf_confluence_short_reversal_1hr"] = h1s
         timing_1h = compute_htf_timing_features(n, df_5m.index, sw1h, "1h")
         for col, values in timing_1h.items():
             df_5m[col] = values
@@ -1192,11 +1192,11 @@ def build_ote_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, verbos
     # Uniqueness
     if params.compute_uniqueness:
         cl, cs = compute_label_concurrency(n, sw5, params)
-        df_5m["concurrency_long"] = cl; df_5m["concurrency_short"] = cs
-        df_5m["sample_weight_long"] = compute_sample_weights(cl, ll) * np.where(ll > 0, np.maximum(ql, params.min_label_quality), 1.0)
-        df_5m["sample_weight_short"] = compute_sample_weights(cs, ls) * np.where(ls > 0, np.maximum(qs, params.min_label_quality), 1.0)
-        df_5m["sample_weight_entry_long"] = compute_sample_weights(np.maximum(cl, 1), entry_long) * np.where(entry_long > 0, np.maximum(eql, params.min_label_quality), 1.0)
-        df_5m["sample_weight_entry_short"] = compute_sample_weights(np.maximum(cs, 1), entry_short) * np.where(entry_short > 0, np.maximum(eqs, params.min_label_quality), 1.0)
+        df_5m["concurrency_long_reversal"] = cl; df_5m["concurrency_short_reversal"] = cs
+        df_5m["sample_weight_long_reversal"] = compute_sample_weights(cl, ll) * np.where(ll > 0, np.maximum(ql, params.min_label_quality), 1.0)
+        df_5m["sample_weight_short_reversal"] = compute_sample_weights(cs, ls) * np.where(ls > 0, np.maximum(qs, params.min_label_quality), 1.0)
+        df_5m["sample_weight_entry_long_reversal"] = compute_sample_weights(np.maximum(cl, 1), entry_long) * np.where(entry_long > 0, np.maximum(eql, params.min_label_quality), 1.0)
+        df_5m["sample_weight_entry_short_reversal"] = compute_sample_weights(np.maximum(cs, 1), entry_short) * np.where(entry_short > 0, np.maximum(eqs, params.min_label_quality), 1.0)
     
     wm = np.zeros(n, dtype=bool); wm[:params.warmup_bars] = True
     df_5m["warmup_mask"] = wm
@@ -1259,14 +1259,14 @@ def generate_synthetic_fx_data(start="2023-01-02", end="2023-03-31", freq_minute
 
 
 def run_example():
-    print("=" * 70); print("OTE v2 — EXAMPLE"); print("=" * 70)
+    print("=" * 70); print("REVERSAL v2 - EXAMPLE"); print("=" * 70)
     d5 = generate_synthetic_fx_data(freq_minutes=5, seed=42)
     d30 = generate_synthetic_fx_data(freq_minutes=30, seed=42)
     d1h = generate_synthetic_fx_data(freq_minutes=60, seed=42)
     print(f"5m: {len(d5):,}  30m: {len(d30):,}  1hr: {len(d1h):,}")
-    df, diag, sw = build_ote_labels(d5, d30, df_1hr=d1h, verbose=True)
-    plot_swings(df, sw, df["label_long_ote"].values, df["label_short_ote"].values,
-                "2023-01-09", "2023-01-20", "/home/claude/ote_v2_plot.png")
+    df, diag, sw = build_reversal_labels(d5, d30, df_1hr=d1h, verbose=True)
+    plot_reversal_swings(df, sw, df["label_long_reversal"].values, df["label_short_reversal"].values,
+                         "2023-01-09", "2023-01-20", "/home/claude/reversal_v2_plot.png")
     return df, diag, sw
 
 if __name__ == "__main__":

@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from pathlib import Path
 from uuid import uuid4
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from data.labeling.labeling_engine import build_default_params, build_output_metadata, load_fx_csv
+from data.labeling.labeling_engine import (
+    build_default_params,
+    build_output_metadata,
+    filter_date_range,
+    load_fx_csv,
+    write_metadata,
+)
 
 
 def test_load_fx_csv_normalizes_gmt_minus_6_input_and_builds_metadata() -> None:
@@ -66,5 +74,71 @@ def test_load_fx_csv_normalizes_gmt_minus_6_input_and_builds_metadata() -> None:
         assert metadata["timezone_contract"]["canonical_timezone"] == "UTC"
         assert metadata["timezone_contract"]["csv_timestamps_are_timezone_aware"] is False
         assert metadata["bar_timestamp_semantics"] == "bar_open"
+    finally:
+        shutil.rmtree(test_root, ignore_errors=True)
+
+
+def test_filter_date_range_keeps_requested_canonical_window_and_updates_metadata() -> None:
+    index = pd.date_range("2018-12-31 23:55:00+00:00", periods=5, freq="5min", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "open": [1, 2, 3, 4, 5],
+            "high": [1, 2, 3, 4, 5],
+            "low": [1, 2, 3, 4, 5],
+            "close": [1, 2, 3, 4, 5],
+            "volume": [1, 1, 1, 1, 1],
+        },
+        index=index,
+    )
+    df.attrs["source_row_count"] = len(df)
+    df.attrs["anomaly_count"] = 0
+
+    filtered = filter_date_range(
+        df,
+        start_date="2019-01-01",
+        end_date="2019-01-01",
+        canonical_timezone="UTC",
+    )
+
+    assert list(filtered.index.astype(str)) == [
+        "2019-01-01 00:00:00+00:00",
+        "2019-01-01 00:05:00+00:00",
+        "2019-01-01 00:10:00+00:00",
+        "2019-01-01 00:15:00+00:00",
+    ]
+    assert filtered.attrs["rows_before_date_filter"] == 5
+    assert filtered.attrs["rows_removed_by_date_filter"] == 1
+    assert filtered.attrs["requested_start_date"] == "2019-01-01"
+    assert filtered.attrs["requested_end_date"] == "2019-01-01"
+    assert filtered.attrs["date_filter_start_canonical"] == "2019-01-01T00:00:00+00:00"
+    assert filtered.attrs["date_filter_end_canonical"] == "2019-01-01T00:00:00+00:00"
+
+
+def test_write_metadata_handles_numpy_and_pandas_scalars() -> None:
+    test_root = ROOT / "tmp" / f"test_write_metadata_handles_numpy_scalars_{uuid4().hex}"
+    test_root.mkdir(parents=True)
+
+    try:
+        output_path = test_root / "labels.csv"
+        payload = {
+            "family_diagnostics": {
+                "reversal": {
+                    "sanity_checks": [
+                        ("no_overlap", np.bool_(True), np.int64(0)),
+                        ("distribution_ok", np.bool_(False), np.float64(2.5)),
+                    ],
+                    "timestamp": pd.Timestamp("2024-01-01T00:00:00Z"),
+                }
+            }
+        }
+
+        metadata_path = write_metadata(output_path, payload)
+        saved = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+        assert saved["family_diagnostics"]["reversal"]["sanity_checks"] == [
+            ["no_overlap", True, 0],
+            ["distribution_ok", False, 2.5],
+        ]
+        assert saved["family_diagnostics"]["reversal"]["timestamp"] == "2024-01-01T00:00:00+00:00"
     finally:
         shutil.rmtree(test_root, ignore_errors=True)

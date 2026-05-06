@@ -4,6 +4,7 @@ from datetime import datetime
 
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import GapCheckResult, IngestionGap, ensure_utc, timeframe_to_timedelta
+from ote_live.ingestion.market_calendar import filter_expected_market_bar_timestamps
 
 
 class GapDetector:
@@ -37,14 +38,19 @@ class GapDetector:
             while cursor < observed_timestamp:
                 missing_timestamps.append(cursor)
                 cursor += self._step
-            gap = IngestionGap(
+            missing_timestamps = filter_expected_market_bar_timestamps(
+                missing_timestamps,
                 asset=bar.asset,
-                timeframe=bar.timeframe,  # type: ignore[arg-type]
-                expected_timestamp=expected_timestamp,
-                observed_timestamp=observed_timestamp,
-                missing_timestamps=missing_timestamps,
-                gap_size=len(missing_timestamps),
             )
+            if missing_timestamps:
+                gap = IngestionGap(
+                    asset=bar.asset,
+                    timeframe=bar.timeframe,  # type: ignore[arg-type]
+                    expected_timestamp=missing_timestamps[0],
+                    observed_timestamp=observed_timestamp,
+                    missing_timestamps=missing_timestamps,
+                    gap_size=len(missing_timestamps),
+                )
 
         self._last_timestamp = observed_timestamp
         return GapCheckResult(observed_timestamp=observed_timestamp, gap=gap)

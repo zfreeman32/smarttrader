@@ -9,7 +9,8 @@ multiple training backends:
 
 Shared pieces such as target loading, fold-safe scaling, event scoring,
 calibration, thresholding, and artifact writing remain in this module.
-The default targets are ``long_ote`` and ``short_ote``.
+When no explicit targets are supplied, the trainer auto-discovers prepared
+target folders under ``--prepared-root``.
 """
 
 from __future__ import annotations
@@ -63,7 +64,7 @@ EPS = 1e-9
 @dataclass
 class OTETrainingConfig:
     prepared_root: str = "data/prepared/eurusd_5min_ote_full"
-    targets: List[str] = field(default_factory=lambda: ["long_ote", "short_ote"])
+    targets: List[str] = field(default_factory=list)
     output_root: str = "models/ote_full_xgb_v2"
     backend: str = "xgboost"
     model_type: str = "tcn"
@@ -210,6 +211,46 @@ class ModelTrainingResult:
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
+
+
+def resolve_prepared_targets(prepared_root: Path, targets: Sequence[str]) -> List[str]:
+    if not prepared_root.exists():
+        raise FileNotFoundError(f"Prepared root not found: {prepared_root}")
+
+    requested: List[str] = []
+    for target in targets:
+        name = str(target).strip()
+        if name and name not in requested:
+            requested.append(name)
+
+    if requested:
+        missing = [name for name in requested if not (prepared_root / name).exists()]
+        if missing:
+            missing_list = ", ".join(missing)
+            raise FileNotFoundError(
+                f"Prepared target directories not found under {prepared_root}: {missing_list}"
+            )
+        return requested
+
+    discovered: List[str] = []
+    for child in sorted(prepared_root.iterdir()):
+        if not child.is_dir():
+            continue
+        required_files = (
+            child / "train.csv",
+            child / "val.csv",
+            child / "test.csv",
+            child / "features.json",
+            child / "report.json",
+        )
+        if all(path.exists() for path in required_files):
+            discovered.append(child.name)
+
+    if not discovered:
+        raise FileNotFoundError(
+            f"No prepared target directories were found under {prepared_root}."
+        )
+    return discovered
 
 
 def safe_average_precision(
@@ -2086,7 +2127,12 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--output-root", default="models/ote_full_xgb_v2")
     parser.add_argument("--backend", choices=["xgboost", "torch"], default="xgboost")
     parser.add_argument("--model-type", choices=["tcn", "lstm"], default="tcn")
-    parser.add_argument("--targets", nargs="+", default=["long_ote", "short_ote"])
+    parser.add_argument(
+        "--targets",
+        nargs="+",
+        default=None,
+        help="Prepared target folder name(s) to train. Omit to auto-discover all prepared targets.",
+    )
     parser.add_argument("--trials", type=int, default=20)
     parser.add_argument("--cv-initial-train-rows", type=int, default=250_000)
     parser.add_argument("--cv-val-rows", type=int, default=100_000)
@@ -2142,7 +2188,7 @@ def parse_args() -> OTETrainingConfig:
         output_root=args.output_root,
         backend=args.backend,
         model_type=args.model_type,
-        targets=args.targets,
+        targets=args.targets or [],
         n_trials=args.trials,
         cv_initial_train_rows=args.cv_initial_train_rows,
         cv_val_rows=args.cv_val_rows,
@@ -2188,8 +2234,9 @@ def parse_args() -> OTETrainingConfig:
 def main() -> None:
     config = parse_args()
     prepared_root = Path(config.prepared_root)
+    resolved_targets = resolve_prepared_targets(prepared_root, config.targets)
     results = []
-    for target_name in config.targets:
+    for target_name in resolved_targets:
         dataset = load_prepared_target_dataset(prepared_root=prepared_root, target_name=target_name, config=config)
         result = train_target_pipeline(dataset=dataset, config=config)
         results.append(

@@ -9,6 +9,7 @@ from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_r
 from ote_live.ingestion.runtime import (
     DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS,
     DEFAULT_DB_PATH,
+    DEFAULT_FINALIZED_BAR_GRACE_SECONDS,
     DEFAULT_LONG_RUNTIME_MANIFEST_PATH,
     DEFAULT_SIGNAL_CHART_OUTPUT_ROOT,
     DEFAULT_SHORT_RUNTIME_MANIFEST_PATH,
@@ -58,6 +59,21 @@ def build_parser() -> argparse.ArgumentParser:
         default=env_float("OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS", DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS),
     )
     parser.add_argument("--stream-outputsize", type=int, default=env_int("OTE_LIVE_STREAM_OUTPUTSIZE", 2))
+    parser.add_argument(
+        "--finalized-bar-grace-seconds",
+        type=float,
+        default=env_float("OTE_LIVE_FINALIZED_BAR_GRACE_SECONDS", DEFAULT_FINALIZED_BAR_GRACE_SECONDS),
+    )
+    parser.add_argument(
+        "--signal-processing-delay-seconds",
+        type=float,
+        default=env_float("OTE_LIVE_SIGNAL_PROCESSING_DELAY_SECONDS"),
+    )
+    parser.add_argument(
+        "--cycle-finalized-refresh-lookback-bars",
+        type=int,
+        default=env_int("OTE_LIVE_CYCLE_FINALIZED_REFRESH_LOOKBACK_BARS", 6),
+    )
     parser.add_argument(
         "--long-runtime-manifest-path",
         default=str(env_path("OTE_LIVE_LONG_RUNTIME_MANIFEST_PATH", DEFAULT_LONG_RUNTIME_MANIFEST_PATH)),
@@ -139,6 +155,9 @@ async def _run(args: argparse.Namespace) -> int:
         db_path=Path(args.db_path),
         poll_interval_seconds=args.poll_interval_seconds,
         stream_outputsize=args.stream_outputsize,
+        finalized_bar_grace_seconds=args.finalized_bar_grace_seconds,
+        signal_processing_delay_seconds=args.signal_processing_delay_seconds,
+        cycle_finalized_refresh_lookback_bars=args.cycle_finalized_refresh_lookback_bars,
         startup_history_bars=args.startup_history_bars,
         startup_warmup_lookback_bars=args.startup_warmup_lookback_bars,
         startup_backfill_chunk_bars=args.startup_backfill_chunk_bars,
@@ -313,6 +332,8 @@ def _build_runtime_payload(summary, cycle_result) -> dict[str, object]:
             "polled_bars": int(cycle_result.polled_bars),
             "stored_source_bars": int(cycle_result.stored_source_bars),
             "stored_aggregated_bars": int(cycle_result.stored_aggregated_bars),
+            "reconciled_source_bars": int(getattr(cycle_result, "reconciled_source_bars", 0)),
+            "reconciled_aggregated_bars": int(getattr(cycle_result, "reconciled_aggregated_bars", 0)),
             "backfilled_bars": int(cycle_result.backfilled_bars),
             "gaps_detected": int(cycle_result.gaps_detected),
             "duplicates": int(cycle_result.duplicates),

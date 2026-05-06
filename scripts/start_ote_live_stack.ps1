@@ -1,5 +1,6 @@
 param(
     [string]$PythonExe = "",
+    [switch]$PackagePolicies,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ExtraArgs
 )
@@ -18,7 +19,13 @@ if ([string]::IsNullOrWhiteSpace($PythonExe)) {
 
 Push-Location $repoRoot
 try {
-    & $PythonExe -m ote_live.scripts.run_live_stack @ExtraArgs
+    $launchArgs = @()
+    if (-not $PackagePolicies) {
+        $launchArgs += "--skip-policy-package"
+    }
+    $launchArgs += $ExtraArgs
+
+    & $PythonExe -m ote_live.scripts.run_live_stack @launchArgs
     exit $LASTEXITCODE
 }
 finally {

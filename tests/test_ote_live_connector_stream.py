@@ -41,6 +41,35 @@ def test_polling_stream_waits_for_bar_finalization(monkeypatch) -> None:
     assert stream.last_emitted_timestamp == datetime(2024, 1, 2, 10, 5, tzinfo=UTC)
 
 
+def test_polling_stream_respects_configured_finalization_grace(monkeypatch) -> None:
+    client = _FakeClient(
+        [
+            _five_minute_bar(datetime(2024, 1, 2, 10, 0, tzinfo=UTC)),
+            _five_minute_bar(datetime(2024, 1, 2, 10, 5, tzinfo=UTC)),
+        ]
+    )
+    stream = FMPPollingBarStream(
+        client,  # type: ignore[arg-type]
+        asset="EURUSD",
+        timeframe="5m",
+        outputsize=2,
+        poll_interval_seconds=30.0,
+        finalized_bar_grace_seconds=90.0,
+    )
+
+    monkeypatch.setattr("ote_live.ingestion.base.utc_now", lambda: datetime(2024, 1, 2, 10, 6, 29, tzinfo=UTC))
+    first_poll = asyncio.run(stream.poll())
+
+    assert first_poll == []
+    assert stream.last_emitted_timestamp is None
+
+    monkeypatch.setattr("ote_live.ingestion.base.utc_now", lambda: datetime(2024, 1, 2, 10, 6, 30, tzinfo=UTC))
+    second_poll = asyncio.run(stream.poll())
+
+    assert [bar.timestamp for bar in second_poll] == [datetime(2024, 1, 2, 10, 0, tzinfo=UTC)]
+    assert stream.last_emitted_timestamp == datetime(2024, 1, 2, 10, 0, tzinfo=UTC)
+
+
 class _FakeClient:
     def __init__(self, bars: list[MarketBar]) -> None:
         self.bars = list(bars)

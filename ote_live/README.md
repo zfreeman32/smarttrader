@@ -22,6 +22,9 @@ OTE_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
 OTE_LIVE_SOURCE_TIMEFRAME=5m
 OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=300
 OTE_LIVE_STREAM_OUTPUTSIZE=2
+OTE_LIVE_FINALIZED_BAR_GRACE_SECONDS=90
+OTE_LIVE_SIGNAL_PROCESSING_DELAY_SECONDS=120
+OTE_LIVE_CYCLE_FINALIZED_REFRESH_LOOKBACK_BARS=6
 OTE_LIVE_REGISTRY_PATH=models/ote_model_registry_v1_v2_candidates.json
 OTE_LIVE_DASHBOARD_HOST=127.0.0.1
 OTE_LIVE_DASHBOARD_PORT=8050
@@ -68,8 +71,10 @@ What the launcher does:
 The dashboard now stays pinned to the configured long and short primary models from the runtime manifests. If a configured primary has not produced stored live predictions yet, its primary confidence and inspection panels stay empty instead of silently switching to another model. The main price chart still shows all stored model signals.
 
 The live collector now defaults to the Financial Modeling Prep `5min` forex
-chart endpoint for `EURUSD`, polling every five minutes with a small
-`outputsize` so the runtime only inspects the newest finalized candles.
+chart endpoint for `EURUSD`, adds a short post-close grace window before a bar
+is accepted as finalized, and refreshes a small recent window each cycle before
+signal evaluation so the runtime leans on reconciled candles instead of the
+first post-close snapshot.
 
 ## Useful options
 

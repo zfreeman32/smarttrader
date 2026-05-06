@@ -11,6 +11,16 @@ from .config import PreprocessingConfig, TargetDatasetSpec
 from .feature_importance import association_scores
 
 
+TARGET_HELPER_FAMILY_ALIASES: Dict[str, Tuple[str, ...]] = {
+    "": ("",),
+    "ote": ("", "ote"),
+    "reversal": ("reversal", ""),
+    "continuation": ("continuation",),
+    "continuation_pullback": ("continuation", "continuation_pullback"),
+    "breakout": ("breakout",),
+}
+
+
 def downcast_numeric_series(series: pd.Series) -> pd.Series:
     if pd.api.types.is_datetime64_any_dtype(series) or pd.api.types.is_timedelta64_dtype(series):
         return series
@@ -249,29 +259,72 @@ def discover_targets(
     config: PreprocessingConfig,
 ) -> List[TargetDatasetSpec]:
     specs: List[TargetDatasetSpec] = []
+    seen_names: set[str] = set()
     for target_column in config.target_columns:
         if target_column not in df.columns:
             continue
 
-        direction = "long" if "_long_" in target_column else "short"
-        label_kind = "entry" if target_column.endswith("_entry") else "ote"
+        body = target_column.removeprefix("label_")
+        if body == target_column:
+            continue
 
-        sample_weight_column = f"sample_weight_{direction}"
-        quality_column = f"label_quality_{direction}"
-        if label_kind == "entry":
-            sample_weight_column = f"sample_weight_entry_{direction}"
-            quality_column = f"entry_quality_{direction}"
+        direction = None
+        remainder = ""
+        for candidate in ("long", "short"):
+            prefix = f"{candidate}_"
+            if body.startswith(prefix):
+                direction = candidate
+                remainder = body[len(prefix) :]
+                break
+        if direction is None or not remainder:
+            continue
+
+        is_entry = remainder == "entry" or remainder.endswith("_entry")
+        if is_entry:
+            family = remainder[: -len("_entry")].rstrip("_")
+            label_kind = f"{family}_entry" if family else "entry"
+        else:
+            family = remainder
+            label_kind = family
+
+        family_aliases = TARGET_HELPER_FAMILY_ALIASES.get(family, (family,))
+
+        def first_existing(candidates: List[str]) -> Optional[str]:
+            for column in candidates:
+                if column in df.columns:
+                    return column
+            return None
+
+        def helper_candidates(prefix: str) -> List[str]:
+            candidates: List[str] = []
+            for alias in family_aliases:
+                if alias:
+                    candidates.append(f"{prefix}_{direction}_{alias}")
+                else:
+                    candidates.append(f"{prefix}_{direction}")
+            return list(dict.fromkeys(candidates))
+
+        sample_weight_prefix = "sample_weight_entry" if is_entry else "sample_weight"
+        quality_prefix = "entry_quality" if is_entry else "label_quality"
+        sample_weight_column = first_existing(helper_candidates(sample_weight_prefix))
+        quality_column = first_existing(helper_candidates(quality_prefix))
+        exclude_column = first_existing(helper_candidates("exclude"))
+        safe_negative_column = first_existing(helper_candidates("neg_ok"))
+
+        if body in seen_names:
+            continue
+        seen_names.add(body)
 
         specs.append(
             TargetDatasetSpec(
-                name=f"{direction}_{label_kind}",
+                name=body,
                 target_column=target_column,
                 direction=direction,
                 label_kind=label_kind,
-                sample_weight_column=sample_weight_column if sample_weight_column in df.columns else None,
-                quality_column=quality_column if quality_column in df.columns else None,
-                exclude_column=f"exclude_{direction}" if f"exclude_{direction}" in df.columns else None,
-                safe_negative_column=f"neg_ok_{direction}" if f"neg_ok_{direction}" in df.columns else None,
+                sample_weight_column=sample_weight_column,
+                quality_column=quality_column,
+                exclude_column=exclude_column,
+                safe_negative_column=safe_negative_column,
             )
         )
 

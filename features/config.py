@@ -15,6 +15,7 @@ def _default_feature_sets() -> List[str]:
         "volume",
         "structure",
         "htf_context",
+        "continuation_pullback",
         "ict_context",
         "exhaustion",
         "microstructure",
@@ -90,6 +91,10 @@ class FeatureBuilderConfig:
             "price_position_50",
             "dist_to_prior_high_20_atr",
             "dist_to_prior_low_20_atr",
+            "continuation_bull_pullback_depth_atr",
+            "continuation_bear_pullback_depth_atr",
+            "continuation_bull_retest_quality",
+            "continuation_bear_retest_quality",
         ]
     )
     lag_periods: List[int] = field(default_factory=lambda: [1, 3, 5, 10])
@@ -104,6 +109,10 @@ class FeatureBuilderConfig:
             "roc_5",
             "volume_relative_20",
             "price_position_50",
+            "continuation_bull_pullback_depth_atr",
+            "continuation_bear_pullback_depth_atr",
+            "continuation_bull_retest_quality",
+            "continuation_bear_retest_quality",
         ]
     )
     rolling_windows: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
@@ -118,6 +127,10 @@ class FeatureBuilderConfig:
             "volume_relative_20",
             "rsi_14",
             "price_position_50",
+            "continuation_bull_pullback_depth_atr",
+            "continuation_bear_pullback_depth_atr",
+            "continuation_bull_pullback_channel_slope_8_atr",
+            "continuation_bear_pullback_channel_slope_8_atr",
         ]
     )
     zscore_window: int = 60

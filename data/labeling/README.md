@@ -1,6 +1,14 @@
 # Data Labeling Method
 
-This folder documents the labeling workflow used to create EURUSD 5-minute training labels for swing-based Optimal Trade Entry (OTE) modeling.
+This folder documents the labeling workflow used to create EURUSD 5-minute training labels for reversal, continuation-pullback, and breakout modeling.
+
+The main entrypoint is now [`labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/labeling_engine.py), which generates reversal, continuation-pullback, and breakout labels together and writes one combined CSV with separate named columns for each label family.
+
+The family-specific internals still live in:
+
+- [`reversal_labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/reversal_labeling_engine.py) for reversal logic
+- [`ote_continuation_pullback_labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/ote_continuation_pullback_labeling_engine.py) for continuation logic
+- [`ote_breakout_labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/ote_breakout_labeling_engine.py) for breakout logic
 
 The method is intentionally not a naive "mark every local high/low" process. It is a causal, volatility-aware labeling pipeline designed to generate labels that are usable for machine learning without leaking future structure into the detection logic itself. Future information is only used where appropriate for training-target validation and entry scoring.
 
@@ -8,7 +16,7 @@ The method is intentionally not a naive "mark every local high/low" process. It 
 
 The labeling system tries to answer two related questions:
 
-1. Which 5-minute bars sit inside a valid long or short OTE zone?
+1. Which 5-minute bars sit inside a valid long or short reversal zone?
 2. Which single bar was the best executable entry near that swing?
 
 To do that, the pipeline combines:
@@ -57,7 +65,7 @@ This is one of the main design choices in the method: structural thresholds are 
 
 ### 3. Detect candidate swings causally
 
-[`ote_labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/ote_labeling_engine.py) uses a causal zigzag-style detector with structural ATR-based confirmation.
+[`reversal_labeling_engine.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/reversal_labeling_engine.py) uses a causal zigzag-style detector with structural ATR-based confirmation.
 
 Key rules:
 
@@ -131,7 +139,7 @@ Swings below the minimum quality threshold are rejected from positive labeling.
 
 ### 8. Create zone labels
 
-Positive swings become bar-level OTE zone labels.
+Positive swings become bar-level reversal zone labels.
 
 Current default zone definition:
 
@@ -140,8 +148,8 @@ Current default zone definition:
 
 This creates:
 
-- `label_long_ote`
-- `label_short_ote`
+- `label_long_reversal`
+- `label_short_reversal`
 
 A long zone is anchored around a validated swing low. A short zone is anchored around a validated swing high.
 
@@ -166,8 +174,8 @@ Candidate bars are scored using:
 
 This produces:
 
-- `label_long_entry`
-- `label_short_entry`
+- `label_long_reversal_entry`
+- `label_short_reversal_entry`
 
 These labels are intentionally much sparser than the zone labels.
 
@@ -206,8 +214,8 @@ Positive labels are weighted by both uniqueness and label quality.
 
 Running the main engine writes:
 
-- bar-level labels to [`eurusd_5min_ote_labels.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/labeled_data/eurusd_5min_ote_labels.csv)
-- swing metadata to [`eurusd_5min_ote_swings.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/labeled_data/eurusd_5min_ote_swings.csv)
+- combined bar-level labels to [`eurusd_5min_all_labels.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/labeled_data/eurusd_5min_all_labels.csv)
+- combined event metadata to [`eurusd_5min_all_label_events.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/labeled_data/eurusd_5min_all_label_events.csv)
 
 The bar-level file is what model training uses. The swing-level file is the audit trail for why those labels exist.
 
@@ -217,8 +225,8 @@ The bar-level label file contains:
 
 - raw market fields: `timestamp`, `open`, `high`, `low`, `close`, `volume`
 - volatility fields: `atr`, `structural_atr`
-- zone labels: `label_long_ote`, `label_short_ote`
-- entry labels: `label_long_entry`, `label_short_entry`
+- reversal zone labels: `label_long_reversal`, `label_short_reversal`
+- reversal entry labels: `label_long_reversal_entry`, `label_short_reversal_entry`
 - quality fields: `label_quality_long`, `label_quality_short`, `entry_quality_long`, `entry_quality_short`
 - exclusion fields: `exclude_long`, `exclude_short`, `neg_ok_long`, `neg_ok_short`
 - higher-timeframe context fields
@@ -259,9 +267,9 @@ Manual swings are currently saved to:
 - [`swings_5min_manual.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/manual_labeling/swings_5min_manual.csv) for historical manual labels
 - or `swings_5min_smoothed.csv` when using the current app defaults
 
-### OTE review and override app
+### Reversal review and override app
 
-[`ote_label_review_app.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/ote_label_review_app.py) is the second review layer.
+[`reversal_label_review_app.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/reversal_label_review_app.py) is the second review layer.
 
 What it does:
 
@@ -280,8 +288,8 @@ This means the labeling workflow stays auditable:
 
 Override outputs live in:
 
-- `data/labeling/review/ote_label_overrides.csv`
-- `data/labeling/labeled_data/eurusd_5min_ote_labels_reviewed.csv`
+- `data/labeling/review/reversal_label_overrides.csv`
+- `data/labeling/labeled_data/eurusd_5min_all_labels_reversal_reviewed.csv`
 
 ## Current Default Parameters
 
@@ -347,7 +355,7 @@ python data/labeling/manual_labeling/manual_data_labeler_v2.py
 Launch the review and override app:
 
 ```powershell
-python data/labeling/ote_label_review_app.py
+python data/labeling/reversal_label_review_app.py
 ```
 
 ## Snapshot of the Current Label Set

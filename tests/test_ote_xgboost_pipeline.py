@@ -449,6 +449,57 @@ def test_load_prepared_target_dataset_reads_source_row_idx():
         shutil.rmtree(prepared_root, ignore_errors=True)
 
 
+def test_resolve_prepared_targets_auto_discovers_multi_family_directories():
+    prepared_root = ROOT / "tmp" / f"test_resolve_prepared_targets_{uuid4().hex}"
+    long_reversal_dir = prepared_root / "long_reversal"
+    short_breakout_dir = prepared_root / "short_breakout_entry"
+    incomplete_dir = prepared_root / "ignore_me"
+
+    for target_dir in (long_reversal_dir, short_breakout_dir):
+        target_dir.mkdir(parents=True)
+        pd.DataFrame(
+            {
+                "feature_a": [0.1],
+                "target": [1],
+                "sample_weight": [1.0],
+            }
+        ).to_csv(target_dir / "train.csv", index=False)
+        pd.DataFrame(
+            {
+                "feature_a": [0.2],
+                "target": [0],
+                "sample_weight": [1.0],
+            }
+        ).to_csv(target_dir / "val.csv", index=False)
+        pd.DataFrame(
+            {
+                "feature_a": [0.3],
+                "target": [1],
+                "sample_weight": [1.0],
+            }
+        ).to_csv(target_dir / "test.csv", index=False)
+        (target_dir / "features.json").write_text(
+            json.dumps({"features": ["feature_a"], "n_features": 1}),
+            encoding="utf-8",
+        )
+        (target_dir / "report.json").write_text(
+            json.dumps({"target_name": target_dir.name}),
+            encoding="utf-8",
+        )
+
+    incomplete_dir.mkdir(parents=True)
+    (incomplete_dir / "features.json").write_text("{}", encoding="utf-8")
+
+    try:
+        resolved = pipeline.resolve_prepared_targets(prepared_root, [])
+        assert resolved == ["long_reversal", "short_breakout_entry"]
+
+        explicit = pipeline.resolve_prepared_targets(prepared_root, ["short_breakout_entry"])
+        assert explicit == ["short_breakout_entry"]
+    finally:
+        shutil.rmtree(prepared_root, ignore_errors=True)
+
+
 def test_save_training_outputs_includes_source_row_idx():
     output_dir = ROOT / "tmp" / f"test_save_training_outputs_{uuid4().hex}"
     output_dir.mkdir(parents=True)

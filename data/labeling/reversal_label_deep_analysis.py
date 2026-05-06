@@ -1,5 +1,5 @@
 """
-Deep analysis for OTE labels and human-review overrides.
+Deep analysis for reversal labels and human-review overrides.
 
 Outputs:
 - summary.txt
@@ -7,7 +7,7 @@ Outputs:
 - annual_counts.csv
 - hourly_rates.csv
 - override_summary.csv
-- ote_label_analysis.html
+- reversal_label_analysis.html
 """
 
 from __future__ import annotations
@@ -30,10 +30,21 @@ except ImportError:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LABELS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_labels.csv"
-DEFAULT_SWINGS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_swings.csv"
-DEFAULT_OVERRIDES = PROJECT_ROOT / "data" / "labeling" / "review" / "ote_label_overrides.csv"
+DEFAULT_LABELS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels.csv"
+DEFAULT_EVENTS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_label_events.csv"
+DEFAULT_OVERRIDES = PROJECT_ROOT / "data" / "labeling" / "review" / "reversal_label_overrides.csv"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "labeling" / "analysis"
+
+LEGACY_REVERSAL_COLUMN_MAP = {
+    "label_long_ote": "label_long_reversal",
+    "label_short_ote": "label_short_reversal",
+    "label_long_entry": "label_long_reversal_entry",
+    "label_short_entry": "label_short_reversal_entry",
+    "label_quality_long": "label_quality_long_reversal",
+    "label_quality_short": "label_quality_short_reversal",
+    "entry_quality_long": "entry_quality_long_reversal",
+    "entry_quality_short": "entry_quality_short_reversal",
+}
 
 
 @dataclass(frozen=True)
@@ -65,9 +76,9 @@ class TradeResult:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Deep analysis for reviewed OTE labels.")
+    parser = argparse.ArgumentParser(description="Deep analysis for reviewed reversal labels.")
     parser.add_argument("--labels", type=Path, default=DEFAULT_LABELS)
-    parser.add_argument("--swings", type=Path, default=DEFAULT_SWINGS)
+    parser.add_argument("--swings", type=Path, default=DEFAULT_EVENTS)
     parser.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser.parse_args()
@@ -76,13 +87,26 @@ def parse_args() -> argparse.Namespace:
 def load_csv(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
-    return pd.read_csv(path, parse_dates=parse_dates)
+    df = pd.read_csv(path, parse_dates=parse_dates)
+    if "timestamp" in df.columns:
+        df = normalize_reversal_columns(df)
+    return df
+
+
+def normalize_reversal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    normalized = df.copy()
+    for legacy, current in LEGACY_REVERSAL_COLUMN_MAP.items():
+        if legacy in normalized.columns and current not in normalized.columns:
+            normalized = normalized.rename(columns={legacy: current})
+    return normalized
 
 
 def apply_overrides(labels: pd.DataFrame, overrides: pd.DataFrame) -> pd.DataFrame:
     reviewed = labels.copy()
     if overrides.empty:
         return reviewed
+    overrides = overrides.copy()
+    overrides["target_label"] = overrides["target_label"].replace(LEGACY_REVERSAL_COLUMN_MAP)
     latest = overrides.sort_values(["timestamp"]).groupby(["timestamp", "target_label"], as_index=False).tail(1)
     ts_to_idx = pd.Series(reviewed.index.values, index=reviewed["timestamp"])
     for row in latest.itertuples(index=False):
@@ -91,6 +115,12 @@ def apply_overrides(labels: pd.DataFrame, overrides: pd.DataFrame) -> pd.DataFra
             continue
         reviewed.at[idx, row.target_label] = int(row.value)
     return reviewed
+
+
+def get_reversal_structural_atr_column(df: pd.DataFrame) -> str:
+    if "reversal_structural_atr" in df.columns:
+        return "reversal_structural_atr"
+    return "structural_atr"
 
 
 def bars_between_events(mask: pd.Series) -> pd.Series:
@@ -115,17 +145,18 @@ def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd
     if usable.empty:
         return pd.DataFrame(), {}
 
-    long_mask = usable["label_long_entry"].fillna(0).astype(bool)
-    short_mask = usable["label_short_entry"].fillna(0).astype(bool)
+    atr_column = get_reversal_structural_atr_column(usable)
+    long_mask = usable["label_long_reversal_entry"].fillna(0).astype(bool)
+    short_mask = usable["label_short_reversal_entry"].fillna(0).astype(bool)
     entry_mask = long_mask | short_mask
     entry_candidates = usable.loc[entry_mask].copy()
     entry_candidates["side"] = np.where(
-        entry_candidates["label_long_entry"].fillna(0).astype(bool),
+        entry_candidates["label_long_reversal_entry"].fillna(0).astype(bool),
         "long",
         "short",
     )
     entry_candidates = entry_candidates.loc[
-        entry_candidates["structural_atr"].notna() & (entry_candidates["structural_atr"] > 0)
+        entry_candidates[atr_column].notna() & (entry_candidates[atr_column] > 0)
     ]
 
     if entry_candidates.empty:
@@ -144,7 +175,7 @@ def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd
             continue
 
         entry_price = float(row.close)
-        atr = float(row.structural_atr)
+        atr = float(getattr(row, atr_column))
         if row.side == "long":
             stop_price = entry_price - config.stop_loss_atr * atr
             take_profit_price = entry_price + config.take_profit_atr * atr
@@ -288,12 +319,12 @@ def build_summary(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.Data
     summary = {
         "rows_total": int(len(labels)),
         "rows_usable": int(len(usable)),
-        "long_zone_rate_pct": float(usable["label_long_ote"].mean() * 100),
-        "short_zone_rate_pct": float(usable["label_short_ote"].mean() * 100),
-        "long_entry_rate_pct": float(usable["label_long_entry"].mean() * 100),
-        "short_entry_rate_pct": float(usable["label_short_entry"].mean() * 100),
-        "avg_label_quality_long": float(usable.loc[usable["label_quality_long"] > 0, "label_quality_long"].mean() or 0.0),
-        "avg_label_quality_short": float(usable.loc[usable["label_quality_short"] > 0, "label_quality_short"].mean() or 0.0),
+        "long_zone_rate_pct": float(usable["label_long_reversal"].mean() * 100),
+        "short_zone_rate_pct": float(usable["label_short_reversal"].mean() * 100),
+        "long_entry_rate_pct": float(usable["label_long_reversal_entry"].mean() * 100),
+        "short_entry_rate_pct": float(usable["label_short_reversal_entry"].mean() * 100),
+        "avg_label_quality_long": float(usable.loc[usable["label_quality_long_reversal"] > 0, "label_quality_long_reversal"].mean() or 0.0),
+        "avg_label_quality_short": float(usable.loc[usable["label_quality_short_reversal"] > 0, "label_quality_short_reversal"].mean() or 0.0),
         "overrides_count": int(len(overrides)),
         "swings_count": int(len(swings)),
     }
@@ -320,11 +351,11 @@ def make_dashboard(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.Dat
     usable["hour"] = usable["timestamp"].dt.hour
     usable["session"] = usable["hour"].map(session_bucket)
 
-    annual = usable.groupby("year")[["label_long_entry", "label_short_entry"]].sum().reset_index()
-    hourly = usable.groupby("hour")[["label_long_entry", "label_short_entry"]].mean().reset_index()
-    monthly = usable.groupby("month")[["label_long_entry", "label_short_entry"]].sum().tail(36).reset_index()
-    spacing_long = bars_between_events(usable["label_long_entry"])
-    spacing_short = bars_between_events(usable["label_short_entry"])
+    annual = usable.groupby("year")[["label_long_reversal_entry", "label_short_reversal_entry"]].sum().reset_index()
+    hourly = usable.groupby("hour")[["label_long_reversal_entry", "label_short_reversal_entry"]].mean().reset_index()
+    monthly = usable.groupby("month")[["label_long_reversal_entry", "label_short_reversal_entry"]].sum().tail(36).reset_index()
+    spacing_long = bars_between_events(usable["label_long_reversal_entry"])
+    spacing_short = bars_between_events(usable["label_short_reversal_entry"])
 
     fig = make_subplots(
         rows=4,
@@ -341,14 +372,14 @@ def make_dashboard(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.Dat
         ],
     )
 
-    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_long_entry"], name="Long Entries", marker_color="#198754"), row=1, col=1)
-    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_short_entry"], name="Short Entries", marker_color="#dc3545"), row=1, col=1)
+    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_long_reversal_entry"], name="Long Entries", marker_color="#198754"), row=1, col=1)
+    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_short_reversal_entry"], name="Short Entries", marker_color="#dc3545"), row=1, col=1)
 
-    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_long_entry"] * 100, mode="lines+markers", name="Long %", line=dict(color="#198754")), row=1, col=2)
-    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_short_entry"] * 100, mode="lines+markers", name="Short %", line=dict(color="#dc3545")), row=1, col=2)
+    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_long_reversal_entry"] * 100, mode="lines+markers", name="Long %", line=dict(color="#198754")), row=1, col=2)
+    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_short_reversal_entry"] * 100, mode="lines+markers", name="Short %", line=dict(color="#dc3545")), row=1, col=2)
 
-    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_long_entry"], name="Long Monthly", marker_color="#20c997"), row=2, col=1)
-    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_short_entry"], name="Short Monthly", marker_color="#fd7e14"), row=2, col=1)
+    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_long_reversal_entry"], name="Long Monthly", marker_color="#20c997"), row=2, col=1)
+    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_short_reversal_entry"], name="Short Monthly", marker_color="#fd7e14"), row=2, col=1)
 
     if not spacing_long.empty:
         fig.add_trace(go.Histogram(x=spacing_long, name="Bars between long entries", marker_color="#0d6efd", opacity=0.7), row=2, col=2)
@@ -407,10 +438,10 @@ def make_dashboard(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.Dat
         template="plotly_white",
         height=1550,
         title=(
-            "OTE Label Deep Analysis"
+            "Reversal Label Deep Analysis"
             if not backtest_stats
             else (
-                "OTE Label Deep Analysis"
+                "Reversal Label Deep Analysis"
                 f"<br><sup>Backtest: {backtest_stats['total_trades']} trades | "
                 f"WR {backtest_stats['win_rate_pct']:.1f}% | "
                 f"Return {backtest_stats['total_return_pct']:.1f}% | "
@@ -434,6 +465,12 @@ def main() -> None:
     if labels.empty:
         raise FileNotFoundError(f"No labels found at {args.labels}")
 
+    if not swings.empty and "label_family" in swings.columns:
+        swings = swings.loc[swings["label_family"] == "reversal"].reset_index(drop=True)
+    if not overrides.empty:
+        overrides = overrides.copy()
+        overrides["target_label"] = overrides["target_label"].replace(LEGACY_REVERSAL_COLUMN_MAP)
+
     reviewed = apply_overrides(labels, overrides)
     backtest_config = BacktestConfig()
     backtest_trades, backtest_stats = run_label_backtest(reviewed, backtest_config)
@@ -442,14 +479,14 @@ def main() -> None:
     annual_counts = (
         reviewed.loc[~reviewed["warmup_mask"]]
         .assign(year=lambda d: d["timestamp"].dt.year)
-        .groupby("year")[["label_long_entry", "label_short_entry", "label_long_ote", "label_short_ote"]]
+        .groupby("year")[["label_long_reversal_entry", "label_short_reversal_entry", "label_long_reversal", "label_short_reversal"]]
         .sum()
         .reset_index()
     )
     hourly_rates = (
         reviewed.loc[~reviewed["warmup_mask"]]
         .assign(hour=lambda d: d["timestamp"].dt.hour)
-        .groupby("hour")[["label_long_entry", "label_short_entry", "label_long_ote", "label_short_ote"]]
+        .groupby("hour")[["label_long_reversal_entry", "label_short_reversal_entry", "label_long_reversal", "label_short_reversal"]]
         .mean()
         .reset_index()
     )
@@ -470,7 +507,7 @@ def main() -> None:
         json.dump(summary, f, indent=2)
 
     lines = [
-        "OTE Label Deep Analysis",
+        "Reversal Label Deep Analysis",
         "=" * 30,
         f"Rows total: {summary['rows_total']:,}",
         f"Rows usable: {summary['rows_usable']:,}",
@@ -510,7 +547,7 @@ def main() -> None:
         )
     (args.output_dir / "summary.txt").write_text("\n".join(lines), encoding="utf-8")
 
-    html_path = args.output_dir / "ote_label_analysis.html"
+    html_path = args.output_dir / "reversal_label_analysis.html"
     if HAS_PLOTLY:
         dashboard = make_dashboard(reviewed, swings, overrides, backtest_trades, backtest_stats)
         dashboard.write_html(str(html_path))

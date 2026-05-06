@@ -34,6 +34,34 @@ def test_gap_detector_flags_missing_duplicate_and_out_of_order_bars() -> None:
     assert old.out_of_order is True
 
 
+def test_gap_detector_ignores_fx_weekend_market_closure() -> None:
+    detector = GapDetector(asset="EURUSD", timeframe="5m")
+
+    friday_last_bar = _bar_at(datetime(2026, 4, 10, 20, 55, tzinfo=timezone.utc), timeframe="5m")
+    sunday_first_provider_bar = _bar_at(datetime(2026, 4, 12, 21, 5, tzinfo=timezone.utc), timeframe="5m")
+
+    initial = detector.observe(friday_last_bar)
+    after_weekend = detector.observe(sunday_first_provider_bar)
+
+    assert not initial.has_issue
+    assert after_weekend.gap is None
+
+
+def test_gap_detector_flags_missing_after_sunday_reopen_boundary() -> None:
+    detector = GapDetector(asset="EURUSD", timeframe="5m")
+
+    friday_last_bar = _bar_at(datetime(2026, 4, 10, 20, 55, tzinfo=timezone.utc), timeframe="5m")
+    sunday_later_bar = _bar_at(datetime(2026, 4, 12, 21, 10, tzinfo=timezone.utc), timeframe="5m")
+
+    detector.observe(friday_last_bar)
+    after_weekend = detector.observe(sunday_later_bar)
+
+    assert after_weekend.gap is not None
+    assert after_weekend.gap.gap_size == 1
+    assert after_weekend.gap.expected_timestamp == datetime(2026, 4, 12, 21, 5, tzinfo=timezone.utc)
+    assert after_weekend.gap.missing_timestamps == [datetime(2026, 4, 12, 21, 5, tzinfo=timezone.utc)]
+
+
 def test_heartbeat_monitor_marks_source_stale_after_threshold() -> None:
     monitor = HeartbeatMonitor(source="fmp.polling", stale_after=timedelta(seconds=30))
     beat_at = datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)
@@ -48,10 +76,14 @@ def test_heartbeat_monitor_marks_source_stale_after_threshold() -> None:
 
 
 def _bar(minute: int) -> MarketBar:
+    return _bar_at(datetime(2024, 1, 2, 10, minute, tzinfo=timezone.utc))
+
+
+def _bar_at(timestamp: datetime, *, timeframe: str = "1m") -> MarketBar:
     return MarketBar(
         asset="EURUSD",
-        timeframe="1m",
-        timestamp=datetime(2024, 1, 2, 10, minute, tzinfo=timezone.utc),
+        timeframe=timeframe,
+        timestamp=timestamp,
         open=1.1,
         high=1.1005,
         low=1.0995,

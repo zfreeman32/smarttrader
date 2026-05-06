@@ -6,10 +6,22 @@ from typing import Any, Dict, List, Optional
 
 def _default_target_columns() -> List[str]:
     return [
-        "label_long_entry",
-        "label_short_entry",
+        "label_long_reversal",
+        "label_short_reversal",
+        "label_long_reversal_entry",
+        "label_short_reversal_entry",
+        "label_long_continuation_pullback",
+        "label_short_continuation_pullback",
+        "label_long_continuation_entry",
+        "label_short_continuation_entry",
+        "label_long_breakout",
+        "label_short_breakout",
+        "label_long_breakout_entry",
+        "label_short_breakout_entry",
         "label_long_ote",
         "label_short_ote",
+        "label_long_entry",
+        "label_short_entry",
     ]
 
 

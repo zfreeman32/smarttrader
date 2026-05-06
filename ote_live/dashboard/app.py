@@ -187,6 +187,10 @@ def create_dashboard_app(
             long_runtime_manifest_path=long_manifest_path,
             short_runtime_manifest_path=short_manifest_path,
         )
+        primary_model_thresholds = _load_primary_model_thresholds(
+            long_runtime_manifest_path=long_manifest_path,
+            short_runtime_manifest_path=short_manifest_path,
+        )
         manifest_model_ids = _load_manifest_model_ids(
             long_runtime_manifest_path=long_manifest_path,
             short_runtime_manifest_path=short_manifest_path,
@@ -219,12 +223,14 @@ def create_dashboard_app(
             model_id=long_model_selection.resolved_model_id,
             direction="long",
             limit=max(signal_limit, 240),
+            active_threshold=primary_model_thresholds["long"],
         )
         short_primary_confidence = _fetch_primary_confidence(
             audit_repository,
             model_id=short_model_selection.resolved_model_id,
             direction="short",
             limit=max(signal_limit, 240),
+            active_threshold=primary_model_thresholds["short"],
         )
         long_primary_signals = _fetch_primary_signals(
             audit_repository,
@@ -333,13 +339,21 @@ def create_dashboard_app(
             ),
             build_confidence_figure(
                 long_primary_confidence,
-                title=_confidence_title("Long Primary Confidence", long_model_selection),
+                title=_confidence_title(
+                    "Long Primary Confidence",
+                    long_model_selection,
+                    active_threshold=primary_model_thresholds["long"],
+                ),
                 line_color="#198754",
                 threshold_color="#14532d",
             ),
             build_confidence_figure(
                 short_primary_confidence,
-                title=_confidence_title("Short Primary Confidence", short_model_selection),
+                title=_confidence_title(
+                    "Short Primary Confidence",
+                    short_model_selection,
+                    active_threshold=primary_model_thresholds["short"],
+                ),
                 line_color="#dc3545",
                 threshold_color="#7f1d1d",
             ),
@@ -461,6 +475,17 @@ def _load_manifest_model_ids(
     }
 
 
+def _load_primary_model_thresholds(
+    *,
+    long_runtime_manifest_path: str | Path,
+    short_runtime_manifest_path: str | Path,
+) -> dict[str, float | None]:
+    return {
+        "long": _load_primary_model_threshold(long_runtime_manifest_path),
+        "short": _load_primary_model_threshold(short_runtime_manifest_path),
+    }
+
+
 def _load_primary_model_id(path: str | Path) -> str | None:
     try:
         manifest = load_direction_runtime_manifest(path)
@@ -481,21 +506,74 @@ def _load_direction_model_ids(path: str | Path) -> tuple[str, ...]:
     return tuple(model.model_id for model in manifest.models)
 
 
+def _load_primary_model_threshold(path: str | Path) -> float | None:
+    try:
+        manifest = load_direction_runtime_manifest(path)
+    except Exception:
+        return None
+    primary_model_id = manifest.recommendations.recommended_primary_model_id
+    if primary_model_id is not None:
+        for model in manifest.models:
+            if model.model_id == primary_model_id:
+                return _resolve_uniform_manifest_threshold(model)
+    if manifest.models:
+        return _resolve_uniform_manifest_threshold(manifest.models[0])
+    return None
+
+
+def _resolve_uniform_manifest_threshold(model_manifest) -> float | None:
+    thresholds = model_manifest.live_policy.thresholds
+    values: list[float] = []
+    if thresholds.global_threshold is not None:
+        values.append(float(thresholds.global_threshold))
+    if thresholds.regime_thresholds:
+        values.extend(float(value) for value in thresholds.regime_thresholds.values())
+    if not values:
+        return None
+    unique_values = {round(value, 10) for value in values}
+    if len(unique_values) != 1:
+        return None
+    return float(values[0])
+
+
 def _fetch_primary_confidence(
     audit_repository: LiveAuditRepository,
     *,
     model_id: str | None,
     direction: str,
     limit: int,
+    active_threshold: float | None = None,
 ) -> pd.DataFrame:
     if model_id is None:
         return pd.DataFrame()
-    return fetch_confidence_history(
+    confidence = fetch_confidence_history(
         audit_repository,
         model_id=model_id,
         direction=direction,
         limit=limit,
     )
+    return _decorate_confidence_history(
+        confidence,
+        active_threshold=active_threshold,
+    )
+
+
+def _decorate_confidence_history(
+    confidence: pd.DataFrame,
+    *,
+    active_threshold: float | None,
+) -> pd.DataFrame:
+    if confidence.empty:
+        return confidence
+    enriched = confidence.copy()
+    if active_threshold is not None:
+        resolved_threshold = float(active_threshold)
+        enriched["dashboard_active_threshold"] = resolved_threshold
+        enriched["display_threshold"] = resolved_threshold
+    else:
+        enriched["dashboard_active_threshold"] = pd.NA
+        enriched["display_threshold"] = enriched["threshold_applied"]
+    return enriched
 
 
 def _fetch_primary_signals(
@@ -614,13 +692,22 @@ def _override_signal_selection_from_query(
     return long_signal_id, short_signal_id
 
 
-def _confidence_title(prefix: str, model_selection: DashboardModelSelection) -> str:
+def _confidence_title(
+    prefix: str,
+    model_selection: DashboardModelSelection,
+    *,
+    active_threshold: float | None = None,
+) -> str:
     model_id = model_selection.resolved_model_id
     if model_id is None:
         return f"{prefix} | unresolved"
     if model_selection.used_fallback and model_selection.configured_model_id:
-        return f"{prefix} | {model_id} (fallback from {model_selection.configured_model_id})"
-    return f"{prefix} | {model_id}"
+        base = f"{prefix} | {model_id} (fallback from {model_selection.configured_model_id})"
+    else:
+        base = f"{prefix} | {model_id}"
+    if active_threshold is not None:
+        return f"{base} | active thr {active_threshold:.4f}"
+    return base
 
 
 def _build_signal_inspection_payload(

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import features.preprocessing as preprocessing_module
 from features.preprocessing import FeaturePreprocessingPipeline, PreprocessingConfig
+from preprocessing.feature_selection import discover_targets
 
 
 def _write_dataset(base_dir: Path) -> Path:
@@ -265,3 +266,54 @@ def test_feature_importance_respects_analysis_row_cap(monkeypatch) -> None:
     assert calls["rf_rows"] == 26
     assert calls["rf_weight_rows"] == 26
     assert set(importance_df["feature"]) == {"feature_a", "feature_b", "feature_c"}
+
+
+def test_discover_targets_supports_reversal_continuation_and_breakout_families() -> None:
+    df = pd.DataFrame(
+        columns=[
+            "label_long_reversal",
+            "sample_weight_long_reversal",
+            "label_quality_long_reversal",
+            "exclude_long_reversal",
+            "neg_ok_long_reversal",
+            "label_long_continuation_pullback",
+            "sample_weight_long_continuation",
+            "label_quality_long_continuation",
+            "exclude_long_continuation",
+            "neg_ok_long_continuation",
+            "label_short_breakout_entry",
+            "sample_weight_entry_short_breakout",
+            "entry_quality_short_breakout",
+            "exclude_short_breakout",
+            "neg_ok_short_breakout",
+        ]
+    )
+
+    specs = discover_targets(df, PreprocessingConfig())
+    specs_by_name = {spec.name: spec for spec in specs}
+
+    assert {"long_reversal", "long_continuation_pullback", "short_breakout_entry"} <= set(specs_by_name)
+
+    reversal = specs_by_name["long_reversal"]
+    assert reversal.target_column == "label_long_reversal"
+    assert reversal.sample_weight_column == "sample_weight_long_reversal"
+    assert reversal.quality_column == "label_quality_long_reversal"
+    assert reversal.exclude_column == "exclude_long_reversal"
+    assert reversal.safe_negative_column == "neg_ok_long_reversal"
+    assert reversal.label_kind == "reversal"
+
+    continuation = specs_by_name["long_continuation_pullback"]
+    assert continuation.target_column == "label_long_continuation_pullback"
+    assert continuation.sample_weight_column == "sample_weight_long_continuation"
+    assert continuation.quality_column == "label_quality_long_continuation"
+    assert continuation.exclude_column == "exclude_long_continuation"
+    assert continuation.safe_negative_column == "neg_ok_long_continuation"
+    assert continuation.label_kind == "continuation_pullback"
+
+    breakout_entry = specs_by_name["short_breakout_entry"]
+    assert breakout_entry.target_column == "label_short_breakout_entry"
+    assert breakout_entry.sample_weight_column == "sample_weight_entry_short_breakout"
+    assert breakout_entry.quality_column == "entry_quality_short_breakout"
+    assert breakout_entry.exclude_column == "exclude_short_breakout"
+    assert breakout_entry.safe_negative_column == "neg_ok_short_breakout"
+    assert breakout_entry.label_kind == "breakout_entry"

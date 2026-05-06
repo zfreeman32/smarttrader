@@ -157,12 +157,16 @@ class LiveSignalProcessor:
         self,
         *,
         emit_operator_artifacts: bool,
+        max_timestamp: datetime | None = None,
     ) -> tuple[RuntimeSignalResult, ...]:
         if self.last_processed_timestamp is None:
             self.warm_from_store()
             return ()
 
-        new_bars = self._fetch_signal_bars_after(self.last_processed_timestamp)
+        new_bars = self._fetch_signal_bars_after(
+            self.last_processed_timestamp,
+            max_timestamp=max_timestamp,
+        )
         if not new_bars:
             return ()
         return self.process_bars(
@@ -346,16 +350,24 @@ class LiveSignalProcessor:
             for row in reversed(rows)
         ]
 
-    def _fetch_signal_bars_after(self, timestamp: datetime) -> list[MarketBar]:
-        rows = self.audit_repository.store.connection.execute(
-            """
+    def _fetch_signal_bars_after(
+        self,
+        timestamp: datetime,
+        *,
+        max_timestamp: datetime | None = None,
+    ) -> list[MarketBar]:
+        query = """
             SELECT asset, timeframe, timestamp_utc, open, high, low, close, volume, bid, ask, spread, source
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ? AND timestamp_utc > ?
-            ORDER BY timestamp_utc ASC
-            """,
-            (self.asset, self.timeframe, timestamp.isoformat()),
-        ).fetchall()
+        """
+        params: list[object] = [self.asset, self.timeframe, timestamp.isoformat()]
+        if max_timestamp is not None:
+            query += " AND timestamp_utc <= ?"
+            params.append(max_timestamp.isoformat())
+        query += " ORDER BY timestamp_utc ASC"
+
+        rows = self.audit_repository.store.connection.execute(query, params).fetchall()
         return [_bar_from_row(row) for row in rows]
 
     def _capture_chart(self, signal_decision_id: int) -> CapturedChartArtifact | None:

@@ -115,6 +115,7 @@ def build_confidence_figure(
 
     fig = go.Figure()
     if not confidence.empty:
+        threshold_series = confidence["display_threshold"] if "display_threshold" in confidence.columns else confidence["threshold_applied"]
         fig.add_trace(
             go.Scatter(
                 x=confidence["timestamp"],
@@ -130,14 +131,15 @@ def build_confidence_figure(
                 hoverinfo="text",
             )
         )
-        if confidence["threshold_applied"].notna().any():
+        if threshold_series.notna().any():
             fig.add_trace(
                 go.Scatter(
                     x=confidence["timestamp"],
-                    y=confidence["threshold_applied"],
+                    y=threshold_series,
                     mode="lines",
                     line=dict(color=threshold_color, width=1.5, dash="dash"),
-                    name="Threshold",
+                    name="Active threshold" if "display_threshold" in confidence.columns else "Threshold",
+                    hovertemplate="Threshold: %{y:.4f}<extra></extra>",
                 )
             )
         emit_points = confidence.loc[confidence["decision"] == "emit"].copy()
@@ -348,16 +350,33 @@ def _signal_hover_text(row) -> str:
 
 
 def _confidence_hover_text(row) -> str:
-    threshold = "n/a" if row.threshold_applied is None else f"{row.threshold_applied:.4f}"
     decision = row.decision or "hold/unpersisted"
-    return (
-        f"Model: {getattr(row, 'model_id', 'unknown')}<br>"
-        f"Probability: {_format_probability(row.calibrated_probability)}<br>"
-        f"Raw score: {_format_probability(getattr(row, 'raw_score', None))}<br>"
-        f"Threshold: {threshold}<br>"
-        f"Decision: {decision}<br>"
-        f"Regime: {row.regime or 'unknown'}"
-    )
+    active_threshold = getattr(row, "dashboard_active_threshold", None)
+    persisted_threshold = getattr(row, "threshold_applied", None)
+
+    lines = [
+        f"Model: {getattr(row, 'model_id', 'unknown')}",
+        f"Probability: {_format_probability(row.calibrated_probability)}",
+        f"Raw score: {_format_probability(getattr(row, 'raw_score', None))}",
+    ]
+
+    if active_threshold is not None and not pd.isna(active_threshold):
+        lines.append(f"Active threshold: {float(active_threshold):.4f}")
+    if persisted_threshold is not None and not pd.isna(persisted_threshold):
+        if active_threshold is None or pd.isna(active_threshold):
+            lines.append(f"Threshold: {float(persisted_threshold):.4f}")
+        elif abs(float(active_threshold) - float(persisted_threshold)) > 1e-9:
+            lines.append(f"Persisted threshold: {float(persisted_threshold):.4f}")
+
+    if (
+        (active_threshold is None or pd.isna(active_threshold))
+        and (persisted_threshold is None or pd.isna(persisted_threshold))
+    ):
+        lines.append("Threshold: n/a")
+
+    lines.append(f"Decision: {decision}")
+    lines.append(f"Regime: {row.regime or 'unknown'}")
+    return "<br>".join(lines)
 
 
 def _format_probability(value: float | None) -> str:
