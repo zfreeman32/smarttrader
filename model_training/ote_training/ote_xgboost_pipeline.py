@@ -1232,6 +1232,20 @@ def apply_calibrator(calibrator, raw_probabilities: np.ndarray) -> np.ndarray:
     return np.asarray(calibrated, dtype=np.float32)
 
 
+def resolve_calibration_method(
+    config: OTETrainingConfig,
+    target_name: str,
+) -> str:
+    requested_method = str(config.calibration_method).strip().lower()
+    if requested_method == "none":
+        return "none"
+
+    if "continuation" in str(target_name).strip().lower():
+        return "none"
+
+    return requested_method
+
+
 def build_xgboost_fold_datasets(
     X_dev: np.ndarray,
     y_dev: np.ndarray,
@@ -1751,11 +1765,12 @@ def fit_final_model(
     if not np.any(valid_oof_mask):
         raise RuntimeError("Cross-validation did not produce any held-out predictions.")
 
+    resolved_calibration_method = resolve_calibration_method(config, dataset.target_name)
     oof_for_calibration = artifacts.oof_pred[valid_oof_mask]
     y_for_calibration = dataset.dev_y[valid_oof_mask]
     w_for_calibration = dataset.dev_w[valid_oof_mask]
 
-    if len(np.unique(y_for_calibration)) < 2:
+    if resolved_calibration_method == "none" or len(np.unique(y_for_calibration)) < 2:
         calibrator = None
         calibrated_oof_valid = oof_for_calibration.astype(np.float32, copy=False)
     else:
@@ -1763,7 +1778,7 @@ def fit_final_model(
             raw_probabilities=oof_for_calibration,
             y_true=y_for_calibration,
             sample_weight=w_for_calibration,
-            method=config.calibration_method,
+            method=resolved_calibration_method,
         )
         calibrated_oof_valid = apply_calibrator(calibrator, oof_for_calibration)
 
@@ -1819,6 +1834,8 @@ def fit_final_model(
         "checkpoint": checkpoint,
         "scaler": scaler,
         "calibrator": calibrator,
+        "requested_calibration_method": str(config.calibration_method).strip().lower(),
+        "resolved_calibration_method": resolved_calibration_method,
         "threshold": threshold,
         "threshold_metrics": threshold_metrics,
         "test_metrics": {
@@ -1855,6 +1872,10 @@ def fit_final_model(
             "lag_steps": lag_steps,
             "delta_feature_count": delta_feature_count,
             "params": params,
+            "calibration": {
+                "requested_method": str(config.calibration_method).strip().lower(),
+                "resolved_method": resolved_calibration_method,
+            },
             "trainer": {
                 "batch_size": config.batch_size,
                 "epochs": config.epochs,
@@ -2029,6 +2050,15 @@ def save_training_outputs(
         "delta_feature_count": final_model["delta_feature_count"],
         "threshold": final_model["threshold"],
         "model_config": model_config_payload,
+        "calibration": {
+            "requested_method": final_model["requested_calibration_method"],
+            "resolved_method": final_model["resolved_calibration_method"],
+            "disabled_for_continuation_target": (
+                final_model["requested_calibration_method"] != "none"
+                and final_model["resolved_calibration_method"] == "none"
+                and "continuation" in dataset.target_name.lower()
+            ),
+        },
         "cv_splitter": {
             "type": "purged_walk_forward_explicit_geometry",
             "initial_train_rows": config.cv_initial_train_rows,
