@@ -1,0 +1,101 @@
+TARGET REPORT: long_reversal
+================================================================================
+Target column: label_long_reversal
+Direction: long
+Label kind: reversal
+Binary target: True
+Timezone contract: source=UTC canonical=UTC feature_clock=America/New_York
+
+Row counts:
+  - rows_usable: 503965
+  - rows_positive: 8466
+  - rows_negative: 495499
+  - rows_excluded_by_warmup: 0
+  - rows_excluded_as_ambiguous: 39226
+
+Split counts:
+  - train: 352775 (2019-01-02T03:05:00+00:00 -> 2024-01-17T00:00:00+00:00)
+  - val: 75595 (2024-01-17T00:05:00+00:00 -> 2025-02-17T10:55:00+00:00)
+  - test: 75595 (2025-02-17T11:00:00+00:00 -> 2026-03-25T02:45:00+00:00)
+
+Class balance:
+  - target_type: classification
+  - positive_count: 8466
+  - negative_count: 495499
+  - positive_rate: 0.01679878562995446
+  - weighted_positive_rate: 0.015109862200915813
+  - suggested_positive_class_weight: 58.528112449799195
+  - split_positive_rates: {'train': 0.01646375168308412, 'val': 0.017104305840333355, 'test': 0.018056749785038694}
+
+Cleaning:
+  - columns filled: 0
+  - low variance removed: 9
+  - collinear removed: 183
+  - max remaining correlation: 0.9800
+
+Readiness:
+  - score: 100.0
+  - grade: green
+
+Validations:
+  - [PASS] usable_rows: usable_rows=503965, threshold=250
+  - [PASS] selected_features: selected_features=1053
+  - [PASS] train_rows: train_rows=352775, threshold=100
+  - [PASS] val_rows: val_rows=75595
+  - [PASS] test_rows: test_rows=75595
+  - [PASS] max_remaining_correlation: max_remaining_corr=0.9800, threshold=0.9800
+  - [PASS] train_has_both_classes: train_unique_classes=2
+  - [PASS] enough_positive_samples_train: train_positive_count=5808, threshold=25
+  - [PASS] feature_signal: max_mutual_information=0.024512
+
+Top features:
+  - strategy__disparity_index_signals__disparity_index: composite=0.9839, assoc=0.0083, mi=0.0185, rf=0.0340
+  - dist_to_prior_low_50_atr: composite=0.9725, assoc=0.0078, mi=0.0163, rf=0.0213
+  - ict_dist_to_swing_low_atr: composite=0.9617, assoc=0.0071, mi=0.0161, rf=0.0164
+  - money_flow_10: composite=0.9560, assoc=0.0105, mi=0.0130, rf=0.0114
+  - rsi_from_mid: composite=0.9519, assoc=0.0060, mi=0.0195, rf=0.0223
+  - strategy__rocwb_signals__rocwb_buy_signal: composite=0.9487, assoc=0.0067, mi=0.0163, rf=0.0063
+  - close_return_1_roll_mean_10: composite=0.9471, assoc=0.0083, mi=0.0147, rf=0.0032
+  - return_slope_8: composite=0.9449, assoc=0.0082, mi=0.0138, rf=0.0045
+  - close_vs_ema_50_atr: composite=0.9418, assoc=0.0062, mi=0.0150, rf=0.0144
+  - strategy__monthly_trading_strategy_signals__monthly_return: composite=0.9399, assoc=0.0075, mi=0.0137, rf=0.0066
+  - strategy__dual_momentum_signals__trade_signal__short: composite=0.9395, assoc=0.0071, mi=0.0142, rf=0.0058
+  - strategy__trend_following_btc_signals__signal__long: composite=0.9392, assoc=0.0064, mi=0.0178, rf=0.0035
+  - strategy__rei_signals__rei: composite=0.9357, assoc=0.0062, mi=0.0145, rf=0.0200
+  - macd_line: composite=0.9307, assoc=0.0067, mi=0.0136, rf=0.0072
+  - strategy__overnight_trading_signals__signal__neutral: composite=0.9291, assoc=0.0056, mi=0.0172, rf=0.0071
+  - close_return_5: composite=0.9288, assoc=0.0099, mi=0.0118, rf=0.0026
+  - strategy__moving_average_strategy__moving_average_buy_signal: composite=0.9278, assoc=0.0060, mi=0.0173, rf=0.0029
+  - strategy__strategy_w5_8_13__w5_8_13_sell_signal: composite=0.9231, assoc=0.0065, mi=0.0141, rf=0.0036
+  - strategy__membership_based_trading_signals__mean_reversion: composite=0.9224, assoc=0.0058, mi=0.0144, rf=0.0124
+  - htf_30m_dist_to_swing_high_atr: composite=0.9152, assoc=0.0059, mi=0.0231, rf=0.0013
+  - close_vs_ema_21_atr: composite=0.9145, assoc=0.0047, mi=0.0182, rf=0.0157
+  - rsi_14_zscore_100: composite=0.9136, assoc=0.0055, mi=0.0149, rf=0.0045
+  - dist_to_prior_low_20_atr: composite=0.9110, assoc=0.0046, mi=0.0175, rf=0.0190
+  - close_return_5_winsor_100: composite=0.9098, assoc=0.0077, mi=0.0113, rf=0.0027
+  - strategy__quantified_strategy_signals__strategy_signal__long: composite=0.9082, assoc=0.0071, mi=0.0119, rf=0.0024
+  - close_vs_ema_8_atr_zscore_100: composite=0.9066, assoc=0.0068, mi=0.0110, rf=0.0053
+  - close_vs_ema_8_atr: composite=0.9063, assoc=0.0060, mi=0.0142, rf=0.0022
+  - strategy__cumulative_rsi_signals__cumulative_rsi_signal__short: composite=0.9038, assoc=0.0048, mi=0.0195, rf=0.0040
+  - price_position_50: composite=0.9019, assoc=0.0045, mi=0.0172, rf=0.0129
+  - strategy__calculate_pzo_calculate_pzo__0: composite=0.9006, assoc=0.0088, mi=0.0120, rf=0.0009
+  - stoch_position_14: composite=0.9003, assoc=0.0048, mi=0.0145, rf=0.0127
+  - close_return_5_zscore_100: composite=0.9000, assoc=0.0095, mi=0.0095, rf=0.0026
+  - close_return_3: composite=0.8981, assoc=0.0109, mi=0.0096, rf=0.0015
+  - strategy__australian_market_signals__signal__long: composite=0.8959, assoc=0.0050, mi=0.0181, rf=0.0017
+  - close_return_1_roll_mean_20: composite=0.8955, assoc=0.0045, mi=0.0165, rf=0.0066
+  - strategy__rocwb_signals__rocwb_sell_signal: composite=0.8908, assoc=0.0050, mi=0.0148, rf=0.0026
+  - close_return_3_winsor_100: composite=0.8892, assoc=0.0094, mi=0.0089, rf=0.0022
+  - strategy__fisher_transform_signals__fisher: composite=0.8864, assoc=0.0058, mi=0.0113, rf=0.0036
+  - htf_30m_dist_to_swing_low_atr: composite=0.8838, assoc=0.0082, mi=0.0223, rf=0.0005
+  - strategy__williams_r_signals_williams_r_trading_strategy_strategy__williams_r: composite=0.8829, assoc=0.0085, mi=0.0090, rf=0.0018
+  - rsi_14_lag_1: composite=0.8822, assoc=0.0041, mi=0.0165, rf=0.0106
+  - strategy__starc_signals__starc_signal__neutral: composite=0.8819, assoc=0.0045, mi=0.0151, rf=0.0042
+  - return_slope_8_winsor_100: composite=0.8807, assoc=0.0049, mi=0.0137, rf=0.0031
+  - roc_10_lag_1: composite=0.8797, assoc=0.0052, mi=0.0123, rf=0.0033
+  - close_vs_sma_20_atr: composite=0.8727, assoc=0.0035, mi=0.0181, rf=0.0242
+  - strategy__kst_oscillator_signals__kst: composite=0.8702, assoc=0.0079, mi=0.0078, rf=0.0021
+  - exhaustion_score: composite=0.8674, assoc=0.0099, mi=0.0081, rf=0.0011
+  - close_return_3_lag_1: composite=0.8661, assoc=0.0118, mi=0.0073, rf=0.0013
+  - htf_1h_dist_to_swing_low_atr: composite=0.8651, assoc=0.0095, mi=0.0161, rf=0.0004
+  - bars_since_sweep_low: composite=0.8623, assoc=0.0055, mi=0.0098, rf=0.0036

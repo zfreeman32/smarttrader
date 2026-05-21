@@ -1,0 +1,101 @@
+TARGET REPORT: long_continuation_pullback
+================================================================================
+Target column: label_long_continuation_pullback
+Direction: long
+Label kind: continuation_pullback
+Binary target: True
+Timezone contract: source=UTC canonical=UTC feature_clock=America/New_York
+
+Row counts:
+  - rows_usable: 527038
+  - rows_positive: 4062
+  - rows_negative: 522976
+  - rows_excluded_by_warmup: 0
+  - rows_excluded_as_ambiguous: 16153
+
+Split counts:
+  - train: 368926 (2019-01-02T03:05:00+00:00 -> 2024-01-17T02:15:00+00:00)
+  - val: 79056 (2024-01-17T02:20:00+00:00 -> 2025-02-18T02:20:00+00:00)
+  - test: 79056 (2025-02-18T02:25:00+00:00 -> 2026-03-25T02:45:00+00:00)
+
+Class balance:
+  - target_type: classification
+  - positive_count: 4062
+  - negative_count: 522976
+  - positive_rate: 0.007707224147025452
+  - weighted_positive_rate: 0.006252280902117491
+  - suggested_positive_class_weight: 128.74839980305268
+  - split_positive_rates: {'train': 0.007660072751717146, 'val': 0.007323922282938676, 'test': 0.008310564663023679}
+
+Cleaning:
+  - columns filled: 0
+  - low variance removed: 9
+  - collinear removed: 181
+  - max remaining correlation: 0.9782
+
+Readiness:
+  - score: 96.8
+  - grade: green
+
+Validations:
+  - [PASS] usable_rows: usable_rows=527038, threshold=250
+  - [PASS] selected_features: selected_features=1055
+  - [PASS] train_rows: train_rows=368926, threshold=100
+  - [PASS] val_rows: val_rows=79056
+  - [PASS] test_rows: test_rows=79056
+  - [PASS] max_remaining_correlation: max_remaining_corr=0.9782, threshold=0.9800
+  - [PASS] train_has_both_classes: train_unique_classes=2
+  - [PASS] enough_positive_samples_train: train_positive_count=2826, threshold=25
+  - [PASS] feature_signal: max_mutual_information=0.015730
+
+Top features:
+  - htf_1h_ema_alignment: composite=0.9643, assoc=0.0086, mi=0.0116, rf=0.0104
+  - htf_alignment_score: composite=0.9627, assoc=0.0088, mi=0.0109, rf=0.0104
+  - htf_1h_close_vs_ema_21_atr: composite=0.9596, assoc=0.0082, mi=0.0111, rf=0.0117
+  - htf_30m_ema_alignment: composite=0.9494, assoc=0.0080, mi=0.0104, rf=0.0077
+  - continuation_bars_since_bull_impulse: composite=0.9482, assoc=0.0133, mi=0.0084, rf=0.0068
+  - htf_1h_ema_spread_8_21_atr: composite=0.9457, assoc=0.0077, mi=0.0118, rf=0.0042
+  - continuation_bull_retest_quality_roll_std_10: composite=0.9397, assoc=0.0092, mi=0.0085, rf=0.0105
+  - continuation_bars_since_bull_resume_lag_3: composite=0.9352, assoc=0.0108, mi=0.0080, rf=0.0086
+  - htf_30m_ema_spread_21_50_atr: composite=0.9330, assoc=0.0058, mi=0.0151, rf=0.0110
+  - htf_30m_ema_spread_8_21_atr: composite=0.9220, assoc=0.0060, mi=0.0142, rf=0.0032
+  - continuation_bull_pullback_depth_atr_roll_mean_20: composite=0.9213, assoc=0.0083, mi=0.0077, rf=0.0237
+  - continuation_bull_retest_quality_roll_std_20: composite=0.9210, assoc=0.0087, mi=0.0077, rf=0.0127
+  - htf_30m_close_vs_ema_21_atr: composite=0.9134, assoc=0.0054, mi=0.0134, rf=0.0052
+  - continuation_bull_pullback_depth_atr_roll_mean_10: composite=0.9115, assoc=0.0087, mi=0.0075, rf=0.0080
+  - htf_1h_ema_spread_21_50_atr: composite=0.9109, assoc=0.0055, mi=0.0107, rf=0.0078
+  - continuation_bull_wick_rejection_score_roll_std_20: composite=0.9062, assoc=0.0059, mi=0.0088, rf=0.0167
+  - continuation_bull_pullback_depth_atr_roll_mean_50: composite=0.9055, assoc=0.0090, mi=0.0067, rf=0.0059
+  - continuation_bull_pullback_depth_atr: composite=0.8983, assoc=0.0080, mi=0.0074, rf=0.0043
+  - continuation_bars_since_bull_resume_lag_20: composite=0.8973, assoc=0.0089, mi=0.0057, rf=0.0043
+  - continuation_bars_since_bear_resume_lag_20: composite=0.8942, assoc=0.0147, mi=0.0072, rf=0.0015
+  - htf_dist_to_prev_day_high_atr: composite=0.8932, assoc=0.0131, mi=0.0041, rf=0.0031
+  - continuation_bull_retest_quality_roll_mean_20: composite=0.8907, assoc=0.0052, mi=0.0088, rf=0.0251
+  - continuation_bull_wick_rejection_score_roll_mean_20: composite=0.8904, assoc=0.0056, mi=0.0084, rf=0.0130
+  - continuation_bull_pullback_depth_atr_lag_10: composite=0.8900, assoc=0.0075, mi=0.0074, rf=0.0044
+  - continuation_bull_pullback_depth_atr_roll_std_100: composite=0.8885, assoc=0.0095, mi=0.0051, rf=0.0027
+  - continuation_bear_wick_rejection_score_roll_mean_100: composite=0.8885, assoc=0.0094, mi=0.0051, rf=0.0027
+  - htf_1h_dist_to_swing_high_atr: composite=0.8869, assoc=0.0057, mi=0.0090, rf=0.0033
+  - htf_1h_dist_to_swing_low_atr: composite=0.8866, assoc=0.0080, mi=0.0091, rf=0.0010
+  - continuation_bull_pullback_depth_atr_roll_mean_100: composite=0.8847, assoc=0.0075, mi=0.0063, rf=0.0057
+  - continuation_bear_retest_quality_roll_mean_50: composite=0.8840, assoc=0.0114, mi=0.0042, rf=0.0026
+  - htf_30m_dist_to_swing_high_atr: composite=0.8837, assoc=0.0065, mi=0.0102, rf=0.0011
+  - continuation_bear_pullback_depth_atr_lag_20: composite=0.8777, assoc=0.0090, mi=0.0046, rf=0.0026
+  - continuation_bear_retest_quality_roll_std_100: composite=0.8742, assoc=0.0095, mi=0.0054, rf=0.0015
+  - continuation_bull_retest_quality_roll_std_100: composite=0.8742, assoc=0.0059, mi=0.0074, rf=0.0084
+  - continuation_bear_pullback_depth_atr_roll_mean_20: composite=0.8717, assoc=0.0070, mi=0.0052, rf=0.0047
+  - continuation_bear_retest_quality_roll_mean_20: composite=0.8714, assoc=0.0100, mi=0.0038, rf=0.0022
+  - continuation_bull_pullback_depth_ratio: composite=0.8692, assoc=0.0061, mi=0.0072, rf=0.0054
+  - strategy__cta_trend_following_signals__signal__short: composite=0.8686, assoc=0.0126, mi=0.0101, rf=0.0005
+  - htf_30m_dist_to_swing_low_atr: composite=0.8670, assoc=0.0046, mi=0.0119, rf=0.0024
+  - continuation_bull_retest_quality_roll_mean_10: composite=0.8629, assoc=0.0044, mi=0.0094, rf=0.0092
+  - continuation_bear_wick_rejection_score_roll_mean_50: composite=0.8600, assoc=0.0070, mi=0.0042, rf=0.0037
+  - strategy__spectrum_bars_le_signals__spectrum_bars_buy_signal: composite=0.8591, assoc=0.0047, mi=0.0095, rf=0.0029
+  - continuation_bull_retest_quality_roll_std_5: composite=0.8581, assoc=0.0072, mi=0.0075, rf=0.0014
+  - strategy__mean_reversion_signals__signal__neutral: composite=0.8569, assoc=0.0047, mi=0.0117, rf=0.0015
+  - continuation_bear_pullback_depth_atr_roll_mean_50: composite=0.8531, assoc=0.0061, mi=0.0053, rf=0.0034
+  - continuation_bars_since_bear_impulse_lag_5: composite=0.8521, assoc=0.0142, mi=0.0079, rf=0.0006
+  - continuation_bull_pullback_depth_atr_lag_20: composite=0.8518, assoc=0.0059, mi=0.0060, rf=0.0033
+  - dist_to_equal_low_pool_atr: composite=0.8502, assoc=0.0108, mi=0.0050, rf=0.0009
+  - continuation_bear_retest_quality_roll_std_50: composite=0.8493, assoc=0.0078, mi=0.0050, rf=0.0013
+  - continuation_bear_wick_rejection_score_roll_std_100: composite=0.8477, assoc=0.0061, mi=0.0052, rf=0.0027

@@ -1,0 +1,101 @@
+TARGET REPORT: long_continuation_entry
+================================================================================
+Target column: label_long_continuation_entry
+Direction: long
+Label kind: continuation_entry
+Binary target: True
+Timezone contract: source=UTC canonical=UTC feature_clock=America/New_York
+
+Row counts:
+  - rows_usable: 524315
+  - rows_positive: 1345
+  - rows_negative: 522970
+  - rows_excluded_by_warmup: 0
+  - rows_excluded_as_ambiguous: 18876
+
+Split counts:
+  - train: 367020 (2019-01-02T03:05:00+00:00 -> 2024-01-17T01:25:00+00:00)
+  - val: 78647 (2024-01-17T01:30:00+00:00 -> 2025-02-17T23:45:00+00:00)
+  - test: 78648 (2025-02-17T23:50:00+00:00 -> 2026-03-25T02:45:00+00:00)
+
+Class balance:
+  - target_type: classification
+  - positive_count: 1345
+  - negative_count: 522970
+  - positive_rate: 0.0025652518047357027
+  - weighted_positive_rate: 0.0020808354020118713
+  - suggested_positive_class_weight: 388.8252788104089
+  - split_positive_rates: {'train': 0.002544820445752275, 'val': 0.002441288288173738, 'test': 0.0027845590479096734}
+
+Cleaning:
+  - columns filled: 0
+  - low variance removed: 9
+  - collinear removed: 180
+  - max remaining correlation: 0.9788
+
+Readiness:
+  - score: 96.8
+  - grade: green
+
+Validations:
+  - [PASS] usable_rows: usable_rows=524315, threshold=250
+  - [PASS] selected_features: selected_features=1056
+  - [PASS] train_rows: train_rows=367020, threshold=100
+  - [PASS] val_rows: val_rows=78647
+  - [PASS] test_rows: test_rows=78648
+  - [PASS] max_remaining_correlation: max_remaining_corr=0.9788, threshold=0.9800
+  - [PASS] train_has_both_classes: train_unique_classes=2
+  - [PASS] enough_positive_samples_train: train_positive_count=934, threshold=25
+  - [PASS] feature_signal: max_mutual_information=0.015762
+
+Top features:
+  - continuation_bars_since_bull_resume: composite=0.9214, assoc=0.0107, mi=0.0032, rf=0.0072
+  - continuation_bars_since_bull_impulse_lag_3: composite=0.9081, assoc=0.0112, mi=0.0024, rf=0.0072
+  - continuation_bull_wick_rejection_score_roll_mean_20: composite=0.9069, assoc=0.0062, mi=0.0027, rf=0.0195
+  - continuation_bull_wick_rejection_score_roll_std_20: composite=0.9056, assoc=0.0064, mi=0.0026, rf=0.0157
+  - strategy__price_action_signals__signal__neutral: composite=0.9018, assoc=0.0061, mi=0.0084, rf=0.0014
+  - continuation_bull_pullback_depth_ratio: composite=0.8968, assoc=0.0096, mi=0.0024, rf=0.0032
+  - continuation_bull_retest_quality_roll_std_50: composite=0.8927, assoc=0.0060, mi=0.0023, rf=0.0213
+  - continuation_bull_wick_rejection_score_roll_mean_5: composite=0.8886, assoc=0.0054, mi=0.0025, rf=0.0256
+  - continuation_bull_retest_quality_roll_mean_5: composite=0.8883, assoc=0.0051, mi=0.0028, rf=0.0235
+  - continuation_bull_retest_quality_roll_std_100: composite=0.8879, assoc=0.0069, mi=0.0021, rf=0.0069
+  - continuation_bull_pullback_depth_atr_lag_3: composite=0.8864, assoc=0.0058, mi=0.0023, rf=0.0117
+  - continuation_bull_pullback_depth_atr_roll_mean_20: composite=0.8857, assoc=0.0056, mi=0.0026, rf=0.0079
+  - continuation_bull_retest_quality_lag_1: composite=0.8854, assoc=0.0056, mi=0.0026, rf=0.0073
+  - continuation_bull_retest_quality_roll_mean_20: composite=0.8845, assoc=0.0050, mi=0.0027, rf=0.0169
+  - continuation_bars_since_bull_impulse_lag_20: composite=0.8838, assoc=0.0105, mi=0.0017, rf=0.0049
+  - continuation_bull_pullback_depth_atr_lag_5: composite=0.8835, assoc=0.0055, mi=0.0025, rf=0.0093
+  - htf_1h_ema_spread_21_50_atr: composite=0.8816, assoc=0.0071, mi=0.0020, rf=0.0059
+  - continuation_bull_pullback_active: composite=0.8791, assoc=0.0058, mi=0.0034, rf=0.0021
+  - continuation_bull_retest_quality_lag_3: composite=0.8769, assoc=0.0050, mi=0.0026, rf=0.0113
+  - continuation_bull_wick_rejection_score_roll_std_100: composite=0.8728, assoc=0.0055, mi=0.0022, rf=0.0075
+  - continuation_bull_retest_quality: composite=0.8725, assoc=0.0055, mi=0.0024, rf=0.0051
+  - continuation_bull_wick_rejection_score_roll_std_50: composite=0.8722, assoc=0.0049, mi=0.0024, rf=0.0144
+  - continuation_bull_pullback_depth_atr_roll_mean_100: composite=0.8703, assoc=0.0083, mi=0.0017, rf=0.0026
+  - continuation_bull_pullback_depth_atr_roll_mean_50: composite=0.8696, assoc=0.0061, mi=0.0022, rf=0.0030
+  - continuation_bear_pullback_depth_atr_lag_10: composite=0.8677, assoc=0.0091, mi=0.0016, rf=0.0024
+  - continuation_bull_retest_quality_roll_mean_10: composite=0.8662, assoc=0.0042, mi=0.0031, rf=0.0263
+  - continuation_bull_wick_rejection_score_roll_std_5: composite=0.8658, assoc=0.0049, mi=0.0025, rf=0.0086
+  - strategy__price_action_signals__signal__long: composite=0.8658, assoc=0.0042, mi=0.0036, rf=0.0096
+  - continuation_bull_wick_rejection_score: composite=0.8652, assoc=0.0058, mi=0.0020, rf=0.0047
+  - htf_30m_ema_spread_21_50_atr: composite=0.8640, assoc=0.0042, mi=0.0038, rf=0.0077
+  - htf_1h_ema_alignment: composite=0.8636, assoc=0.0037, mi=0.0069, rf=0.0144
+  - continuation_bull_pullback_depth_atr_lag_10: composite=0.8627, assoc=0.0048, mi=0.0025, rf=0.0079
+  - continuation_bull_pullback_depth_atr: composite=0.8621, assoc=0.0049, mi=0.0030, rf=0.0027
+  - continuation_bear_pullback_depth_atr_roll_mean_50: composite=0.8592, assoc=0.0085, mi=0.0016, rf=0.0019
+  - continuation_bull_retest_quality_zscore_100: composite=0.8580, assoc=0.0055, mi=0.0023, rf=0.0025
+  - continuation_bars_since_bear_impulse_lag_3: composite=0.8570, assoc=0.0090, mi=0.0015, rf=0.0019
+  - continuation_bear_pullback_depth_atr: composite=0.8570, assoc=0.0086, mi=0.0014, rf=0.0020
+  - continuation_bull_pullback_depth_atr_lag_20: composite=0.8561, assoc=0.0062, mi=0.0020, rf=0.0019
+  - continuation_bull_retest_quality_lag_2: composite=0.8545, assoc=0.0045, mi=0.0027, rf=0.0048
+  - continuation_bear_pullback_depth_atr_roll_mean_10: composite=0.8513, assoc=0.0089, mi=0.0016, rf=0.0013
+  - continuation_bull_wick_rejection_score_roll_mean_50: composite=0.8488, assoc=0.0043, mi=0.0022, rf=0.0116
+  - continuation_bull_pullback_channel_slope_8_atr_lag_1: composite=0.8488, assoc=0.0042, mi=0.0028, rf=0.0054
+  - continuation_bull_retest_quality_roll_std_20: composite=0.8475, assoc=0.0044, mi=0.0022, rf=0.0092
+  - strategy__overnight_trading_signals__signal__long: composite=0.8472, assoc=0.0038, mi=0.0082, rf=0.0019
+  - continuation_bars_since_bear_resume_lag_5: composite=0.8463, assoc=0.0095, mi=0.0016, rf=0.0011
+  - interaction_vol_adjusted_momentum: composite=0.8431, assoc=0.0053, mi=0.0014, rf=0.0064
+  - htf_dist_to_rolling_daily_low_atr: composite=0.8374, assoc=0.0094, mi=0.0011, rf=0.0019
+  - continuation_bear_pullback_depth_atr_lag_20: composite=0.8346, assoc=0.0077, mi=0.0014, rf=0.0012
+  - interaction_htf_trend_momentum: composite=0.8324, assoc=0.0045, mi=0.0017, rf=0.0060
+  - continuation_bear_pullback_depth_atr_roll_mean_100: composite=0.8308, assoc=0.0089, mi=0.0011, rf=0.0014

@@ -3,13 +3,11 @@
   "metadata_file": "data\\features\\eurusd_5min_ote_full.metadata.json",
   "config": {
     "target_columns": [
-      "label_long_entry",
-      "label_short_entry",
       "label_long_ote",
       "label_short_ote"
     ],
     "time_column": "datetime",
-    "max_analysis_rows": 10000,
+    "max_analysis_rows": 100000,
     "additional_skip_rows": 0,
     "respect_upstream_warmup": true,
     "train_size": 0.7,
@@ -33,25 +31,25 @@
   },
   "upstream_preprocessing": {
     "metadata_detected": true,
-    "feature_columns_from_metadata": 1461,
+    "feature_columns_from_metadata": 1607,
     "warmup_rows_already_dropped": true,
     "warmup_rows_configured": 250,
     "numeric_fill_applied_upstream": true,
     "duplicate_column_names_blocked_in_builder": true
   },
   "row_windowing": {
-    "rows_before": 1446197,
+    "rows_before": 543191,
     "additional_skip_rows_requested": 0,
     "additional_skip_rows_applied": 0,
-    "analysis_row_cap": 10000,
-    "rows_after": 1446197
+    "analysis_row_cap": 100000,
+    "rows_after": 543191
   },
   "feature_pool": {
-    "metadata_feature_count": 1461,
-    "encoded_feature_count": 1113,
+    "metadata_feature_count": 1607,
+    "encoded_feature_count": 1245,
     "encoded_categorical_columns": [],
-    "duplicate_columns_removed": 232,
-    "constant_columns_removed": 116
+    "duplicate_columns_removed": 223,
+    "constant_columns_removed": 139
   },
   "timezone_contract": {
     "source_timezone": "UTC",
@@ -79,41 +77,23 @@
     }
   },
   "targets": {
-    "long_entry": {
-      "target_column": "label_long_entry",
-      "usable_rows": 1330750,
-      "selected_features": 960,
-      "readiness_score": 91.7,
-      "readiness_grade": "green",
-      "positive_rate": 0.005336088671801615,
-      "positive_count": 7101
-    },
-    "short_entry": {
-      "target_column": "label_short_entry",
-      "usable_rows": 1331930,
-      "selected_features": 964,
-      "readiness_score": 92.1,
-      "readiness_grade": "green",
-      "positive_rate": 0.005404187907772931,
-      "positive_count": 7198
-    },
     "long_ote": {
       "target_column": "label_long_ote",
-      "usable_rows": 1346067,
-      "selected_features": 960,
+      "usable_rows": 443926,
+      "selected_features": 1052,
       "readiness_score": 100.0,
       "readiness_grade": "green",
-      "positive_rate": 0.016309737925378157,
-      "positive_count": 21954
+      "positive_rate": 0.05588769299387736,
+      "positive_count": 24810
     },
     "short_ote": {
       "target_column": "label_short_ote",
-      "usable_rows": 1347322,
-      "selected_features": 961,
+      "usable_rows": 445075,
+      "selected_features": 1050,
       "readiness_score": 100.0,
       "readiness_grade": "green",
-      "positive_rate": 0.016434824043547125,
-      "positive_count": 22143
+      "positive_rate": 0.05569398415997304,
+      "positive_count": 24788
     }
   }
 }

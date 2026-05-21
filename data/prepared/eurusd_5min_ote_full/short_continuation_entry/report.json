@@ -1,0 +1,2143 @@
+{
+  "target_column": "label_short_continuation_entry",
+  "target_name": "short_continuation_entry",
+  "direction": "short",
+  "label_kind": "continuation_entry",
+  "is_binary": true,
+  "row_counts": {
+    "rows_usable": 523129,
+    "rows_positive": 1453,
+    "rows_negative": 521676,
+    "rows_excluded_by_warmup": 0,
+    "rows_excluded_as_ambiguous": 20062
+  },
+  "split_counts": {
+    "train": 366190,
+    "val": 78469,
+    "test": 78470
+  },
+  "split_date_ranges": {
+    "train": {
+      "start": "2019-01-02T03:05:00+00:00",
+      "end": "2024-01-19T16:00:00+00:00"
+    },
+    "val": {
+      "start": "2024-01-19T16:05:00+00:00",
+      "end": "2025-02-19T16:30:00+00:00"
+    },
+    "test": {
+      "start": "2025-02-19T16:35:00+00:00",
+      "end": "2026-03-25T02:45:00+00:00"
+    }
+  },
+  "timezone_contract": {
+    "source_timezone": "UTC",
+    "canonical_timezone": "UTC",
+    "feature_clock_timezone": "America/New_York",
+    "london_timezone": "Europe/London",
+    "new_york_timezone": "America/New_York",
+    "market_close_timezone": "America/New_York",
+    "market_close_time": "17:00"
+  },
+  "source_lineage": {
+    "feature_csv": "data\\features\\eurusd_5min_ote_full.csv",
+    "feature_metadata_file": "data\\features\\eurusd_5min_ote_full.metadata.json",
+    "feature_builder_source_path": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+    "feature_builder_source_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_source_path": "data\\currency_data\\eurusd-5m.csv",
+    "upstream_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_bar_timestamp_semantics": "as_provided",
+    "upstream_timezone_contract": {
+      "source_timezone": "GMT-6",
+      "canonical_timezone": "UTC",
+      "csv_timezone": "UTC",
+      "csv_timestamps_are_timezone_aware": false,
+      "timestamp_column": "timestamp"
+    }
+  },
+  "row_identity": {
+    "source_row_idx_column": "source_row_idx",
+    "source_row_idx_origin": "standardized_input_frame"
+  },
+  "sample_weight_column": "sample_weight_entry_short_continuation",
+  "quality_column": "entry_quality_short_continuation",
+  "fill_report": {
+    "columns_filled": 0,
+    "strategies": {}
+  },
+  "low_variance": {
+    "removed_count": 9,
+    "removed_columns": [
+      "price_impact_proxy",
+      "amihud_proxy",
+      "kyle_lambda_proxy",
+      "range_to_volume",
+      "strategy__connors_b_percentage_signals__connors_signal__long",
+      "strategy__sell_rosh_hashanah_buy_yom_kippur_signals__signal__long",
+      "strategy__sell_rosh_hashanah_buy_yom_kippur_signals__signal__neutral",
+      "strategy__three_days_down_strategy__exit_signal__missing",
+      "close_return_1_roll_mean_100"
+    ]
+  },
+  "collinearity": {
+    "analysis_rows": 100000,
+    "dropped_columns": [
+      "atr_ratio_14_50_lag_1",
+      "atr_ratio_14_50_lag_3",
+      "atr_ratio_14_50_lag_5",
+      "atr_ratio_14_50_roll_mean_5",
+      "bullish_candle",
+      "candle_body_pct",
+      "close_return_10",
+      "close_return_1_roll_mean_10",
+      "close_return_3",
+      "close_return_3_winsor_100",
+      "close_return_5",
+      "close_return_5_roll_mean_100",
+      "close_return_5_roll_mean_50",
+      "continuation_bars_since_bear_impulse",
+      "continuation_bars_since_bear_impulse_lag_1",
+      "continuation_bars_since_bear_impulse_lag_2",
+      "continuation_bars_since_bear_impulse_lag_20",
+      "continuation_bars_since_bear_impulse_lag_3",
+      "continuation_bars_since_bear_impulse_lag_5",
+      "continuation_bars_since_bear_resume",
+      "continuation_bars_since_bear_resume_lag_1",
+      "continuation_bars_since_bear_resume_lag_10",
+      "continuation_bars_since_bear_resume_lag_2",
+      "continuation_bars_since_bear_resume_lag_3",
+      "continuation_bars_since_bear_resume_lag_5",
+      "continuation_bars_since_bull_impulse",
+      "continuation_bars_since_bull_impulse_lag_1",
+      "continuation_bars_since_bull_impulse_lag_2",
+      "continuation_bars_since_bull_impulse_lag_20",
+      "continuation_bars_since_bull_impulse_lag_3",
+      "continuation_bars_since_bull_impulse_lag_5",
+      "continuation_bars_since_bull_resume",
+      "continuation_bars_since_bull_resume_lag_1",
+      "continuation_bars_since_bull_resume_lag_2",
+      "continuation_bars_since_bull_resume_lag_20",
+      "continuation_bars_since_bull_resume_lag_3",
+      "continuation_bars_since_bull_resume_lag_5",
+      "continuation_bear_impulse_magnitude_atr_lag_1",
+      "continuation_bear_impulse_magnitude_atr_lag_2",
+      "continuation_bear_pullback_depth_atr",
+      "continuation_bear_pullback_depth_atr_lag_1",
+      "continuation_bear_pullback_depth_atr_lag_2",
+      "continuation_bear_pullback_depth_atr_lag_5",
+      "continuation_bear_pullback_depth_atr_roll_mean_10",
+      "continuation_bear_pullback_depth_atr_roll_mean_20",
+      "continuation_bear_pullback_depth_atr_roll_mean_5",
+      "continuation_bull_impulse_magnitude_atr_lag_1",
+      "continuation_bull_impulse_magnitude_atr_lag_3",
+      "continuation_bull_pullback_depth_atr_lag_1",
+      "continuation_bull_pullback_depth_atr_lag_2",
+      "continuation_bull_pullback_depth_atr_lag_5",
+      "continuation_bull_pullback_depth_atr_roll_mean_10",
+      "continuation_bull_pullback_depth_atr_roll_mean_5",
+      "down_volume_share_10",
+      "ema_200",
+      "ema_21",
+      "ema_50",
+      "ema_8",
+      "ema_spread_8_21_atr",
+      "fracdiff_close",
+      "htf_1h_latest_swing_high",
+      "htf_1h_latest_swing_low",
+      "htf_30m_latest_swing_high",
+      "htf_30m_latest_swing_low",
+      "htf_prev_day_high",
+      "htf_prev_day_low",
+      "htf_rolling_daily_high",
+      "ict_latest_swing_high",
+      "ict_latest_swing_low",
+      "in_discount_zone",
+      "in_newyork_killzone",
+      "interaction_bear_premium_structure",
+      "interaction_bear_sweep_structure",
+      "interaction_bull_sweep_structure",
+      "interaction_newyork_bear_setup",
+      "interaction_newyork_bull_setup",
+      "log_return_1",
+      "log_return_1_winsor_100",
+      "macd_signal",
+      "major_event_cluster_10",
+      "major_event_cluster_25",
+      "prior_high_20",
+      "prior_high_50",
+      "prior_low_20",
+      "prior_low_50",
+      "relative_spread_bps",
+      "return_slope_decay_8_21_winsor_100",
+      "roc_10_roll_mean_5",
+      "rsi_14",
+      "rsi_slope_3",
+      "rsi_slope_3_sigma_norm_60",
+      "rsi_slope_decay_3_8_sigma_norm_60",
+      "sma_20",
+      "sma_50",
+      "strategy__ad_indicator_signals__signal__short",
+      "strategy__aroon_strategy__aroon_trend_strength__strong",
+      "strategy__asset_allocation_signals__asset_class__long",
+      "strategy__atr_high_sma_breakouts_le__average_candle_height",
+      "strategy__australian_market_signals__signal__long",
+      "strategy__best_6_months_timing_signals__signal__short",
+      "strategy__bogleheads_portfolio_signals__3_fund_signal__short",
+      "strategy__bollinger_band_signals__bb_signal__short",
+      "strategy__bollinger_bands_width_signals__bb_signal__short",
+      "strategy__bull_market_signal__trade_signal__long",
+      "strategy__bullish_candlestick_patterns__signal__long",
+      "strategy__candlestick_patterns_signals__candlestick_signal__long",
+      "strategy__choppiness_index_signals__chop_signal__neutral",
+      "strategy__cmo_absolute_indicator_signals__cmo",
+      "strategy__cocoa_trading_signals__cocoa_signal__short",
+      "strategy__connors_mdu_mdd_signals__mdu_mdd_signal__neutral",
+      "strategy__cotton_trading_signals__trading_signal__long",
+      "strategy__cta_trend_following_signals__signal__short",
+      "strategy__cumulative_rsi_signals__cumulative_rsi_signal__neutral",
+      "strategy__dca_vs_lump_sum_signals__lump_sum_value",
+      "strategy__divergence_signals__indicator",
+      "strategy__dollar_cost_averaging_signals__total_shares",
+      "strategy__dpo_signals__dpo_overbought_signal",
+      "strategy__dvo_signals__dvo_signal__neutral",
+      "strategy__ema_signals__ema_bullish_signal",
+      "strategy__end_of_month_effect_signals__signal__neutral",
+      "strategy__end_of_month_effect_signals_end_of_month_effect_in_nifty_50_does_it_exist_turn_of_the_month_strategy__position__long",
+      "strategy__eurnzd_forex_strategy__signal__long",
+      "strategy__financial_services_signals__signal__short",
+      "strategy__fisher_transform_signals__fisher_signal__neutral",
+      "strategy__follow_through_day_signals__trading_signal__long",
+      "strategy__gaussian_filter_signals__signal__short",
+      "strategy__high_252_day_signals__signal__long",
+      "strategy__inflation_trading_signals__signal__short",
+      "strategy__linear_regression_signals__signal__long",
+      "strategy__login_signals__login_signal__short",
+      "strategy__low_252_day_signals__signal__neutral",
+      "strategy__lower_highs_lows_signals__signal__short",
+      "strategy__market_sentiment_signals_the_friday_seasonality_in_uso_oil_strategy__sentiment_signal__short",
+      "strategy__market_timing_signals__signal__long",
+      "strategy__mean_reversion_signals__signal__short",
+      "strategy__membership_based_trading_signals__signal__short",
+      "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long",
+      "strategy__membership_plan_signals_membership_plan_strategy__membership_signal__short",
+      "strategy__membership_plans_signals_nasdaq_bond_ratio_rotation_trading_strategy_strategy__signal__short",
+      "strategy__membership_plans_signals_performance_of_the_opex_week_of_september_strategy__signal__long",
+      "strategy__membership_strategy_signals_turnaround_tuesday_in_a_bear_market_strategy__membership_signal__short",
+      "strategy__membership_trading_signals_what_returns_can_we_expect_after_a_very_bad_friday_in_the_stock_market_strategy__signal__short",
+      "strategy__momentum_signals_turtle_trading_backtests_strategy__momentum_signal__neutral",
+      "strategy__monthly_trading_strategy_signals__strategy_signal__short",
+      "strategy__monthly_trading_strategy_signals_four_up_days_in_row_sp_500_strategy__trading_signal__long",
+      "strategy__moving_average_crossover_signals_how_i_made_an_rsi_trading_strategy_using_python_strategy__long_mavg",
+      "strategy__moving_average_crossover_signals_monday_tuesday_trade_in_nasdaq_update_strategy__crossover_signal__short",
+      "strategy__moving_average_strategy__moving_average_buy_signal",
+      "strategy__overbought_market_signals__signal__neutral",
+      "strategy__overnight_trading_signals__signal__neutral",
+      "strategy__ppo_signals__ppo",
+      "strategy__ppo_signals__ppo_signal",
+      "strategy__ppo_signals_percentage_price_oscillator_strategy__ppo_signal__long",
+      "strategy__ppo_signals_percentage_price_oscillator_strategy__ppo_signal__short",
+      "strategy__pvi_signals__pvi",
+      "strategy__pvi_signals__pvi_signal__neutral",
+      "strategy__qs_exit_signals__qs_exit_signal__sell",
+      "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short",
+      "strategy__quantified_strategy_signals__strategy_signal__long",
+      "strategy__quantified_strategy_signals__strategy_signal__short",
+      "strategy__r3_strategy_signals__r3_signal__neutral",
+      "strategy__real_estate_sector_signals__trading_signal__long",
+      "strategy__real_estate_sector_signals__trading_signal__neutral",
+      "strategy__reversal_day_signals__reversal_signal__neutral",
+      "strategy__santa_claus_rally_signals__signal__neutral",
+      "strategy__seasonal_dax_signals__seasonal_signal__short",
+      "strategy__seasonal_strategy_signals__seasonal_signal__short",
+      "strategy__seasonal_strategy_signals_sp_500_and_gold_miners_rotation_system_strategy_strategy__seasonal_signal__short",
+      "strategy__seasonal_trading_signals__signal__short",
+      "strategy__seasonal_trading_signals_litecoin_trading_strategy_strategy__signal__long",
+      "strategy__sell_the_rip_signals__signal__short",
+      "strategy__stochastic_signals__stochastic_strat_buy_signal",
+      "strategy__swing_index_signals__signal__long",
+      "strategy__swing_index_signals__signal__neutral",
+      "strategy__three_days_down_strategy__exit_signal__long",
+      "strategy__three_days_down_strategy__signal__neutral",
+      "strategy__tlt_seasonal_signals__signal__long",
+      "strategy__trend_following_btc_signals__signal__short",
+      "strategy__volatility_trading_signals__signal__short",
+      "strategy__vwma_breakouts__vwma_breakouts_sell_signal",
+      "strategy__weighted_close_signals__weighted_close",
+      "strategy__williams_r_signals_williams_r_trading_strategy_strategy__signal__long",
+      "strategy__worst_week_september_signals__signal__short",
+      "true_range",
+      "volume_imbalance_10"
+    ],
+    "dropped_pairs": [
+      {
+        "dropped": "strategy__asset_allocation_signals__asset_class__long",
+        "kept": "strategy__asset_allocation_signals__asset_class__short",
+        "correlation": 1.0,
+        "dropped_score": 0.00017479596415704071,
+        "kept_score": 0.00017479596415704546
+      },
+      {
+        "dropped": "strategy__best_6_months_timing_signals__signal__short",
+        "kept": "strategy__best_6_months_timing_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.0001377389524039027,
+        "kept_score": 0.00013773895240402036
+      },
+      {
+        "dropped": "strategy__bollinger_band_signals__bb_signal__short",
+        "kept": "strategy__bollinger_bands_short_entry__bb_short_entry_signal",
+        "correlation": 1.0,
+        "dropped_score": 0.0033865066242624075,
+        "kept_score": 0.0033865066242624135
+      },
+      {
+        "dropped": "strategy__bull_market_signal__trade_signal__long",
+        "kept": "strategy__bull_market_signal__trade_signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.0015330052139962064,
+        "kept_score": 0.001533005213996215
+      },
+      {
+        "dropped": "strategy__candlestick_patterns_signals__candlestick_signal__long",
+        "kept": "strategy__candlestick_patterns_signals__candlestick_signal__short",
+        "correlation": 1.0,
+        "dropped_score": 0.0005086304730444289,
+        "kept_score": 0.000508630473044438
+      },
+      {
+        "dropped": "strategy__connors_mdu_mdd_signals__mdu_mdd_signal__neutral",
+        "kept": "strategy__connors_mdu_mdd_signals__mdu_mdd_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.0027660218816220276,
+        "kept_score": 0.002766021881622034
+      },
+      {
+        "dropped": "strategy__divergence_signals__indicator",
+        "kept": "rsi_14",
+        "correlation": 1.0,
+        "dropped_score": 0.0036813493717460935,
+        "kept_score": 0.0036813493717460935
+      },
+      {
+        "dropped": "strategy__dvo_signals__dvo_signal__neutral",
+        "kept": "strategy__dvo_signals__dvo_signal__short",
+        "correlation": 1.0,
+        "dropped_score": 0.004212122388547201,
+        "kept_score": 0.004212122388547223
+      },
+      {
+        "dropped": "strategy__ema_signals__ema_bullish_signal",
+        "kept": "strategy__ema_signals__ema_bearish_signal",
+        "correlation": 1.0,
+        "dropped_score": 0.0023629224612008153,
+        "kept_score": 0.0023629224612008153
+      },
+      {
+        "dropped": "strategy__fisher_transform_signals__fisher_signal__neutral",
+        "kept": "strategy__fisher_transform_signals__fisher_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.00279212325648461,
+        "kept_score": 0.002792123256484611
+      },
+      {
+        "dropped": "strategy__high_252_day_signals__signal__long",
+        "kept": "strategy__high_252_day_signals__signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.007938827886346379,
+        "kept_score": 0.007938827886346382
+      },
+      {
+        "dropped": "strategy__login_signals__login_signal__short",
+        "kept": "strategy__australian_market_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.007881590658395441,
+        "kept_score": 0.007881590658395441
+      },
+      {
+        "dropped": "strategy__lower_highs_lows_signals__signal__short",
+        "kept": "strategy__lower_highs_lows_signals__signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.005317799458275229,
+        "kept_score": 0.005317799458275234
+      },
+      {
+        "dropped": "strategy__mean_reversion_signals__signal__short",
+        "kept": "strategy__mean_reversion_signals__signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.004652791115052088,
+        "kept_score": 0.0046527911150521
+      },
+      {
+        "dropped": "strategy__momentum_signals_turtle_trading_backtests_strategy__momentum_signal__neutral",
+        "kept": "strategy__momentum_signals_turtle_trading_backtests_strategy__momentum_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.0001747959641570398,
+        "kept_score": 0.00017479596415704372
+      },
+      {
+        "dropped": "strategy__overnight_trading_signals__signal__neutral",
+        "kept": "strategy__overnight_trading_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.0037431835220585307,
+        "kept_score": 0.0037431835220585307
+      },
+      {
+        "dropped": "strategy__pvi_signals__pvi_signal__neutral",
+        "kept": "strategy__pvi_signals__pvi_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.004557662567248203,
+        "kept_score": 0.004557662567248203
+      },
+      {
+        "dropped": "strategy__r3_strategy_signals__r3_signal__neutral",
+        "kept": "strategy__r3_strategy_signals__r3_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.007243564746955326,
+        "kept_score": 0.007243564746955326
+      },
+      {
+        "dropped": "strategy__santa_claus_rally_signals__signal__neutral",
+        "kept": "strategy__santa_claus_rally_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.0009243886075800348,
+        "kept_score": 0.0009243886075800395
+      },
+      {
+        "dropped": "strategy__seasonal_strategy_signals__seasonal_signal__short",
+        "kept": "strategy__seasonal_strategy_signals__seasonal_signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.00025841871959307117,
+        "kept_score": 0.00025841871959307117
+      },
+      {
+        "dropped": "strategy__seasonal_trading_signals__signal__short",
+        "kept": "strategy__seasonal_trading_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.004772280432054418,
+        "kept_score": 0.004772280432054418
+      },
+      {
+        "dropped": "strategy__seasonal_trading_signals_litecoin_trading_strategy_strategy__signal__long",
+        "kept": "strategy__seasonal_trading_signals_litecoin_trading_strategy_strategy__signal__short",
+        "correlation": 1.0,
+        "dropped_score": 0.00030979259822405794,
+        "kept_score": 0.0003097925982240608
+      },
+      {
+        "dropped": "strategy__sell_the_rip_signals__signal__short",
+        "kept": "strategy__sell_the_rip_signals__signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.00012066774951385066,
+        "kept_score": 0.00012066774951385231
+      },
+      {
+        "dropped": "strategy__three_days_down_strategy__exit_signal__long",
+        "kept": "strategy__three_days_down_strategy__exit_signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.003459039961390288,
+        "kept_score": 0.003459039961390292
+      },
+      {
+        "dropped": "strategy__trend_following_btc_signals__signal__short",
+        "kept": "strategy__trend_following_btc_signals__signal__long",
+        "correlation": 1.0,
+        "dropped_score": 0.008211893157179318,
+        "kept_score": 0.008211893157179318
+      },
+      {
+        "dropped": "strategy__worst_week_september_signals__signal__short",
+        "kept": "strategy__worst_week_september_signals__signal__neutral",
+        "correlation": 1.0,
+        "dropped_score": 0.003560839873485493,
+        "kept_score": 0.003560839873485521
+      },
+      {
+        "dropped": "strategy__gaussian_filter_signals__signal__short",
+        "kept": "strategy__gaussian_filter_signals__signal__long",
+        "correlation": 0.9999999999999999,
+        "dropped_score": 0.0004127999211316772,
+        "kept_score": 0.0004127999211316772
+      },
+      {
+        "dropped": "strategy__inflation_trading_signals__signal__short",
+        "kept": "strategy__inflation_trading_signals__signal__long",
+        "correlation": 0.9999999999999999,
+        "dropped_score": 0.001406743152588529,
+        "kept_score": 0.001406743152588529
+      },
+      {
+        "dropped": "strategy__seasonal_dax_signals__seasonal_signal__short",
+        "kept": "strategy__seasonal_dax_signals__seasonal_signal__long",
+        "correlation": 0.9999999999999999,
+        "dropped_score": 0.006659192693331279,
+        "kept_score": 0.006659192693331279
+      },
+      {
+        "dropped": "strategy__end_of_month_effect_signals__signal__neutral",
+        "kept": "strategy__end_of_month_effect_signals__signal__long",
+        "correlation": 0.9999999999999998,
+        "dropped_score": 0.0027954116468892447,
+        "kept_score": 0.0027954116468892477
+      },
+      {
+        "dropped": "strategy__reversal_day_signals__reversal_signal__neutral",
+        "kept": "strategy__reversal_day_signals__reversal_signal__long",
+        "correlation": 0.9999999999999997,
+        "dropped_score": 0.0016612871260919487,
+        "kept_score": 0.001661287126091952
+      },
+      {
+        "dropped": "strategy__aroon_strategy__aroon_trend_strength__strong",
+        "kept": "strategy__aroon_strategy__aroon_trend_strength__missing",
+        "correlation": 0.9999999999999996,
+        "dropped_score": 0.003498262706725484,
+        "kept_score": 0.003498262706725484
+      },
+      {
+        "dropped": "strategy__follow_through_day_signals__trading_signal__long",
+        "kept": "strategy__follow_through_day_signals__trading_signal__neutral",
+        "correlation": 0.9999999999999996,
+        "dropped_score": 0.0008712409960977481,
+        "kept_score": 0.0008712409960977513
+      },
+      {
+        "dropped": "strategy__end_of_month_effect_signals_end_of_month_effect_in_nifty_50_does_it_exist_turn_of_the_month_strategy__position__long",
+        "kept": "strategy__end_of_month_effect_signals_end_of_month_effect_in_nifty_50_does_it_exist_turn_of_the_month_strategy__position__neutral",
+        "correlation": 0.9999999999999994,
+        "dropped_score": 0.012251544826547354,
+        "kept_score": 0.012251544826547363
+      },
+      {
+        "dropped": "strategy__low_252_day_signals__signal__neutral",
+        "kept": "strategy__low_252_day_signals__signal__long",
+        "correlation": 0.9999999999999994,
+        "dropped_score": 0.0018924905064750556,
+        "kept_score": 0.001892490506475058
+      },
+      {
+        "dropped": "strategy__market_sentiment_signals_the_friday_seasonality_in_uso_oil_strategy__sentiment_signal__short",
+        "kept": "strategy__market_sentiment_signals_the_friday_seasonality_in_uso_oil_strategy__sentiment_signal__long",
+        "correlation": 0.9999999999999994,
+        "dropped_score": 0.0014783816007626893,
+        "kept_score": 0.0014783816007626898
+      },
+      {
+        "dropped": "strategy__qs_exit_signals__qs_exit_signal__sell",
+        "kept": "strategy__qs_exit_signals__qs_exit_signal__neutral",
+        "correlation": 0.9999999999999994,
+        "dropped_score": 0.001360046716194327,
+        "kept_score": 0.001360046716194327
+      },
+      {
+        "dropped": "strategy__three_days_down_strategy__signal__neutral",
+        "kept": "strategy__three_days_down_strategy__signal__long",
+        "correlation": 0.9999999999999994,
+        "dropped_score": 0.0025122745349501954,
+        "kept_score": 0.0025122745349501967
+      },
+      {
+        "dropped": "strategy__overbought_market_signals__signal__neutral",
+        "kept": "strategy__emini_russell_2000_signals__signal__short",
+        "correlation": 0.9999999999999993,
+        "dropped_score": 8.267622926981069e-05,
+        "kept_score": 8.267622926981168e-05
+      },
+      {
+        "dropped": "strategy__tlt_seasonal_signals__signal__long",
+        "kept": "strategy__tlt_seasonal_signals__signal__short",
+        "correlation": 0.9999999999999993,
+        "dropped_score": 0.007016358979313861,
+        "kept_score": 0.007016358979313864
+      },
+      {
+        "dropped": "strategy__bollinger_bands_width_signals__bb_signal__short",
+        "kept": "strategy__bollinger_bands_width_signals__bb_signal__long",
+        "correlation": 0.9999999999999991,
+        "dropped_score": 0.006173198379690063,
+        "kept_score": 0.006173198379690066
+      },
+      {
+        "dropped": "strategy__vwma_breakouts__vwma_breakouts_sell_signal",
+        "kept": "strategy__vwma_breakouts__vwma_breakouts_buy_signal",
+        "correlation": 0.9999999999999991,
+        "dropped_score": 0.0060710090540299685,
+        "kept_score": 0.0060710090540299685
+      },
+      {
+        "dropped": "strategy__membership_plans_signals_performance_of_the_opex_week_of_september_strategy__signal__long",
+        "kept": "bearish_candle",
+        "correlation": 0.999999999999999,
+        "dropped_score": 0.0053073660804700655,
+        "kept_score": 0.0053073660804700655
+      },
+      {
+        "dropped": "strategy__bullish_candlestick_patterns__signal__long",
+        "kept": "strategy__bullish_candlestick_patterns__signal__neutral",
+        "correlation": 0.9999999999999988,
+        "dropped_score": 0.006527070497976915,
+        "kept_score": 0.006527070497976919
+      },
+      {
+        "dropped": "strategy__cocoa_trading_signals__cocoa_signal__short",
+        "kept": "strategy__cocoa_trading_signals__cocoa_signal__long",
+        "correlation": 0.9999999999999988,
+        "dropped_score": 0.0008846848689721761,
+        "kept_score": 0.0008846848689721761
+      },
+      {
+        "dropped": "strategy__seasonal_strategy_signals_sp_500_and_gold_miners_rotation_system_strategy_strategy__seasonal_signal__short",
+        "kept": "strategy__seasonal_strategy_signals_sp_500_and_gold_miners_rotation_system_strategy_strategy__seasonal_signal__long",
+        "correlation": 0.9999999999999987,
+        "dropped_score": 0.0012452772217496021,
+        "kept_score": 0.0012452772217496021
+      },
+      {
+        "dropped": "strategy__volatility_trading_signals__signal__short",
+        "kept": "strategy__volatility_trading_signals__signal__neutral",
+        "correlation": 0.9999999999999987,
+        "dropped_score": 0.0036117160284058728,
+        "kept_score": 0.003611716028405881
+      },
+      {
+        "dropped": "rsi_slope_3",
+        "kept": "rsi_delta_3",
+        "correlation": 0.9999999999999964,
+        "dropped_score": 0.00860281810369507,
+        "kept_score": 0.008602818502671567
+      },
+      {
+        "dropped": "major_event_cluster_25",
+        "kept": "major_event_density_25",
+        "correlation": 0.9999999999999951,
+        "dropped_score": 0.008223035638214164,
+        "kept_score": 0.008223035801136785
+      },
+      {
+        "dropped": "major_event_cluster_10",
+        "kept": "major_event_density_10",
+        "correlation": 0.9999999999999939,
+        "dropped_score": 0.006651552800077355,
+        "kept_score": 0.006651552919459384
+      },
+      {
+        "dropped": "rsi_14",
+        "kept": "rsi_from_mid",
+        "correlation": 0.9999999999999898,
+        "dropped_score": 0.0036813493717460935,
+        "kept_score": 0.003681349595288863
+      },
+      {
+        "dropped": "strategy__cmo_absolute_indicator_signals__cmo",
+        "kept": "strategy__rsi_moving_average_signals__rsi",
+        "correlation": 0.999999999999987,
+        "dropped_score": 0.005426989391616073,
+        "kept_score": 0.0054269894499759915
+      },
+      {
+        "dropped": "log_return_1_winsor_100",
+        "kept": "close_return_1_winsor_100",
+        "correlation": 0.9999999395660387,
+        "dropped_score": 0.004500925507914156,
+        "kept_score": 0.004501713879584533
+      },
+      {
+        "dropped": "close_return_3_winsor_100",
+        "kept": "return_slope_3_winsor_100",
+        "correlation": 0.9999997881060012,
+        "dropped_score": 0.00852636806502577,
+        "kept_score": 0.0085278463562888
+      },
+      {
+        "dropped": "roc_10_roll_mean_5",
+        "kept": "close_return_5_roll_mean_10",
+        "correlation": 0.9999997108830648,
+        "dropped_score": 0.0008833839493585046,
+        "kept_score": 0.0008848677614253667
+      },
+      {
+        "dropped": "close_return_3",
+        "kept": "return_slope_3",
+        "correlation": 0.999999653838317,
+        "dropped_score": 0.008026144710693931,
+        "kept_score": 0.008027822095913288
+      },
+      {
+        "dropped": "close_return_5",
+        "kept": "close_return_1_roll_mean_5",
+        "correlation": 0.9999994651020607,
+        "dropped_score": 0.006478946492402589,
+        "kept_score": 0.006480030404925233
+      },
+      {
+        "dropped": "close_return_10",
+        "kept": "close_return_1_roll_mean_10",
+        "correlation": 0.999998945667213,
+        "dropped_score": 0.004422773768025404,
+        "kept_score": 0.004423384923940201
+      },
+      {
+        "dropped": "log_return_1",
+        "kept": "close_return_1",
+        "correlation": 0.999998825256257,
+        "dropped_score": 0.005133735660504083,
+        "kept_score": 0.005134029528843518
+      },
+      {
+        "dropped": "strategy__dca_vs_lump_sum_signals__lump_sum_value",
+        "kept": "strategy__weighted_close_signals__weighted_close",
+        "correlation": 0.9999968827005442,
+        "dropped_score": 0.009347390879717253,
+        "kept_score": 0.00935542948588779
+      },
+      {
+        "dropped": "ema_21",
+        "kept": "sma_20",
+        "correlation": 0.9999867690186085,
+        "dropped_score": 0.009428749507392942,
+        "kept_score": 0.009452991986787233
+      },
+      {
+        "dropped": "strategy__market_timing_signals__signal__long",
+        "kept": "strategy__market_timing_signals__signal__short",
+        "correlation": 0.999979923548799,
+        "dropped_score": 0.00036063145577445993,
+        "kept_score": 0.0003618280935253829
+      },
+      {
+        "dropped": "strategy__williams_r_signals_williams_r_trading_strategy_strategy__signal__long",
+        "kept": "strategy__williams_r_signals_williams_r_trading_strategy_strategy__signal__short",
+        "correlation": 0.9999782537809518,
+        "dropped_score": 0.00887812585910816,
+        "kept_score": 0.008879434056481731
+      },
+      {
+        "dropped": "sma_50",
+        "kept": "ema_50",
+        "correlation": 0.9999654664889311,
+        "dropped_score": 0.009363322783272928,
+        "kept_score": 0.009374892147706355
+      },
+      {
+        "dropped": "strategy__cta_trend_following_signals__signal__short",
+        "kept": "strategy__cta_trend_following_signals__signal__long",
+        "correlation": 0.9999598547342602,
+        "dropped_score": 7.4765836489577915e-06,
+        "kept_score": 8.672824370830338e-06
+      },
+      {
+        "dropped": "strategy__weighted_close_signals__weighted_close",
+        "kept": "ema_8",
+        "correlation": 0.9999431220475882,
+        "dropped_score": 0.00935542948588779,
+        "kept_score": 0.009420548730199629
+      },
+      {
+        "dropped": "strategy__monthly_trading_strategy_signals_four_up_days_in_row_sp_500_strategy__trading_signal__long",
+        "kept": "strategy__monthly_trading_strategy_signals_four_up_days_in_row_sp_500_strategy__trading_signal__short",
+        "correlation": 0.999919879963488,
+        "dropped_score": 0.0013251648087611795,
+        "kept_score": 0.0013287520004848163
+      },
+      {
+        "dropped": "ema_8",
+        "kept": "sma_20",
+        "correlation": 0.9998989921686771,
+        "dropped_score": 0.009420548730199629,
+        "kept_score": 0.009452991986787233
+      },
+      {
+        "dropped": "strategy__financial_services_signals__signal__short",
+        "kept": "strategy__financial_services_signals__signal__long",
+        "correlation": 0.99987980615017,
+        "dropped_score": 0.00026973789707463195,
+        "kept_score": 0.0002757108919951914
+      },
+      {
+        "dropped": "ema_200",
+        "kept": "strategy__moving_average_crossover_signals_how_i_made_an_rsi_trading_strategy_using_python_strategy__long_mavg",
+        "correlation": 0.9998593773076417,
+        "dropped_score": 0.009332964459295899,
+        "kept_score": 0.009345865698141484
+      },
+      {
+        "dropped": "ema_50",
+        "kept": "sma_20",
+        "correlation": 0.999843459694018,
+        "dropped_score": 0.009374892147706355,
+        "kept_score": 0.009452991986787233
+      },
+      {
+        "dropped": "ict_latest_swing_high",
+        "kept": "prior_high_20",
+        "correlation": 0.9997973464493145,
+        "dropped_score": 0.009455211621902571,
+        "kept_score": 0.009472428150735703
+      },
+      {
+        "dropped": "ict_latest_swing_low",
+        "kept": "prior_low_20",
+        "correlation": 0.999790563116647,
+        "dropped_score": 0.009423925943629107,
+        "kept_score": 0.009448401081004379
+      },
+      {
+        "dropped": "sma_20",
+        "kept": "prior_high_20",
+        "correlation": 0.9997740399294579,
+        "dropped_score": 0.009452991986787233,
+        "kept_score": 0.009472428150735703
+      },
+      {
+        "dropped": "strategy__swing_index_signals__signal__long",
+        "kept": "strategy__membership_plans_signals_nasdaq_bond_ratio_rotation_trading_strategy_strategy__signal__long",
+        "correlation": 0.9997635657981806,
+        "dropped_score": 0.004897961739990711,
+        "kept_score": 0.0049070231301101995
+      },
+      {
+        "dropped": "strategy__ppo_signals_percentage_price_oscillator_strategy__ppo_signal__long",
+        "kept": "strategy__ppo_signals__ppo_sell_signal",
+        "correlation": 0.9997430895923844,
+        "dropped_score": 0.003415854515067019,
+        "kept_score": 0.003415854515067019
+      },
+      {
+        "dropped": "strategy__linear_regression_signals__signal__long",
+        "kept": "strategy__linear_regression_signals__signal__short",
+        "correlation": 0.9997400330355519,
+        "dropped_score": 0.0031522633025096256,
+        "kept_score": 0.003164201977762427
+      },
+      {
+        "dropped": "strategy__membership_plans_signals_nasdaq_bond_ratio_rotation_trading_strategy_strategy__signal__short",
+        "kept": "strategy__swing_index_signals__signal__short",
+        "correlation": 0.9996814479698988,
+        "dropped_score": 0.0007744384309270655,
+        "kept_score": 0.0007883025140307357
+      },
+      {
+        "dropped": "strategy__swing_index_signals__signal__neutral",
+        "kept": "strategy__membership_plans_signals_nasdaq_bond_ratio_rotation_trading_strategy_strategy__signal__neutral",
+        "correlation": 0.9995799980585466,
+        "dropped_score": 0.0035912251519087226,
+        "kept_score": 0.0036115487241127195
+      },
+      {
+        "dropped": "strategy__membership_trading_signals_what_returns_can_we_expect_after_a_very_bad_friday_in_the_stock_market_strategy__signal__short",
+        "kept": "strategy__real_estate_sector_signals__trading_signal__short",
+        "correlation": 0.999565297764222,
+        "dropped_score": 0.0008601874517253431,
+        "kept_score": 0.0008661947447326777
+      },
+      {
+        "dropped": "strategy__bogleheads_portfolio_signals__3_fund_signal__short",
+        "kept": "strategy__bogleheads_portfolio_signals__3_fund_signal__long",
+        "correlation": 0.9995592721698523,
+        "dropped_score": 0.005431838703763199,
+        "kept_score": 0.005451048747256293
+      },
+      {
+        "dropped": "prior_high_20",
+        "kept": "prior_high_50",
+        "correlation": 0.9995561858218055,
+        "dropped_score": 0.009472428150735703,
+        "kept_score": 0.009507246884671158
+      },
+      {
+        "dropped": "prior_low_50",
+        "kept": "prior_low_20",
+        "correlation": 0.9995008103042451,
+        "dropped_score": 0.009138078560305398,
+        "kept_score": 0.009448401081004379
+      },
+      {
+        "dropped": "strategy__australian_market_signals__signal__long",
+        "kept": "strategy__australian_market_signals__signal__short",
+        "correlation": 0.9995000203087343,
+        "dropped_score": 0.007881590658395441,
+        "kept_score": 0.007907904852637511
+      },
+      {
+        "dropped": "strategy__eurnzd_forex_strategy__signal__long",
+        "kept": "strategy__eurnzd_forex_strategy__signal__short",
+        "correlation": 0.9994199599177771,
+        "dropped_score": 0.005401434302913549,
+        "kept_score": 0.005426553868559472
+      },
+      {
+        "dropped": "strategy__cotton_trading_signals__trading_signal__long",
+        "kept": "strategy__cotton_trading_signals__trading_signal__short",
+        "correlation": 0.9993793894178592,
+        "dropped_score": 0.0002756409817276587,
+        "kept_score": 0.00030312076993719536
+      },
+      {
+        "dropped": "strategy__membership_plan_signals_membership_plan_strategy__membership_signal__short",
+        "kept": "strategy__membership_plan_signals_membership_plan_strategy__membership_signal__long",
+        "correlation": 0.999319257750952,
+        "dropped_score": 0.00042263110752694733,
+        "kept_score": 0.0004560724237060717
+      },
+      {
+        "dropped": "strategy__ppo_signals_percentage_price_oscillator_strategy__ppo_signal__short",
+        "kept": "strategy__ppo_signals__ppo_buy_signal",
+        "correlation": 0.9992386098295636,
+        "dropped_score": 0.0009408198175869919,
+        "kept_score": 0.0009408198175869919
+      },
+      {
+        "dropped": "strategy__ppo_signals__ppo_signal",
+        "kept": "macd_signal",
+        "correlation": 0.9991374452243367,
+        "dropped_score": 0.002476649664612419,
+        "kept_score": 0.002638154825251425
+      },
+      {
+        "dropped": "strategy__ppo_signals__ppo",
+        "kept": "macd_line",
+        "correlation": 0.9991341736192485,
+        "dropped_score": 0.0007222996409243505,
+        "kept_score": 0.0008354075850298175
+      },
+      {
+        "dropped": "candle_body_pct",
+        "kept": "candle_body",
+        "correlation": 0.9990699183621724,
+        "dropped_score": 0.005280226866420672,
+        "kept_score": 0.005325073975837127
+      },
+      {
+        "dropped": "strategy__quantified_strategy_signals__strategy_signal__short",
+        "kept": "strategy__williams_signals__williams_sell_signal",
+        "correlation": 0.9989588675610355,
+        "dropped_score": 0.0027762590858109656,
+        "kept_score": 0.0028187883241570363
+      },
+      {
+        "dropped": "strategy__moving_average_strategy__moving_average_buy_signal",
+        "kept": "strategy__moving_average_strategy__moving_average_sell_signal",
+        "correlation": 0.998940437293268,
+        "dropped_score": 0.005833656621956086,
+        "kept_score": 0.005887430015421234
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume_lag_1",
+        "kept": "continuation_bars_since_bear_resume",
+        "correlation": 0.9988136142985793,
+        "dropped_score": 0.00031311302890812737,
+        "kept_score": 0.00036209927037251653
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse_lag_1",
+        "kept": "continuation_bars_since_bear_impulse",
+        "correlation": 0.998796909916555,
+        "dropped_score": 0.0009283410781019621,
+        "kept_score": 0.0010110464383399033
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume_lag_2",
+        "kept": "continuation_bars_since_bear_resume_lag_3",
+        "correlation": 0.9987897466034609,
+        "dropped_score": 0.00024318565239457617,
+        "kept_score": 0.0002477081798856893
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse_lag_2",
+        "kept": "continuation_bars_since_bear_impulse_lag_3",
+        "correlation": 0.9987771433127179,
+        "dropped_score": 0.0009017374241868336,
+        "kept_score": 0.000936796192154396
+      },
+      {
+        "dropped": "strategy__quantified_strategy_signals__strategy_signal__long",
+        "kept": "strategy__williams_signals__williams_buy_signal",
+        "correlation": 0.9987707447183649,
+        "dropped_score": 0.0029433752287989644,
+        "kept_score": 0.0034301247400987125
+      },
+      {
+        "dropped": "strategy__membership_based_trading_signals__signal__short",
+        "kept": "strategy__membership_based_trading_signals__signal__long",
+        "correlation": 0.9987607681804783,
+        "dropped_score": 0.002111767940389475,
+        "kept_score": 0.00217384510532674
+      },
+      {
+        "dropped": "strategy__dpo_signals__dpo_overbought_signal",
+        "kept": "strategy__dpo_signals__dpo_oversold_signal",
+        "correlation": 0.9987407705696921,
+        "dropped_score": 0.0002483394428226022,
+        "kept_score": 0.0003128143429841901
+      },
+      {
+        "dropped": "prior_low_20",
+        "kept": "prior_high_50",
+        "correlation": 0.9987003612199055,
+        "dropped_score": 0.009448401081004379,
+        "kept_score": 0.009507246884671158
+      },
+      {
+        "dropped": "strategy__real_estate_sector_signals__trading_signal__neutral",
+        "kept": "strategy__membership_trading_signals_what_returns_can_we_expect_after_a_very_bad_friday_in_the_stock_market_strategy__signal__neutral",
+        "correlation": 0.9986647029181636,
+        "dropped_score": 0.0001610047617037953,
+        "kept_score": 0.00018077960803734172
+      },
+      {
+        "dropped": "htf_30m_latest_swing_low",
+        "kept": "strategy__moving_average_crossover_signals_how_i_made_an_rsi_trading_strategy_using_python_strategy__long_mavg",
+        "correlation": 0.9986409158887576,
+        "dropped_score": 0.009025405894149238,
+        "kept_score": 0.009345865698141484
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_roll_mean_5",
+        "kept": "continuation_bear_pullback_depth_atr_lag_2",
+        "correlation": 0.9985655605881937,
+        "dropped_score": 0.0009455084386885004,
+        "kept_score": 0.0009631560459299744
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse_lag_3",
+        "kept": "continuation_bars_since_bull_impulse_lag_2",
+        "correlation": 0.9985383508199049,
+        "dropped_score": 0.0066205012043363135,
+        "kept_score": 0.006725192411282708
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse_lag_1",
+        "kept": "continuation_bars_since_bull_impulse_lag_2",
+        "correlation": 0.9985383091253979,
+        "dropped_score": 0.006170206602596247,
+        "kept_score": 0.006725192411282708
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume_lag_3",
+        "kept": "continuation_bars_since_bull_resume_lag_2",
+        "correlation": 0.9985277659706115,
+        "dropped_score": 0.006184521383340912,
+        "kept_score": 0.006275818396333468
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume_lag_2",
+        "kept": "continuation_bars_since_bull_resume_lag_1",
+        "correlation": 0.9985277228327003,
+        "dropped_score": 0.006275818396333468,
+        "kept_score": 0.00635679492973748
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume_lag_1",
+        "kept": "continuation_bars_since_bull_resume",
+        "correlation": 0.9985276794180725,
+        "dropped_score": 0.00635679492973748,
+        "kept_score": 0.006410384902520042
+      },
+      {
+        "dropped": "strategy__moving_average_crossover_signals_how_i_made_an_rsi_trading_strategy_using_python_strategy__long_mavg",
+        "kept": "htf_30m_latest_swing_high",
+        "correlation": 0.9983665886726327,
+        "dropped_score": 0.009345865698141484,
+        "kept_score": 0.009473211602979868
+      },
+      {
+        "dropped": "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long",
+        "kept": "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__short",
+        "correlation": 0.9980019718451721,
+        "dropped_score": 0.005435945506987346,
+        "kept_score": 0.005536235805026956
+      },
+      {
+        "dropped": "relative_spread_bps",
+        "kept": "candle_range",
+        "correlation": 0.9979592860020838,
+        "dropped_score": 0.0016055554926541701,
+        "kept_score": 0.002063212683566952
+      },
+      {
+        "dropped": "strategy__real_estate_sector_signals__trading_signal__long",
+        "kept": "strategy__membership_trading_signals_what_returns_can_we_expect_after_a_very_bad_friday_in_the_stock_market_strategy__signal__long",
+        "correlation": 0.9977735777894978,
+        "dropped_score": 0.001108566232971293,
+        "kept_score": 0.0011289275389802075
+      },
+      {
+        "dropped": "htf_30m_latest_swing_high",
+        "kept": "prior_high_50",
+        "correlation": 0.9977699601670009,
+        "dropped_score": 0.009473211602979868,
+        "kept_score": 0.009507246884671158
+      },
+      {
+        "dropped": "strategy__stochastic_signals__stochastic_strat_buy_signal",
+        "kept": "strategy__stochastic_signals__stochastic_strat_sell_signal",
+        "correlation": 0.9976427656016759,
+        "dropped_score": 0.003202406879945191,
+        "kept_score": 0.0033313620020594876
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume_lag_3",
+        "kept": "continuation_bars_since_bear_resume_lag_5",
+        "correlation": 0.9976079003553675,
+        "dropped_score": 0.0002477081798856893,
+        "kept_score": 0.0013806324263177896
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse_lag_5",
+        "kept": "continuation_bars_since_bear_impulse_lag_3",
+        "correlation": 0.9975485212137192,
+        "dropped_score": 0.0007776542864672314,
+        "kept_score": 0.000936796192154396
+      },
+      {
+        "dropped": "strategy__atr_high_sma_breakouts_le__average_candle_height",
+        "kept": "atr_14",
+        "correlation": 0.9974698718728137,
+        "dropped_score": 0.00027935786986604566,
+        "kept_score": 0.0005039494061878867
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse",
+        "kept": "continuation_bars_since_bull_impulse_lag_2",
+        "correlation": 0.9970804845825174,
+        "dropped_score": 0.006253801376935017,
+        "kept_score": 0.006725192411282708
+      },
+      {
+        "dropped": "strategy__moving_average_crossover_signals_monday_tuesday_trade_in_nasdaq_update_strategy__crossover_signal__short",
+        "kept": "strategy__golden_ma_signals__ma_sell_signal",
+        "correlation": 0.9968153652258585,
+        "dropped_score": 0.0011375681496495992,
+        "kept_score": 0.0011375681496495992
+      },
+      {
+        "dropped": "continuation_bull_pullback_depth_atr_lag_2",
+        "kept": "continuation_bull_pullback_depth_atr_roll_mean_5",
+        "correlation": 0.9965717861808778,
+        "dropped_score": 0.0015946829228366652,
+        "kept_score": 0.0016403350389565489
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse_lag_3",
+        "kept": "continuation_bars_since_bear_impulse",
+        "correlation": 0.9963602308814893,
+        "dropped_score": 0.000936796192154396,
+        "kept_score": 0.0010110464383399033
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_roll_mean_10",
+        "kept": "continuation_bear_pullback_depth_atr_lag_5",
+        "correlation": 0.9961108210526736,
+        "dropped_score": 0.001008826791346289,
+        "kept_score": 0.0010777465374511646
+      },
+      {
+        "dropped": "atr_ratio_14_50_roll_mean_5",
+        "kept": "atr_ratio_14_50_lag_2",
+        "correlation": 0.9959402867463197,
+        "dropped_score": 0.002957299224110758,
+        "kept_score": 0.0029668453135306165
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr",
+        "kept": "continuation_bear_pullback_depth_atr_lag_1",
+        "correlation": 0.9959042704233427,
+        "dropped_score": 0.0006962491011987879,
+        "kept_score": 0.0007183545214914965
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_lag_1",
+        "kept": "continuation_bear_pullback_depth_atr_lag_2",
+        "correlation": 0.9958944588014457,
+        "dropped_score": 0.0007183545214914965,
+        "kept_score": 0.0009631560459299744
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_lag_2",
+        "kept": "continuation_bear_pullback_depth_atr_lag_3",
+        "correlation": 0.9958917960702982,
+        "dropped_score": 0.0009631560459299744,
+        "kept_score": 0.0012074945061626545
+      },
+      {
+        "dropped": "strategy__choppiness_index_signals__chop_signal__neutral",
+        "kept": "strategy__choppiness_index_signals__chop_signal__long",
+        "correlation": 0.9956332344536479,
+        "dropped_score": 0.0011909833030687238,
+        "kept_score": 0.0013266384052781793
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse_lag_5",
+        "kept": "continuation_bars_since_bull_impulse_lag_2",
+        "correlation": 0.9956260286815781,
+        "dropped_score": 0.006511986557307029,
+        "kept_score": 0.006725192411282708
+      },
+      {
+        "dropped": "htf_1h_latest_swing_low",
+        "kept": "htf_1h_latest_swing_high",
+        "correlation": 0.9955260166301626,
+        "dropped_score": 0.009263179913354406,
+        "kept_score": 0.009625294710663564
+      },
+      {
+        "dropped": "interaction_bear_sweep_structure",
+        "kept": "sweep_high_20",
+        "correlation": 0.995194210508449,
+        "dropped_score": 0.005308726344457743,
+        "kept_score": 0.005498875689526871
+      },
+      {
+        "dropped": "prior_high_50",
+        "kept": "htf_1h_latest_swing_high",
+        "correlation": 0.9948596714802049,
+        "dropped_score": 0.009507246884671158,
+        "kept_score": 0.009625294710663564
+      },
+      {
+        "dropped": "strategy__cumulative_rsi_signals__cumulative_rsi_signal__neutral",
+        "kept": "strategy__cumulative_rsi_signals__cumulative_rsi_signal__short",
+        "correlation": 0.9946762420725546,
+        "dropped_score": 0.0007281811174792845,
+        "kept_score": 0.000864382208610925
+      },
+      {
+        "dropped": "interaction_bull_sweep_structure",
+        "kept": "sweep_low_20",
+        "correlation": 0.9941699574344731,
+        "dropped_score": 0.001242755025381598,
+        "kept_score": 0.0012741566840738397
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume_lag_10",
+        "kept": "continuation_bars_since_bear_resume_lag_5",
+        "correlation": 0.9941383429464833,
+        "dropped_score": 0.0009967962230884092,
+        "kept_score": 0.0013806324263177896
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume",
+        "kept": "continuation_bars_since_bear_resume_lag_5",
+        "correlation": 0.9940331377037723,
+        "dropped_score": 0.00036209927037251653,
+        "kept_score": 0.0013806324263177896
+      },
+      {
+        "dropped": "continuation_bull_pullback_depth_atr_roll_mean_5",
+        "kept": "continuation_bull_pullback_depth_atr_lag_1",
+        "correlation": 0.9935061345698585,
+        "dropped_score": 0.0016403350389565489,
+        "kept_score": 0.0019726099261429372
+      },
+      {
+        "dropped": "htf_prev_day_high",
+        "kept": "htf_prev_day_low",
+        "correlation": 0.9928057970000164,
+        "dropped_score": 0.009588847934945152,
+        "kept_score": 0.010023906435472109
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume_lag_5",
+        "kept": "continuation_bars_since_bull_resume_lag_10",
+        "correlation": 0.9926643535699674,
+        "dropped_score": 0.006070197799453068,
+        "kept_score": 0.006567827453857199
+      },
+      {
+        "dropped": "fracdiff_close",
+        "kept": "htf_1h_latest_swing_high",
+        "correlation": 0.9924890956105137,
+        "dropped_score": 0.009021200897444327,
+        "kept_score": 0.009625294710663564
+      },
+      {
+        "dropped": "strategy__monthly_trading_strategy_signals__strategy_signal__short",
+        "kept": "strategy__monthly_trading_strategy_signals__strategy_signal__long",
+        "correlation": 0.9921234007510545,
+        "dropped_score": 0.0029566812264322363,
+        "kept_score": 0.003022648156134172
+      },
+      {
+        "dropped": "strategy__membership_strategy_signals_turnaround_tuesday_in_a_bear_market_strategy__membership_signal__short",
+        "kept": "strategy__membership_strategy_signals_turnaround_tuesday_in_a_bear_market_strategy__membership_signal__long",
+        "correlation": 0.9916085453853883,
+        "dropped_score": 0.004295929148015956,
+        "kept_score": 0.005248293327210849
+      },
+      {
+        "dropped": "continuation_bull_pullback_depth_atr_lag_5",
+        "kept": "continuation_bull_pullback_depth_atr_roll_mean_10",
+        "correlation": 0.9915946574100072,
+        "dropped_score": 0.0006763502077574406,
+        "kept_score": 0.0010034413077030008
+      },
+      {
+        "dropped": "strategy__dollar_cost_averaging_signals__total_shares",
+        "kept": "strategy__pvi_signals__pvi",
+        "correlation": 0.9915731634167346,
+        "dropped_score": 0.006010520880346005,
+        "kept_score": 0.006053931749716376
+      },
+      {
+        "dropped": "interaction_newyork_bear_setup",
+        "kept": "interaction_overlap_bear_setup",
+        "correlation": 0.9915319958304288,
+        "dropped_score": 0.005010138190273987,
+        "kept_score": 0.005315369349475031
+      },
+      {
+        "dropped": "close_return_5_roll_mean_100",
+        "kept": "roc_10_roll_mean_100",
+        "correlation": 0.9911580610749816,
+        "dropped_score": 0.0018737804370711885,
+        "kept_score": 0.0020438241185692183
+      },
+      {
+        "dropped": "continuation_bull_pullback_depth_atr_lag_1",
+        "kept": "continuation_bull_pullback_depth_atr",
+        "correlation": 0.9904118337742884,
+        "dropped_score": 0.0019726099261429372,
+        "kept_score": 0.0021858248640628263
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_lag_5",
+        "kept": "continuation_bear_pullback_depth_atr_lag_3",
+        "correlation": 0.9897233724518546,
+        "dropped_score": 0.0010777465374511646,
+        "kept_score": 0.0012074945061626545
+      },
+      {
+        "dropped": "in_newyork_killzone",
+        "kept": "in_london_ny_overlap",
+        "correlation": 0.9896746572543673,
+        "dropped_score": 0.00551754412932808,
+        "kept_score": 0.005876012686476033
+      },
+      {
+        "dropped": "continuation_bear_pullback_depth_atr_roll_mean_20",
+        "kept": "continuation_bear_pullback_depth_atr_lag_10",
+        "correlation": 0.9894170703184499,
+        "dropped_score": 0.0016214428651164174,
+        "kept_score": 0.001733533847564631
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse_lag_20",
+        "kept": "continuation_bars_since_bear_impulse_lag_10",
+        "correlation": 0.9890259828032231,
+        "dropped_score": 0.0009927868166144675,
+        "kept_score": 0.0016506707125415292
+      },
+      {
+        "dropped": "atr_ratio_14_50_lag_5",
+        "kept": "atr_ratio_14_50_roll_mean_10",
+        "correlation": 0.9889152916052784,
+        "dropped_score": 0.0014075222789479774,
+        "kept_score": 0.0016423834462160989
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse_lag_2",
+        "kept": "continuation_bars_since_bull_impulse_lag_10",
+        "correlation": 0.9883894664748641,
+        "dropped_score": 0.006725192411282708,
+        "kept_score": 0.008288343897262025
+      },
+      {
+        "dropped": "continuation_bars_since_bear_impulse",
+        "kept": "continuation_bars_since_bear_impulse_lag_10",
+        "correlation": 0.9880609422261678,
+        "dropped_score": 0.0010110464383399033,
+        "kept_score": 0.0016506707125415292
+      },
+      {
+        "dropped": "in_discount_zone",
+        "kept": "interaction_bull_discount_structure",
+        "correlation": 0.9877598305181443,
+        "dropped_score": 0.0008447842809017734,
+        "kept_score": 0.0011110011114035061
+      },
+      {
+        "dropped": "down_volume_share_10",
+        "kept": "volume_imbalance_10",
+        "correlation": 0.9876030540555972,
+        "dropped_score": 0.0034464376318023757,
+        "kept_score": 0.0039890851470223065
+      },
+      {
+        "dropped": "volume_imbalance_10",
+        "kept": "up_volume_share_10",
+        "correlation": 0.9875895280589178,
+        "dropped_score": 0.0039890851470223065,
+        "kept_score": 0.004435936737078223
+      },
+      {
+        "dropped": "interaction_newyork_bull_setup",
+        "kept": "interaction_overlap_bull_setup",
+        "correlation": 0.9873117595534946,
+        "dropped_score": 0.004967699209188504,
+        "kept_score": 0.0053350781886088725
+      },
+      {
+        "dropped": "continuation_bull_pullback_depth_atr_roll_mean_10",
+        "kept": "continuation_bull_pullback_depth_atr_lag_3",
+        "correlation": 0.9872571933826082,
+        "dropped_score": 0.0010034413077030008,
+        "kept_score": 0.0011928155994796066
+      },
+      {
+        "dropped": "interaction_bear_premium_structure",
+        "kept": "in_premium_zone",
+        "correlation": 0.9870650974222069,
+        "dropped_score": 0.0036414952330027918,
+        "kept_score": 0.004137406734693286
+      },
+      {
+        "dropped": "atr_ratio_14_50_lag_1",
+        "kept": "atr_ratio_14_50",
+        "correlation": 0.9868713395259164,
+        "dropped_score": 0.003798017621380427,
+        "kept_score": 0.004069310968424534
+      },
+      {
+        "dropped": "atr_ratio_14_50_lag_3",
+        "kept": "atr_ratio_14_50_lag_2",
+        "correlation": 0.986803690504945,
+        "dropped_score": 0.00211665581796422,
+        "kept_score": 0.0029668453135306165
+      },
+      {
+        "dropped": "htf_1h_latest_swing_high",
+        "kept": "htf_prev_day_low",
+        "correlation": 0.9866178036135919,
+        "dropped_score": 0.009625294710663564,
+        "kept_score": 0.010023906435472109
+      },
+      {
+        "dropped": "macd_signal",
+        "kept": "strategy__kst_oscillator_signals__kst",
+        "correlation": 0.9865176554440017,
+        "dropped_score": 0.002638154825251425,
+        "kept_score": 0.0029290483080494797
+      },
+      {
+        "dropped": "continuation_bars_since_bear_resume_lag_5",
+        "kept": "continuation_bars_since_bear_impulse_lag_10",
+        "correlation": 0.9861935704466287,
+        "dropped_score": 0.0013806324263177896,
+        "kept_score": 0.0016506707125415292
+      },
+      {
+        "dropped": "htf_rolling_daily_high",
+        "kept": "htf_prev_day_low",
+        "correlation": 0.9861574179824014,
+        "dropped_score": 0.009759368008730566,
+        "kept_score": 0.010023906435472109
+      },
+      {
+        "dropped": "strategy__pvi_signals__pvi",
+        "kept": "strategy__dca_vs_lump_sum_signals__dca_value",
+        "correlation": 0.9859684018868042,
+        "dropped_score": 0.006053931749716376,
+        "kept_score": 0.006798468642611733
+      },
+      {
+        "dropped": "continuation_bars_since_bull_impulse_lag_20",
+        "kept": "continuation_bars_since_bull_impulse_lag_10",
+        "correlation": 0.9855133075661774,
+        "dropped_score": 0.007617759952821502,
+        "kept_score": 0.008288343897262025
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume_lag_20",
+        "kept": "continuation_bars_since_bull_resume_lag_10",
+        "correlation": 0.985381325454476,
+        "dropped_score": 0.006286831228622794,
+        "kept_score": 0.006567827453857199
+      },
+      {
+        "dropped": "continuation_bars_since_bull_resume",
+        "kept": "continuation_bars_since_bull_resume_lag_10",
+        "correlation": 0.9853772613844078,
+        "dropped_score": 0.006410384902520042,
+        "kept_score": 0.006567827453857199
+      },
+      {
+        "dropped": "continuation_bear_impulse_magnitude_atr_lag_1",
+        "kept": "continuation_bear_impulse_magnitude_atr",
+        "correlation": 0.9849325705778947,
+        "dropped_score": 0.00018627349323117027,
+        "kept_score": 0.0004462764933499281
+      },
+      {
+        "dropped": "htf_prev_day_low",
+        "kept": "htf_rolling_daily_low",
+        "correlation": 0.984320606535862,
+        "dropped_score": 0.010023906435472109,
+        "kept_score": 0.010325055621817415
+      },
+      {
+        "dropped": "continuation_bear_impulse_magnitude_atr_lag_2",
+        "kept": "continuation_bear_impulse_magnitude_atr_lag_3",
+        "correlation": 0.9839824403010582,
+        "dropped_score": 0.0006471719854576488,
+        "kept_score": 0.0009017820325726525
+      },
+      {
+        "dropped": "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short",
+        "kept": "strategy__volatility_band_signals__volatility_band_buy_signal",
+        "correlation": 0.9833624681936849,
+        "dropped_score": 0.007555289130452109,
+        "kept_score": 0.008304490250424214
+      },
+      {
+        "dropped": "rsi_slope_decay_3_8_sigma_norm_60",
+        "kept": "rsi_slope_decay_3_8",
+        "correlation": 0.9830375747725574,
+        "dropped_score": 0.006957946779819877,
+        "kept_score": 0.007079439311922839
+      },
+      {
+        "dropped": "close_return_5_roll_mean_50",
+        "kept": "roc_10_roll_mean_50",
+        "correlation": 0.9821273949632299,
+        "dropped_score": 0.003392788668955911,
+        "kept_score": 0.004226810209806796
+      },
+      {
+        "dropped": "ema_spread_8_21_atr",
+        "kept": "ema_slope_21_5",
+        "correlation": 0.9818226495256731,
+        "dropped_score": 0.0025138206379734435,
+        "kept_score": 0.0028053630403251915
+      },
+      {
+        "dropped": "strategy__ad_indicator_signals__signal__short",
+        "kept": "bearish_candle",
+        "correlation": 0.9817805641622045,
+        "dropped_score": 0.004346228438024106,
+        "kept_score": 0.0053073660804700655
+      },
+      {
+        "dropped": "true_range",
+        "kept": "candle_range",
+        "correlation": 0.9817076970089972,
+        "dropped_score": 0.0018387591223759565,
+        "kept_score": 0.002063212683566952
+      },
+      {
+        "dropped": "bullish_candle",
+        "kept": "strategy__ad_indicator_signals__signal__long",
+        "correlation": 0.9815761506750732,
+        "dropped_score": 0.004730845662269658,
+        "kept_score": 0.005240332178697864
+      },
+      {
+        "dropped": "continuation_bull_impulse_magnitude_atr_lag_1",
+        "kept": "continuation_bull_impulse_magnitude_atr",
+        "correlation": 0.9814971102248408,
+        "dropped_score": 0.002063541218296488,
+        "kept_score": 0.0024658283152146463
+      },
+      {
+        "dropped": "continuation_bull_impulse_magnitude_atr_lag_3",
+        "kept": "continuation_bull_impulse_magnitude_atr_lag_2",
+        "correlation": 0.981182548270777,
+        "dropped_score": 0.0007811908592187077,
+        "kept_score": 0.0013417696436648606
+      },
+      {
+        "dropped": "close_return_1_roll_mean_10",
+        "kept": "close_return_10_winsor_100",
+        "correlation": 0.9810319069053554,
+        "dropped_score": 0.004423384923940201,
+        "kept_score": 0.004534080600616083
+      },
+      {
+        "dropped": "return_slope_decay_8_21_winsor_100",
+        "kept": "return_slope_decay_8_21",
+        "correlation": 0.9805662660951638,
+        "dropped_score": 0.0015048034306506483,
+        "kept_score": 0.0017773992527884569
+      },
+      {
+        "dropped": "rsi_slope_3_sigma_norm_60",
+        "kept": "rsi_delta_3",
+        "correlation": 0.9801251963332612,
+        "dropped_score": 0.007727758151561272,
+        "kept_score": 0.008602818502671567
+      }
+    ],
+    "similarity_pairs": [
+      {
+        "feature_a": "close_return_1",
+        "feature_b": "log_return_1",
+        "correlation": 0.999998825256257
+      },
+      {
+        "feature_a": "candle_body",
+        "feature_b": "candle_body_pct",
+        "correlation": 0.9990699183621724
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "ema_21",
+        "correlation": 0.999934738197804
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "ema_50",
+        "correlation": 0.9996627611178319
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "ema_50",
+        "correlation": 0.9998698105478898
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "ema_200",
+        "correlation": 0.9980979013631208
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "ema_200",
+        "correlation": 0.9984521605291233
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "ema_200",
+        "correlation": 0.9990434280339147
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "sma_20",
+        "correlation": 0.9998989921686771
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "sma_20",
+        "correlation": 0.9999867690186085
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "sma_20",
+        "correlation": 0.999843459694018
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "sma_20",
+        "correlation": 0.998381915311038
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "sma_50",
+        "correlation": 0.9994978702276436
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "sma_50",
+        "correlation": 0.9997664683250121
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "sma_50",
+        "correlation": 0.9999654664889311
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "sma_50",
+        "correlation": 0.9989743183164467
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "sma_50",
+        "correlation": 0.9997366249031593
+      },
+      {
+        "feature_a": "rsi_14",
+        "feature_b": "rsi_from_mid",
+        "correlation": 0.9999999999999898
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "prior_high_20",
+        "correlation": 0.9996845956787501
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "prior_high_20",
+        "correlation": 0.9997722259071259
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "prior_high_20",
+        "correlation": 0.999644890458924
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "prior_high_20",
+        "correlation": 0.998174164443351
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "prior_high_20",
+        "correlation": 0.9997740399294579
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "prior_high_20",
+        "correlation": 0.9995478007613159
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9996607473348733
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9997697687487698
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9996737420425739
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9982876916035727
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "prior_low_20",
+        "correlation": 0.999771740817135
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9995890060560202
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "prior_low_20",
+        "correlation": 0.9992202546547811
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9991110049087693
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9993171142036076
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9994797685662729
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9984776877044508
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "prior_high_50",
+        "correlation": 0.999271300753201
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9994761800752406
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9995561858218055
+      },
+      {
+        "feature_a": "prior_low_20",
+        "feature_b": "prior_high_50",
+        "correlation": 0.9987003612199055
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9990127074340052
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9992466438331086
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9994764810908788
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9986723483458485
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9991935980192714
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9994853964916126
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9986073525689555
+      },
+      {
+        "feature_a": "prior_low_20",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9995008103042451
+      },
+      {
+        "feature_a": "prior_high_50",
+        "feature_b": "prior_low_50",
+        "correlation": 0.9982780412748283
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9966377884263037
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9970674358377044
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9977998876390729
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9984493772149472
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9969745830144316
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.997810249997718
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9969260698048563
+      },
+      {
+        "feature_a": "prior_low_20",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9967868372136491
+      },
+      {
+        "feature_a": "prior_high_50",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9977699601670009
+      },
+      {
+        "feature_a": "prior_low_50",
+        "feature_b": "htf_30m_latest_swing_high",
+        "correlation": 0.9971823861985301
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9969843233142929
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9974033526407458
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9981252907061823
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9987606196992297
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9973126400601066
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9981193780075296
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9969963956866081
+      },
+      {
+        "feature_a": "prior_low_20",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9973665050978321
+      },
+      {
+        "feature_a": "prior_high_50",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9972636467936121
+      },
+      {
+        "feature_a": "prior_low_50",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9982769070832799
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_high",
+        "feature_b": "htf_30m_latest_swing_low",
+        "correlation": 0.9972032742543099
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.9954219018915064
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.9975701282253902
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.9953057912621741
+      },
+      {
+        "feature_a": "prior_low_50",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.9951530908230904
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_high",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.9969942278918351
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_low",
+        "feature_b": "htf_1h_latest_swing_high",
+        "correlation": 0.995991127299555
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9953577760551724
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9976824386645576
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.995230489958076
+      },
+      {
+        "feature_a": "prior_low_50",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9951215072512106
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_high",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9956112131349025
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_low",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9968413176288763
+      },
+      {
+        "feature_a": "htf_1h_latest_swing_high",
+        "feature_b": "htf_1h_latest_swing_low",
+        "correlation": 0.9955260166301626
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9996379972035289
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9997585600288843
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9996458702343686
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9981914389609667
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9997763018935469
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9995532332521803
+      },
+      {
+        "feature_a": "prior_high_20",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9997973464493145
+      },
+      {
+        "feature_a": "prior_low_20",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9993258938011421
+      },
+      {
+        "feature_a": "prior_high_50",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9993749560504211
+      },
+      {
+        "feature_a": "prior_low_50",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9987320219966607
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_high",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9968950465011914
+      },
+      {
+        "feature_a": "htf_30m_latest_swing_low",
+        "feature_b": "ict_latest_swing_high",
+        "correlation": 0.9970538849469924
+      },
+      {
+        "feature_a": "ema_8",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9996290234771801
+      },
+      {
+        "feature_a": "ema_21",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9997609680280937
+      },
+      {
+        "feature_a": "ema_50",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9996642122208208
+      },
+      {
+        "feature_a": "ema_200",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9982534854195279
+      },
+      {
+        "feature_a": "sma_20",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9997784955072312
+      },
+      {
+        "feature_a": "sma_50",
+        "feature_b": "ict_latest_swing_low",
+        "correlation": 0.9995818390237403
+      }
+    ],
+    "max_remaining_correlation": 0.9782968785201377
+  },
+  "class_balance": {
+    "target_type": "classification",
+    "positive_count": 1453,
+    "negative_count": 521676,
+    "positive_rate": 0.0027775175912633406,
+    "weighted_positive_rate": 0.0022674845531582832,
+    "suggested_positive_class_weight": 359.03372333103925,
+    "split_positive_rates": {
+      "train": 0.0029192495698954096,
+      "val": 0.0023831067045584882,
+      "test": 0.0025105135720657574
+    }
+  },
+  "importance_summary": {
+    "analysis_rows": 100000,
+    "max_association": 0.012251544826547363,
+    "max_mutual_information": 0.015550267177080412,
+    "rf_oob_score": 0.95231
+  },
+  "validations": [
+    {
+      "check": "usable_rows",
+      "passed": true,
+      "detail": "usable_rows=523129, threshold=250"
+    },
+    {
+      "check": "selected_features",
+      "passed": true,
+      "detail": "selected_features=1051"
+    },
+    {
+      "check": "train_rows",
+      "passed": true,
+      "detail": "train_rows=366190, threshold=100"
+    },
+    {
+      "check": "val_rows",
+      "passed": true,
+      "detail": "val_rows=78469"
+    },
+    {
+      "check": "test_rows",
+      "passed": true,
+      "detail": "test_rows=78470"
+    },
+    {
+      "check": "max_remaining_correlation",
+      "passed": true,
+      "detail": "max_remaining_corr=0.9783, threshold=0.9800"
+    },
+    {
+      "check": "train_has_both_classes",
+      "passed": true,
+      "detail": "train_unique_classes=2"
+    },
+    {
+      "check": "enough_positive_samples_train",
+      "passed": true,
+      "detail": "train_positive_count=1069, threshold=25"
+    },
+    {
+      "check": "feature_signal",
+      "passed": true,
+      "detail": "max_mutual_information=0.015550"
+    }
+  ],
+  "readiness": {
+    "score": 96.7,
+    "grade": "green",
+    "open_issues": []
+  }
+}

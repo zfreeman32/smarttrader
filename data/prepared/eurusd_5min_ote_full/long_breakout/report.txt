@@ -1,0 +1,101 @@
+TARGET REPORT: long_breakout
+================================================================================
+Target column: label_long_breakout
+Direction: long
+Label kind: breakout
+Binary target: True
+Timezone contract: source=UTC canonical=UTC feature_clock=America/New_York
+
+Row counts:
+  - rows_usable: 490324
+  - rows_positive: 12399
+  - rows_negative: 477925
+  - rows_excluded_by_warmup: 0
+  - rows_excluded_as_ambiguous: 52867
+
+Split counts:
+  - train: 343226 (2019-01-02T03:05:00+00:00 -> 2024-01-12T15:40:00+00:00)
+  - val: 73549 (2024-01-12T15:45:00+00:00 -> 2025-02-14T05:25:00+00:00)
+  - test: 73549 (2025-02-14T05:30:00+00:00 -> 2026-03-25T02:45:00+00:00)
+
+Class balance:
+  - target_type: classification
+  - positive_count: 12399
+  - negative_count: 477925
+  - positive_rate: 0.02528736101027076
+  - weighted_positive_rate: 0.01944868639111519
+  - suggested_positive_class_weight: 38.545447213484955
+  - split_positive_rates: {'train': 0.024910700238326932, 'val': 0.025656365144325552, 'test': 0.02667609348869461}
+
+Cleaning:
+  - columns filled: 0
+  - low variance removed: 9
+  - collinear removed: 185
+  - max remaining correlation: 0.9788
+
+Readiness:
+  - score: 100.0
+  - grade: green
+
+Validations:
+  - [PASS] usable_rows: usable_rows=490324, threshold=250
+  - [PASS] selected_features: selected_features=1051
+  - [PASS] train_rows: train_rows=343226, threshold=100
+  - [PASS] val_rows: val_rows=73549
+  - [PASS] test_rows: test_rows=73549
+  - [PASS] max_remaining_correlation: max_remaining_corr=0.9788, threshold=0.9800
+  - [PASS] train_has_both_classes: train_unique_classes=2
+  - [PASS] enough_positive_samples_train: train_positive_count=8550, threshold=25
+  - [PASS] feature_signal: max_mutual_information=0.047223
+
+Top features:
+  - strategy__keltner_channel_strategy__kc_buy_signal: composite=0.9826, assoc=0.0115, mi=0.0322, rf=0.0288
+  - strategy__australian_market_signals__signal__short: composite=0.9553, assoc=0.0111, mi=0.0269, rf=0.0035
+  - strategy__mean_reversion_signals__signal__neutral: composite=0.9543, assoc=0.0080, mi=0.0420, rf=0.0223
+  - close_return_5: composite=0.9537, assoc=0.0103, mi=0.0251, rf=0.0083
+  - strategy__brazil_day_swing_signals__signal__long: composite=0.9515, assoc=0.0103, mi=0.0251, rf=0.0056
+  - return_slope_3_winsor_100: composite=0.9508, assoc=0.0100, mi=0.0238, rf=0.0114
+  - return_slope_3: composite=0.9432, assoc=0.0091, mi=0.0239, rf=0.0098
+  - strategy__seasonal_trading_signals__signal__short: composite=0.9423, assoc=0.0091, mi=0.0263, rf=0.0040
+  - strategy__smi_signals__smi: composite=0.9401, assoc=0.0073, mi=0.0340, rf=0.0202
+  - close_return_5_winsor_100: composite=0.9347, assoc=0.0095, mi=0.0253, rf=0.0027
+  - strategy__svesc_signals__svesc_buy_signal: composite=0.9343, assoc=0.0080, mi=0.0257, rf=0.0089
+  - dist_to_prior_low_20_atr: composite=0.9343, assoc=0.0078, mi=0.0254, rf=0.0142
+  - strategy__trend_following_btc_signals__signal__long: composite=0.9309, assoc=0.0106, mi=0.0248, rf=0.0017
+  - strategy__disparity_index_signals__disparity_index: composite=0.9271, assoc=0.0070, mi=0.0284, rf=0.0125
+  - strategy__momentum_strategy_signals__signal__long: composite=0.9271, assoc=0.0070, mi=0.0283, rf=0.0153
+  - strategy__cci_signals__cci_bearish_signal: composite=0.9248, assoc=0.0064, mi=0.0472, rf=0.0249
+  - return_slope_8: composite=0.9232, assoc=0.0087, mi=0.0248, rf=0.0024
+  - strategy__membership_plans_signals_what_are_the_worst_trading_days_for_stocks_strategy__final_signal__long: composite=0.9232, assoc=0.0075, mi=0.0269, rf=0.0048
+  - strategy__eurnzd_forex_strategy__signal__short: composite=0.9226, assoc=0.0088, mi=0.0252, rf=0.0021
+  - stoch_position_14: composite=0.9175, assoc=0.0066, mi=0.0311, rf=0.0091
+  - strategy__bollinger_band_signals__bb_signal__short: composite=0.9102, assoc=0.0073, mi=0.0254, rf=0.0033
+  - strategy__strategy_w5_8_13__w5_8_13_buy_signal: composite=0.9093, assoc=0.0063, mi=0.0273, rf=0.0149
+  - strategy__cmo_absolute_indicator_signals__cmo_signal__neutral: composite=0.9093, assoc=0.0081, mi=0.0194, rf=0.0037
+  - strategy__rei_signals__rei: composite=0.9090, assoc=0.0063, mi=0.0329, rf=0.0088
+  - return_slope_8_winsor_100: composite=0.9083, assoc=0.0074, mi=0.0248, rf=0.0032
+  - dist_to_prior_low_50_atr: composite=0.9071, assoc=0.0098, mi=0.0147, rf=0.0031
+  - strategy__bollinger_band_mean_reversion_signals__signal__short: composite=0.9058, assoc=0.0068, mi=0.0243, rf=0.0064
+  - strategy__moving_average_strategy__moving_average_sell_signal: composite=0.9020, assoc=0.0073, mi=0.0268, rf=0.0018
+  - close_return_10: composite=0.9010, assoc=0.0069, mi=0.0242, rf=0.0039
+  - strategy__bollinger_band_signals__bb_signal__neutral: composite=0.9004, assoc=0.0077, mi=0.0233, rf=0.0019
+  - money_flow_10: composite=0.8985, assoc=0.0071, mi=0.0200, rf=0.0052
+  - close_return_5_lag_1: composite=0.8979, assoc=0.0078, mi=0.0179, rf=0.0036
+  - strategy__bollinger_band_mean_reversion_signals__signal__neutral: composite=0.8957, assoc=0.0075, mi=0.0221, rf=0.0020
+  - strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long: composite=0.8953, assoc=0.0068, mi=0.0241, rf=0.0033
+  - strategy__brazil_day_swing_signals__signal__neutral: composite=0.8918, assoc=0.0080, mi=0.0226, rf=0.0010
+  - strategy__rubber_band_strategy__signal__neutral: composite=0.8906, assoc=0.0093, mi=0.0181, rf=0.0007
+  - interaction_vol_adjusted_momentum: composite=0.8871, assoc=0.0058, mi=0.0259, rf=0.0061
+  - close_return_5_roll_mean_5: composite=0.8849, assoc=0.0068, mi=0.0195, rf=0.0034
+  - strategy__membership_strategy_signals_turnaround_tuesday_in_a_bear_market_strategy__membership_signal__short: composite=0.8804, assoc=0.0056, mi=0.0264, rf=0.0041
+  - strategy__dual_momentum_signals__trade_signal__long: composite=0.8795, assoc=0.0056, mi=0.0253, rf=0.0063
+  - close_return_3_lag_1: composite=0.8716, assoc=0.0062, mi=0.0174, rf=0.0056
+  - macd_hist: composite=0.8693, assoc=0.0086, mi=0.0168, rf=0.0004
+  - dist_to_prior_low_20_atr_lag_1: composite=0.8687, assoc=0.0065, mi=0.0185, rf=0.0024
+  - strategy__rocwb_signals__rocwb_sell_signal: composite=0.8639, assoc=0.0059, mi=0.0248, rf=0.0016
+  - strategy__rocwb_signals__rocwb_buy_signal: composite=0.8633, assoc=0.0055, mi=0.0238, rf=0.0032
+  - strategy__quantified_strategy_signals__strategy_signal__short: composite=0.8633, assoc=0.0049, mi=0.0272, rf=0.0054
+  - strategy__strategy_5_8_13__5_8_13_buy_signal: composite=0.8608, assoc=0.0109, mi=0.0215, rf=0.0002
+  - strategy__hacolt_signals__hacolt: composite=0.8605, assoc=0.0065, mi=0.0169, rf=0.0018
+  - failed_continuation_bull: composite=0.8598, assoc=0.0105, mi=0.0068, rf=0.0058
+  - strategy__membership_based_trading_signals__mean_reversion: composite=0.8592, assoc=0.0040, mi=0.0425, rf=0.0354

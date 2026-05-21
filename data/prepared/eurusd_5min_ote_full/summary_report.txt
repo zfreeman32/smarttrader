@@ -8,21 +8,19 @@ Upstream source: data\currency_data\eurusd-5m.csv
 
 Upstream preprocessing detected:
   - metadata_detected: True
-  - feature_columns_from_metadata: 1461
+  - feature_columns_from_metadata: 1607
   - warmup_rows_already_dropped: True
   - warmup_rows_configured: 250
   - numeric_fill_applied_upstream: True
   - duplicate_column_names_blocked_in_builder: True
 
 Feature pool:
-  - metadata_feature_count: 1461
-  - encoded_feature_count: 1113
+  - metadata_feature_count: 1607
+  - encoded_feature_count: 1245
   - encoded_categorical_columns: []
-  - duplicate_columns_removed: 232
-  - constant_columns_removed: 116
+  - duplicate_columns_removed: 223
+  - constant_columns_removed: 139
 
 Target readiness:
-  - long_entry: readiness=91.7/100 (green), usable_rows=1330750, features=960, positives=7101
-  - short_entry: readiness=92.1/100 (green), usable_rows=1331930, features=964, positives=7198
-  - long_ote: readiness=100.0/100 (green), usable_rows=1346067, features=960, positives=21954
-  - short_ote: readiness=100.0/100 (green), usable_rows=1347322, features=961, positives=22143
+  - long_ote: readiness=100.0/100 (green), usable_rows=443926, features=1052, positives=24810
+  - short_ote: readiness=100.0/100 (green), usable_rows=445075, features=1050, positives=24788

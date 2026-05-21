@@ -1,13 +1,16 @@
 """
-Deep analysis for reversal labels and human-review overrides.
+Deep analysis for reversal, continuation, and breakout labels plus human-review overrides.
 
 Outputs:
 - summary.txt
 - summary.json
+- family_summary.csv
 - annual_counts.csv
 - hourly_rates.csv
 - override_summary.csv
-- reversal_label_analysis.html
+- backtest_trades.csv
+- backtest_stats.csv
+- label_analysis.html
 """
 
 from __future__ import annotations
@@ -19,9 +22,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
 try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+
     HAS_PLOTLY = True
 except ImportError:
     go = None
@@ -30,9 +35,20 @@ except ImportError:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LABELS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels.csv"
-DEFAULT_EVENTS = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_label_events.csv"
-DEFAULT_OVERRIDES = PROJECT_ROOT / "data" / "labeling" / "review" / "reversal_label_overrides.csv"
+
+LABELS_PATH_CANDIDATES = [
+    PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels.csv",
+    PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_labels_full.csv",
+    PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "labeled_output.csv",
+]
+EVENTS_PATH_CANDIDATES = [
+    PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_label_events.csv",
+    PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_ote_swings_full.csv",
+]
+OVERRIDES_PATH_CANDIDATES = [
+    PROJECT_ROOT / "data" / "labeling" / "review" / "label_overrides.csv",
+    PROJECT_ROOT / "data" / "labeling" / "review" / "reversal_label_overrides.csv",
+]
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "labeling" / "analysis"
 
 LEGACY_REVERSAL_COLUMN_MAP = {
@@ -48,6 +64,98 @@ LEGACY_REVERSAL_COLUMN_MAP = {
 
 
 @dataclass(frozen=True)
+class LabelFamilyConfig:
+    key: str
+    title: str
+    short_title: str
+    zone_long_col: str
+    zone_short_col: str
+    entry_long_col: str
+    entry_short_col: str
+    zone_quality_long_col: str
+    zone_quality_short_col: str
+    entry_quality_long_col: str
+    entry_quality_short_col: str
+    structural_atr_candidates: tuple[str, ...]
+    long_color: str
+    short_color: str
+
+    @property
+    def binary_columns(self) -> tuple[str, str, str, str]:
+        return (
+            self.zone_long_col,
+            self.zone_short_col,
+            self.entry_long_col,
+            self.entry_short_col,
+        )
+
+    @property
+    def quality_columns(self) -> tuple[str, str, str, str]:
+        return (
+            self.zone_quality_long_col,
+            self.zone_quality_short_col,
+            self.entry_quality_long_col,
+            self.entry_quality_short_col,
+        )
+
+    @property
+    def target_columns(self) -> tuple[str, str, str, str]:
+        return self.binary_columns
+
+
+FAMILY_CONFIGS: dict[str, LabelFamilyConfig] = {
+    "reversal": LabelFamilyConfig(
+        key="reversal",
+        title="Reversal",
+        short_title="Reversal",
+        zone_long_col="label_long_reversal",
+        zone_short_col="label_short_reversal",
+        entry_long_col="label_long_reversal_entry",
+        entry_short_col="label_short_reversal_entry",
+        zone_quality_long_col="label_quality_long_reversal",
+        zone_quality_short_col="label_quality_short_reversal",
+        entry_quality_long_col="entry_quality_long_reversal",
+        entry_quality_short_col="entry_quality_short_reversal",
+        structural_atr_candidates=("reversal_structural_atr", "structural_atr"),
+        long_color="#198754",
+        short_color="#dc3545",
+    ),
+    "continuation_pullback": LabelFamilyConfig(
+        key="continuation_pullback",
+        title="Continuation Pullback",
+        short_title="Continuation",
+        zone_long_col="label_long_continuation_pullback",
+        zone_short_col="label_short_continuation_pullback",
+        entry_long_col="label_long_continuation_entry",
+        entry_short_col="label_short_continuation_entry",
+        zone_quality_long_col="label_quality_long_continuation",
+        zone_quality_short_col="label_quality_short_continuation",
+        entry_quality_long_col="entry_quality_long_continuation",
+        entry_quality_short_col="entry_quality_short_continuation",
+        structural_atr_candidates=("continuation_structural_atr", "structural_atr"),
+        long_color="#0f766e",
+        short_color="#ea580c",
+    ),
+    "breakout": LabelFamilyConfig(
+        key="breakout",
+        title="Breakout",
+        short_title="Breakout",
+        zone_long_col="label_long_breakout",
+        zone_short_col="label_short_breakout",
+        entry_long_col="label_long_breakout_entry",
+        entry_short_col="label_short_breakout_entry",
+        zone_quality_long_col="label_quality_long_breakout",
+        zone_quality_short_col="label_quality_short_breakout",
+        entry_quality_long_col="entry_quality_long_breakout",
+        entry_quality_short_col="entry_quality_short_breakout",
+        structural_atr_candidates=("breakout_structural_atr", "structural_atr"),
+        long_color="#65a30d",
+        short_color="#be123c",
+    ),
+}
+
+
+@dataclass(frozen=True)
 class BacktestConfig:
     initial_capital: float = 10_000.0
     risk_per_trade: float = 0.01
@@ -59,6 +167,7 @@ class BacktestConfig:
 
 @dataclass
 class TradeResult:
+    family: str
     entry_time: pd.Timestamp
     exit_time: pd.Timestamp
     side: str
@@ -75,30 +184,70 @@ class TradeResult:
     equity_after: float
 
 
+def resolve_default_path(candidates: list[Path]) -> Path:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Deep analysis for reviewed reversal labels.")
-    parser.add_argument("--labels", type=Path, default=DEFAULT_LABELS)
-    parser.add_argument("--swings", type=Path, default=DEFAULT_EVENTS)
-    parser.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES)
+    parser = argparse.ArgumentParser(description="Deep analysis for multi-family reviewed labels.")
+    parser.add_argument("--labels", type=Path, default=resolve_default_path(LABELS_PATH_CANDIDATES))
+    parser.add_argument(
+        "--events",
+        "--swings",
+        dest="events",
+        type=Path,
+        default=resolve_default_path(EVENTS_PATH_CANDIDATES),
+    )
+    parser.add_argument("--overrides", type=Path, default=resolve_default_path(OVERRIDES_PATH_CANDIDATES))
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--family", choices=["all"] + list(FAMILY_CONFIGS), default="all")
     return parser.parse_args()
 
 
-def load_csv(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame:
+def load_csv(path: Path, date_columns: tuple[str, ...] = ()) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
-    df = pd.read_csv(path, parse_dates=parse_dates)
+    df = pd.read_csv(path)
+    for column in date_columns:
+        if column in df.columns:
+            df[column] = pd.to_datetime(df[column], errors="coerce")
     if "timestamp" in df.columns:
-        df = normalize_reversal_columns(df)
+        df = normalize_label_columns(df)
     return df
 
 
-def normalize_reversal_columns(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_label_columns(df: pd.DataFrame) -> pd.DataFrame:
     normalized = df.copy()
     for legacy, current in LEGACY_REVERSAL_COLUMN_MAP.items():
         if legacy in normalized.columns and current not in normalized.columns:
             normalized = normalized.rename(columns={legacy: current})
     return normalized
+
+
+def ensure_family_columns(df: pd.DataFrame) -> pd.DataFrame:
+    prepared = df.copy()
+    for config in FAMILY_CONFIGS.values():
+        for column in config.binary_columns:
+            if column not in prepared.columns:
+                prepared[column] = 0
+        for column in config.quality_columns:
+            if column not in prepared.columns:
+                prepared[column] = 0.0
+    if "warmup_mask" not in prepared.columns:
+        prepared["warmup_mask"] = False
+    return prepared
+
+
+def detect_family_availability(columns: pd.Index) -> dict[str, bool]:
+    availability: dict[str, bool] = {}
+    column_set = set(columns)
+    for key, config in FAMILY_CONFIGS.items():
+        tracked = set(config.binary_columns) | set(config.quality_columns)
+        availability[key] = any(column in column_set for column in tracked)
+    return availability
 
 
 def apply_overrides(labels: pd.DataFrame, overrides: pd.DataFrame) -> pd.DataFrame:
@@ -117,17 +266,18 @@ def apply_overrides(labels: pd.DataFrame, overrides: pd.DataFrame) -> pd.DataFra
     return reviewed
 
 
-def get_reversal_structural_atr_column(df: pd.DataFrame) -> str:
-    if "reversal_structural_atr" in df.columns:
-        return "reversal_structural_atr"
-    return "structural_atr"
+def resolve_structural_atr_column(df: pd.DataFrame, config: LabelFamilyConfig) -> str | None:
+    for column in config.structural_atr_candidates:
+        if column in df.columns:
+            return column
+    return None
 
 
 def bars_between_events(mask: pd.Series) -> pd.Series:
-    idx = np.flatnonzero(mask.astype(bool).values)
+    idx = np.flatnonzero(mask.fillna(0).astype(bool).to_numpy())
     if len(idx) < 2:
         return pd.Series(dtype=float)
-    return pd.Series(np.diff(idx))
+    return pd.Series(np.diff(idx), dtype=float)
 
 
 def session_bucket(hour: int) -> str:
@@ -140,23 +290,67 @@ def session_bucket(hour: int) -> str:
     return "NY PM/Off"
 
 
-def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd.DataFrame, dict]:
-    usable = labels.loc[~labels["warmup_mask"]].copy() if "warmup_mask" in labels.columns else labels.copy()
+def positive_count(series: pd.Series) -> int:
+    return int(series.fillna(0).astype(bool).sum())
+
+
+def positive_rate_pct(series: pd.Series) -> float:
+    if len(series) == 0:
+        return 0.0
+    return float(series.fillna(0).astype(bool).mean() * 100.0)
+
+
+def positive_mean(series: pd.Series) -> float:
+    numeric = pd.to_numeric(series, errors="coerce")
+    valid = numeric[numeric > 0]
+    if valid.empty:
+        return 0.0
+    return float(valid.mean())
+
+
+def select_requested_families(
+    family_arg: str,
+    availability: dict[str, bool],
+) -> tuple[list[LabelFamilyConfig], list[str]]:
+    available_keys = [key for key, is_available in availability.items() if is_available]
+    if family_arg == "all":
+        return [FAMILY_CONFIGS[key] for key in available_keys], [key for key in FAMILY_CONFIGS if key not in available_keys]
+    if availability.get(family_arg, False):
+        return [FAMILY_CONFIGS[family_arg]], []
+    return [], [family_arg]
+
+
+def filter_events_for_family(events: pd.DataFrame, family_key: str) -> pd.DataFrame:
+    if events.empty:
+        return events.copy()
+    if "label_family" not in events.columns:
+        if family_key == "reversal":
+            return events.copy()
+        return pd.DataFrame(columns=events.columns)
+    return events.loc[events["label_family"] == family_key].reset_index(drop=True)
+
+
+def run_label_backtest(
+    labels: pd.DataFrame,
+    config: BacktestConfig,
+    family_config: LabelFamilyConfig,
+) -> tuple[pd.DataFrame, dict]:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
     if usable.empty:
         return pd.DataFrame(), {}
 
-    atr_column = get_reversal_structural_atr_column(usable)
-    long_mask = usable["label_long_reversal_entry"].fillna(0).astype(bool)
-    short_mask = usable["label_short_reversal_entry"].fillna(0).astype(bool)
+    atr_column = resolve_structural_atr_column(usable, family_config)
+    if atr_column is None:
+        return pd.DataFrame(), {}
+
+    long_mask = usable[family_config.entry_long_col].fillna(0).astype(bool)
+    short_mask = usable[family_config.entry_short_col].fillna(0).astype(bool)
     entry_mask = long_mask | short_mask
     entry_candidates = usable.loc[entry_mask].copy()
-    entry_candidates["side"] = np.where(
-        entry_candidates["label_long_reversal_entry"].fillna(0).astype(bool),
-        "long",
-        "short",
-    )
+    entry_candidates["side"] = np.where(long_mask.loc[entry_candidates.index], "long", "short")
     entry_candidates = entry_candidates.loc[
-        entry_candidates[atr_column].notna() & (entry_candidates[atr_column] > 0)
+        pd.to_numeric(entry_candidates[atr_column], errors="coerce").notna()
+        & (pd.to_numeric(entry_candidates[atr_column], errors="coerce") > 0)
     ]
 
     if entry_candidates.empty:
@@ -243,6 +437,7 @@ def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd
 
         trades.append(
             TradeResult(
+                family=family_config.key,
                 entry_time=row.timestamp,
                 exit_time=usable_reset.iloc[exit_pos]["timestamp"],
                 side=row.side,
@@ -272,8 +467,10 @@ def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd
     peaks = np.maximum.accumulate(equity_curve)
     drawdown_pct = np.where(peaks > 0, (equity_curve - peaks) / peaks * 100.0, 0.0)
     returns = trades_df["pnl_amount"] / trades_df["equity_before"].replace(0, np.nan)
+    returns_std = float(returns.std(ddof=0)) if len(returns) > 1 else 0.0
 
     stats = {
+        "family": family_config.key,
         "initial_capital": float(config.initial_capital),
         "final_capital": float(trades_df["equity_after"].iloc[-1]),
         "net_pnl": float(trades_df["pnl_amount"].sum()),
@@ -303,59 +500,194 @@ def run_label_backtest(labels: pd.DataFrame, config: BacktestConfig) -> tuple[pd
         "entry_execution": "close_of_labeled_bar",
         "overlap_policy": "single_position_skip_overlapping_signals",
         "same_bar_policy": "conservative_stop_first",
-        "trade_return_std": float(returns.std(ddof=0)) if len(returns) > 1 else 0.0,
+        "trade_return_std": returns_std,
         "sharpe_like": float((returns.mean() / returns.std(ddof=0)) * np.sqrt(len(returns))) if len(returns) > 1 and returns.std(ddof=0) > 0 else 0.0,
     }
     return trades_df, stats
 
 
-def build_summary(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.DataFrame, backtest_stats: dict) -> dict:
-    usable = labels.loc[~labels["warmup_mask"]].copy() if "warmup_mask" in labels.columns else labels.copy()
+def build_family_summary(
+    labels: pd.DataFrame,
+    events: pd.DataFrame,
+    overrides: pd.DataFrame,
+    family_config: LabelFamilyConfig,
+    backtest_stats: dict,
+) -> dict:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
     usable["year"] = usable["timestamp"].dt.year
     usable["month"] = usable["timestamp"].dt.to_period("M").astype(str)
     usable["hour"] = usable["timestamp"].dt.hour
     usable["session"] = usable["hour"].map(session_bucket)
 
+    family_targets = set(family_config.target_columns)
+    family_overrides = overrides.loc[overrides["target_label"].isin(family_targets)].copy() if not overrides.empty else pd.DataFrame()
+    family_events = filter_events_for_family(events, family_config.key)
+
     summary = {
-        "rows_total": int(len(labels)),
+        "family": family_config.key,
+        "title": family_config.title,
         "rows_usable": int(len(usable)),
-        "long_zone_rate_pct": float(usable["label_long_reversal"].mean() * 100),
-        "short_zone_rate_pct": float(usable["label_short_reversal"].mean() * 100),
-        "long_entry_rate_pct": float(usable["label_long_reversal_entry"].mean() * 100),
-        "short_entry_rate_pct": float(usable["label_short_reversal_entry"].mean() * 100),
-        "avg_label_quality_long": float(usable.loc[usable["label_quality_long_reversal"] > 0, "label_quality_long_reversal"].mean() or 0.0),
-        "avg_label_quality_short": float(usable.loc[usable["label_quality_short_reversal"] > 0, "label_quality_short_reversal"].mean() or 0.0),
-        "overrides_count": int(len(overrides)),
-        "swings_count": int(len(swings)),
+        "long_zone_count": positive_count(usable[family_config.zone_long_col]),
+        "short_zone_count": positive_count(usable[family_config.zone_short_col]),
+        "long_entry_count": positive_count(usable[family_config.entry_long_col]),
+        "short_entry_count": positive_count(usable[family_config.entry_short_col]),
+        "long_zone_rate_pct": positive_rate_pct(usable[family_config.zone_long_col]),
+        "short_zone_rate_pct": positive_rate_pct(usable[family_config.zone_short_col]),
+        "long_entry_rate_pct": positive_rate_pct(usable[family_config.entry_long_col]),
+        "short_entry_rate_pct": positive_rate_pct(usable[family_config.entry_short_col]),
+        "avg_zone_quality_long": positive_mean(usable[family_config.zone_quality_long_col]),
+        "avg_zone_quality_short": positive_mean(usable[family_config.zone_quality_short_col]),
+        "avg_entry_quality_long": positive_mean(usable[family_config.entry_quality_long_col]),
+        "avg_entry_quality_short": positive_mean(usable[family_config.entry_quality_short_col]),
+        "overrides_count": int(len(family_overrides)),
+        "events_count": int(len(family_events)),
     }
 
-    if not swings.empty:
-        summary["swing_quality_mean"] = float(swings.get("label_quality", pd.Series(dtype=float)).mean() or 0.0)
-        summary["trend_scan_pass_rate_pct"] = float(swings.get("trend_scan_pass", pd.Series(dtype=bool)).mean() * 100 or 0.0)
-        summary["long_tier_a_pct"] = float((swings.loc[swings["swing_type"] == "low", "label_tier"] == "A").mean() * 100 or 0.0)
-        summary["short_tier_a_pct"] = float((swings.loc[swings["swing_type"] == "high", "label_tier"] == "A").mean() * 100 or 0.0)
+    if not family_events.empty:
+        summary["event_quality_mean"] = positive_mean(family_events.get("label_quality", pd.Series(dtype=float)))
+        summary["trend_scan_pass_rate_pct"] = float(family_events.get("trend_scan_pass", pd.Series(dtype=bool)).fillna(False).mean() * 100.0)
+        summary["long_tier_a_pct"] = float((family_events.loc[family_events["swing_type"] == "low", "label_tier"] == "A").mean() * 100.0)
+        summary["short_tier_a_pct"] = float((family_events.loc[family_events["swing_type"] == "high", "label_tier"] == "A").mean() * 100.0)
 
-    if backtest_stats:
-        for key, value in backtest_stats.items():
-            summary[f"backtest_{key}"] = value
+    atr_column = resolve_structural_atr_column(labels, family_config)
+    if atr_column is not None:
+        atr_values = pd.to_numeric(usable[atr_column], errors="coerce").dropna()
+        summary["avg_structural_atr"] = float(atr_values.mean()) if not atr_values.empty else 0.0
+
+    for key, value in backtest_stats.items():
+        if key == "family":
+            continue
+        summary[f"backtest_{key}"] = value
 
     return summary
 
 
-def make_dashboard(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.DataFrame, trades: pd.DataFrame, backtest_stats: dict) -> go.Figure:
+def build_summary(
+    labels: pd.DataFrame,
+    events: pd.DataFrame,
+    overrides: pd.DataFrame,
+    family_summaries: dict[str, dict],
+    skipped_families: list[str],
+    labels_path: Path,
+    events_path: Path,
+    overrides_path: Path,
+) -> dict:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
+    return {
+        "labels_path": str(labels_path),
+        "events_path": str(events_path),
+        "overrides_path": str(overrides_path),
+        "rows_total": int(len(labels)),
+        "rows_usable": int(len(usable)),
+        "override_rows_total": int(len(overrides)),
+        "event_rows_total": int(len(events)),
+        "families_analyzed": list(family_summaries.keys()),
+        "families_skipped": skipped_families,
+        "families": family_summaries,
+    }
+
+
+def build_family_summary_frame(family_summaries: dict[str, dict]) -> pd.DataFrame:
+    if not family_summaries:
+        return pd.DataFrame()
+    return pd.DataFrame(list(family_summaries.values()))
+
+
+def build_annual_counts(labels: pd.DataFrame, family_configs: list[LabelFamilyConfig]) -> pd.DataFrame:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
+    usable["year"] = usable["timestamp"].dt.year
+    rows = []
+    for config in family_configs:
+        grouped = usable.groupby("year")[list(config.binary_columns)].sum().reset_index()
+        for row in grouped.itertuples(index=False):
+            rows.append(
+                {
+                    "family": config.key,
+                    "title": config.title,
+                    "year": int(row.year),
+                    "long_zone_count": int(getattr(row, config.zone_long_col)),
+                    "short_zone_count": int(getattr(row, config.zone_short_col)),
+                    "long_entry_count": int(getattr(row, config.entry_long_col)),
+                    "short_entry_count": int(getattr(row, config.entry_short_col)),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def build_hourly_rates(labels: pd.DataFrame, family_configs: list[LabelFamilyConfig]) -> pd.DataFrame:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
+    usable["hour"] = usable["timestamp"].dt.hour
+    rows = []
+    for config in family_configs:
+        grouped = usable.groupby("hour")[list(config.binary_columns)].mean().reset_index()
+        for row in grouped.itertuples(index=False):
+            rows.append(
+                {
+                    "family": config.key,
+                    "title": config.title,
+                    "hour": int(row.hour),
+                    "long_zone_rate_pct": float(getattr(row, config.zone_long_col) * 100.0),
+                    "short_zone_rate_pct": float(getattr(row, config.zone_short_col) * 100.0),
+                    "long_entry_rate_pct": float(getattr(row, config.entry_long_col) * 100.0),
+                    "short_entry_rate_pct": float(getattr(row, config.entry_short_col) * 100.0),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def build_override_summary(overrides: pd.DataFrame, family_configs: list[LabelFamilyConfig]) -> pd.DataFrame:
+    if overrides.empty:
+        return pd.DataFrame(columns=["family", "title", "target_label", "value", "count"])
+    target_to_family = {}
+    for config in family_configs:
+        for target in config.target_columns:
+            target_to_family[target] = config
+    summary = overrides.copy()
+    summary["family"] = summary["target_label"].map(lambda value: target_to_family.get(value).key if value in target_to_family else "other")
+    summary["title"] = summary["target_label"].map(lambda value: target_to_family.get(value).title if value in target_to_family else "Other")
+    return (
+        summary.groupby(["family", "title", "target_label", "value"])
+        .size()
+        .reset_index(name="count")
+        .sort_values(["family", "target_label", "value"])
+        .reset_index(drop=True)
+    )
+
+
+def build_spacing_frame(labels: pd.DataFrame, family_configs: list[LabelFamilyConfig]) -> pd.DataFrame:
+    usable = labels.loc[~labels["warmup_mask"].fillna(False).astype(bool)].copy()
+    rows = []
+    for config in family_configs:
+        for side, column in (("Long", config.entry_long_col), ("Short", config.entry_short_col)):
+            spacing = bars_between_events(usable[column])
+            for value in spacing.tolist():
+                rows.append({"family": config.key, "title": config.title, "side": side, "bars_between_entries": float(value)})
+    return pd.DataFrame(rows)
+
+
+def build_backtest_stats_frame(backtest_stats_by_family: dict[str, dict]) -> pd.DataFrame:
+    populated = [stats for stats in backtest_stats_by_family.values() if stats]
+    if not populated:
+        return pd.DataFrame()
+    return pd.DataFrame(populated)
+
+
+def make_dashboard(
+    labels: pd.DataFrame,
+    events: pd.DataFrame,
+    override_summary: pd.DataFrame,
+    family_summary: pd.DataFrame,
+    backtest_trades: pd.DataFrame,
+    backtest_stats: pd.DataFrame,
+    family_configs: list[LabelFamilyConfig],
+    title: str,
+) -> go.Figure:
     if not HAS_PLOTLY:
         raise RuntimeError("Plotly is not installed.")
-    usable = labels.loc[~labels["warmup_mask"]].copy() if "warmup_mask" in labels.columns else labels.copy()
-    usable["year"] = usable["timestamp"].dt.year
-    usable["month"] = usable["timestamp"].dt.to_period("M").astype(str)
-    usable["hour"] = usable["timestamp"].dt.hour
-    usable["session"] = usable["hour"].map(session_bucket)
 
-    annual = usable.groupby("year")[["label_long_reversal_entry", "label_short_reversal_entry"]].sum().reset_index()
-    hourly = usable.groupby("hour")[["label_long_reversal_entry", "label_short_reversal_entry"]].mean().reset_index()
-    monthly = usable.groupby("month")[["label_long_reversal_entry", "label_short_reversal_entry"]].sum().tail(36).reset_index()
-    spacing_long = bars_between_events(usable["label_long_reversal_entry"])
-    spacing_short = bars_between_events(usable["label_short_reversal_entry"])
+    annual_counts = build_annual_counts(labels, family_configs)
+    hourly_rates = build_hourly_rates(labels, family_configs)
+    spacing_frame = build_spacing_frame(labels, family_configs)
 
     fig = make_subplots(
         rows=4,
@@ -363,198 +695,334 @@ def make_dashboard(labels: pd.DataFrame, swings: pd.DataFrame, overrides: pd.Dat
         subplot_titles=[
             "Annual Entry Counts",
             "Hourly Entry Rate",
-            "Recent Monthly Entry Counts",
+            "Family-Level Label Rates",
             "Entry Spacing Distribution",
-            "Swing Label Quality",
+            "Event Quality by Family",
             "Override Activity",
-            "Backtest Equity Curve",
+            "Backtest Equity Curves",
             "Backtest Trade R Distribution",
         ],
     )
 
-    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_long_reversal_entry"], name="Long Entries", marker_color="#198754"), row=1, col=1)
-    fig.add_trace(go.Bar(x=annual["year"], y=annual["label_short_reversal_entry"], name="Short Entries", marker_color="#dc3545"), row=1, col=1)
+    for config in family_configs:
+        family_annual = annual_counts.loc[annual_counts["family"] == config.key]
+        if not family_annual.empty:
+            fig.add_trace(
+                go.Bar(
+                    x=family_annual["year"],
+                    y=family_annual["long_entry_count"],
+                    name=f"{config.short_title} Long Entries",
+                    marker_color=config.long_color,
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=family_annual["year"],
+                    y=family_annual["short_entry_count"],
+                    name=f"{config.short_title} Short Entries",
+                    marker_color=config.short_color,
+                ),
+                row=1,
+                col=1,
+            )
 
-    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_long_reversal_entry"] * 100, mode="lines+markers", name="Long %", line=dict(color="#198754")), row=1, col=2)
-    fig.add_trace(go.Scatter(x=hourly["hour"], y=hourly["label_short_reversal_entry"] * 100, mode="lines+markers", name="Short %", line=dict(color="#dc3545")), row=1, col=2)
+        family_hourly = hourly_rates.loc[hourly_rates["family"] == config.key]
+        if not family_hourly.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=family_hourly["hour"],
+                    y=family_hourly["long_entry_rate_pct"],
+                    mode="lines+markers",
+                    name=f"{config.short_title} Long %",
+                    line=dict(color=config.long_color),
+                ),
+                row=1,
+                col=2,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=family_hourly["hour"],
+                    y=family_hourly["short_entry_rate_pct"],
+                    mode="lines+markers",
+                    name=f"{config.short_title} Short %",
+                    line=dict(color=config.short_color),
+                ),
+                row=1,
+                col=2,
+            )
 
-    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_long_reversal_entry"], name="Long Monthly", marker_color="#20c997"), row=2, col=1)
-    fig.add_trace(go.Bar(x=monthly["month"], y=monthly["label_short_reversal_entry"], name="Short Monthly", marker_color="#fd7e14"), row=2, col=1)
-
-    if not spacing_long.empty:
-        fig.add_trace(go.Histogram(x=spacing_long, name="Bars between long entries", marker_color="#0d6efd", opacity=0.7), row=2, col=2)
-    if not spacing_short.empty:
-        fig.add_trace(go.Histogram(x=spacing_short, name="Bars between short entries", marker_color="#6f42c1", opacity=0.7), row=2, col=2)
-
-    if not swings.empty:
-        fig.add_trace(
-            go.Histogram(
-                x=swings["label_quality"],
-                nbinsx=30,
-                name="Swing quality",
-                marker_color="#495057",
-            ),
-            row=3,
-            col=1,
-        )
+    if family_summary.empty:
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No family summary", marker_color="#adb5bd"), row=2, col=1)
     else:
-        fig.add_trace(go.Bar(x=["no swings"], y=[0], name="Swing quality", marker_color="#adb5bd"), row=3, col=1)
+        fig.add_trace(go.Bar(x=family_summary["title"], y=family_summary["long_zone_rate_pct"], name="Long Zone %", marker_color="#2dd4bf"), row=2, col=1)
+        fig.add_trace(go.Bar(x=family_summary["title"], y=family_summary["short_zone_rate_pct"], name="Short Zone %", marker_color="#fb923c"), row=2, col=1)
+        fig.add_trace(go.Bar(x=family_summary["title"], y=family_summary["long_entry_rate_pct"], name="Long Entry %", marker_color="#22c55e"), row=2, col=1)
+        fig.add_trace(go.Bar(x=family_summary["title"], y=family_summary["short_entry_rate_pct"], name="Short Entry %", marker_color="#ef4444"), row=2, col=1)
 
-    if not overrides.empty:
-        ov = overrides.groupby(["target_label", "value"]).size().reset_index(name="count")
-        ov["name"] = ov["target_label"] + "=" + ov["value"].astype(str)
-        fig.add_trace(go.Bar(x=ov["name"], y=ov["count"], name="Overrides", marker_color="#0dcaf0"), row=3, col=2)
+    if spacing_frame.empty:
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No spacing data", marker_color="#adb5bd"), row=2, col=2)
     else:
-        fig.add_trace(go.Bar(x=["none"], y=[0], name="Overrides", marker_color="#adb5bd"), row=3, col=2)
+        for config in family_configs:
+            family_spacing = spacing_frame.loc[spacing_frame["family"] == config.key]
+            for side, color in (("Long", config.long_color), ("Short", config.short_color)):
+                side_spacing = family_spacing.loc[family_spacing["side"] == side]
+                if side_spacing.empty:
+                    continue
+                fig.add_trace(
+                    go.Box(
+                        y=side_spacing["bars_between_entries"],
+                        name=f"{config.short_title} {side}",
+                        marker_color=color,
+                        boxmean=True,
+                    ),
+                    row=2,
+                    col=2,
+                )
 
-    if not trades.empty:
-        fig.add_trace(
-            go.Scatter(
-                x=trades["exit_time"],
-                y=trades["equity_after"],
-                mode="lines+markers",
-                name="Equity",
-                line=dict(color="#212529", width=2),
-                marker=dict(size=5),
-            ),
-            row=4,
-            col=1,
-        )
-        fig.add_trace(
-            go.Histogram(
-                x=trades["pnl_r"],
-                nbinsx=30,
-                name="Trade R",
-                marker_color="#6610f2",
-            ),
-            row=4,
-            col=2,
-        )
+    if events.empty:
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No events", marker_color="#adb5bd"), row=3, col=1)
     else:
-        fig.add_trace(go.Bar(x=["no trades"], y=[0], name="Equity", marker_color="#adb5bd"), row=4, col=1)
-        fig.add_trace(go.Bar(x=["no trades"], y=[0], name="Trade R", marker_color="#adb5bd"), row=4, col=2)
+        for config in family_configs:
+            family_events = filter_events_for_family(events, config.key)
+            if family_events.empty or "label_quality" not in family_events.columns:
+                continue
+            fig.add_trace(
+                go.Box(
+                    y=pd.to_numeric(family_events["label_quality"], errors="coerce").dropna(),
+                    name=f"{config.short_title} quality",
+                    marker_color=config.long_color,
+                    boxmean=True,
+                ),
+                row=3,
+                col=1,
+            )
+
+    if override_summary.empty:
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No overrides", marker_color="#adb5bd"), row=3, col=2)
+    else:
+        for value, color, name in ((1, "#0d6efd", "Override on"), (0, "#6c757d", "Override off")):
+            subset = override_summary.loc[override_summary["value"] == value]
+            if subset.empty:
+                continue
+            counts = subset.groupby("title", as_index=False)["count"].sum()
+            fig.add_trace(
+                go.Bar(
+                    x=counts["title"],
+                    y=counts["count"],
+                    name=name,
+                    marker_color=color,
+                ),
+                row=3,
+                col=2,
+            )
+
+    if backtest_trades.empty:
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No backtest trades", marker_color="#adb5bd"), row=4, col=1)
+        fig.add_trace(go.Bar(x=["none"], y=[0], name="No trade R", marker_color="#adb5bd"), row=4, col=2)
+    else:
+        for config in family_configs:
+            family_trades = backtest_trades.loc[backtest_trades["family"] == config.key]
+            if family_trades.empty:
+                continue
+            fig.add_trace(
+                go.Scatter(
+                    x=family_trades["exit_time"],
+                    y=family_trades["equity_after"],
+                    mode="lines+markers",
+                    name=f"{config.short_title} equity",
+                    line=dict(color=config.long_color, width=2),
+                    marker=dict(size=5),
+                ),
+                row=4,
+                col=1,
+            )
+            fig.add_trace(
+                go.Histogram(
+                    x=family_trades["pnl_r"],
+                    name=f"{config.short_title} trade R",
+                    marker_color=config.short_color,
+                    opacity=0.65,
+                ),
+                row=4,
+                col=2,
+            )
+
+    subtitle = ""
+    if not backtest_stats.empty:
+        summary_bits = []
+        for row in backtest_stats.itertuples(index=False):
+            summary_bits.append(
+                f"{row.family}: {int(row.total_trades)} trades, WR {row.win_rate_pct:.1f}%, Return {row.total_return_pct:.1f}%"
+            )
+        subtitle = "<br><sup>" + " | ".join(summary_bits) + "</sup>"
 
     fig.update_layout(
         template="plotly_white",
-        height=1550,
-        title=(
-            "Reversal Label Deep Analysis"
-            if not backtest_stats
-            else (
-                "Reversal Label Deep Analysis"
-                f"<br><sup>Backtest: {backtest_stats['total_trades']} trades | "
-                f"WR {backtest_stats['win_rate_pct']:.1f}% | "
-                f"Return {backtest_stats['total_return_pct']:.1f}% | "
-                f"Max DD {backtest_stats['max_drawdown_pct']:.1f}%</sup>"
-            )
-        ),
+        height=1_650,
+        title=title + subtitle,
         barmode="group",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
     return fig
 
 
+def summary_lines_from_payload(summary: dict) -> list[str]:
+    lines = [
+        "Multi-Family Label Deep Analysis",
+        "=" * 32,
+        f"Labels file: {summary['labels_path']}",
+        f"Events file: {summary['events_path']}",
+        f"Overrides file: {summary['overrides_path']}",
+        f"Rows total: {summary['rows_total']:,}",
+        f"Rows usable: {summary['rows_usable']:,}",
+        f"Override rows total: {summary['override_rows_total']:,}",
+        f"Event rows total: {summary['event_rows_total']:,}",
+        f"Families analyzed: {', '.join(summary['families_analyzed']) if summary['families_analyzed'] else 'none'}",
+    ]
+    if summary["families_skipped"]:
+        lines.append(f"Families skipped: {', '.join(summary['families_skipped'])}")
+
+    for family_key, payload in summary["families"].items():
+        lines.extend(
+            [
+                "",
+                payload["title"],
+                "-" * len(payload["title"]),
+                f"Long zone rate: {payload['long_zone_rate_pct']:.3f}%",
+                f"Short zone rate: {payload['short_zone_rate_pct']:.3f}%",
+                f"Long entry rate: {payload['long_entry_rate_pct']:.3f}%",
+                f"Short entry rate: {payload['short_entry_rate_pct']:.3f}%",
+                f"Average zone quality L/S: {payload['avg_zone_quality_long']:.3f} / {payload['avg_zone_quality_short']:.3f}",
+                f"Average entry quality L/S: {payload['avg_entry_quality_long']:.3f} / {payload['avg_entry_quality_short']:.3f}",
+                f"Overrides: {payload['overrides_count']:,}",
+                f"Events: {payload['events_count']:,}",
+            ]
+        )
+        if "event_quality_mean" in payload:
+            lines.append(f"Event quality mean: {payload['event_quality_mean']:.3f}")
+        if "trend_scan_pass_rate_pct" in payload:
+            lines.append(f"Trend-scan pass rate: {payload['trend_scan_pass_rate_pct']:.2f}%")
+        if "avg_structural_atr" in payload:
+            lines.append(f"Average structural ATR: {payload['avg_structural_atr']:.6f}")
+        if "backtest_total_trades" in payload:
+            lines.extend(
+                [
+                    "Backtest",
+                    "~" * 8,
+                    f"Total trades: {int(payload['backtest_total_trades']):,}",
+                    f"Win rate: {payload['backtest_win_rate_pct']:.2f}%",
+                    f"Profit factor: {payload['backtest_profit_factor']:.2f}",
+                    f"Total return: {payload['backtest_total_return_pct']:.2f}%",
+                    f"Max drawdown: {payload['backtest_max_drawdown_pct']:.2f}%",
+                    f"Average trade: {payload['backtest_avg_trade_r']:.3f}R",
+                ]
+            )
+    return lines
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    labels = load_csv(args.labels, parse_dates=["timestamp"])
-    swings = load_csv(args.swings, parse_dates=["swing_time", "confirm_time", "entry_time"])
-    overrides = load_csv(args.overrides, parse_dates=["timestamp"])
-
+    labels = load_csv(args.labels, date_columns=("timestamp",))
     if labels.empty:
         raise FileNotFoundError(f"No labels found at {args.labels}")
+    labels = labels.sort_values("timestamp").reset_index(drop=True)
+    family_availability = detect_family_availability(labels.columns)
+    labels = ensure_family_columns(labels)
 
-    if not swings.empty and "label_family" in swings.columns:
-        swings = swings.loc[swings["label_family"] == "reversal"].reset_index(drop=True)
+    events = load_csv(
+        args.events,
+        date_columns=("timestamp", "swing_time", "confirm_time", "entry_time"),
+    )
+    overrides = load_csv(args.overrides, date_columns=("timestamp",))
     if not overrides.empty:
         overrides = overrides.copy()
         overrides["target_label"] = overrides["target_label"].replace(LEGACY_REVERSAL_COLUMN_MAP)
 
+    requested_families, skipped_families = select_requested_families(args.family, family_availability)
+    if not requested_families:
+        requested = args.family if args.family != "all" else "any supported family"
+        raise ValueError(f"No available label columns found for requested family selection: {requested}")
+
     reviewed = apply_overrides(labels, overrides)
     backtest_config = BacktestConfig()
-    backtest_trades, backtest_stats = run_label_backtest(reviewed, backtest_config)
-    summary = build_summary(reviewed, swings, overrides, backtest_stats)
 
-    annual_counts = (
-        reviewed.loc[~reviewed["warmup_mask"]]
-        .assign(year=lambda d: d["timestamp"].dt.year)
-        .groupby("year")[["label_long_reversal_entry", "label_short_reversal_entry", "label_long_reversal", "label_short_reversal"]]
-        .sum()
-        .reset_index()
+    family_summaries: dict[str, dict] = {}
+    backtest_trades_frames: list[pd.DataFrame] = []
+    backtest_stats_by_family: dict[str, dict] = {}
+
+    for family_config in requested_families:
+        trades_df, stats = run_label_backtest(reviewed, backtest_config, family_config)
+        if not trades_df.empty:
+            backtest_trades_frames.append(trades_df)
+        backtest_stats_by_family[family_config.key] = stats
+        family_summaries[family_config.key] = build_family_summary(
+            reviewed,
+            events,
+            overrides,
+            family_config,
+            stats,
+        )
+
+    backtest_trades = (
+        pd.concat(backtest_trades_frames, ignore_index=True, sort=False)
+        if backtest_trades_frames
+        else pd.DataFrame()
     )
-    hourly_rates = (
-        reviewed.loc[~reviewed["warmup_mask"]]
-        .assign(hour=lambda d: d["timestamp"].dt.hour)
-        .groupby("hour")[["label_long_reversal_entry", "label_short_reversal_entry", "label_long_reversal", "label_short_reversal"]]
-        .mean()
-        .reset_index()
+    backtest_stats = build_backtest_stats_frame(backtest_stats_by_family)
+    family_summary = build_family_summary_frame(family_summaries)
+    annual_counts = build_annual_counts(reviewed, requested_families)
+    hourly_rates = build_hourly_rates(reviewed, requested_families)
+    override_summary = build_override_summary(overrides, requested_families)
+
+    summary = build_summary(
+        reviewed,
+        events,
+        overrides,
+        family_summaries,
+        skipped_families,
+        args.labels,
+        args.events,
+        args.overrides,
     )
-    override_summary = (
-        overrides.groupby(["target_label", "value"]).size().reset_index(name="count")
-        if not overrides.empty
-        else pd.DataFrame(columns=["target_label", "value", "count"])
-    )
-    backtest_stats_df = pd.DataFrame([backtest_stats]) if backtest_stats else pd.DataFrame()
 
     annual_counts.to_csv(args.output_dir / "annual_counts.csv", index=False)
     hourly_rates.to_csv(args.output_dir / "hourly_rates.csv", index=False)
+    family_summary.to_csv(args.output_dir / "family_summary.csv", index=False)
     override_summary.to_csv(args.output_dir / "override_summary.csv", index=False)
     backtest_trades.to_csv(args.output_dir / "backtest_trades.csv", index=False)
-    backtest_stats_df.to_csv(args.output_dir / "backtest_stats.csv", index=False)
+    backtest_stats.to_csv(args.output_dir / "backtest_stats.csv", index=False)
 
-    with open(args.output_dir / "summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+    with open(args.output_dir / "summary.json", "w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2)
 
-    lines = [
-        "Reversal Label Deep Analysis",
-        "=" * 30,
-        f"Rows total: {summary['rows_total']:,}",
-        f"Rows usable: {summary['rows_usable']:,}",
-        f"Long zone rate: {summary['long_zone_rate_pct']:.3f}%",
-        f"Short zone rate: {summary['short_zone_rate_pct']:.3f}%",
-        f"Long entry rate: {summary['long_entry_rate_pct']:.3f}%",
-        f"Short entry rate: {summary['short_entry_rate_pct']:.3f}%",
-        f"Average long label quality: {summary['avg_label_quality_long']:.3f}",
-        f"Average short label quality: {summary['avg_label_quality_short']:.3f}",
-        f"Override count: {summary['overrides_count']:,}",
-        f"Swing count: {summary['swings_count']:,}",
-    ]
-    if "trend_scan_pass_rate_pct" in summary:
-        lines.append(f"Trend-scan pass rate: {summary['trend_scan_pass_rate_pct']:.2f}%")
-    if "long_tier_a_pct" in summary:
-        lines.append(f"Tier A swing share long/short: {summary['long_tier_a_pct']:.2f}% / {summary['short_tier_a_pct']:.2f}%")
-    if backtest_stats:
-        lines.extend(
-            [
-                "",
-                "Backtest",
-                "-" * 30,
-                f"Initial capital: ${backtest_stats['initial_capital']:,.2f}",
-                f"Final capital: ${backtest_stats['final_capital']:,.2f}",
-                f"Net PnL: ${backtest_stats['net_pnl']:,.2f}",
-                f"Total return: {backtest_stats['total_return_pct']:.2f}%",
-                f"Total trades: {backtest_stats['total_trades']:,}",
-                f"Long / short trades: {backtest_stats['long_trades']:,} / {backtest_stats['short_trades']:,}",
-                f"Win rate: {backtest_stats['win_rate_pct']:.2f}%",
-                f"Profit factor: {backtest_stats['profit_factor']:.2f}",
-                f"Average trade: {backtest_stats['avg_trade_r']:.3f}R",
-                f"Max drawdown: {backtest_stats['max_drawdown_pct']:.2f}%",
-                f"Average bars held: {backtest_stats['avg_bars_held']:.2f}",
-                f"Exit mix TP / SL / timeout: {backtest_stats['take_profit_exits']:,} / {backtest_stats['stop_loss_exits']:,} / {backtest_stats['timeout_exits']:,}",
-                f"Same-bar TP+SL conflicts resolved stop-first: {backtest_stats['same_bar_conflicts']:,}",
-            ]
-        )
-    (args.output_dir / "summary.txt").write_text("\n".join(lines), encoding="utf-8")
+    (args.output_dir / "summary.txt").write_text("\n".join(summary_lines_from_payload(summary)), encoding="utf-8")
 
-    html_path = args.output_dir / "reversal_label_analysis.html"
+    html_path = args.output_dir / ("label_analysis.html" if args.family == "all" else f"{args.family}_label_analysis.html")
     if HAS_PLOTLY:
-        dashboard = make_dashboard(reviewed, swings, overrides, backtest_trades, backtest_stats)
+        dashboard = make_dashboard(
+            reviewed,
+            events,
+            override_summary,
+            family_summary,
+            backtest_trades,
+            backtest_stats,
+            requested_families,
+            title=(
+                "Multi-Family Label Deep Analysis"
+                if args.family == "all"
+                else f"{requested_families[0].title} Label Deep Analysis"
+            ),
+        )
         dashboard.write_html(str(html_path))
 
     print(f"Saved analysis to: {args.output_dir}")
     print(f"  - {args.output_dir / 'summary.txt'}")
     print(f"  - {args.output_dir / 'summary.json'}")
+    print(f"  - {args.output_dir / 'family_summary.csv'}")
     print(f"  - {args.output_dir / 'annual_counts.csv'}")
     print(f"  - {args.output_dir / 'hourly_rates.csv'}")
     print(f"  - {args.output_dir / 'override_summary.csv'}")
