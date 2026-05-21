@@ -98,10 +98,17 @@ class OTETrainingConfig:
     threshold_grid_size: int = 31
     event_tolerance_bars: int = 2
     event_cooldown_bars: int = 4
+    threshold_event_fbeta_weight: float = 0.55
+    threshold_event_precision_weight: float = 0.45
+    threshold_turnover_penalty_weight: float = 0.40
+    threshold_turnover_target_ratio: float = 0.85
     tuning_negative_ratio: int = 8
     use_balanced_tuning_sample: bool = True
     calibration_method: str = "platt"
     final_refit_on_dev: bool = True
+    objective_average_precision_weight: float = 0.45
+    objective_threshold_score_weight: float = 0.45
+    objective_brier_penalty_weight: float = 0.10
     batch_size: int = 256
     epochs: int = 18
     hidden_size: int = 64
@@ -112,6 +119,14 @@ class OTETrainingConfig:
     use_amp: bool = True
     learning_rate: float = 1e-3
     window_size: int = 24
+    focal_alpha_min: float = 0.70
+    focal_alpha_max: float = 0.95
+    focal_gamma_min: float = 1.25
+    focal_gamma_max: float = 3.75
+    hard_negative_radius_min: int = 1
+    hard_negative_radius_max: int = 8
+    hard_negative_multiplier_min: float = 1.0
+    hard_negative_multiplier_max: float = 2.5
     torch_warmup_epochs: Optional[int] = None
     torch_main_epochs: Optional[int] = None
     torch_fine_epochs: Optional[int] = None
@@ -516,6 +531,47 @@ def build_sparse_lag_view(
 
 
 def validate_backend_config(config: OTETrainingConfig) -> None:
+    scalar_ranges = {
+        "focal_alpha": (config.focal_alpha_min, config.focal_alpha_max),
+        "focal_gamma": (config.focal_gamma_min, config.focal_gamma_max),
+        "hard_negative_radius": (config.hard_negative_radius_min, config.hard_negative_radius_max),
+        "hard_negative_multiplier": (
+            config.hard_negative_multiplier_min,
+            config.hard_negative_multiplier_max,
+        ),
+    }
+    for name, (lower, upper) in scalar_ranges.items():
+        if lower > upper:
+            raise ValueError(f"{name} min cannot exceed max: {lower} > {upper}.")
+
+    non_negative_fields = {
+        "threshold_event_fbeta_weight": config.threshold_event_fbeta_weight,
+        "threshold_event_precision_weight": config.threshold_event_precision_weight,
+        "threshold_turnover_penalty_weight": config.threshold_turnover_penalty_weight,
+        "threshold_turnover_target_ratio": config.threshold_turnover_target_ratio,
+        "objective_average_precision_weight": config.objective_average_precision_weight,
+        "objective_threshold_score_weight": config.objective_threshold_score_weight,
+        "objective_brier_penalty_weight": config.objective_brier_penalty_weight,
+    }
+    for name, value in non_negative_fields.items():
+        if value < 0:
+            raise ValueError(f"{name} must be non-negative, got {value}.")
+
+    if (
+        config.threshold_event_fbeta_weight <= 0
+        and config.threshold_event_precision_weight <= 0
+    ):
+        raise ValueError(
+            "Threshold scoring needs at least one positive event metric weight."
+        )
+    if (
+        config.objective_average_precision_weight <= 0
+        and config.objective_threshold_score_weight <= 0
+    ):
+        raise ValueError(
+            "Optuna scoring needs at least one positive model-quality weight."
+        )
+
     if config.backend not in {"xgboost", "torch"}:
         raise ValueError(f"Unsupported backend: {config.backend}")
     if config.backend == "torch" and config.model_type not in {"tcn", "lstm"}:
@@ -736,6 +792,18 @@ def precision_recall_fbeta(
     return (1.0 + beta_sq) * precision * recall / denom
 
 
+def describe_event_count_balance(
+    predicted_count: int,
+    true_count: int,
+) -> Dict[str, float]:
+    baseline = max(float(true_count), 1.0)
+    predicted_to_true_ratio = float(predicted_count) / baseline
+    return {
+        "predicted_to_true_event_ratio": predicted_to_true_ratio,
+        "event_count_gap_ratio": abs(float(predicted_count) - float(true_count)) / baseline,
+    }
+
+
 def event_metrics(
     y_true: np.ndarray,
     y_score: np.ndarray,
@@ -777,6 +845,7 @@ def event_metrics(
         "predicted_events": float(predicted_count),
         "true_events": float(true_count),
         "matched_events": float(true_positives),
+        **describe_event_count_balance(predicted_count=predicted_count, true_count=true_count),
     }
 
 
@@ -786,18 +855,11 @@ def select_operating_threshold(
     tolerance: int,
     cooldown: int,
     grid_size: int,
+    config: OTETrainingConfig,
 ) -> Tuple[float, Dict[str, float]]:
     thresholds = np.linspace(0.05, 0.95, num=grid_size)
     best_threshold = 0.5
-    best_metrics = {
-        "event_precision": 0.0,
-        "event_recall": 0.0,
-        "event_f1": 0.0,
-        "event_fbeta_0_5": 0.0,
-        "predicted_events": 0.0,
-        "true_events": 0.0,
-        "matched_events": 0.0,
-    }
+    best_metrics: Optional[Dict[str, float]] = None
 
     for threshold in thresholds:
         metrics = event_metrics(
@@ -808,21 +870,55 @@ def select_operating_threshold(
             cooldown=cooldown,
             beta=0.5,
         )
-        score = (
-            metrics["event_fbeta_0_5"],
-            metrics["event_precision"],
-            -abs(metrics["predicted_events"] - metrics["true_events"]),
+        turnover_excess_ratio = max(
+            0.0,
+            float(metrics["predicted_to_true_event_ratio"]) - float(config.threshold_turnover_target_ratio),
         )
-        best_score = (
-            best_metrics["event_fbeta_0_5"],
-            best_metrics["event_precision"],
-            -abs(best_metrics["predicted_events"] - best_metrics["true_events"]),
+        threshold_score = (
+            (float(config.threshold_event_fbeta_weight) * float(metrics["event_fbeta_0_5"]))
+            + (float(config.threshold_event_precision_weight) * float(metrics["event_precision"]))
+            - (float(config.threshold_turnover_penalty_weight) * turnover_excess_ratio)
         )
-        if score > best_score:
+        candidate_metrics = {
+            **metrics,
+            "turnover_excess_ratio": turnover_excess_ratio,
+            "threshold_score": threshold_score,
+        }
+        candidate_score = (
+            float(candidate_metrics["threshold_score"]),
+            float(candidate_metrics["event_precision"]),
+            float(candidate_metrics["event_fbeta_0_5"]),
+            -float(candidate_metrics["predicted_events"]),
+        )
+        if best_metrics is None:
             best_threshold = float(threshold)
-            best_metrics = metrics
+            best_metrics = candidate_metrics
+            continue
 
+        best_score = (
+            float(best_metrics["threshold_score"]),
+            float(best_metrics["event_precision"]),
+            float(best_metrics["event_fbeta_0_5"]),
+            -float(best_metrics["predicted_events"]),
+        )
+        if candidate_score > best_score:
+            best_threshold = float(threshold)
+            best_metrics = candidate_metrics
+
+    if best_metrics is None:
+        raise RuntimeError("Threshold search did not evaluate any candidates.")
     return best_threshold, best_metrics
+
+
+def score_fold_metrics(
+    metrics: Mapping[str, float],
+    config: OTETrainingConfig,
+) -> float:
+    return float(
+        (float(config.objective_average_precision_weight) * float(metrics["average_precision"]))
+        + (float(config.objective_threshold_score_weight) * float(metrics["threshold_score"]))
+        - (float(config.objective_brier_penalty_weight) * float(metrics["brier"]))
+    )
 
 
 class PurgedWalkForwardSplitter:
@@ -1428,6 +1524,7 @@ def train_and_score_fold(
         tolerance=config.event_tolerance_bars,
         cooldown=config.event_cooldown_bars,
         grid_size=config.threshold_grid_size,
+        config=config,
     )
 
     ap = safe_average_precision(y_val, probabilities, sample_weight=w_val)
@@ -1441,6 +1538,7 @@ def train_and_score_fold(
         "threshold": threshold,
         **threshold_metrics,
     }
+    metrics["fold_objective_score"] = score_fold_metrics(metrics, config)
     return probabilities, metrics
 
 
@@ -1452,8 +1550,8 @@ def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -
             "delta_feature_count", 0, min(config.delta_feature_cap, config.max_loaded_features), step=4
         ),
         "learning_rate": trial.suggest_float("learning_rate", 0.015, 0.12, log=True),
-        "focal_alpha": trial.suggest_float("focal_alpha", 0.70, 0.95),
-        "focal_gamma": trial.suggest_float("focal_gamma", 1.25, 3.75),
+        "focal_alpha": trial.suggest_float("focal_alpha", config.focal_alpha_min, config.focal_alpha_max),
+        "focal_gamma": trial.suggest_float("focal_gamma", config.focal_gamma_min, config.focal_gamma_max),
         "max_depth": trial.suggest_int("max_depth", 3, 7),
         "min_child_weight": trial.suggest_float("min_child_weight", 1.0, 14.0),
         "subsample": trial.suggest_float("subsample", 0.65, 1.0),
@@ -1468,8 +1566,16 @@ def build_xgboost_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -
         "main_rounds": trial.suggest_int("main_rounds", 120, 420, step=30),
         "fine_rounds": trial.suggest_int("fine_rounds", 20, 90, step=10),
         "fine_lr_scale": trial.suggest_float("fine_lr_scale", 0.15, 0.6),
-        "hard_negative_radius": trial.suggest_int("hard_negative_radius", 1, 8),
-        "hard_negative_multiplier": trial.suggest_float("hard_negative_multiplier", 1.0, 2.5),
+        "hard_negative_radius": trial.suggest_int(
+            "hard_negative_radius",
+            config.hard_negative_radius_min,
+            config.hard_negative_radius_max,
+        ),
+        "hard_negative_multiplier": trial.suggest_float(
+            "hard_negative_multiplier",
+            config.hard_negative_multiplier_min,
+            config.hard_negative_multiplier_max,
+        ),
     }
 
 
@@ -1494,10 +1600,18 @@ def build_torch_trial_params(trial: optuna.Trial, config: OTETrainingConfig) -> 
         "window_size": int(window_size),
         "num_layers": int(trial.suggest_int("num_layers", min_num_layers, max_num_layers)),
         "learning_rate": trial.suggest_float("learning_rate", lower_lr, upper_lr, log=True),
-        "focal_alpha": trial.suggest_float("focal_alpha", 0.70, 0.95),
-        "focal_gamma": trial.suggest_float("focal_gamma", 1.25, 3.75),
-        "hard_negative_radius": trial.suggest_int("hard_negative_radius", 1, 8),
-        "hard_negative_multiplier": trial.suggest_float("hard_negative_multiplier", 1.0, 2.5),
+        "focal_alpha": trial.suggest_float("focal_alpha", config.focal_alpha_min, config.focal_alpha_max),
+        "focal_gamma": trial.suggest_float("focal_gamma", config.focal_gamma_min, config.focal_gamma_max),
+        "hard_negative_radius": trial.suggest_int(
+            "hard_negative_radius",
+            config.hard_negative_radius_min,
+            config.hard_negative_radius_max,
+        ),
+        "hard_negative_multiplier": trial.suggest_float(
+            "hard_negative_multiplier",
+            config.hard_negative_multiplier_min,
+            config.hard_negative_multiplier_max,
+        ),
     }
 
 
@@ -1621,12 +1735,7 @@ def cross_validate_trial(
         fold_diagnostics.append(diagnostics)
 
         if trial is not None:
-            running_score = np.mean(
-                [
-                    (0.70 * fold["average_precision"]) + (0.30 * fold["event_fbeta_0_5"])
-                    for fold in fold_metrics
-                ]
-            )
+            running_score = np.mean([fold["fold_objective_score"] for fold in fold_metrics])
             trial.report(running_score, step=fold_plan.fold)
             if trial.should_prune():
                 raise optuna.TrialPruned()
@@ -1791,6 +1900,7 @@ def fit_final_model(
         tolerance=config.event_tolerance_bars,
         cooldown=config.event_cooldown_bars,
         grid_size=config.threshold_grid_size,
+        config=config,
     )
 
     if context_rows > 0:
@@ -2109,12 +2219,7 @@ def train_target_pipeline(
     def objective(trial: optuna.Trial) -> float:
         params = build_trial_params(trial, config)
         artifacts = cross_validate_trial(dataset=dataset, params=params, config=config, trial=trial)
-        fold_score = np.mean(
-            [
-                (0.70 * fold["average_precision"]) + (0.30 * fold["event_fbeta_0_5"])
-                for fold in artifacts.fold_metrics
-            ]
-        )
+        fold_score = np.mean([fold["fold_objective_score"] for fold in artifacts.fold_metrics])
         return float(fold_score)
 
     study = optuna.create_study(
@@ -2185,7 +2290,14 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--window-min", type=int, default=8)
     parser.add_argument("--event-tolerance-bars", type=int, default=2)
     parser.add_argument("--event-cooldown-bars", type=int, default=4)
+    parser.add_argument("--threshold-event-fbeta-weight", type=float, default=0.55)
+    parser.add_argument("--threshold-event-precision-weight", type=float, default=0.45)
+    parser.add_argument("--threshold-turnover-penalty-weight", type=float, default=0.40)
+    parser.add_argument("--threshold-turnover-target-ratio", type=float, default=0.85)
     parser.add_argument("--calibration-method", choices=["platt", "isotonic", "none"], default="platt")
+    parser.add_argument("--objective-average-precision-weight", type=float, default=0.45)
+    parser.add_argument("--objective-threshold-score-weight", type=float, default=0.45)
+    parser.add_argument("--objective-brier-penalty-weight", type=float, default=0.10)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--epochs", type=int, default=18)
     parser.add_argument("--hidden-size", type=int, default=64)
@@ -2195,6 +2307,14 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--gradient-clip", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--window-size", type=int, default=24)
+    parser.add_argument("--focal-alpha-min", type=float, default=0.70)
+    parser.add_argument("--focal-alpha-max", type=float, default=0.95)
+    parser.add_argument("--focal-gamma-min", type=float, default=1.25)
+    parser.add_argument("--focal-gamma-max", type=float, default=3.75)
+    parser.add_argument("--hard-negative-radius-min", type=int, default=1)
+    parser.add_argument("--hard-negative-radius-max", type=int, default=8)
+    parser.add_argument("--hard-negative-multiplier-min", type=float, default=1.0)
+    parser.add_argument("--hard-negative-multiplier-max", type=float, default=2.5)
     parser.add_argument("--torch-warmup-epochs", type=int, default=None)
     parser.add_argument("--torch-main-epochs", type=int, default=None)
     parser.add_argument("--torch-fine-epochs", type=int, default=None)
@@ -2240,7 +2360,14 @@ def parse_args() -> OTETrainingConfig:
         purge_buffer_bars=args.purge_buffer_bars,
         event_tolerance_bars=args.event_tolerance_bars,
         event_cooldown_bars=args.event_cooldown_bars,
+        threshold_event_fbeta_weight=args.threshold_event_fbeta_weight,
+        threshold_event_precision_weight=args.threshold_event_precision_weight,
+        threshold_turnover_penalty_weight=args.threshold_turnover_penalty_weight,
+        threshold_turnover_target_ratio=args.threshold_turnover_target_ratio,
         calibration_method=args.calibration_method,
+        objective_average_precision_weight=args.objective_average_precision_weight,
+        objective_threshold_score_weight=args.objective_threshold_score_weight,
+        objective_brier_penalty_weight=args.objective_brier_penalty_weight,
         batch_size=args.batch_size,
         epochs=args.epochs,
         hidden_size=args.hidden_size,
@@ -2251,6 +2378,14 @@ def parse_args() -> OTETrainingConfig:
         use_amp=args.use_amp,
         learning_rate=args.learning_rate,
         window_size=args.window_size,
+        focal_alpha_min=args.focal_alpha_min,
+        focal_alpha_max=args.focal_alpha_max,
+        focal_gamma_min=args.focal_gamma_min,
+        focal_gamma_max=args.focal_gamma_max,
+        hard_negative_radius_min=args.hard_negative_radius_min,
+        hard_negative_radius_max=args.hard_negative_radius_max,
+        hard_negative_multiplier_min=args.hard_negative_multiplier_min,
+        hard_negative_multiplier_max=args.hard_negative_multiplier_max,
         torch_warmup_epochs=args.torch_warmup_epochs,
         torch_main_epochs=args.torch_main_epochs,
         torch_fine_epochs=args.torch_fine_epochs,
