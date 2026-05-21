@@ -91,6 +91,16 @@ def test_live_collector_parser_accepts_runtime_manifest_paths_from_env(monkeypat
     assert Path(args.short_runtime_manifest_path).name == "live_runtime_manifest_short.json"
 
 
+def test_live_collector_parser_reads_all_models_active_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("OTE_LIVE_ALL_MODELS_ACTIVE", "true")
+    monkeypatch.setenv("FMP_API_KEY", "test-key")
+
+    parser = build_live_collector_parser()
+    args = parser.parse_args([])
+
+    assert args.all_models_active is True
+
+
 def test_sqlite_live_data_store_connection_can_be_read_from_another_thread() -> None:
     tmp_root = ROOT / "tmp" / "ote_live_env_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)

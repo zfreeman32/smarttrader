@@ -6,7 +6,6 @@ from ote_live.env import env_path, load_repo_env
 from ote_live.policies.packager import (
     DEFAULT_POLICY_ARTIFACT_DIR,
     DEFAULT_REGISTRY_PATH,
-    DEFAULT_TARGET_MODEL_IDS,
     DEFAULT_THRESHOLD_POLICY_ROOT,
     package_candidate_policy_artifacts,
 )
@@ -36,7 +35,7 @@ def main() -> int:
         threshold_policy_root=args.threshold_policy_root,
         output_dir=args.output_dir,
         registry_path=args.registry_path,
-        model_ids=args.model_ids or DEFAULT_TARGET_MODEL_IDS,
+        model_ids=args.model_ids,
     )
     for path in written_paths:
         print(path)

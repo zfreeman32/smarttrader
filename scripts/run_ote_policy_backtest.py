@@ -28,7 +28,121 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
             "minimum_probability_quantile": 0.20,
         },
         "short_ote_candidate_tcn_v2": {},
-    }
+    },
+    "long_breakout_regime_prune_v1": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+        }
+    },
+    "long_breakout_regime_prune_v2": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+        }
+    },
+    "long_breakout_regime_prune_v1_q20": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+            "minimum_probability_quantile": 0.20,
+        }
+    },
+    "long_breakout_regime_prune_v1_q20_asia": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+            "abstain_session_regimes": ("asia",),
+            "minimum_probability_quantile": 0.20,
+        }
+    },
+    "long_breakout_regime_prune_v1_q25": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+            "minimum_probability_quantile": 0.25,
+        }
+    },
+    "long_breakout_regime_prune_v1_q30": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+            "minimum_probability_quantile": 0.30,
+        }
+    },
+    "long_breakout_regime_prune_v3": {
+        "long_breakout_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_high",
+                "ranging_low",
+                "strong_up_low",
+            ),
+            "abstain_composite_session_pairs": (("strong_up_medium", "asia"),),
+            "abstain_composite_stress_pairs": (("strong_up_medium", "elevated"),),
+            "minimum_probability_quantile": 0.20,
+        }
+    },
+    "short_meta_regime_prune_v1": {
+        "short_ote_meta_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_medium",
+            ),
+        }
+    },
+    "short_meta_regime_prune_q20_v1": {
+        "short_ote_meta_tcn_champion": {
+            "abstain_composite_regimes": (
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "ranging_medium",
+            ),
+            "minimum_probability_quantile": 0.20,
+        }
+    },
 }
 
 
@@ -38,7 +152,8 @@ def run_policy_backtest(
     output_root: str | Path,
     registry_path: str | Path,
     model_ids: Sequence[str] | None = None,
-    include_roles: Sequence[str] = ("champion",),
+    statuses: Sequence[str] = ("active", "candidate"),
+    include_roles: Sequence[str] | None = None,
     threshold_grid: Sequence[float] | None = None,
     min_train_years: int = 2,
     test_window_months: int = 3,
@@ -58,7 +173,12 @@ def run_policy_backtest(
     output_root.mkdir(parents=True, exist_ok=True)
 
     registry = load_ote_model_registry(registry_path)
-    models = _resolve_models(registry, model_ids=model_ids, include_roles=include_roles)
+    models = _resolve_models(
+        registry,
+        model_ids=model_ids,
+        statuses=statuses,
+        include_roles=include_roles,
+    )
 
     model_outputs: list[dict[str, Any]] = []
     summary_rows: list[dict[str, Any]] = []
@@ -159,7 +279,8 @@ def run_policy_backtest(
         "output_root": str(output_root),
         "registry_path": str(Path(registry_path)),
         "model_ids": [model.model_id for model in models],
-        "include_roles": list(include_roles),
+        "statuses": list(statuses),
+        "include_roles": [] if include_roles is None else list(include_roles),
         "min_train_years": int(min_train_years),
         "test_window_months": int(test_window_months),
         "rolling_step_months": int(rolling_step_months),
@@ -201,7 +322,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--registry-path",
         type=Path,
-        default=REPO_ROOT / "models" / "ote_model_registry.json",
+        default=REPO_ROOT / "models" / "ote_model_registry_multifamily_candidates.json",
+    )
+    parser.add_argument(
+        "--status",
+        action="append",
+        dest="statuses",
+        default=None,
+        help="Repeat to filter registry models by status. Defaults to active and candidate.",
     )
     parser.add_argument("--model-id", action="append", dest="model_ids", default=None)
     parser.add_argument(
@@ -209,7 +337,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="append",
         dest="include_roles",
         default=None,
-        help="Repeat to include challenger/candidate/benchmark entries. Defaults to champion only.",
+        help="Repeat to restrict registry models by role. Defaults to all roles.",
     )
     parser.add_argument("--threshold", action="append", dest="threshold_grid", type=float, default=None)
     parser.add_argument("--min-train-years", type=int, default=2)
@@ -227,7 +355,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--targeted-filter-preset",
         choices=sorted(TARGETED_FILTER_PRESETS),
         default=None,
-        help="Apply named per-model abstain/confidence filters. Use full_run_v2 for the targeted follow-up pass.",
+        help="Apply named per-model abstain/confidence filters for targeted policy follow-up passes.",
     )
     return parser
 
@@ -246,7 +374,8 @@ def main() -> None:
         output_root=output_root,
         registry_path=args.registry_path,
         model_ids=args.model_ids,
-        include_roles=args.include_roles or ("champion",),
+        statuses=args.statuses or ("active", "candidate"),
+        include_roles=args.include_roles,
         threshold_grid=args.threshold_grid,
         min_train_years=args.min_train_years,
         test_window_months=args.test_window_months,
@@ -268,16 +397,19 @@ def _resolve_models(
     registry,
     *,
     model_ids: Sequence[str] | None,
-    include_roles: Sequence[str],
+    statuses: Sequence[str],
+    include_roles: Sequence[str] | None,
 ) -> List[OTEModelRecord]:
     if model_ids:
         return [registry.get_model(model_id) for model_id in model_ids]
 
-    allowed_roles = set(include_roles)
+    allowed_statuses = set(statuses)
+    allowed_roles = set(include_roles) if include_roles is not None else None
     return [
         model
         for model in registry.models
-        if model.status == "active" and model.role in allowed_roles
+        if model.status in allowed_statuses
+        and (allowed_roles is None or model.role in allowed_roles)
     ]
 
 
@@ -406,6 +538,16 @@ def _build_abstain_config(
                 or ()
             )
         ),
+        abstain_composite_session_pairs=_coerce_pair_filters(
+            targeted_filters.get("abstain_composite_session_pairs")
+            or metadata.get("abstain_composite_session_pairs")
+            or ()
+        ),
+        abstain_composite_stress_pairs=_coerce_pair_filters(
+            targeted_filters.get("abstain_composite_stress_pairs")
+            or metadata.get("abstain_composite_stress_pairs")
+            or ()
+        ),
         minimum_probability_quantile=(
             float(targeted_filters["minimum_probability_quantile"])
             if "minimum_probability_quantile" in targeted_filters
@@ -441,10 +583,30 @@ def _describe_abstain_config(config: HardAbstainConfig) -> Dict[str, object]:
         "minimum_expected_move_to_spread": float(config.minimum_expected_move_to_spread),
         "abstain_session_regimes": [str(value) for value in config.abstain_session_regimes],
         "abstain_composite_regimes": [str(value) for value in config.abstain_composite_regimes],
+        "abstain_composite_session_pairs": [
+            [str(composite_regime), str(session_regime)]
+            for composite_regime, session_regime in config.abstain_composite_session_pairs
+        ],
+        "abstain_composite_stress_pairs": [
+            [str(composite_regime), str(stress_regime)]
+            for composite_regime, stress_regime in config.abstain_composite_stress_pairs
+        ],
         "minimum_probability_quantile": None
         if config.minimum_probability_quantile is None
         else float(config.minimum_probability_quantile),
     }
+
+
+def _coerce_pair_filters(values: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(values, (list, tuple)):
+        return ()
+
+    normalized_pairs: list[tuple[str, str]] = []
+    for value in values:
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            continue
+        normalized_pairs.append((str(value[0]), str(value[1])))
+    return tuple(normalized_pairs)
 
 
 def _write_model_outputs(model_output_dir: Path, results: Dict[str, Any]) -> Dict[str, str]:

@@ -39,7 +39,7 @@ def test_candidate_registry_exports_direction_manifests() -> None:
     manifests = _build_packaged_manifests()
 
     assert set(manifests) == {"long", "short"}
-    assert len(manifests["long"].models) == 5
+    assert len(manifests["long"].models) == 4
     assert len(manifests["short"].models) == 4
     assert manifests["long"].recommendations.recommended_primary_model_id == "long_ote_tcn_v2_candidate"
     assert manifests["short"].recommendations.recommended_primary_model_id == "short_ote_tcn_v2_candidate"
@@ -48,15 +48,30 @@ def test_candidate_registry_exports_direction_manifests() -> None:
 
     long_v2 = next(model for model in manifests["long"].models if model.model_id == "long_ote_tcn_v2_candidate")
     short_v2 = next(model for model in manifests["short"].models if model.model_id == "short_ote_tcn_v2_candidate")
-    long_v1 = next(model for model in manifests["long"].models if model.model_id == "long_ote_tcn_v1_candidate")
-    short_v1 = next(model for model in manifests["short"].models if model.model_id == "short_ote_tcn_v1_candidate")
     long_model_ids = {model.model_id for model in manifests["long"].models}
+    short_model_ids = {model.model_id for model in manifests["short"].models}
+    long_breakout = next(model for model in manifests["long"].models if model.model_id == "long_breakout_tcn_champion")
+    short_reversal = next(model for model in manifests["short"].models if model.model_id == "short_reversal_xgb_v1")
 
     assert long_v2.live_policy.policy_status == "complete"
     assert short_v2.live_policy.policy_status == "complete"
-    assert long_v1.live_policy.policy_status == "complete"
-    assert short_v1.live_policy.policy_status == "complete"
-    assert "long_ote_xgb_v1_candidate" not in long_model_ids
+    assert long_breakout.live_policy.policy_status == "complete"
+    assert short_reversal.live_policy.policy_status == "complete"
+    assert long_model_ids == {
+        "long_ote_tcn_v2_candidate",
+        "long_reversal_tcn_champion",
+        "long_breakout_tcn_champion",
+        "long_ote_meta_tcn_champion",
+    }
+    assert short_model_ids == {
+        "short_ote_tcn_v2_candidate",
+        "short_reversal_xgb_v1",
+        "short_breakout_tcn_champion",
+        "short_ote_meta_tcn_champion",
+    }
+    assert long_v2.status == "active"
+    assert short_reversal.status == "active"
+    assert long_breakout.status == "candidate"
     assert long_v2.live_policy.thresholds.regime_thresholds["strong_down_high"] == 0.8
     assert short_v2.live_policy.thresholds.global_threshold == 0.75
     assert short_v2.live_policy.abstain_policy.enabled is False
@@ -74,9 +89,34 @@ def test_selected_features_exist_in_canonical_feature_catalog() -> None:
         for model_manifest in direction_manifest.models:
             validation = model_manifest.feature_manifest.validation
             assert validation.selected_features_in_canonical_catalog
-            assert validation.selected_features_in_direction_feature_list
             assert validation.missing_from_canonical_catalog == []
-            assert validation.missing_from_direction_feature_list == []
+            if validation.selected_features_in_direction_feature_list:
+                assert validation.missing_from_direction_feature_list == []
+            else:
+                assert validation.missing_from_direction_feature_list
+                assert any("stale direction list" in note for note in model_manifest.notes)
+
+
+def test_family_candidate_registry_allows_stale_direction_feature_lists() -> None:
+    manifests = build_direction_runtime_manifests(
+        registry_path=Path("models/ote_model_registry_champion_models_candidates.json"),
+        packaged_policy_dir=_make_local_tmp_dir(),
+    )
+
+    assert set(manifests) == {"long", "short"}
+    assert len(manifests["long"].models) == 3
+    assert len(manifests["short"].models) == 3
+
+    long_reversal = next(model for model in manifests["long"].models if model.model_id == "long_reversal_tcn_champion")
+    short_breakout = next(model for model in manifests["short"].models if model.model_id == "short_breakout_tcn_champion")
+    long_meta = next(model for model in manifests["long"].models if model.model_id == "long_ote_meta_tcn_champion")
+
+    assert long_meta.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert not long_reversal.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert not short_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert long_reversal.feature_manifest.validation.missing_from_canonical_catalog == []
+    assert short_breakout.feature_manifest.validation.missing_from_canonical_catalog == []
+    assert any("stale direction list" in note for note in long_reversal.notes)
 
 
 def test_live_policy_schema_requires_abstain_fields_and_context_rows() -> None:
@@ -110,7 +150,7 @@ def test_written_policy_file_is_versioned_json() -> None:
     assert payload["model_id"] == "long_ote_tcn_v2_candidate"
 
 
-def test_active_registry_exports_promoted_direction_manifests() -> None:
+def test_legacy_active_registry_still_exports_direction_manifests() -> None:
     packaged_policy_dir = _make_local_tmp_dir()
     package_candidate_policy_artifacts(output_dir=packaged_policy_dir)
     manifests = build_direction_runtime_manifests(
@@ -125,25 +165,12 @@ def test_active_registry_exports_promoted_direction_manifests() -> None:
     long_ids = {model.model_id for model in long_manifest.models}
     short_ids = {model.model_id for model in short_manifest.models}
 
-    assert long_manifest.recommendations.recommended_primary_model_id == "long_ote_champion_v1"
-    assert long_manifest.recommendations.recommended_strongest_overall_model_id == "long_ote_champion_v1"
-    assert long_manifest.recommendations.recommended_strongest_v2_model_id is None
-    assert short_manifest.recommendations.recommended_primary_model_id == "short_ote_candidate_tcn_v2"
-    assert short_manifest.recommendations.recommended_strongest_overall_model_id == "short_ote_candidate_tcn_v2"
-    assert short_manifest.recommendations.recommended_strongest_v2_model_id == "short_ote_candidate_tcn_v2"
-
-    assert long_ids == {"long_ote_champion_v1", "long_ote_benchmark_lstm_v1"}
-    assert short_ids == {"short_ote_candidate_tcn_v2", "short_ote_candidate_xgb_v1"}
-
-    long_champion = next(model for model in long_manifest.models if model.model_id == "long_ote_champion_v1")
-    long_benchmark = next(model for model in long_manifest.models if model.model_id == "long_ote_benchmark_lstm_v1")
-    short_champion = next(model for model in short_manifest.models if model.model_id == "short_ote_candidate_tcn_v2")
-    short_challenger = next(model for model in short_manifest.models if model.model_id == "short_ote_candidate_xgb_v1")
-
-    assert long_champion.live_policy.policy_status == "complete"
-    assert short_champion.live_policy.policy_status == "complete"
-    assert long_benchmark.live_policy.policy_status == "provisional"
-    assert short_challenger.live_policy.policy_status == "provisional"
+    assert long_manifest.recommendations.recommended_primary_model_id in long_ids
+    assert short_manifest.recommendations.recommended_primary_model_id in short_ids
+    assert long_manifest.recommendations.recommended_primary_model_id != "long_ote_tcn_v2_candidate"
+    assert short_manifest.recommendations.recommended_primary_model_id != "short_ote_tcn_v2_candidate"
+    assert all(model.live_policy.policy_status in {"complete", "provisional"} for model in long_manifest.models)
+    assert all(model.live_policy.policy_status in {"complete", "provisional"} for model in short_manifest.models)
 
 
 def test_export_script_defaults_to_candidate_registry() -> None:
@@ -151,3 +178,18 @@ def test_export_script_defaults_to_candidate_registry() -> None:
     args = parser.parse_args([])
 
     assert Path(args.registry_path).resolve() == DEFAULT_CANDIDATE_REGISTRY_PATH.resolve()
+
+
+def test_live_registry_long_breakout_uses_v3_pairwise_abstains() -> None:
+    manifests = build_direction_runtime_manifests()
+
+    long_breakout = next(model for model in manifests["long"].models if model.model_id == "long_breakout_tcn_champion")
+
+    assert long_breakout.live_policy.thresholds.global_threshold == pytest.approx(0.92)
+    assert long_breakout.live_policy.cost_assumptions.targeted_filter_preset == "long_breakout_regime_prune_v3"
+    assert long_breakout.live_policy.abstain_policy.abstain_composite_session_pairs == [
+        ("strong_up_medium", "asia")
+    ]
+    assert long_breakout.live_policy.abstain_policy.abstain_composite_stress_pairs == [
+        ("strong_up_medium", "elevated")
+    ]

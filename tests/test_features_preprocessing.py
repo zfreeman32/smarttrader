@@ -90,6 +90,115 @@ def _write_dataset(base_dir: Path) -> Path:
     return dataset_path
 
 
+def _write_meta_zone_dataset(base_dir: Path) -> Path:
+    rows = 36
+    timestamps = pd.date_range("2024-02-01 00:00:00", periods=rows, freq="5min")
+
+    long_reversal = [0] * rows
+    long_continuation = [0] * rows
+    long_breakout = [0] * rows
+    short_reversal = [0] * rows
+    short_continuation = [0] * rows
+    short_breakout = [0] * rows
+
+    for index in (5, 6, 18):
+        long_reversal[index] = 1
+    for index in (10, 18, 19):
+        long_continuation[index] = 1
+    for index in (14, 15):
+        long_breakout[index] = 1
+
+    for index in (8, 9):
+        short_reversal[index] = 1
+    for index in (20, 21):
+        short_continuation[index] = 1
+    for index in (26, 27):
+        short_breakout[index] = 1
+
+    df = pd.DataFrame(
+        {
+            "datetime": timestamps,
+            "open": [1.20 + i * 0.0001 for i in range(rows)],
+            "high": [1.21 + i * 0.0001 for i in range(rows)],
+            "low": [1.19 + i * 0.0001 for i in range(rows)],
+            "close": [1.20 + i * 0.0001 for i in range(rows)],
+            "volume": [200 + i for i in range(rows)],
+            "label_long_reversal": long_reversal,
+            "label_long_continuation_pullback": long_continuation,
+            "label_long_breakout": long_breakout,
+            "label_short_reversal": short_reversal,
+            "label_short_continuation_pullback": short_continuation,
+            "label_short_breakout": short_breakout,
+            "sample_weight_long_reversal": [2.5 if value else 1.0 for value in long_reversal],
+            "sample_weight_long_continuation": [1.8 if value else 1.0 for value in long_continuation],
+            "sample_weight_long_breakout": [3.0 if value else 1.0 for value in long_breakout],
+            "sample_weight_short_reversal": [2.2 if value else 1.0 for value in short_reversal],
+            "sample_weight_short_continuation": [1.7 if value else 1.0 for value in short_continuation],
+            "sample_weight_short_breakout": [2.8 if value else 1.0 for value in short_breakout],
+            "label_quality_long_reversal": [0.8 if value else 0.0 for value in long_reversal],
+            "label_quality_long_continuation": [0.7 if value else 0.0 for value in long_continuation],
+            "label_quality_long_breakout": [0.9 if value else 0.0 for value in long_breakout],
+            "label_quality_short_reversal": [0.75 if value else 0.0 for value in short_reversal],
+            "label_quality_short_continuation": [0.65 if value else 0.0 for value in short_continuation],
+            "label_quality_short_breakout": [0.85 if value else 0.0 for value in short_breakout],
+            "exclude_long_reversal": [False] * rows,
+            "exclude_long_continuation": [False] * rows,
+            "exclude_long_breakout": [False] * rows,
+            "exclude_short_reversal": [False] * rows,
+            "exclude_short_continuation": [False] * rows,
+            "exclude_short_breakout": [False] * rows,
+            "neg_ok_long_reversal": [i not in {2, 3} and not long_reversal[i] for i in range(rows)],
+            "neg_ok_long_continuation": [i not in {3, 11} and not long_continuation[i] for i in range(rows)],
+            "neg_ok_long_breakout": [i not in {4, 16} and not long_breakout[i] for i in range(rows)],
+            "neg_ok_short_reversal": [i not in {7, 11} and not short_reversal[i] for i in range(rows)],
+            "neg_ok_short_continuation": [i not in {19, 22} and not short_continuation[i] for i in range(rows)],
+            "neg_ok_short_breakout": [i not in {25, 28} and not short_breakout[i] for i in range(rows)],
+            "warmup_mask": [i < 3 for i in range(rows)],
+            "feature_trend": np.linspace(0.0, 1.0, rows),
+            "feature_structure": np.sin(np.linspace(0.0, 2.0, rows)),
+            "feature_binary": [float(i % 4 == 0) for i in range(rows)],
+        }
+    )
+
+    dataset_path = base_dir / "meta_zone_features.csv"
+    metadata_path = base_dir / "meta_zone_features.metadata.json"
+    df.to_csv(dataset_path, index=False)
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "feature_columns": [
+                    "feature_trend",
+                    "feature_structure",
+                    "feature_binary",
+                ],
+                "timezone_contract": {
+                    "source_timezone": "UTC",
+                    "canonical_timezone": "UTC",
+                    "feature_clock_timezone": "America/New_York",
+                    "market_close_timezone": "America/New_York",
+                },
+                "source_path": "data/labeling/labeled_data/meta_zone_labels.csv",
+                "source_metadata_file": "data/labeling/labeled_data/meta_zone_labels.metadata.json",
+                "upstream_source_path": "data/currency_data/meta_zone_raw.csv",
+                "upstream_metadata_file": "data/labeling/labeled_data/meta_zone_labels.metadata.json",
+                "upstream_bar_timestamp_semantics": "bar_open",
+                "upstream_timezone_contract": {
+                    "source_timezone": "GMT-6",
+                    "canonical_timezone": "UTC",
+                },
+                "config": {
+                    "drop_warmup_rows": False,
+                    "warmup_rows": 0,
+                    "fillna_numeric": True,
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return dataset_path
+
+
 def test_preprocessing_removes_duplicate_and_constant_features(tmp_path: Path) -> None:
     dataset_path = _write_dataset(tmp_path)
     output_dir = tmp_path / "prepared"
@@ -317,3 +426,117 @@ def test_discover_targets_supports_reversal_continuation_and_breakout_families()
     assert breakout_entry.exclude_column == "exclude_short_breakout"
     assert breakout_entry.safe_negative_column == "neg_ok_short_breakout"
     assert breakout_entry.label_kind == "breakout_entry"
+
+
+def test_discover_targets_synthesizes_meta_ote_targets_from_family_zone_labels() -> None:
+    df = pd.DataFrame(
+        columns=[
+            "label_long_reversal",
+            "sample_weight_long_reversal",
+            "label_quality_long_reversal",
+            "exclude_long_reversal",
+            "neg_ok_long_reversal",
+            "label_long_continuation_pullback",
+            "sample_weight_long_continuation",
+            "label_quality_long_continuation",
+            "exclude_long_continuation",
+            "neg_ok_long_continuation",
+            "label_long_breakout",
+            "sample_weight_long_breakout",
+            "label_quality_long_breakout",
+            "exclude_long_breakout",
+            "neg_ok_long_breakout",
+            "label_short_reversal",
+            "sample_weight_short_reversal",
+            "label_quality_short_reversal",
+            "exclude_short_reversal",
+            "neg_ok_short_reversal",
+            "label_short_continuation_pullback",
+            "sample_weight_short_continuation",
+            "label_quality_short_continuation",
+            "exclude_short_continuation",
+            "neg_ok_short_continuation",
+            "label_short_breakout",
+            "sample_weight_short_breakout",
+            "label_quality_short_breakout",
+            "exclude_short_breakout",
+            "neg_ok_short_breakout",
+        ]
+    )
+
+    specs = discover_targets(
+        df,
+        PreprocessingConfig(target_columns=["label_long_ote", "label_short_ote"]),
+    )
+    specs_by_name = {spec.name: spec for spec in specs}
+
+    assert {"long_ote", "short_ote"} == set(specs_by_name)
+
+    long_meta = specs_by_name["long_ote"]
+    assert long_meta.is_synthetic is True
+    assert long_meta.target_column == "label_long_ote"
+    assert long_meta.component_target_columns == [
+        "label_long_reversal",
+        "label_long_continuation_pullback",
+        "label_long_breakout",
+    ]
+    assert long_meta.component_sample_weight_columns == [
+        "sample_weight_long_reversal",
+        "sample_weight_long_continuation",
+        "sample_weight_long_breakout",
+    ]
+    assert long_meta.component_exclude_columns == [
+        "exclude_long_reversal",
+        "exclude_long_continuation",
+        "exclude_long_breakout",
+    ]
+    assert long_meta.component_safe_negative_columns == [
+        "neg_ok_long_reversal",
+        "neg_ok_long_continuation",
+        "neg_ok_long_breakout",
+    ]
+
+
+def test_preprocessing_builds_meta_ote_target_from_union_of_family_zone_labels(tmp_path: Path) -> None:
+    dataset_path = _write_meta_zone_dataset(tmp_path)
+    output_dir = tmp_path / "prepared_meta"
+
+    pipeline = FeaturePreprocessingPipeline(
+        PreprocessingConfig(
+            target_columns=["label_long_ote", "label_short_ote"],
+            min_usable_rows=8,
+            min_train_rows=4,
+            min_positive_samples=2,
+            top_n_features=5,
+        )
+    )
+    summary = pipeline.run(dataset_path, output_dir)
+
+    assert set(summary["targets"]) == {"long_ote", "short_ote"}
+
+    long_dir = output_dir / "long_ote"
+    long_report = json.loads((long_dir / "report.json").read_text(encoding="utf-8"))
+    long_target_construction = long_report["target_construction"]
+
+    assert long_target_construction["type"] == "synthetic_any_positive_union"
+    assert long_target_construction["source_target_columns"] == [
+        "label_long_reversal",
+        "label_long_continuation_pullback",
+        "label_long_breakout",
+    ]
+
+    long_positive_union = len({5, 6, 10, 14, 15, 18, 19})
+    assert long_report["row_counts"]["rows_positive"] == long_positive_union
+    assert long_report["row_counts"]["rows_excluded_as_ambiguous"] > 0
+
+    all_long_rows = pd.concat(
+        [
+            pd.read_csv(long_dir / "train.csv"),
+            pd.read_csv(long_dir / "val.csv"),
+            pd.read_csv(long_dir / "test.csv"),
+        ],
+        ignore_index=True,
+    )
+    assert "source_row_idx" in all_long_rows.columns
+    assert int(all_long_rows["target"].sum()) == long_positive_union
+    assert float(all_long_rows.loc[all_long_rows["target"] == 1, "sample_weight"].max()) == 3.0

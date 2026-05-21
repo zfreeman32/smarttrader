@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from model_testing.ote_abstain_policy import HardAbstainConfig
+from model_testing.ote_abstain_policy import HardAbstainConfig, apply_abstain_policy
 from model_testing.ote_prediction_joiner import load_source_frame
 from model_testing.ote_regime_slices import resolve_probability_column
 from model_testing.ote_threshold_policy import (
@@ -31,7 +31,8 @@ def run_threshold_policy_search(
     output_root: str | Path,
     registry_path: str | Path,
     model_ids: Sequence[str] | None = None,
-    include_roles: Sequence[str] = ("champion",),
+    statuses: Sequence[str] = ("active", "candidate"),
+    include_roles: Sequence[str] | None = None,
     threshold_grid: Sequence[float] | None = None,
     min_positive_events: int = 50,
     min_events_per_month: float = 3.0,
@@ -44,7 +45,12 @@ def run_threshold_policy_search(
     output_root.mkdir(parents=True, exist_ok=True)
 
     registry = load_ote_model_registry(registry_path)
-    models = _resolve_models(registry, model_ids=model_ids, include_roles=include_roles)
+    models = _resolve_models(
+        registry,
+        model_ids=model_ids,
+        statuses=statuses,
+        include_roles=include_roles,
+    )
 
     all_policy_tables: List[pd.DataFrame] = []
     all_policy_evaluations: List[pd.DataFrame] = []
@@ -210,7 +216,8 @@ def run_threshold_policy_search(
         "output_root": str(output_root),
         "registry_path": str(Path(registry_path)),
         "model_ids": [model.model_id for model in models],
-        "include_roles": list(include_roles),
+        "statuses": list(statuses),
+        "include_roles": [] if include_roles is None else list(include_roles),
         "min_positive_events": int(min_positive_events),
         "min_events_per_month": float(min_events_per_month),
         "min_trades_per_week": float(min_trades_per_week),
@@ -250,7 +257,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--registry-path",
         type=Path,
-        default=REPO_ROOT / "models" / "ote_model_registry.json",
+        default=REPO_ROOT / "models" / "ote_model_registry_multifamily_candidates.json",
+    )
+    parser.add_argument(
+        "--status",
+        action="append",
+        dest="statuses",
+        default=None,
+        help="Repeat to filter registry models by status. Defaults to active and candidate.",
     )
     parser.add_argument("--model-id", action="append", dest="model_ids", default=None)
     parser.add_argument(
@@ -258,7 +272,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="append",
         dest="include_roles",
         default=None,
-        help="Repeat to include challenger/benchmark entries. Defaults to champion only.",
+        help="Repeat to restrict registry models by role. Defaults to all roles.",
     )
     parser.add_argument(
         "--threshold",
@@ -294,7 +308,8 @@ def main() -> None:
         output_root=output_root,
         registry_path=args.registry_path,
         model_ids=args.model_ids,
-        include_roles=args.include_roles or ("champion",),
+        statuses=args.statuses or ("active", "candidate"),
+        include_roles=args.include_roles,
         threshold_grid=args.threshold_grid,
         min_positive_events=args.min_positive_events,
         min_events_per_month=args.min_events_per_month,
@@ -309,16 +324,19 @@ def _resolve_models(
     registry,
     *,
     model_ids: Sequence[str] | None,
-    include_roles: Sequence[str],
+    statuses: Sequence[str],
+    include_roles: Sequence[str] | None,
 ) -> List[OTEModelRecord]:
     if model_ids:
         return [registry.get_model(model_id) for model_id in model_ids]
 
-    allowed_roles = set(include_roles)
+    allowed_statuses = set(statuses)
+    allowed_roles = set(include_roles) if include_roles is not None else None
     return [
         model
         for model in registry.models
-        if model.status == "active" and model.role in allowed_roles
+        if model.status in allowed_statuses
+        and (allowed_roles is None or model.role in allowed_roles)
     ]
 
 
@@ -463,6 +481,14 @@ def _build_abstain_policy_metadata(
         },
         "abstain_session_regimes": [str(value) for value in abstain_config.abstain_session_regimes],
         "abstain_composite_regimes": [str(value) for value in abstain_config.abstain_composite_regimes],
+        "abstain_composite_session_pairs": [
+            [str(composite_regime), str(session_regime)]
+            for composite_regime, session_regime in abstain_config.abstain_composite_session_pairs
+        ],
+        "abstain_composite_stress_pairs": [
+            [str(composite_regime), str(stress_regime)]
+            for composite_regime, stress_regime in abstain_config.abstain_composite_stress_pairs
+        ],
         "minimum_probability_quantile": abstain_config.minimum_probability_quantile,
         "expected_move_by_regime": None
         if abstain_config.expected_move_by_regime is None
@@ -480,7 +506,9 @@ def _write_registry_policy_updates(
     registry_path: Path,
     updates: Dict[str, Dict[str, object]],
 ) -> None:
-    payload = json.loads(registry_path.read_text(encoding="utf-8"))
+    # Accept UTF-8 registries with or without a BOM so PowerShell-authored
+    # candidate registries can be updated in place during policy search.
+    payload = json.loads(registry_path.read_text(encoding="utf-8-sig"))
     for record in payload.get("models", []):
         model_id = record.get("model_id")
         if model_id not in updates:

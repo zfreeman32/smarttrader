@@ -51,6 +51,7 @@ def test_live_collector_config_defaults_to_five_minute_polls_with_heartbeat_head
     assert config.finalized_bar_grace_seconds == 90.0
     assert config.signal_processing_delay_seconds == 120.0
     assert config.cycle_finalized_refresh_lookback_bars == 6
+    assert config.all_models_active is False
 
 
 def test_live_collector_config_preserves_explicit_heartbeat_staleness() -> None:

@@ -15,6 +15,8 @@ from model_testing.ote_policy_backtest import (
     run_walk_forward_backtest,
 )
 from model_testing.ote_threshold_policy import ThresholdSearchConfig
+from models.ote_registry_loader import OTEModelRecord
+from scripts.run_ote_policy_backtest import _build_abstain_config
 
 
 def test_build_walk_forward_folds_uses_quarterly_schedule_after_two_year_minimum() -> None:
@@ -106,6 +108,48 @@ def test_run_walk_forward_backtest_returns_fold_summary_and_selected_trades() ->
     assert not selected_test_trades.empty
     assert summary["fold_count"] == len(fold_summary)
     assert summary["overall_test_metrics"]["trade_count"] == len(selected_test_trades)
+
+
+def test_build_abstain_config_supports_pairwise_targeted_presets() -> None:
+    model = OTEModelRecord(
+        model_id="long_breakout_tcn_champion",
+        direction="long",
+        role="candidate",
+        backend="tcn",
+        artifact_path="models/champion_models/breakout_models/long_breakout_tcn_repair_20260513_v2/long_breakout",
+        cv_mean_ap=0.0,
+        cv_mean_event_f05=0.0,
+        test_ap=0.0,
+        test_event_f05=0.0,
+        global_threshold=0.92,
+        regime_thresholds=None,
+        abstain_policy=None,
+        calibration_method="platt",
+        promotion_date="2026-05-13",
+        promotion_reason="test",
+        status="candidate",
+    )
+    threshold_config = ThresholdSearchConfig(
+        probability_column="model_probability",
+        global_threshold=0.92,
+    )
+
+    asia_config = _build_abstain_config(
+        model,
+        threshold_config,
+        targeted_filter_preset="long_breakout_regime_prune_v1_q20_asia",
+    )
+    v3_config = _build_abstain_config(
+        model,
+        threshold_config,
+        targeted_filter_preset="long_breakout_regime_prune_v3",
+    )
+
+    assert asia_config.abstain_session_regimes == ("asia",)
+    assert asia_config.minimum_probability_quantile == 0.20
+    assert v3_config.abstain_composite_session_pairs == (("strong_up_medium", "asia"),)
+    assert v3_config.abstain_composite_stress_pairs == (("strong_up_medium", "elevated"),)
+    assert v3_config.minimum_probability_quantile == 0.20
 
 
 def _build_synthetic_walk_forward_data() -> tuple[pd.DataFrame, pd.DataFrame]:

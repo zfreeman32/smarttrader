@@ -12,6 +12,17 @@ from features.preprocessing import FeaturePreprocessingPipeline, PreprocessingCo
 from model_testing.ote_prediction_joiner import join_prediction_file
 
 
+def _make_local_tmp_dir() -> Path:
+    root = Path(__file__).resolve().parents[1] / "tmp" / "ote_prediction_joiner_tests"
+    path = root / "case"
+    suffix = 0
+    while path.exists():
+        suffix += 1
+        path = root / f"case_{suffix}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _write_ote_source_dataset(base_dir: Path) -> Path:
     rows = 24
     timestamps = pd.date_range("2024-01-01 00:00:00", periods=rows, freq="5min")
@@ -71,7 +82,83 @@ def _prepare_ote_dataset(tmp_path: Path) -> tuple[Path, Path]:
     return source_path, prepared_root
 
 
-def test_join_prediction_file_uses_direct_source_row_idx(tmp_path: Path) -> None:
+def _write_family_source_dataset(base_dir: Path) -> Path:
+    rows = 24
+    timestamps = pd.date_range("2024-01-01 00:00:00", periods=rows, freq="5min")
+    long_reversal = [0] * rows
+    for index in (4, 9, 14, 19):
+        long_reversal[index] = 1
+    long_continuation_pullback = [0] * rows
+    long_breakout = [0] * rows
+
+    def _negative_mask(target_values: list[int]) -> list[bool]:
+        return [i not in {2, 6, 11} and target_values[i] == 0 for i in range(rows)]
+
+    df = pd.DataFrame(
+        {
+            "datetime": timestamps,
+            "open": [1.10 + i * 0.0001 for i in range(rows)],
+            "high": [1.11 + i * 0.0001 for i in range(rows)],
+            "low": [1.09 + i * 0.0001 for i in range(rows)],
+            "close": [1.10 + i * 0.0001 for i in range(rows)],
+            "volume": [100 + i for i in range(rows)],
+            "label_long_reversal": long_reversal,
+            "exclude_long_reversal": [False] * rows,
+            "neg_ok_long_reversal": _negative_mask(long_reversal),
+            "sample_weight_long_reversal": [2.0 if long_reversal[i] else 1.0 for i in range(rows)],
+            "label_quality_long_reversal": [1.0] * rows,
+            "label_long_continuation_pullback": long_continuation_pullback,
+            "exclude_long_continuation": [False] * rows,
+            "neg_ok_long_continuation": _negative_mask(long_continuation_pullback),
+            "sample_weight_long_continuation": [1.0] * rows,
+            "label_quality_long_continuation": [1.0] * rows,
+            "label_long_breakout": long_breakout,
+            "exclude_long_breakout": [False] * rows,
+            "neg_ok_long_breakout": _negative_mask(long_breakout),
+            "sample_weight_long_breakout": [1.0] * rows,
+            "label_quality_long_breakout": [1.0] * rows,
+            "warmup_mask": [i < 2 for i in range(rows)],
+            "feature_signal": [float(i % 3 == 0) for i in range(rows)],
+        }
+    )
+
+    dataset_path = base_dir / "family_features.csv"
+    metadata_path = base_dir / "family_features.metadata.json"
+    df.to_csv(dataset_path, index=False)
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "feature_columns": ["feature_signal"],
+                "config": {
+                    "drop_warmup_rows": False,
+                    "warmup_rows": 0,
+                    "fillna_numeric": True,
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return dataset_path
+
+
+def _prepare_family_dataset(tmp_path: Path) -> tuple[Path, Path]:
+    source_path = _write_family_source_dataset(tmp_path)
+    prepared_root = tmp_path / "prepared"
+    pipeline = FeaturePreprocessingPipeline(
+        PreprocessingConfig(
+            target_columns=["label_long_reversal", "label_long_ote"],
+            min_usable_rows=5,
+            min_train_rows=3,
+            min_positive_samples=1,
+        )
+    )
+    pipeline.run(source_path, prepared_root)
+    return source_path, prepared_root
+
+
+def test_join_prediction_file_uses_direct_source_row_idx() -> None:
+    tmp_path = _make_local_tmp_dir()
     source_path, prepared_root = _prepare_ote_dataset(tmp_path)
     target_dir = prepared_root / "long_ote"
 
@@ -96,15 +183,20 @@ def test_join_prediction_file_uses_direct_source_row_idx(tmp_path: Path) -> None
 
     joined = join_prediction_file(prediction_path, source_file=source_path)
     source_frame = pd.read_csv(source_path)
-    source_datetime = pd.to_datetime(source_frame.iloc[joined["source_row_idx"]]["datetime"], errors="coerce")
-    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce")
+    source_datetime = pd.to_datetime(
+        source_frame.iloc[joined["source_row_idx"]]["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce", utc=True)
 
     assert "datetime" in joined.columns
     assert joined["source_row_idx"].tolist() == dev_split["source_row_idx"].iloc[:3].tolist()
     assert joined_datetime.tolist() == source_datetime.tolist()
 
 
-def test_join_prediction_file_reconstructs_legacy_test_indices(tmp_path: Path) -> None:
+def test_join_prediction_file_reconstructs_legacy_test_indices() -> None:
+    tmp_path = _make_local_tmp_dir()
     source_path, prepared_root = _prepare_ote_dataset(tmp_path)
     target_dir = prepared_root / "long_ote"
     test_split = pd.read_csv(target_dir / "test.csv")
@@ -131,8 +223,90 @@ def test_join_prediction_file_reconstructs_legacy_test_indices(tmp_path: Path) -
     joined = join_prediction_file(prediction_path)
     source_frame = pd.read_csv(source_path)
     expected_source_rows = test_split["source_row_idx"].iloc[:3].tolist()
-    source_datetime = pd.to_datetime(source_frame.iloc[expected_source_rows]["datetime"], errors="coerce")
-    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce")
+    source_datetime = pd.to_datetime(
+        source_frame.iloc[expected_source_rows]["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce", utc=True)
+
+    assert joined["source_row_idx"].tolist() == expected_source_rows
+    assert joined_datetime.tolist() == source_datetime.tolist()
+
+
+def test_join_prediction_file_infers_family_target_from_training_summary() -> None:
+    tmp_path = _make_local_tmp_dir()
+    source_path, prepared_root = _prepare_family_dataset(tmp_path)
+    target_dir = prepared_root / "long_reversal"
+    test_split = pd.read_csv(target_dir / "test.csv")
+
+    model_dir = tmp_path / "models" / "long_reversal_tcn_champion"
+    model_dir.mkdir(parents=True)
+    prediction_path = model_dir / "test_predictions.csv"
+    pd.DataFrame(
+        {
+            "row_index": [0, 1, 2],
+            "target": [0, 1, 0],
+            "sample_weight": [1.0, 2.0, 1.0],
+            "raw_probability": [0.4, 0.8, 0.3],
+            "calibrated_probability": [0.45, 0.85, 0.35],
+            "predicted_label": [0, 1, 0],
+        }
+    ).to_csv(prediction_path, index=False)
+
+    (model_dir / "training_summary.json").write_text(
+        json.dumps({"prepared_dir": str(target_dir), "target": "long_reversal"}, indent=2),
+        encoding="utf-8",
+    )
+
+    joined = join_prediction_file(prediction_path)
+    source_frame = pd.read_csv(source_path)
+    expected_source_rows = test_split["source_row_idx"].iloc[:3].tolist()
+    source_datetime = pd.to_datetime(
+        source_frame.iloc[expected_source_rows]["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce", utc=True)
+
+    assert joined["source_row_idx"].tolist() == expected_source_rows
+    assert joined_datetime.tolist() == source_datetime.tolist()
+
+
+def test_join_prediction_file_reconstructs_synthetic_ote_target_from_training_summary() -> None:
+    tmp_path = _make_local_tmp_dir()
+    source_path, prepared_root = _prepare_family_dataset(tmp_path)
+    target_dir = prepared_root / "long_ote"
+    test_split = pd.read_csv(target_dir / "test.csv")
+
+    model_dir = tmp_path / "models" / "long_tcn_champion"
+    model_dir.mkdir(parents=True)
+    prediction_path = model_dir / "test_predictions.csv"
+    pd.DataFrame(
+        {
+            "row_index": [0, 1, 2],
+            "target": [0, 1, 0],
+            "sample_weight": [1.0, 2.0, 1.0],
+            "raw_probability": [0.4, 0.8, 0.3],
+            "calibrated_probability": [0.45, 0.85, 0.35],
+            "predicted_label": [0, 1, 0],
+        }
+    ).to_csv(prediction_path, index=False)
+
+    (model_dir / "training_summary.json").write_text(
+        json.dumps({"prepared_dir": str(target_dir), "target": "long_ote"}, indent=2),
+        encoding="utf-8",
+    )
+
+    joined = join_prediction_file(prediction_path)
+    source_frame = pd.read_csv(source_path)
+    expected_source_rows = test_split["source_row_idx"].iloc[:3].tolist()
+    source_datetime = pd.to_datetime(
+        source_frame.iloc[expected_source_rows]["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    joined_datetime = pd.to_datetime(joined["datetime"], errors="coerce", utc=True)
 
     assert joined["source_row_idx"].tolist() == expected_source_rows
     assert joined_datetime.tolist() == source_datetime.tolist()

@@ -106,6 +106,20 @@ def build_parser() -> argparse.ArgumentParser:
     signal_runtime_group.add_argument("--enable-signal-runtime", dest="enable_signal_runtime", action="store_true")
     signal_runtime_group.add_argument("--disable-signal-runtime", dest="enable_signal_runtime", action="store_false")
     parser.set_defaults(enable_signal_runtime=env_bool("OTE_LIVE_ENABLE_SIGNAL_RUNTIME", True))
+    model_activation_group = parser.add_mutually_exclusive_group()
+    model_activation_group.add_argument(
+        "--all-models-active",
+        dest="all_models_active",
+        action="store_true",
+        help="Promote every loaded model in the long/short runtime manifests to an active live emitter.",
+    )
+    model_activation_group.add_argument(
+        "--primary-shadow-mode",
+        dest="all_models_active",
+        action="store_false",
+        help="Respect manifest status semantics so active models emit and candidate models run in shadow mode.",
+    )
+    parser.set_defaults(all_models_active=env_bool("OTE_LIVE_ALL_MODELS_ACTIVE", False))
     chart_capture_group = parser.add_mutually_exclusive_group()
     chart_capture_group.add_argument(
         "--enable-signal-chart-capture",
@@ -168,6 +182,7 @@ async def _run(args: argparse.Namespace) -> int:
         enable_signal_runtime=bool(args.enable_signal_runtime),
         long_runtime_manifest_path=Path(args.long_runtime_manifest_path),
         short_runtime_manifest_path=Path(args.short_runtime_manifest_path),
+        all_models_active=bool(args.all_models_active),
         enable_signal_chart_capture=bool(args.enable_signal_chart_capture),
         signal_chart_output_root=Path(args.signal_chart_output_root) if args.signal_chart_output_root else DEFAULT_SIGNAL_CHART_OUTPUT_ROOT,
         signal_chart_lookback_bars=args.signal_chart_lookback_bars,

@@ -180,7 +180,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--registry-path",
         type=Path,
-        default=REPO_ROOT / "models" / "ote_model_registry.json",
+        default=REPO_ROOT / "models" / "ote_model_registry_multifamily_candidates.json",
     )
     parser.add_argument(
         "--output-root",
