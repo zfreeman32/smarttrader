@@ -204,6 +204,113 @@ class FeaturePreprocessingPipeline:
         info["rows_after"] = int(len(df))
         return df, source_row_idx, info
 
+    def _combine_numeric_columns(
+        self,
+        df: pd.DataFrame,
+        columns: List[str],
+    ) -> pd.Series | None:
+        available = [column for column in columns if column in df.columns]
+        if not available:
+            return None
+
+        frame = pd.concat(
+            [pd.to_numeric(df[column], errors="coerce").rename(column) for column in available],
+            axis=1,
+        )
+        return frame.max(axis=1, skipna=True)
+
+    def _combine_boolean_columns(
+        self,
+        df: pd.DataFrame,
+        columns: List[str],
+        *,
+        mode: str,
+    ) -> pd.Series | None:
+        available = [column for column in columns if column in df.columns]
+        if not available:
+            return None
+
+        frame = pd.concat(
+            [df[column].fillna(False).astype(bool).rename(column) for column in available],
+            axis=1,
+        )
+        if mode == "all":
+            return frame.all(axis=1)
+        if mode == "any":
+            return frame.any(axis=1)
+        raise ValueError(f"Unsupported boolean combine mode: {mode}")
+
+    def _resolve_target_inputs(
+        self,
+        df: pd.DataFrame,
+        spec: TargetDatasetSpec,
+    ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series | None]:
+        if spec.is_synthetic:
+            target_raw = self._combine_numeric_columns(df, spec.component_target_columns)
+            if target_raw is None:
+                raise KeyError(
+                    f"Synthetic target {spec.name!r} is missing component columns: "
+                    f"{spec.component_target_columns}"
+                )
+            sample_weight_source = self._combine_numeric_columns(
+                df,
+                spec.component_sample_weight_columns,
+            )
+            safe_negative_mask = self._combine_boolean_columns(
+                df,
+                spec.component_safe_negative_columns,
+                mode="all",
+            )
+            exclude_mask = self._combine_boolean_columns(
+                df,
+                spec.component_exclude_columns,
+                mode="any",
+            )
+        else:
+            target_raw = pd.to_numeric(df[spec.target_column], errors="coerce")
+            sample_weight_source = (
+                df[spec.sample_weight_column]
+                if spec.sample_weight_column and spec.sample_weight_column in df.columns
+                else None
+            )
+            safe_negative_mask = (
+                df[spec.safe_negative_column].fillna(False).astype(bool)
+                if spec.safe_negative_column and spec.safe_negative_column in df.columns
+                else None
+            )
+            exclude_mask = (
+                df[spec.exclude_column].fillna(False).astype(bool)
+                if spec.exclude_column and spec.exclude_column in df.columns
+                else None
+            )
+
+        positive_mask = target_raw.fillna(0).astype(float) > 0
+        negative_mask = ~positive_mask
+        if safe_negative_mask is not None:
+            negative_mask &= safe_negative_mask
+        if exclude_mask is not None:
+            negative_mask &= ~exclude_mask
+        return target_raw, positive_mask, negative_mask, sample_weight_source
+
+    def _target_construction_report(self, spec: TargetDatasetSpec) -> Dict[str, Any]:
+        if not spec.is_synthetic:
+            return {
+                "type": "direct_column",
+                "source_target_column": spec.target_column,
+            }
+
+        return {
+            "type": "synthetic_any_positive_union",
+            "source_target_columns": spec.component_target_columns,
+            "component_sample_weight_columns": spec.component_sample_weight_columns,
+            "component_quality_columns": spec.component_quality_columns,
+            "component_exclude_columns": spec.component_exclude_columns,
+            "component_safe_negative_columns": spec.component_safe_negative_columns,
+            "positive_label_rule": "rowwise_any_component_positive",
+            "negative_label_rule": "not_positive AND all_component_safe_negative AND not_any_component_excluded",
+            "sample_weight_rule": "rowwise_max_component_sample_weight",
+        }
+
     def _prepare_target_dataset(
         self,
         *,
@@ -214,19 +321,15 @@ class FeaturePreprocessingPipeline:
         timezone_contract: Dict[str, Any],
         source_lineage: Dict[str, Any],
     ) -> Dict[str, Any]:
-        target_raw = pd.to_numeric(df[spec.target_column], errors="coerce")
-        positive_mask = target_raw.fillna(0).astype(float) > 0
+        target_raw, positive_mask, negative_mask, sample_weight_source = self._resolve_target_inputs(
+            df,
+            spec,
+        )
         warmup_mask = (
             df["warmup_mask"].fillna(False).astype(bool)
             if "warmup_mask" in df.columns
             else pd.Series(False, index=df.index)
         )
-
-        negative_mask = ~positive_mask
-        if spec.safe_negative_column:
-            negative_mask &= df[spec.safe_negative_column].fillna(False).astype(bool)
-        if spec.exclude_column:
-            negative_mask &= ~df[spec.exclude_column].fillna(False).astype(bool)
 
         usable_mask = ~warmup_mask & (positive_mask | negative_mask)
         ordered_positions, ordered_time_values = ordered_usable_positions(
@@ -241,9 +344,7 @@ class FeaturePreprocessingPipeline:
             target_series = target_series.astype(int)
 
         sample_weight = resolve_sample_weight(
-            sample_weight_source=df[spec.sample_weight_column]
-            if spec.sample_weight_column and spec.sample_weight_column in df.columns
-            else None,
+            sample_weight_source=sample_weight_source,
             positive_mask=positive_mask,
         ).iloc[ordered_positions]
         source_row_idx = df["source_row_idx"].iloc[ordered_positions].reset_index(drop=True)
@@ -385,6 +486,7 @@ class FeaturePreprocessingPipeline:
                 "source_row_idx_column": "source_row_idx",
                 "source_row_idx_origin": "standardized_input_frame",
             },
+            "target_construction": self._target_construction_report(spec),
             "sample_weight_column": spec.sample_weight_column,
             "quality_column": spec.quality_column,
             "fill_report": fill_report,

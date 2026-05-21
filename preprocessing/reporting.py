@@ -62,6 +62,14 @@ def format_target_report(
     lines.append(f"Direction: {payload['direction']}")
     lines.append(f"Label kind: {payload['label_kind']}")
     lines.append(f"Binary target: {payload['is_binary']}")
+    target_construction = payload.get("target_construction") or {}
+    if target_construction:
+        lines.append(f"Target construction: {target_construction.get('type')}")
+        component_target_columns = target_construction.get("source_target_columns") or []
+        if component_target_columns:
+            lines.append(
+                "Component targets: " + ", ".join(str(column) for column in component_target_columns)
+            )
     timezone_contract = payload.get("timezone_contract") or {}
     if timezone_contract:
         lines.append(

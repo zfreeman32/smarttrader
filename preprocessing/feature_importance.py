@@ -14,11 +14,25 @@ def association_scores(
     X: pd.DataFrame,
     y: pd.Series,
 ) -> pd.Series:
-    if X.empty or y.nunique(dropna=True) < 2:
+    if X.empty:
         return pd.Series(0.0, index=X.columns, dtype=float)
 
+    y_series = pd.to_numeric(pd.Series(y).reset_index(drop=True), errors="coerce")
+    if len(X) != len(y_series):
+        raise ValueError(
+            "association_scores requires X and y to have the same row count. "
+            f"Got len(X)={len(X)} and len(y)={len(y_series)}."
+        )
+
+    if y_series.nunique(dropna=True) < 2:
+        return pd.Series(0.0, index=X.columns, dtype=float)
+
+    # Correlate positionally instead of aligning on potentially different indices.
+    X_positional = X.reset_index(drop=True)
+    y_positional = pd.Series(y_series.to_numpy(copy=False), index=X_positional.index, dtype=float)
+
     with np.errstate(invalid="ignore", divide="ignore"):
-        scores = X.corrwith(pd.Series(y).astype(float)).abs()
+        scores = X_positional.corrwith(y_positional).abs()
     return scores.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 

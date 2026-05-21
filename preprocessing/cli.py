@@ -47,7 +47,7 @@ def add_prepare_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentP
     parser.add_argument(
         "--max-analysis-rows",
         type=int,
-        default=10_000,
+        default=100_000,
         help="Cap for expensive analysis steps like correlation and importance scans",
     )
     return parser
@@ -113,7 +113,7 @@ def add_backend_attribution_arguments(parser: argparse.ArgumentParser) -> argpar
     parser.add_argument(
         "--attribution-max-rows",
         type=int,
-        default=25_000,
+        default=100_000,
         help="Cap the recent validation rows used for backend attribution. Use 0 for all rows.",
     )
     parser.add_argument(

@@ -20,6 +20,29 @@ TARGET_HELPER_FAMILY_ALIASES: Dict[str, Tuple[str, ...]] = {
     "breakout": ("breakout",),
 }
 
+SYNTHETIC_TARGET_COMPONENTS: Dict[str, Dict[str, Any]] = {
+    "label_long_ote": {
+        "name": "long_ote",
+        "direction": "long",
+        "label_kind": "ote",
+        "component_target_columns": [
+            "label_long_reversal",
+            "label_long_continuation_pullback",
+            "label_long_breakout",
+        ],
+    },
+    "label_short_ote": {
+        "name": "short_ote",
+        "direction": "short",
+        "label_kind": "ote",
+        "component_target_columns": [
+            "label_short_reversal",
+            "label_short_continuation_pullback",
+            "label_short_breakout",
+        ],
+    },
+}
+
 
 def downcast_numeric_series(series: pd.Series) -> pd.Series:
     if pd.api.types.is_datetime64_any_dtype(series) or pd.api.types.is_timedelta64_dtype(series):
@@ -241,17 +264,125 @@ def build_target_context(
         required_columns.append("source_row_idx")
 
     for spec in target_specs:
-        for column in (
-            spec.target_column,
-            spec.sample_weight_column,
-            spec.quality_column,
-            spec.exclude_column,
-            spec.safe_negative_column,
-        ):
+        for column in spec.required_columns():
             if column and column in df.columns:
                 required_columns.append(column)
 
     return df.loc[:, list(dict.fromkeys(required_columns))].copy()
+
+
+def _build_direct_target_spec(
+    df: pd.DataFrame,
+    target_column: str,
+) -> Optional[TargetDatasetSpec]:
+    if target_column not in df.columns:
+        return None
+
+    body = target_column.removeprefix("label_")
+    if body == target_column:
+        return None
+
+    direction = None
+    remainder = ""
+    for candidate in ("long", "short"):
+        prefix = f"{candidate}_"
+        if body.startswith(prefix):
+            direction = candidate
+            remainder = body[len(prefix) :]
+            break
+    if direction is None or not remainder:
+        return None
+
+    is_entry = remainder == "entry" or remainder.endswith("_entry")
+    if is_entry:
+        family = remainder[: -len("_entry")].rstrip("_")
+        label_kind = f"{family}_entry" if family else "entry"
+    else:
+        family = remainder
+        label_kind = family
+
+    family_aliases = TARGET_HELPER_FAMILY_ALIASES.get(family, (family,))
+
+    def first_existing(candidates: List[str]) -> Optional[str]:
+        for column in candidates:
+            if column in df.columns:
+                return column
+        return None
+
+    def helper_candidates(prefix: str) -> List[str]:
+        candidates: List[str] = []
+        for alias in family_aliases:
+            if alias:
+                candidates.append(f"{prefix}_{direction}_{alias}")
+            else:
+                candidates.append(f"{prefix}_{direction}")
+        return list(dict.fromkeys(candidates))
+
+    sample_weight_prefix = "sample_weight_entry" if is_entry else "sample_weight"
+    quality_prefix = "entry_quality" if is_entry else "label_quality"
+    sample_weight_column = first_existing(helper_candidates(sample_weight_prefix))
+    quality_column = first_existing(helper_candidates(quality_prefix))
+    exclude_column = first_existing(helper_candidates("exclude"))
+    safe_negative_column = first_existing(helper_candidates("neg_ok"))
+
+    return TargetDatasetSpec(
+        name=body,
+        target_column=target_column,
+        direction=direction,
+        label_kind=label_kind,
+        sample_weight_column=sample_weight_column,
+        quality_column=quality_column,
+        exclude_column=exclude_column,
+        safe_negative_column=safe_negative_column,
+    )
+
+
+def _build_synthetic_target_spec(
+    synthetic_target_column: str,
+    component_specs: List[TargetDatasetSpec],
+) -> Optional[TargetDatasetSpec]:
+    synthetic_config = SYNTHETIC_TARGET_COMPONENTS.get(synthetic_target_column)
+    if synthetic_config is None:
+        return None
+
+    required_helper_attrs = (
+        "sample_weight_column",
+        "exclude_column",
+        "safe_negative_column",
+    )
+    for attr_name in required_helper_attrs:
+        if any(getattr(spec, attr_name) is None for spec in component_specs):
+            return None
+
+    quality_columns = [
+        spec.quality_column
+        for spec in component_specs
+        if spec.quality_column is not None
+    ]
+
+    return TargetDatasetSpec(
+        name=str(synthetic_config["name"]),
+        target_column=synthetic_target_column,
+        direction=str(synthetic_config["direction"]),
+        label_kind=str(synthetic_config["label_kind"]),
+        component_target_columns=[spec.target_column for spec in component_specs],
+        component_sample_weight_columns=[
+            str(spec.sample_weight_column)
+            for spec in component_specs
+            if spec.sample_weight_column is not None
+        ],
+        component_quality_columns=[str(column) for column in quality_columns],
+        component_exclude_columns=[
+            str(spec.exclude_column)
+            for spec in component_specs
+            if spec.exclude_column is not None
+        ],
+        component_safe_negative_columns=[
+            str(spec.safe_negative_column)
+            for spec in component_specs
+            if spec.safe_negative_column is not None
+        ],
+    )
 
 
 def discover_targets(
@@ -260,73 +391,28 @@ def discover_targets(
 ) -> List[TargetDatasetSpec]:
     specs: List[TargetDatasetSpec] = []
     seen_names: set[str] = set()
+    direct_specs: Dict[str, Optional[TargetDatasetSpec]] = {}
+
+    def get_direct_spec(target_column: str) -> Optional[TargetDatasetSpec]:
+        if target_column not in direct_specs:
+            direct_specs[target_column] = _build_direct_target_spec(df, target_column)
+        return direct_specs[target_column]
+
     for target_column in config.target_columns:
-        if target_column not in df.columns:
+        spec = get_direct_spec(target_column)
+        if spec is None and target_column in SYNTHETIC_TARGET_COMPONENTS:
+            component_target_columns = SYNTHETIC_TARGET_COMPONENTS[target_column]["component_target_columns"]
+            component_specs = [get_direct_spec(str(column)) for column in component_target_columns]
+            if all(component_spec is not None for component_spec in component_specs):
+                spec = _build_synthetic_target_spec(
+                    target_column,
+                    [component_spec for component_spec in component_specs if component_spec is not None],
+                )
+
+        if spec is None or spec.name in seen_names:
             continue
-
-        body = target_column.removeprefix("label_")
-        if body == target_column:
-            continue
-
-        direction = None
-        remainder = ""
-        for candidate in ("long", "short"):
-            prefix = f"{candidate}_"
-            if body.startswith(prefix):
-                direction = candidate
-                remainder = body[len(prefix) :]
-                break
-        if direction is None or not remainder:
-            continue
-
-        is_entry = remainder == "entry" or remainder.endswith("_entry")
-        if is_entry:
-            family = remainder[: -len("_entry")].rstrip("_")
-            label_kind = f"{family}_entry" if family else "entry"
-        else:
-            family = remainder
-            label_kind = family
-
-        family_aliases = TARGET_HELPER_FAMILY_ALIASES.get(family, (family,))
-
-        def first_existing(candidates: List[str]) -> Optional[str]:
-            for column in candidates:
-                if column in df.columns:
-                    return column
-            return None
-
-        def helper_candidates(prefix: str) -> List[str]:
-            candidates: List[str] = []
-            for alias in family_aliases:
-                if alias:
-                    candidates.append(f"{prefix}_{direction}_{alias}")
-                else:
-                    candidates.append(f"{prefix}_{direction}")
-            return list(dict.fromkeys(candidates))
-
-        sample_weight_prefix = "sample_weight_entry" if is_entry else "sample_weight"
-        quality_prefix = "entry_quality" if is_entry else "label_quality"
-        sample_weight_column = first_existing(helper_candidates(sample_weight_prefix))
-        quality_column = first_existing(helper_candidates(quality_prefix))
-        exclude_column = first_existing(helper_candidates("exclude"))
-        safe_negative_column = first_existing(helper_candidates("neg_ok"))
-
-        if body in seen_names:
-            continue
-        seen_names.add(body)
-
-        specs.append(
-            TargetDatasetSpec(
-                name=body,
-                target_column=target_column,
-                direction=direction,
-                label_kind=label_kind,
-                sample_weight_column=sample_weight_column,
-                quality_column=quality_column,
-                exclude_column=exclude_column,
-                safe_negative_column=safe_negative_column,
-            )
-        )
+        seen_names.add(spec.name)
+        specs.append(spec)
 
     return specs
 

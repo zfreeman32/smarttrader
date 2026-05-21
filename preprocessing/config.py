@@ -31,7 +31,7 @@ class PreprocessingConfig:
 
     target_columns: List[str] = field(default_factory=_default_target_columns)
     time_column: str = "datetime"
-    max_analysis_rows: int = 10_000
+    max_analysis_rows: int = 100_000
     additional_skip_rows: int = 0
     respect_upstream_warmup: bool = True
 
@@ -75,6 +75,40 @@ class TargetDatasetSpec:
     quality_column: Optional[str] = None
     exclude_column: Optional[str] = None
     safe_negative_column: Optional[str] = None
+    component_target_columns: List[str] = field(default_factory=list)
+    component_sample_weight_columns: List[str] = field(default_factory=list)
+    component_quality_columns: List[str] = field(default_factory=list)
+    component_exclude_columns: List[str] = field(default_factory=list)
+    component_safe_negative_columns: List[str] = field(default_factory=list)
+
+    @property
+    def is_synthetic(self) -> bool:
+        return bool(self.component_target_columns)
+
+    def required_columns(self) -> List[str]:
+        columns: List[str] = []
+        for column in (
+            self.target_column,
+            self.sample_weight_column,
+            self.quality_column,
+            self.exclude_column,
+            self.safe_negative_column,
+        ):
+            if column:
+                columns.append(column)
+
+        for component_columns in (
+            self.component_target_columns,
+            self.component_sample_weight_columns,
+            self.component_quality_columns,
+            self.component_exclude_columns,
+            self.component_safe_negative_columns,
+        ):
+            for column in component_columns:
+                if column:
+                    columns.append(column)
+
+        return list(dict.fromkeys(columns))
 
 
 __all__ = [

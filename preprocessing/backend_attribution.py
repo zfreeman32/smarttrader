@@ -21,6 +21,9 @@ from model_training.ote_training.feature_ranking import (
 
 
 SUPPORTED_BACKENDS: tuple[str, ...] = ("xgboost", "tcn", "lstm")
+RARE_TARGET_POSITIVE_RATE_THRESHOLD = 0.015
+RARE_TARGET_ATTRIBUTION_FLOOR_FRACTION = 0.05
+RARE_TARGET_ATTRIBUTION_CUMULATIVE_IMPORTANCE = 0.98
 
 
 @dataclass
@@ -29,7 +32,7 @@ class BackendAttributionConfig:
     targets: List[str] = field(default_factory=list)
     backends: List[str] = field(default_factory=lambda: list(SUPPORTED_BACKENDS))
     max_features: int = 160
-    attribution_max_rows: int = 25_000
+    attribution_max_rows: int = 100_000
     top_n_features: int = 25
 
     base_weight: float = 0.20
@@ -689,15 +692,52 @@ def save_backend_outputs(
     }
 
 
+def resolve_attribution_filter_settings(
+    dataset: PreparedAttributionDataset,
+    config: BackendAttributionConfig,
+) -> Dict[str, Any]:
+    requested_floor_fraction = float(config.attribution_floor_fraction)
+    requested_cumulative_importance = float(config.attribution_cumulative_importance)
+    dev_rows = int(len(dataset.y_train) + len(dataset.y_val))
+    dev_positive_count = int(np.sum(dataset.y_train == 1) + np.sum(dataset.y_val == 1))
+    positive_rate = float(dev_positive_count / max(dev_rows, 1))
+    rare_target = positive_rate <= RARE_TARGET_POSITIVE_RATE_THRESHOLD
+
+    floor_fraction = requested_floor_fraction
+    cumulative_importance = requested_cumulative_importance
+    if rare_target:
+        floor_fraction = min(floor_fraction, RARE_TARGET_ATTRIBUTION_FLOOR_FRACTION)
+        cumulative_importance = max(
+            cumulative_importance,
+            RARE_TARGET_ATTRIBUTION_CUMULATIVE_IMPORTANCE,
+        )
+
+    return {
+        "requested_floor_fraction": requested_floor_fraction,
+        "requested_cumulative_importance": requested_cumulative_importance,
+        "resolved_floor_fraction": float(floor_fraction),
+        "resolved_cumulative_importance": float(cumulative_importance),
+        "dev_rows": dev_rows,
+        "dev_positive_count": dev_positive_count,
+        "positive_rate": positive_rate,
+        "rare_target": rare_target,
+        "rare_target_positive_rate_threshold": float(RARE_TARGET_POSITIVE_RATE_THRESHOLD),
+    }
+
+
 def apply_attribution_feature_filter(
     merged_frame: pd.DataFrame,
+    dataset: PreparedAttributionDataset,
     config: BackendAttributionConfig,
 ) -> tuple[pd.DataFrame, Dict[str, Any]]:
-    return filter_features_by_attribution_gates(
+    filter_settings = resolve_attribution_filter_settings(dataset, config)
+    filtered_frame, summary = filter_features_by_attribution_gates(
         merged_frame,
-        floor_fraction=float(config.attribution_floor_fraction),
-        cumulative_importance=float(config.attribution_cumulative_importance),
+        floor_fraction=float(filter_settings["resolved_floor_fraction"]),
+        cumulative_importance=float(filter_settings["resolved_cumulative_importance"]),
     )
+    summary.update(filter_settings)
+    return filtered_frame, summary
 
 
 def analyze_xgboost_backend(
@@ -727,7 +767,7 @@ def analyze_xgboost_backend(
         shap_weight=float(config.shap_weight),
         shap_positive_weight=float(config.shap_positive_weight),
     )
-    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, config)
+    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, dataset, config)
 
     summary = {
         "target": dataset.target_name,
@@ -800,7 +840,7 @@ def analyze_sequence_backend(
         shap_weight=float(config.shap_weight),
         shap_positive_weight=float(config.shap_positive_weight),
     )
-    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, config)
+    filtered_merged_frame, filter_summary = apply_attribution_feature_filter(merged_frame, dataset, config)
 
     summary = {
         "target": dataset.target_name,
