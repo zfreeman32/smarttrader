@@ -19,7 +19,14 @@ from preprocessing.feature_selection import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SUPPORTED_TARGETS = {"long_entry", "short_entry", "long_ote", "short_ote"}
+TARGET_HELPER_PREFIXES = (
+    "label_",
+    "sample_weight",
+    "entry_quality_",
+    "label_quality_",
+    "exclude_",
+    "neg_ok_",
+)
 
 
 def join_prediction_file(
@@ -117,10 +124,6 @@ def reconstruct_source_row_idx_mapping(
     metadata_file: Path | None = None,
     prepared_root: Path | None = None,
 ) -> Dict[str, Any]:
-    if target_name not in SUPPORTED_TARGETS:
-        supported = ", ".join(sorted(SUPPORTED_TARGETS))
-        raise ValueError(f"Unsupported target_name={target_name!r}. Supported values: {supported}")
-
     prepared_root = prepared_root or infer_prepared_root(prediction_path)
     summary = load_prepared_summary(prepared_root)
 
@@ -132,7 +135,6 @@ def reconstruct_source_row_idx_mapping(
 
     source_frame = _load_mapping_source_frame(
         source_file=source_file,
-        target_name=target_name,
         time_column=config.time_column,
     )
 
@@ -149,14 +151,46 @@ def reconstruct_source_row_idx_mapping(
     )
 
     target_specs = {spec.name: spec for spec in discover_targets(source_frame, config)}
-    if target_name not in target_specs:
+    normalized_target_name = target_name.removeprefix("label_")
+    if normalized_target_name not in target_specs:
         available = ", ".join(sorted(target_specs))
-        raise ValueError(f"Target {target_name!r} was not found in source dataset. Available targets: {available}")
+        raise ValueError(
+            f"Target {target_name!r} was not found in source dataset. Available targets: {available}"
+        )
 
-    spec = target_specs[target_name]
+    spec = target_specs[normalized_target_name]
     target_context = build_target_context(source_frame, [spec], config.time_column)
     target_context["source_row_idx"] = source_row_idx.to_numpy(copy=False)
-    target_raw = pd.to_numeric(target_context[spec.target_column], errors="coerce")
+    if spec.is_synthetic:
+        target_raw = _combine_numeric_columns(target_context, spec.component_target_columns)
+        if target_raw is None:
+            raise KeyError(
+                f"Synthetic target {spec.name!r} is missing component columns: "
+                f"{spec.component_target_columns}"
+            )
+        safe_negative_mask = _combine_boolean_columns(
+            target_context,
+            spec.component_safe_negative_columns,
+            mode="all",
+        )
+        exclude_mask = _combine_boolean_columns(
+            target_context,
+            spec.component_exclude_columns,
+            mode="any",
+        )
+    else:
+        target_raw = pd.to_numeric(target_context[spec.target_column], errors="coerce")
+        safe_negative_mask = (
+            target_context[spec.safe_negative_column].fillna(False).astype(bool)
+            if spec.safe_negative_column and spec.safe_negative_column in target_context.columns
+            else None
+        )
+        exclude_mask = (
+            target_context[spec.exclude_column].fillna(False).astype(bool)
+            if spec.exclude_column and spec.exclude_column in target_context.columns
+            else None
+        )
+
     positive_mask = target_raw.fillna(0).astype(float) > 0
     warmup_mask = (
         target_context["warmup_mask"].fillna(False).astype(bool)
@@ -165,10 +199,10 @@ def reconstruct_source_row_idx_mapping(
     )
 
     negative_mask = ~positive_mask
-    if spec.safe_negative_column:
-        negative_mask &= target_context[spec.safe_negative_column].fillna(False).astype(bool)
-    if spec.exclude_column:
-        negative_mask &= ~target_context[spec.exclude_column].fillna(False).astype(bool)
+    if safe_negative_mask is not None:
+        negative_mask &= safe_negative_mask
+    if exclude_mask is not None:
+        negative_mask &= ~exclude_mask
 
     usable_mask = ~warmup_mask & (positive_mask | negative_mask)
     ordered_positions, _ = ordered_usable_positions(target_context, usable_mask, config.time_column)
@@ -306,9 +340,17 @@ def _resolve_row_index_lookup(row_index: np.ndarray, lookup: np.ndarray, column_
 
 
 def _infer_target_name(prediction_path: Path) -> str:
+    training_summary_path = prediction_path.parent / "training_summary.json"
+    if training_summary_path.exists():
+        training_summary = json.loads(training_summary_path.read_text(encoding="utf-8"))
+        summary_target_name = str(training_summary.get("target") or "").strip()
+        if _looks_like_target_name(summary_target_name):
+            return summary_target_name
+
     target_name = prediction_path.parent.name
-    if target_name in SUPPORTED_TARGETS:
+    if _looks_like_target_name(target_name):
         return target_name
+
     raise ValueError(
         "Could not infer target_name from prediction path. Pass --target-name explicitly."
     )
@@ -341,12 +383,11 @@ def _build_source_usecols(
 def _load_mapping_source_frame(
     *,
     source_file: Path,
-    target_name: str,
     time_column: str,
 ) -> pd.DataFrame:
     source_frame = pd.read_csv(
         source_file,
-        usecols=_build_mapping_usecols(target_name=target_name, time_column=time_column),
+        usecols=_build_mapping_usecols(time_column=time_column),
     )
     source_frame = standardize_market_frame(source_frame)
     if "source_row_idx" not in source_frame.columns:
@@ -361,35 +402,60 @@ def _load_mapping_source_frame(
 
 def _build_mapping_usecols(
     *,
-    target_name: str,
     time_column: str,
 ):
-    direction = "long" if target_name.startswith("long_") else "short"
-    label_kind = "entry" if target_name.endswith("_entry") else "ote"
-    target_column = f"label_{direction}_{label_kind}"
-    sample_weight_column = f"sample_weight_{direction}"
-    quality_column = f"label_quality_{direction}"
-    if label_kind == "entry":
-        sample_weight_column = f"sample_weight_entry_{direction}"
-        quality_column = f"entry_quality_{direction}"
-
     allowed = {
         "source_row_idx",
         "warmup_mask",
-        target_column,
-        sample_weight_column,
-        quality_column,
-        f"exclude_{direction}",
-        f"neg_ok_{direction}",
         time_column.strip().lower(),
     }
     if time_column.strip().lower() == "datetime":
         allowed.update({"datetime", "timestamp", "date", "time"})
 
     def include(raw_column: str) -> bool:
-        return raw_column.strip().lower() in allowed
+        normalized = raw_column.strip().lower()
+        return normalized in allowed or normalized.startswith(TARGET_HELPER_PREFIXES)
 
     return include
+
+
+def _looks_like_target_name(target_name: str) -> bool:
+    return bool(target_name) and (
+        target_name.startswith("long_") or target_name.startswith("short_")
+    )
+
+
+def _combine_numeric_columns(df: pd.DataFrame, columns: Sequence[str]) -> pd.Series | None:
+    available = [column for column in columns if column in df.columns]
+    if not available:
+        return None
+
+    frame = pd.concat(
+        [pd.to_numeric(df[column], errors="coerce").rename(column) for column in available],
+        axis=1,
+    )
+    return frame.max(axis=1, skipna=True)
+
+
+def _combine_boolean_columns(
+    df: pd.DataFrame,
+    columns: Sequence[str],
+    *,
+    mode: str,
+) -> pd.Series | None:
+    available = [column for column in columns if column in df.columns]
+    if not available:
+        return None
+
+    frame = pd.concat(
+        [df[column].fillna(False).astype(bool).rename(column) for column in available],
+        axis=1,
+    )
+    if mode == "all":
+        return frame.all(axis=1)
+    if mode == "any":
+        return frame.any(axis=1)
+    raise ValueError(f"Unsupported boolean combine mode: {mode}")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

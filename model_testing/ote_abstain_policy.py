@@ -26,6 +26,8 @@ class HardAbstainConfig:
     expected_move_by_regime: Optional[Mapping[str, float]] = None
     abstain_session_regimes: tuple[str, ...] = ()
     abstain_composite_regimes: tuple[str, ...] = ()
+    abstain_composite_session_pairs: tuple[tuple[str, str], ...] = ()
+    abstain_composite_stress_pairs: tuple[tuple[str, str], ...] = ()
     minimum_probability_quantile: float | None = None
     signal_candidate_column: str = "policy_signal_candidate"
     probability_column: str = "policy_probability"
@@ -69,6 +71,14 @@ def apply_abstain_policy(
     explicit_composite_mask = _build_explicit_composite_filter_mask(working, config)
     if explicit_composite_mask is not None:
         _mark_abstain(working, explicit_composite_mask, "composite_filter")
+
+    composite_session_pair_mask = _build_composite_session_pair_filter_mask(working, config)
+    if composite_session_pair_mask is not None:
+        _mark_abstain(working, composite_session_pair_mask, "composite_session_filter")
+
+    composite_stress_pair_mask = _build_composite_stress_pair_filter_mask(working, config)
+    if composite_stress_pair_mask is not None:
+        _mark_abstain(working, composite_stress_pair_mask, "composite_stress_filter")
 
     expected_move_mask = _build_expected_move_filter_mask(working, config)
     if expected_move_mask is not None:
@@ -164,6 +174,58 @@ def _build_explicit_composite_filter_mask(
     not_already_abstained = frame["policy_abstain_reason"].isna()
     blocked_regimes = set(str(value) for value in config.abstain_composite_regimes)
     return candidate_mask & not_already_abstained & frame[config.composite_column].astype(str).isin(blocked_regimes)
+
+
+def _build_composite_session_pair_filter_mask(
+    frame: pd.DataFrame,
+    config: HardAbstainConfig,
+) -> Optional[pd.Series]:
+    if (
+        not config.abstain_composite_session_pairs
+        or config.composite_column not in frame.columns
+        or config.session_column not in frame.columns
+    ):
+        return None
+
+    candidate_mask = frame[config.signal_candidate_column].fillna(False).astype(bool)
+    not_already_abstained = frame["policy_abstain_reason"].isna()
+    composite_values = frame[config.composite_column].astype(str)
+    session_values = frame[config.session_column].astype(str)
+    blocked_pairs = {
+        (str(composite_regime), str(session_regime))
+        for composite_regime, session_regime in config.abstain_composite_session_pairs
+    }
+    pair_matches = [
+        (composite_regime, session_regime) in blocked_pairs
+        for composite_regime, session_regime in zip(composite_values, session_values)
+    ]
+    return candidate_mask & not_already_abstained & pd.Series(pair_matches, index=frame.index, dtype=bool)
+
+
+def _build_composite_stress_pair_filter_mask(
+    frame: pd.DataFrame,
+    config: HardAbstainConfig,
+) -> Optional[pd.Series]:
+    if (
+        not config.abstain_composite_stress_pairs
+        or config.composite_column not in frame.columns
+        or config.stress_column not in frame.columns
+    ):
+        return None
+
+    candidate_mask = frame[config.signal_candidate_column].fillna(False).astype(bool)
+    not_already_abstained = frame["policy_abstain_reason"].isna()
+    composite_values = frame[config.composite_column].astype(str)
+    stress_values = frame[config.stress_column].astype(str)
+    blocked_pairs = {
+        (str(composite_regime), str(stress_regime))
+        for composite_regime, stress_regime in config.abstain_composite_stress_pairs
+    }
+    pair_matches = [
+        (composite_regime, stress_regime) in blocked_pairs
+        for composite_regime, stress_regime in zip(composite_values, stress_values)
+    ]
+    return candidate_mask & not_already_abstained & pd.Series(pair_matches, index=frame.index, dtype=bool)
 
 
 def _build_probability_quantile_filter_mask(
