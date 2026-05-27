@@ -23,6 +23,11 @@ from model_testing.ote_threshold_policy import (
     search_thresholds_by_composite_regime,
 )
 from models.ote_registry_loader import OTEModelRecord, load_ote_model_registry
+from scripts.ote_targeted_filter_presets import (
+    TARGETED_FILTER_PRESETS,
+    build_targeted_abstain_config,
+    describe_abstain_config,
+)
 
 
 def run_threshold_policy_search(
@@ -37,6 +42,7 @@ def run_threshold_policy_search(
     min_positive_events: int = 50,
     min_events_per_month: float = 3.0,
     min_trades_per_week: float = 3.0,
+    targeted_filter_preset: str | None = None,
     write_policy_decisions: bool = False,
     write_registry_policies: bool = False,
 ) -> Dict[str, object]:
@@ -110,11 +116,10 @@ def run_threshold_policy_search(
         policy_table.insert(1, "direction", model.direction)
         policy_table.insert(2, "backend", model.backend)
 
-        abstain_config = HardAbstainConfig(
-            cooldown_bars=config.event_cooldown_bars,
-            probability_column="policy_probability",
-            signal_candidate_column="policy_signal_candidate",
-            position_column=config.position_column,
+        abstain_config = build_targeted_abstain_config(
+            model,
+            config,
+            targeted_filter_preset=targeted_filter_preset,
         )
         evaluation = evaluate_policy_variants(
             oof_frame=oof_frame,
@@ -199,6 +204,7 @@ def run_threshold_policy_search(
                 "qualified_policy_names": list(policy_selection["qualified_policy_names"]),
                 "selected_policy_name": policy_selection["selected_policy_name"],
                 "selected_policy_metrics": policy_selection["selected_policy_metrics"],
+                "targeted_filters": describe_abstain_config(abstain_config),
                 "decision_outputs": decision_outputs,
             }
         )
@@ -221,6 +227,7 @@ def run_threshold_policy_search(
         "min_positive_events": int(min_positive_events),
         "min_events_per_month": float(min_events_per_month),
         "min_trades_per_week": float(min_trades_per_week),
+        "targeted_filter_preset": targeted_filter_preset,
         "policy_table_path": str(policy_table_path),
         "policy_evaluation_path": str(evaluation_path),
         "model_outputs": model_outputs,
@@ -285,6 +292,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-positive-events", type=int, default=50)
     parser.add_argument("--min-events-per-month", type=float, default=3.0)
     parser.add_argument("--min-trades-per-week", type=float, default=3.0)
+    parser.add_argument(
+        "--targeted-filter-preset",
+        choices=sorted(TARGETED_FILTER_PRESETS),
+        default=None,
+        help="Apply a named abstain filter preset while evaluating abstain-aware policy variants.",
+    )
     parser.add_argument("--write-policy-decisions", action="store_true")
     parser.add_argument(
         "--write-registry-policies",
@@ -314,6 +327,7 @@ def main() -> None:
         min_positive_events=args.min_positive_events,
         min_events_per_month=args.min_events_per_month,
         min_trades_per_week=args.min_trades_per_week,
+        targeted_filter_preset=args.targeted_filter_preset,
         write_policy_decisions=args.write_policy_decisions,
         write_registry_policies=args.write_registry_policies,
     )
@@ -381,11 +395,12 @@ def _build_policy_decisions_frame(
 ) -> pd.DataFrame:
     from model_testing.ote_threshold_policy import apply_threshold_policy
 
+    policy_name = "regime_threshold" if abstain_config.apply_to_base_policy_variants else "regime_threshold_plus_abstain"
     thresholded = apply_threshold_policy(
         frame,
         config=config,
         policy_table=policy_table,
-        policy_name="regime_threshold_plus_abstain",
+        policy_name=policy_name,
         fallback_threshold=config.global_threshold,
     )
     return apply_abstain_policy(thresholded, config=abstain_config)
@@ -466,7 +481,14 @@ def _build_abstain_policy_metadata(
     abstain_config: HardAbstainConfig,
 ) -> Dict[str, object] | None:
     selected_policy_name = policy_selection.get("selected_policy_name")
-    if selected_policy_name not in {"global_threshold_plus_abstain", "regime_threshold_plus_abstain"}:
+    if selected_policy_name not in {
+        "global_threshold_plus_abstain",
+        "regime_threshold_plus_abstain",
+        "global_threshold",
+        "regime_threshold",
+    }:
+        return None
+    if selected_policy_name in {"global_threshold", "regime_threshold"} and not abstain_config.apply_to_base_policy_variants:
         return None
 
     return {
@@ -490,6 +512,7 @@ def _build_abstain_policy_metadata(
             for composite_regime, stress_regime in abstain_config.abstain_composite_stress_pairs
         ],
         "minimum_probability_quantile": abstain_config.minimum_probability_quantile,
+        "apply_to_base_policy_variants": bool(abstain_config.apply_to_base_policy_variants),
         "expected_move_by_regime": None
         if abstain_config.expected_move_by_regime is None
         else {

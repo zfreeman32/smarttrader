@@ -1,132 +1,118 @@
 # Feature Generation Toolkit
 
-This directory now has a modular feature-generation workflow built around:
+This package is the repo's modular feature-engineering layer for OHLCV-based dataset builds.
+It now supports:
 
-- small, registered feature-set modules
-- recipe-driven dataset builds
-- reusable transformations for lags, rolling stats, z-scores, winsorization, percentile ranks, and interactions
-- a documented roadmap for the higher-value missing features from your OTE and quantitative pipeline docs
+- registered feature families
+- recipe-driven builds
+- explicit timezone and calendar normalization
+- reusable post-feature transforms
+- standalone strategy-derived feature blocks
+- metadata-rich handoff into preprocessing and model training
 
-The goal is simple: make it easy to add one new feature family without editing a giant monolithic script.
+Current snapshot of the package:
 
-## What Changed
+- 16 registered feature sets
+- 3 recipe JSONs
+- 405 auto-discovered standalone strategy entries from 404 top-level scripts under `features/strategies/`
 
-The new primary entry points are:
-
-- `features/cli.py`
-- `features/builder.py`
-- `features/config.py`
-- `features/registry.py`
-- `features/strategy_registry.py`
-- `features/strategy_similarity.py`
-- `features/transforms.py`
-- `features/feature_sets/`
-- `features/recipes/`
-- `features/docs/IMPLEMENTATION_PLAN.md`
-
-The old monolithic reference code is still here for reuse and comparison:
-
-- `features/all_indicators.py`
-- `features/all_strategies.py`
-- `features/features_analysis.py`
-- `features/strategies/`
-
-For strategy-script features, the source of truth is now the standalone files under `features/strategies/`.
-`features/all_strategies.py` should be treated as a legacy aggregation/reference file rather than the place to pull strategy functions from.
-
-## New Layout
+## What Lives Here
 
 ```text
 features/
 |-- __init__.py
+|-- all_indicators.py
+|-- all_strategies.py
 |-- builder.py
 |-- cli.py
 |-- config.py
+|-- feature_list.txt
+|-- fx_calendar.py
 |-- io.py
+|-- preprocessing.py
+|-- progress.py
 |-- registry.py
+|-- strategy_registry.py
+|-- strategy_similarity.py
+|-- strategy_subprocess_runner.py
 |-- transforms.py
 |-- feature_sets/
-|   |-- price_action.py
-|   |-- volatility.py
-|   |-- trend.py
-|   |-- momentum.py
-|   |-- volume.py
-|   |-- structure.py
+|   |-- __init__.py
+|   |-- continuation_pullback.py
+|   |-- exhaustion.py
+|   |-- fractional_diff.py
 |   |-- htf_context.py
 |   |-- ict_context.py
-|   |-- exhaustion.py
 |   |-- microstructure.py
+|   |-- momentum.py
+|   |-- price_action.py
+|   |-- quality.py
 |   |-- session.py
+|   |-- strategy_signals.py
+|   |-- structure.py
 |   |-- temporal_context.py
-|   |-- fractional_diff.py
-|   `-- quality.py
+|   |-- trend.py
+|   |-- volatility.py
+|   `-- volume.py
 |-- recipes/
 |   |-- meta_labeling.json
 |   |-- ote_base.json
 |   `-- ote_extended.json
+|-- strategies/
+|   |-- *.py
+|   `-- misc/
 `-- docs/
-    `-- IMPLEMENTATION_PLAN.md
+    `-- TIMEZONE_CALENDAR_PLAN.md
 ```
 
-## Quick Start
+## Core Workflow
 
-List available feature sets:
+List the registered feature sets and recipe files:
 
 ```powershell
 python -m features.cli list
 ```
 
-List discovered standalone strategy entries:
+List the discovered standalone strategy entries:
 
 ```powershell
 python -m features.cli list --strategies
 ```
 
-Build an OTE feature dataset from the auto-labeled or reviewed 5-minute file:
+Build the default OTE feature dataset:
 
 ```powershell
 python -m features.cli build `
   data/labeling/labeled_data/eurusd_5min_ote_labels.csv `
   --output data/features/eurusd_5min_ote_features.csv `
-  --recipe features/recipes/ote_base.json
+  --recipe features/recipes/ote_base.json `
+  --progress
 ```
 
-Build a richer version with more lags and rolling windows:
+Build with an explicit timezone contract for historical data:
+
+```powershell
+python -m features.cli build `
+  data/labeling/labeled_data/eurusd_5min_ote_labels.csv `
+  --output data/features/eurusd_5min_ote_features_tz.csv `
+  --recipe features/recipes/ote_base.json `
+  --source-timezone GMT-6 `
+  --canonical-timezone UTC `
+  --feature-clock-timezone America/New_York `
+  --market-close-timezone America/New_York `
+  --progress
+```
+
+Build the larger extended recipe with parallel transform jobs and dtype downcasting:
 
 ```powershell
 python -m features.cli build `
   data/labeling/labeled_data/eurusd_5min_ote_labels.csv `
   --output data/features/eurusd_5min_ote_features_extended.csv `
-  --recipe features/recipes/ote_extended.json
-```
-
-Each build writes:
-
-- the feature CSV you requested
-- a sidecar metadata file at the same path with `.metadata.json`
-
-Prepare a generated feature dataset for target-specific model training:
-
-```powershell
-python -m preprocessing prepare `
-  data/features/eurusd_5min_ote_2000.csv `
-  --output-dir data/prepared/eurusd_5min_ote_2000
-```
-
-This preprocessing step:
-
-- uses the builder metadata to keep the engineered feature set as the safe feature pool
-- creates separate prepared outputs for detected long/short OTE and entry targets
-- removes exact duplicate and low-information columns
-- runs target-aware similarity / collinearity pruning
-- reports class imbalance, feature importance, and dataset readiness per target
-
-The legacy alias still works:
-
-```powershell
-python -m features.cli preprocess `
-  data/features/eurusd_5min_ote_2000.csv `
-  --output-dir data/prepared/eurusd_5min_ote_2000
+  --recipe features/recipes/ote_extended.json `
+  --transform-workers 4 `
+  --optimize-memory `
+  --progress
 ```
 
 Build a dataset that also includes selected standalone strategy outputs:
@@ -138,10 +124,12 @@ python -m features.cli build `
   --recipe features/recipes/ote_base.json `
   --strategy acc_dist_strat `
   --strategy adx_breakouts_signals `
-  --strategy average-true-range-percentage_strategy
+  --strategy atr_trading_signals `
+  --skip-strategy-errors `
+  --progress
 ```
 
-Build the fullest version from your labeled 5-minute EURUSD file by keeping all core feature families, all transforms, and every discovered standalone strategy that can be executed in the current environment:
+Build the widest available strategy-enriched dataset in best-effort mode:
 
 ```powershell
 python -m features.cli build `
@@ -150,49 +138,142 @@ python -m features.cli build `
   --recipe features/recipes/ote_extended.json `
   --all-strategies `
   --skip-strategy-errors `
+  --strategy-timeout-seconds 300 `
+  --transform-workers 4 `
   --progress
 ```
 
-Notes:
+Prepare a generated feature dataset for target-specific model training:
 
-- the output CSV already keeps your original label columns alongside the generated features
-- `--all-strategies` currently runs in best-effort mode and records skipped strategies in the `.metadata.json` sidecar
-- `--progress` prints live phase updates plus per-strategy status so long builds do not look stuck
-- `--strategy-timeout-seconds 300` skips a standalone strategy if it runs longer than five minutes; use `0` to disable the timeout
-- many standalone strategy scripts depend on the external `ta` package or on non-OHLCV inputs, so they will be skipped unless those dependencies and extra columns are available
+```powershell
+python -m preprocessing prepare `
+  data/features/eurusd_5min_ote_features.csv `
+  --output-dir data/prepared/eurusd_5min_ote_features
+```
 
-Compare the monolithic `all_strategies.py` functions against the standalone strategy folder:
+The compatibility alias still works:
+
+```powershell
+python -m features.cli preprocess `
+  data/features/eurusd_5min_ote_features.csv `
+  --output-dir data/prepared/eurusd_5min_ote_features
+```
+
+Compare the legacy monolith against the standalone strategy folder:
 
 ```powershell
 python -m features.strategy_similarity
 ```
 
-## Current Feature Families
+## What The Builder Does Now
 
-The modular pipeline currently generates:
+- standardizes common input columns such as `timestamp`, `datetime`, `date`, `time`, `open`, `high`, `low`, `close`, and `volume`
+- creates and normalizes a canonical `datetime` column when only `date` and `time` are present
+- localizes naive timestamps with `source_timezone` and stores them in `canonical_timezone`
+- validates OHLC consistency and drops broken rows by default
+- runs feature sets in recipe order through the central registry
+- runs transform blocks for winsorization, percentile ranks, ATR normalization, sigma normalization, lags, rolling stats, z-scores, and curated interactions
+- can parallelize independent transforms and strategy execution with `--transform-workers`
+- can downcast generated numeric feature columns with `--optimize-memory`
+- writes both the output CSV and a `.metadata.json` sidecar
 
-- price action and candle anatomy
-- volatility and range normalization
-- trend, EMA distance, and MACD structure
-- momentum and exhaustion-style proxies
-- volume and money-flow features
-- causal structure and sweep context
-- higher-timeframe structural context
-- ICT / SMC proximity context
-- turning-point / exhaustion context
-- microstructure proxies
-- session and kill-zone timing
-- sequence-ready temporal context
-- fractional differentiation
-- anomaly and data-quality flags
-- selected standalone strategy-module outputs
-- lags, rolling means/stds, rolling z-scores, rolling winsorization, percentile ranks, and interaction features
+That metadata sidecar now includes:
 
-That now covers the baseline transformation work from both pipeline docs, including the five previously highest-priority missing feature families.
+- feature-set and transform counts
+- per-step timings
+- memory usage
+- timezone contract details
+- invalid-row counts
+- generated feature column names
+- upstream source lineage when the input file already has its own metadata sidecar
+- per-strategy build and skip details when `strategy_signals` is used
 
-## How To Add A New Feature Family
+## Registered Feature Sets
 
-Add a new module under `features/feature_sets/` and register it:
+- `price_action`: returns, candle anatomy, and close-location features
+- `volatility`: ATR, rolling volatility, and range-normalized volatility features
+- `trend`: EMA distance, slope, alignment, and MACD trend features
+- `momentum`: RSI, ROC, acceleration, and exhaustion-style momentum features
+- `volume`: volume intensity, imbalance, and money-flow features
+- `structure`: causal structure, sweep, premium/discount, and displacement features
+- `htf_context`: higher-timeframe swing, daily/weekly range, and HTF trend-alignment context
+- `continuation_pullback`: pullback geometry, retest quality, and trend-resumption structure features
+- `ict_context`: ICT proximity features for FVGs, order blocks, liquidity pools, and structure breaks
+- `exhaustion`: momentum deceleration, divergence, compression, and failed-continuation features
+- `microstructure`: spread, impact, illiquidity, and intrabar microstructure proxies
+- `session`: session, overlap, kill-zone, and cyclical time features
+- `temporal_context`: event-age, sequence-order, clustering, and session-phase timing features
+- `fractional_diff`: fractionally differentiated close series for non-stationarity treatment
+- `quality`: anomaly, bar-quality, and data-integrity flags
+- `strategy_signals`: standalone strategy-module outputs encoded as dataset features when strategy ids are requested
+
+## Recipes
+
+- `features/recipes/ote_base.json`: default OTE recipe with the full current baseline feature-family stack, continuation-pullback context, and standard lag, rolling, and z-score settings
+- `features/recipes/ote_extended.json`: a heavier OTE recipe with wider lag windows, broader rolling windows, and more continuation-oriented transform coverage
+- `features/recipes/meta_labeling.json`: a lighter recipe for meta-labeling workflows with a narrower transform surface and no `continuation_pullback` block
+
+You can also override recipe order directly:
+
+```powershell
+python -m features.cli build input.csv `
+  --output output.csv `
+  --feature-set price_action `
+  --feature-set trend `
+  --feature-set session
+```
+
+## Standalone Strategy Integration
+
+- strategy discovery currently scans top-level `features/strategies/*.py`
+- `features/strategies/misc/` is present in the repo, but it is not auto-registered by the current discovery pass
+- if a strategy module exposes one top-level function, its file stem becomes the strategy id
+- if a strategy module exposes multiple top-level functions, entries are registered as `file_stem.function_name`
+- strategy outputs are renamed with a `strategy__<strategy_id>__...` prefix before being merged into the dataset
+- boolean outputs are encoded as `0/1`
+- numeric outputs stay numeric
+- non-numeric categorical outputs are one-hot encoded
+- `--skip-strategy-errors` records failures in metadata instead of stopping the full build
+- `--strategy-timeout-seconds` enables subprocess-based timeouts so one bad strategy does not hang the whole dataset job
+
+## Timezone And Calendar Contract
+
+The feature pipeline now has an explicit timestamp contract:
+
+- `source_timezone`: how naive source bars should be localized
+- `canonical_timezone`: normalized storage timezone, default `UTC`
+- `feature_clock_timezone`: timezone used for cyclical time features and strategy clock fields, default `America/New_York`
+- `market_close_timezone`: timezone used to define FX market-day and market-week closes, default `America/New_York`
+- `market_close_time`: default `17:00`
+
+That contract is shared across:
+
+- input normalization in `features/io.py`
+- calendar helpers in `features/fx_calendar.py`
+- session features in `features/feature_sets/session.py`
+- temporal timing features in `features/feature_sets/temporal_context.py`
+- higher-timeframe day and week aggregation in `features/feature_sets/htf_context.py`
+- legacy strategy input adaptation in `features/strategy_registry.py`
+
+See `features/docs/TIMEZONE_CALENDAR_PLAN.md` for the migration notes and recommended historical-data settings.
+
+## Legacy And Reference Files
+
+These files still matter, but they are no longer the main path for new work:
+
+- `features/all_strategies.py`: legacy monolith and comparison reference
+- `features/all_indicators.py`: older indicator reference code
+- `features/feature_list.txt`: historical inventory/reference list
+
+New feature work should usually go into:
+
+- `features/feature_sets/` for reusable registered feature families
+- `features/recipes/` for build presets
+- top-level `features/strategies/*.py` for standalone strategy-derived features
+
+## Extending The Package
+
+To add a new feature family, create a module under `features/feature_sets/` and register it:
 
 ```python
 import pandas as pd
@@ -216,15 +297,6 @@ def build_my_custom_features(
     return out
 ```
 
-Then add that feature-set name to a recipe JSON or pass it directly through the CLI.
+Then add that feature-set name to a recipe JSON or pass it through repeated `--feature-set` flags.
 
-## Why This Structure Matches Your Docs Better
-
-The two reference docs push the feature pipeline in a direction that is:
-
-- domain-aware instead of just indicator-heavy
-- multi-stage instead of one giant script
-- explicit about transformations, lags, rolling stats, and interactions
-- aware of OTE-specific structure, confluence, and imbalance issues
-
-This revamp gives you that scaffolding now, and the implementation roadmap in [`features/docs/IMPLEMENTATION_PLAN.md`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/features/docs/IMPLEMENTATION_PLAN.md) lays out the next feature families to add in priority order.
+To add a standalone strategy feature source, place a top-level `.py` file under `features/strategies/` that exposes one or more callables returning a `DataFrame` or `Series`. The strategy registry will discover it automatically on the next run.

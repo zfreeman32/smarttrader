@@ -481,7 +481,7 @@ def build_policy_variant_decisions(
             policy_name=policy_name,
             fallback_threshold=threshold_config.global_threshold,
         )
-        if policy_name == "global_threshold":
+        if policy_name == "global_threshold" and not abstain_config.apply_to_base_policy_variants:
             thresholded["policy_emit_signal"] = thresholded["policy_signal_candidate"]
             thresholded["policy_abstain"] = False
             thresholded["policy_abstain_reason"] = pd.Series(pd.NA, index=thresholded.index, dtype="object")
@@ -495,12 +495,14 @@ def build_policy_variant_decisions(
         policy_name=policy_name,
         fallback_threshold=threshold_config.global_threshold,
     )
-    if policy_name == "regime_threshold":
+    if policy_name == "regime_threshold" and not abstain_config.apply_to_base_policy_variants:
         thresholded["policy_emit_signal"] = thresholded["policy_signal_candidate"]
         thresholded["policy_abstain"] = False
         thresholded["policy_abstain_reason"] = pd.Series(pd.NA, index=thresholded.index, dtype="object")
         return thresholded
-    if policy_name == "regime_threshold_plus_abstain":
+    if policy_name == "regime_threshold_plus_abstain" or (
+        policy_name == "regime_threshold" and abstain_config.apply_to_base_policy_variants
+    ):
         return apply_abstain_policy(thresholded, config=abstain_config)
     raise ValueError(f"Unsupported policy variant: {policy_name!r}")
 

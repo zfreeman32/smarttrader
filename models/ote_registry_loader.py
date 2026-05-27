@@ -149,7 +149,9 @@ def load_ote_model_registry(
     validate: bool = True,
 ) -> OTEModelRegistry:
     registry_path = Path(registry_path)
-    payload = json.loads(registry_path.read_text(encoding="utf-8"))
+    # Accept UTF-8 files with or without a BOM so PowerShell-authored registry
+    # files can still be loaded without manual re-encoding.
+    payload = json.loads(registry_path.read_text(encoding="utf-8-sig"))
     if validate:
         validate_ote_model_registry_payload(
             payload,

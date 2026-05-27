@@ -12,6 +12,7 @@ from model_testing.ote_abstain_policy import HardAbstainConfig
 from model_testing.ote_policy_backtest import (
     WalkForwardBacktestConfig,
     build_walk_forward_folds,
+    build_policy_variant_decisions,
     run_walk_forward_backtest,
 )
 from model_testing.ote_threshold_policy import ThresholdSearchConfig
@@ -150,6 +151,128 @@ def test_build_abstain_config_supports_pairwise_targeted_presets() -> None:
     assert v3_config.abstain_composite_session_pairs == (("strong_up_medium", "asia"),)
     assert v3_config.abstain_composite_stress_pairs == (("strong_up_medium", "elevated"),)
     assert v3_config.minimum_probability_quantile == 0.20
+
+
+def test_build_abstain_config_supports_short_reversal_ranging_medium_london_prune() -> None:
+    model = OTEModelRecord(
+        model_id="short_reversal_xgb_v1",
+        direction="short",
+        role="candidate",
+        backend="xgboost",
+        artifact_path="models/champion_models/reversal_models/short_reversal_xgb_v1",
+        cv_mean_ap=0.0,
+        cv_mean_event_f05=0.0,
+        test_ap=0.0,
+        test_event_f05=0.0,
+        global_threshold=0.9,
+        regime_thresholds=None,
+        abstain_policy=None,
+        calibration_method="platt",
+        promotion_date="2026-05-25",
+        promotion_reason="test",
+        status="candidate",
+    )
+    threshold_config = ThresholdSearchConfig(
+        probability_column="model_probability",
+        global_threshold=0.9,
+    )
+
+    config = _build_abstain_config(
+        model,
+        threshold_config,
+        targeted_filter_preset="short_reversal_xgb_ranging_medium_london_prune_v1",
+    )
+
+    assert config.abstain_composite_session_pairs == (("ranging_medium", "london"),)
+
+
+def test_build_abstain_config_supports_short_reversal_ranging_medium_london_hard_prune() -> None:
+    model = OTEModelRecord(
+        model_id="short_reversal_xgb_v1",
+        direction="short",
+        role="candidate",
+        backend="xgboost",
+        artifact_path="models/champion_models/reversal_models/short_reversal_xgb_v1",
+        cv_mean_ap=0.0,
+        cv_mean_event_f05=0.0,
+        test_ap=0.0,
+        test_event_f05=0.0,
+        global_threshold=0.9,
+        regime_thresholds=None,
+        abstain_policy=None,
+        calibration_method="platt",
+        promotion_date="2026-05-25",
+        promotion_reason="test",
+        status="candidate",
+    )
+    threshold_config = ThresholdSearchConfig(
+        probability_column="model_probability",
+        global_threshold=0.9,
+    )
+
+    config = _build_abstain_config(
+        model,
+        threshold_config,
+        targeted_filter_preset="short_reversal_xgb_ranging_medium_london_hard_prune_v1",
+    )
+
+    assert config.abstain_composite_session_pairs == (("ranging_medium", "london"),)
+    assert config.apply_to_base_policy_variants is True
+
+
+def test_build_policy_variant_decisions_applies_hard_prune_to_regime_threshold() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [0, 1, 2],
+            "datetime": pd.to_datetime(
+                [
+                    "2024-01-01 00:00:00",
+                    "2024-01-01 00:05:00",
+                    "2024-01-01 00:10:00",
+                ]
+            ),
+            "target": [1, 1, 1],
+            "model_probability": [0.95, 0.94, 0.93],
+            "composite_regime": ["ranging_medium", "strong_up_medium", "ranging_medium"],
+            "session_regime": ["london", "london", "asia"],
+            "stress_regime": ["normal", "normal", "normal"],
+        }
+    )
+    policy_table = pd.DataFrame(
+        {
+            "composite_regime": ["ranging_medium", "strong_up_medium"],
+            "threshold": [0.5, 0.5],
+            "threshold_source": ["regime", "regime"],
+        }
+    )
+    threshold_config = ThresholdSearchConfig(
+        probability_column="model_probability",
+        global_threshold=0.9,
+        event_cooldown_bars=0,
+    )
+
+    decisions = build_policy_variant_decisions(
+        frame,
+        policy_name="regime_threshold",
+        policy_table=policy_table,
+        threshold_config=threshold_config,
+        abstain_config=HardAbstainConfig(
+            abstain_high_stress=False,
+            abstain_off_hours=False,
+            cooldown_bars=0,
+            abstain_composite_session_pairs=(("ranging_medium", "london"),),
+            apply_to_base_policy_variants=True,
+            probability_column="policy_probability",
+            signal_candidate_column="policy_signal_candidate",
+            position_column="source_row_idx",
+        ),
+    )
+
+    emitted = decisions.loc[decisions["policy_emit_signal"].fillna(False)].copy()
+    assert len(emitted) == 2
+    assert set(emitted["source_row_idx"].tolist()) == {1, 2}
+    blocked = decisions.loc[decisions["source_row_idx"] == 0].iloc[0]
+    assert blocked["policy_abstain_reason"] == "composite_session_filter"
 
 
 def _build_synthetic_walk_forward_data() -> tuple[pd.DataFrame, pd.DataFrame]:

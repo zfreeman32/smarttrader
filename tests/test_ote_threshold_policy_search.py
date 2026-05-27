@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.run_ote_threshold_policy_search import _write_registry_policy_updates
+from scripts.run_ote_threshold_policy_search import _write_registry_policy_updates, build_arg_parser
 
 
 def test_write_registry_policy_updates_accepts_utf8_bom(tmp_path: Path) -> None:
@@ -59,3 +59,31 @@ def test_write_registry_policy_updates_accepts_utf8_bom(tmp_path: Path) -> None:
     assert record["global_threshold"] == 0.81
     assert record["regime_thresholds"] == {"strong_up_high": 0.77}
     assert record["abstain_policy"] == {"policy_name": "global_threshold_plus_abstain"}
+
+
+def test_build_arg_parser_accepts_targeted_filter_preset() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args(
+        [
+            "--regime-report-root",
+            "tmp/regime",
+            "--targeted-filter-preset",
+            "short_reversal_xgb_ranging_medium_london_prune_v1",
+        ]
+    )
+
+    assert args.targeted_filter_preset == "short_reversal_xgb_ranging_medium_london_prune_v1"
+
+
+def test_build_arg_parser_accepts_short_reversal_hard_prune_preset() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args(
+        [
+            "--regime-report-root",
+            "tmp/regime",
+            "--targeted-filter-preset",
+            "short_reversal_xgb_ranging_medium_london_hard_prune_v1",
+        ]
+    )
+
+    assert args.targeted_filter_preset == "short_reversal_xgb_ranging_medium_london_hard_prune_v1"

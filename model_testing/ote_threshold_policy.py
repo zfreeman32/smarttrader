@@ -223,11 +223,30 @@ def evaluate_policy_variants(
     abstain_config = abstain_config or HardAbstainConfig(cooldown_bars=config.event_cooldown_bars)
 
     variants = [
-        ("global_threshold", pd.DataFrame(columns=policy_table.columns), float(config.global_threshold), False),
-        ("global_threshold_plus_abstain", pd.DataFrame(columns=policy_table.columns), float(config.global_threshold), True),
-        ("regime_threshold", policy_table, float(config.global_threshold), False),
-        ("regime_threshold_plus_abstain", policy_table, float(config.global_threshold), True),
+        (
+            "global_threshold",
+            pd.DataFrame(columns=policy_table.columns),
+            float(config.global_threshold),
+            bool(abstain_config.apply_to_base_policy_variants),
+        ),
+        (
+            "regime_threshold",
+            policy_table,
+            float(config.global_threshold),
+            bool(abstain_config.apply_to_base_policy_variants),
+        ),
     ]
+    if not abstain_config.apply_to_base_policy_variants:
+        variants.insert(
+            1,
+            (
+                "global_threshold_plus_abstain",
+                pd.DataFrame(columns=policy_table.columns),
+                float(config.global_threshold),
+                True,
+            ),
+        )
+        variants.append(("regime_threshold_plus_abstain", policy_table, float(config.global_threshold), True))
 
     rows: List[Dict[str, object]] = []
     for dataset_split, frame in (("oof", oof_frame), ("test", test_frame)):

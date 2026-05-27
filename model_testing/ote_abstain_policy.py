@@ -29,6 +29,7 @@ class HardAbstainConfig:
     abstain_composite_session_pairs: tuple[tuple[str, str], ...] = ()
     abstain_composite_stress_pairs: tuple[tuple[str, str], ...] = ()
     minimum_probability_quantile: float | None = None
+    apply_to_base_policy_variants: bool = False
     signal_candidate_column: str = "policy_signal_candidate"
     probability_column: str = "policy_probability"
     composite_column: str = "composite_regime"

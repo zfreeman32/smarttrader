@@ -46,3 +46,14 @@ def test_ote_registry_validation_rejects_duplicate_model_ids(tmp_path: Path) -> 
             registry_path=registry_path,
             schema_path=DEFAULT_SCHEMA_PATH,
         )
+
+
+def test_ote_registry_loader_accepts_utf8_bom(tmp_path: Path) -> None:
+    payload = json.loads(DEFAULT_REGISTRY_PATH.read_text(encoding="utf-8"))
+    registry_path = tmp_path / "ote_model_registry_bom.json"
+    registry_path.write_text(json.dumps(payload, indent=2), encoding="utf-8-sig")
+
+    registry = load_ote_model_registry(registry_path)
+
+    assert registry.models
+    assert registry.registry_path == registry_path

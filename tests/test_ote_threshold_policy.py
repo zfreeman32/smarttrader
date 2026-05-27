@@ -153,6 +153,70 @@ def test_evaluate_policy_variants_reports_global_regime_and_abstain_versions() -
     assert int(abstain_row["abstain_count"]) >= 1
 
 
+def test_evaluate_policy_variants_hard_prune_filters_base_variants() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [0, 1, 2, 3],
+            "datetime": pd.to_datetime(
+                [
+                    "2024-01-01 00:00:00",
+                    "2024-01-01 00:05:00",
+                    "2024-01-01 00:10:00",
+                    "2024-01-01 00:15:00",
+                ]
+            ),
+            "year": [2024] * 4,
+            "target": [1, 1, 0, 1],
+            "oof_calibrated_probability": [0.95, 0.94, 0.10, 0.93],
+            "calibrated_probability": [0.95, 0.94, 0.10, 0.93],
+            "composite_regime": ["ranging_medium", "strong_up_high", "ranging_low", "ranging_medium"],
+            "session_regime": ["london", "london", "london", "asia"],
+            "stress_regime": ["normal", "normal", "normal", "normal"],
+            "policy_gross_pnl_pips": [20.0, 18.0, -2.0, 10.0],
+            "policy_net_pnl_pips": [-15.0, 14.0, -4.0, 7.0],
+        }
+    )
+    policy_table = pd.DataFrame(
+        {
+            "composite_regime": ["ranging_medium", "strong_up_high", "ranging_low"],
+            "threshold": [0.4, 0.4, 0.4],
+            "threshold_source": ["regime", "regime", "regime"],
+        }
+    )
+    config = ThresholdSearchConfig(
+        probability_column="oof_calibrated_probability",
+        global_threshold=0.6,
+        event_tolerance_bars=0,
+        event_cooldown_bars=0,
+        min_positive_events=1,
+        min_events_per_month=0.0,
+    )
+
+    evaluation = evaluate_policy_variants(
+        oof_frame=frame,
+        test_frame=frame.rename(columns={"oof_calibrated_probability": "ignore"}),
+        policy_table=policy_table,
+        config=config,
+        abstain_config=HardAbstainConfig(
+            abstain_high_stress=False,
+            abstain_off_hours=False,
+            cooldown_bars=0,
+            abstain_composite_session_pairs=(("ranging_medium", "london"),),
+            apply_to_base_policy_variants=True,
+            probability_column="policy_probability",
+            signal_candidate_column="policy_signal_candidate",
+        ),
+    )
+
+    assert set(evaluation["policy_name"]) == {"global_threshold", "regime_threshold"}
+    regime_row = evaluation.loc[
+        (evaluation["dataset_split"] == "oof")
+        & (evaluation["policy_name"] == "regime_threshold")
+    ].iloc[0]
+    assert int(regime_row["abstain_count"]) == 1
+    assert int(regime_row["emitted_signals"]) == 2
+
+
 def test_attach_forward_trade_outcomes_adds_gross_and_net_pnl_columns() -> None:
     frame = pd.DataFrame(
         {
