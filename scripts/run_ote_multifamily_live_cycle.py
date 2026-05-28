@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.run_ote_policy_backtest import run_policy_backtest
 from scripts.run_ote_regime_slice_report import run_regime_slice_report
 from scripts.run_ote_threshold_policy_search import run_threshold_policy_search
-DEFAULT_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_multifamily_candidates.json"
+DEFAULT_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_live_multifamily.json"
 DEFAULT_REGIME_OUTPUT_ROOT = REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "multifamily_live_v1"
 DEFAULT_THRESHOLD_OUTPUT_ROOT = (
     REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "multifamily_live_v1"

@@ -117,7 +117,7 @@ def test_build_abstain_config_supports_pairwise_targeted_presets() -> None:
         direction="long",
         role="candidate",
         backend="tcn",
-        artifact_path="models/champion_models/breakout_models/long_breakout_tcn_repair_20260513_v2/long_breakout",
+        artifact_path="models/live/long_breakout_tcn",
         cv_mean_ap=0.0,
         cv_mean_event_f05=0.0,
         test_ap=0.0,

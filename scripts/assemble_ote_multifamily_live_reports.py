@@ -16,33 +16,127 @@ import pandas as pd
 
 from model_testing.ote_regime_slices import build_regime_winner_table
 
-TARGET_MODEL_IDS = (
-    "long_ote_tcn_v2_candidate",
-    "short_ote_tcn_v2_candidate",
-    "long_reversal_tcn_champion",
-    "short_reversal_xgb_v1",
-    "long_breakout_tcn_champion",
-    "short_breakout_tcn_champion",
-    "long_ote_meta_tcn_champion",
-    "short_ote_meta_tcn_champion",
-    "short_reversal_tcn_champion",
-    "long_breakout_xgb_v1",
+LIVE_REGISTRY_SOURCE_PATH = REPO_ROOT / "models" / "ote_model_registry_live_multifamily.json"
+
+LIVE_MODEL_SPECS = (
+    {
+        "model_id": "long_reversal_tcn_v2_20260525_narrow48",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/long_reversal_tcn",
+        "status": "active",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Post-training leaderboard rank #2 on 2026-05-27; promoted as the long-side live champion for "
+            "the current OTE app."
+        ),
+    },
+    {
+        "model_id": "short_reversal_xgb_v2_20260525",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/short_reversal_xgb",
+        "status": "active",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Post-training leaderboard rank #1 on 2026-05-27; promoted as the short-side live champion for "
+            "the current OTE app."
+        ),
+    },
+    {
+        "model_id": "long_ote_meta_tcn_champion",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/long_meta_tcn",
+        "status": "candidate",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Included as the long meta shadow candidate for the live app after strong training metrics but only "
+            "4/6 post-training gates."
+        ),
+    },
+    {
+        "model_id": "short_ote_meta_tcn_champion",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/short_meta_tcn",
+        "status": "active",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Post-training leaderboard rank #7 with 6/6 gates passed; promoted as the short meta live champion."
+        ),
+    },
+    {
+        "model_id": "long_breakout_tcn_champion",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/long_breakout_tcn",
+        "status": "candidate",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Included as the primary long breakout shadow candidate after the repaired artifact posted the best "
+            "breakout-family live-like result."
+        ),
+    },
+    {
+        "model_id": "long_breakout_xgb_v1",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/long_breakout_xgb",
+        "status": "candidate",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Included as the second long breakout shadow candidate for comparative live monitoring even though "
+            "its post-training conversion remains weak."
+        ),
+    },
+    {
+        "model_id": "long_ote_union_tcn_candidate_20260523",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/long_union_tcn",
+        "status": "active",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Post-training leaderboard rank #8 with 6/6 gates passed; promoted as the best extra long-side "
+            "performer outside reversal/meta/breakout."
+        ),
+    },
+    {
+        "model_id": "short_ote_union_tcn_candidate_20260520",
+        "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
+        "artifact_path": "models/live/short_union_tcn",
+        "status": "active",
+        "promotion_date": "2026-05-27",
+        "promotion_reason": (
+            "Post-training leaderboard rank #9 with 6/6 gates passed; promoted as the best extra short-side "
+            "performer outside reversal/meta."
+        ),
+    },
 )
+
+TARGET_MODEL_IDS = tuple(spec["model_id"] for spec in LIVE_MODEL_SPECS)
 
 SOURCE_ROOTS = {
     "regime": (
-        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "v1_v2_comparison",
-        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "champion_models_20260508_v2",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "long_reversal_tcn_v2_20260525_narrow48",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "short_reversal_xgb_v2_20260525",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "short_ote_meta_tcn_repair_20260511_v2",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "long_ote_union_vs_v2_meta_20260523",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "short_ote_union_vs_v2_20260521",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "long_breakout_tcn_repair_20260513_v2",
         REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "breakout_reversal_xgb_20260509",
     ),
     "threshold": (
-        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "v1_v2_tcn_focus",
-        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "champion_models_20260508_v2",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_reversal_tcn_v2_20260525_narrow48",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "short_reversal_xgb_v2_20260525",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "short_ote_meta_tcn_repair_20260511_v2",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_ote_union_vs_v2_meta_20260523",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "short_ote_union_vs_v2_20260521",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_breakout_tcn_repair_20260513_v2",
         REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "breakout_reversal_xgb_20260509",
     ),
     "backtest": (
-        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "v1_v2_tcn_focus",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_reversal_xgb_v2_20260525",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "long_reversal_tcn_v2_20260525_narrow48",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_ote_meta_tcn_repair_20260511_v2_regime_prune_v1",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "long_ote_union_prune_v1_pairs_20260525",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_ote_union_regime_prune_v1_20260521",
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "champion_models_20260508_v2_min5",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "long_breakout_tcn_repair_20260513_v2_regime_prune_v3",
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "breakout_reversal_xgb_20260509",
     ),
 }
@@ -53,19 +147,40 @@ TARGET_ROOTS = {
     "backtest": REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "multifamily_live_v1",
 }
 
-TARGET_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_multifamily_candidates.json"
+TARGET_LIVE_REGISTRY_PATH = LIVE_REGISTRY_SOURCE_PATH
+TARGET_REGISTRY_PATH = TARGET_LIVE_REGISTRY_PATH
 
 
 def main() -> None:
     now = datetime.now(timezone.utc).isoformat()
+    _write_live_registries()
     regime_mapping = _assemble_regime_root(now)
     threshold_mapping = _assemble_threshold_root(now)
     _assemble_backtest_root(now, regime_mapping=regime_mapping, threshold_mapping=threshold_mapping)
 
 
+def _write_live_registries() -> None:
+    source_records = _load_registry_source_records()
+    payload = {
+        "promotion_rules": _load_promotion_rules(next(iter(source_records.values()))["registry_source_path"]),
+        "models": [],
+    }
+
+    for spec in LIVE_MODEL_SPECS:
+        record = dict(source_records[spec["model_id"]]["record"])
+        record["artifact_path"] = spec["artifact_path"]
+        record["status"] = spec["status"]
+        record["promotion_date"] = spec["promotion_date"]
+        record["promotion_reason"] = spec["promotion_reason"]
+        payload["models"].append(record)
+
+    formatted = json.dumps(payload, indent=2) + "\n"
+    TARGET_LIVE_REGISTRY_PATH.write_text(formatted, encoding="utf-8")
+
+
 def _assemble_regime_root(generated_at_utc: str) -> dict[str, Path]:
     target_root = TARGET_ROOTS["regime"]
-    target_root.mkdir(parents=True, exist_ok=True)
+    _reset_target_root(target_root)
 
     source_entries = _load_model_entries(SOURCE_ROOTS["regime"])
     model_outputs: list[dict[str, Any]] = []
@@ -121,7 +236,7 @@ def _assemble_regime_root(generated_at_utc: str) -> dict[str, Path]:
 
 def _assemble_threshold_root(generated_at_utc: str) -> dict[str, Path]:
     target_root = TARGET_ROOTS["threshold"]
-    target_root.mkdir(parents=True, exist_ok=True)
+    _reset_target_root(target_root)
 
     source_entries = _load_model_entries(SOURCE_ROOTS["threshold"])
     model_outputs: list[dict[str, Any]] = []
@@ -184,7 +299,7 @@ def _assemble_backtest_root(
     threshold_mapping: dict[str, Path],
 ) -> None:
     target_root = TARGET_ROOTS["backtest"]
-    target_root.mkdir(parents=True, exist_ok=True)
+    _reset_target_root(target_root)
 
     source_entries = _load_model_entries(SOURCE_ROOTS["backtest"])
     model_outputs: list[dict[str, Any]] = []
@@ -284,10 +399,41 @@ def _load_model_entries(source_roots: tuple[Path, ...]) -> OrderedDict[str, dict
     return entries
 
 
+def _load_registry_source_records() -> OrderedDict[str, dict[str, Any]]:
+    records: OrderedDict[str, dict[str, Any]] = OrderedDict()
+    for spec in LIVE_MODEL_SPECS:
+        registry_source_path = Path(spec["registry_source_path"])
+        payload = json.loads(registry_source_path.read_text(encoding="utf-8-sig"))
+        for record in payload.get("models", []):
+            model_id = record.get("model_id")
+            if model_id != spec["model_id"]:
+                continue
+            records[model_id] = {
+                "registry_source_path": registry_source_path,
+                "record": record,
+            }
+            break
+    missing = [spec["model_id"] for spec in LIVE_MODEL_SPECS if spec["model_id"] not in records]
+    if missing:
+        raise KeyError(f"Missing registry source records for: {missing}")
+    return records
+
+
+def _load_promotion_rules(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    return dict(payload["promotion_rules"])
+
+
 def _copy_model_directory(source_dir: Path, target_dir: Path) -> None:
     if target_dir.exists():
         shutil.rmtree(target_dir)
     shutil.copytree(source_dir, target_dir)
+
+
+def _reset_target_root(target_root: Path) -> None:
+    if target_root.exists():
+        shutil.rmtree(target_root)
+    target_root.mkdir(parents=True, exist_ok=True)
 
 
 def _deep_rewrite_paths(value: Any, *, source_root: Path, target_root: Path) -> Any:

@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0.0",
+  "model_id": "long_breakout_tcn_champion",
+  "direction": "long",
+  "backend": "tcn",
+  "calibration_method": "platt",
+  "policy_status": "complete",
+  "thresholds": {
+    "global_threshold": 0.9199999999999999,
+    "regime_thresholds": null
+  },
+  "abstain_policy": {
+    "enabled": true,
+    "abstain_high_stress": true,
+    "abstain_off_hours": true,
+    "cooldown_bars": 6,
+    "minimum_expected_move_to_spread": 2.0,
+    "abstain_session_regimes": [],
+    "abstain_composite_regimes": [
+      "strong_down_high",
+      "strong_down_low",
+      "strong_down_medium",
+      "ranging_high",
+      "ranging_low",
+      "strong_up_low"
+    ],
+    "abstain_composite_session_pairs": [
+      [
+        "strong_up_medium",
+        "asia"
+      ]
+    ],
+    "abstain_composite_stress_pairs": [
+      [
+        "strong_up_medium",
+        "elevated"
+      ]
+    ],
+    "minimum_probability_quantile": 0.2
+  },
+  "cost_assumptions": {
+    "fixed_slippage_pips_per_trade": 0.0,
+    "commission_pips_per_trade": 0.0,
+    "session_spread_pips": {
+      "overlap": 1.0,
+      "london": 1.5,
+      "new_york": 1.5,
+      "asia": 2.5,
+      "off_hours": 3.0
+    },
+    "targeted_filter_preset": "long_breakout_regime_prune_v3"
+  },
+  "lineage": {
+    "threshold_registry_path": "models/ote_model_registry_live_multifamily.json",
+    "policy_source_type": "threshold_policy_search_package",
+    "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/long_breakout_tcn_repair_20260513_v2_regime_prune_v3/run_summary.json",
+    "policy_search_summary_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/run_summary.json",
+    "policy_table_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/long_breakout_tcn_champion/policy_table.csv",
+    "policy_evaluation_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/long_breakout_tcn_champion/policy_evaluation.csv",
+    "active_registry_path": null,
+    "source_model_id": "long_breakout_tcn_champion",
+    "selected_policy_name": "global_threshold_plus_abstain",
+    "qualified_policy_names": [
+      "global_threshold_plus_abstain"
+    ],
+    "source_match_type": "artifact_path",
+    "notes": [
+      "Registry abstain overrides from long_breakout_regime_prune_v3 are applied to the packaged live policy.",
+      "Composite abstain regimes: ranging_high, ranging_low, strong_down_high, strong_down_low, strong_down_medium, strong_up_low.",
+      "Composite/session abstains: strong_up_medium x asia.",
+      "Composite/stress abstains: strong_up_medium x elevated.",
+      "Signals below probability quantile 0.20 are filtered out.",
+      "Costs in this threshold-search package reflect spread-aware search defaults with fixed slippage and commission set to 0.0.",
+      "Packaged from threshold search output for long_breakout_tcn_champion."
+    ]
+  }
+}

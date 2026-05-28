@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import importlib.util
 import sys
 import uuid
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -15,22 +16,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ote_live.contracts.prediction import ModelPrediction
 from ote_live.models.ensemble import load_direction_models
 from ote_live.models.loaders import load_live_runtime_manifest, load_runtime_model
+from ote_live.models.registry import build_direction_runtime_manifests, write_direction_runtime_manifests
 from ote_live.models.runners import RuntimeModelRunner
 from ote_live.policies.decision_engine import LiveDecisionEngine
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LONG_BUNDLE_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "live_runtime_manifest_long.json"
-SHORT_XGB_V2_MANIFEST_PATH = (
-    REPO_ROOT / "ote_live" / "runtime_manifests" / "short_ote_xgb_v2_candidate" / "live_runtime_manifest.json"
+SHORT_XGB_LIVE_MANIFEST_PATH = (
+    REPO_ROOT / "ote_live" / "runtime_manifests" / "short_reversal_xgb_v2_20260525" / "live_runtime_manifest.json"
 )
-LONG_TCN_V2_MANIFEST_PATH = (
-    REPO_ROOT / "ote_live" / "runtime_manifests" / "long_ote_tcn_v2_candidate" / "live_runtime_manifest.json"
-)
-LONG_LSTM_V2_MANIFEST_PATH = (
-    REPO_ROOT / "ote_live" / "runtime_manifests" / "long_ote_lstm_v2_candidate" / "live_runtime_manifest.json"
+LONG_TCN_LIVE_MANIFEST_PATH = (
+    REPO_ROOT / "ote_live" / "runtime_manifests" / "long_reversal_tcn_v2_20260525_narrow48" / "live_runtime_manifest.json"
 )
 TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
+
+
+@lru_cache(maxsize=1)
+def _comparison_runtime_manifest_dir() -> Path:
+    output_dir = REPO_ROOT / "tmp" / "ote_live_model_serving_tests" / "comparison_runtime_manifests"
+    manifests = build_direction_runtime_manifests(
+        registry_path=REPO_ROOT / "models" / "ote_model_registry_v1_v2_candidates.json",
+        packaged_policy_dir=output_dir / "_policies",
+    )
+    return write_direction_runtime_manifests(manifests, output_dir=output_dir)
+
+
+def _comparison_manifest_path(model_id: str) -> Path:
+    return _comparison_runtime_manifest_dir() / model_id / "live_runtime_manifest.json"
 
 
 def _synthetic_feature_frame(feature_names: list[str], rows: int) -> pd.DataFrame:
@@ -43,9 +56,9 @@ def _synthetic_feature_frame(feature_names: list[str], rows: int) -> pd.DataFram
 
 
 def test_runtime_model_loader_supports_xgboost_artifacts() -> None:
-    loaded = load_runtime_model(SHORT_XGB_V2_MANIFEST_PATH)
+    loaded = load_runtime_model(SHORT_XGB_LIVE_MANIFEST_PATH)
 
-    assert loaded.model_id == "short_ote_xgb_v2_candidate"
+    assert loaded.model_id == "short_reversal_xgb_v2_20260525"
     assert loaded.backend == "xgboost"
     assert loaded.scaler is not None
     assert loaded.calibrator is not None
@@ -53,7 +66,7 @@ def test_runtime_model_loader_supports_xgboost_artifacts() -> None:
 
 
 def test_runtime_model_runner_produces_prediction_from_feature_frame() -> None:
-    loaded = load_runtime_model(SHORT_XGB_V2_MANIFEST_PATH)
+    loaded = load_runtime_model(SHORT_XGB_LIVE_MANIFEST_PATH)
     runner = RuntimeModelRunner(loaded)
     frame = _synthetic_feature_frame(
         loaded.manifest.feature_manifest.selected_feature_names,
@@ -75,30 +88,36 @@ def test_direction_model_loader_can_skip_unavailable_torch_backends() -> None:
         LONG_BUNDLE_PATH,
         skip_unavailable_backends=True,
     )
+    expected_long_ids = {
+        "long_reversal_tcn_v2_20260525_narrow48",
+        "long_ote_union_tcn_candidate_20260523",
+        "long_ote_meta_tcn_champion",
+        "long_breakout_tcn_champion",
+        "long_breakout_xgb_v1",
+    }
 
     if TORCH_AVAILABLE:
-        assert "long_ote_champion_v1" in bundle.loaded_models
-        assert "long_ote_benchmark_lstm_v1" in bundle.loaded_models
+        assert set(bundle.loaded_models) == expected_long_ids
         assert bundle.unavailable_models == {}
         assert bundle.primary_model is not None
         assert bundle.primary_model.backend == "tcn"
-        assert bundle.primary_model.model_id == "long_ote_champion_v1"
+        assert bundle.primary_model.model_id == "long_reversal_tcn_v2_20260525_narrow48"
     else:
-        assert "long_ote_champion_v1" in bundle.unavailable_models
-        assert "long_ote_benchmark_lstm_v1" in bundle.unavailable_models
-        assert bundle.loaded_models == {}
+        assert set(bundle.unavailable_models) == expected_long_ids - {"long_breakout_xgb_v1"}
+        assert set(bundle.loaded_models) == {"long_breakout_xgb_v1"}
         assert bundle.primary_model is None
 
 
 def test_runtime_model_loader_handles_torch_dependency() -> None:
+    lstm_manifest_path = _comparison_manifest_path("long_ote_lstm_v2_candidate")
     if TORCH_AVAILABLE:
-        tcn_loaded = load_runtime_model(LONG_TCN_V2_MANIFEST_PATH)
-        lstm_loaded = load_runtime_model(LONG_LSTM_V2_MANIFEST_PATH)
+        tcn_loaded = load_runtime_model(LONG_TCN_LIVE_MANIFEST_PATH)
+        lstm_loaded = load_runtime_model(lstm_manifest_path)
         assert tcn_loaded.backend == "tcn"
         assert lstm_loaded.backend == "lstm"
     else:
         with pytest.raises(ImportError, match="torch"):
-            load_runtime_model(LONG_TCN_V2_MANIFEST_PATH)
+            load_runtime_model(LONG_TCN_LIVE_MANIFEST_PATH)
 
 
 def test_runtime_model_runner_supports_torch_backends_when_available() -> None:
@@ -106,8 +125,8 @@ def test_runtime_model_runner_supports_torch_backends_when_available() -> None:
         pytest.skip("torch is not available in this environment.")
 
     for manifest_path, backend in (
-        (LONG_TCN_V2_MANIFEST_PATH, "tcn"),
-        (LONG_LSTM_V2_MANIFEST_PATH, "lstm"),
+        (LONG_TCN_LIVE_MANIFEST_PATH, "tcn"),
+        (_comparison_manifest_path("long_ote_lstm_v2_candidate"), "lstm"),
     ):
         loaded = load_runtime_model(manifest_path)
         runner = RuntimeModelRunner(loaded)
@@ -124,11 +143,21 @@ def test_runtime_model_runner_supports_torch_backends_when_available() -> None:
 
 
 def test_decision_engine_applies_global_threshold_and_cooldown() -> None:
-    manifest = load_live_runtime_manifest(SHORT_XGB_V2_MANIFEST_PATH)
+    manifest = load_live_runtime_manifest(SHORT_XGB_LIVE_MANIFEST_PATH)
     engine = LiveDecisionEngine()
-    threshold = float(manifest.live_policy.thresholds.global_threshold)
+    live_policy = manifest.live_policy.model_copy(
+        update={
+            "abstain_policy": manifest.live_policy.abstain_policy.model_copy(
+                update={
+                    "enabled": True,
+                    "cooldown_bars": 2,
+                }
+            )
+        }
+    )
+    threshold = float(live_policy.thresholds.global_threshold)
 
-    loaded = load_runtime_model(SHORT_XGB_V2_MANIFEST_PATH)
+    loaded = load_runtime_model(SHORT_XGB_LIVE_MANIFEST_PATH)
     timestamp = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     base_prediction = RuntimeModelRunner(loaded).predict_latest(
         _synthetic_feature_frame(
@@ -146,7 +175,7 @@ def test_decision_engine_applies_global_threshold_and_cooldown() -> None:
 
     first = engine.evaluate_prediction(
         base_prediction,
-        live_policy=manifest.live_policy,
+        live_policy=live_policy,
         policy_context={"session_regime": "new_york", "stress_regime": "normal"},
     )
     assert first.signal.decision == "emit"
@@ -160,7 +189,7 @@ def test_decision_engine_applies_global_threshold_and_cooldown() -> None:
     )
     second = engine.evaluate_prediction(
         second_prediction,
-        live_policy=manifest.live_policy,
+        live_policy=live_policy,
         policy_context={"session_regime": "new_york", "stress_regime": "normal"},
     )
 
@@ -170,7 +199,7 @@ def test_decision_engine_applies_global_threshold_and_cooldown() -> None:
 
 
 def test_decision_engine_uses_regime_threshold_when_available() -> None:
-    manifest = load_live_runtime_manifest(LONG_TCN_V2_MANIFEST_PATH)
+    manifest = load_live_runtime_manifest(LONG_TCN_LIVE_MANIFEST_PATH)
     live_policy = manifest.live_policy.model_copy(
         update={
             "thresholds": manifest.live_policy.thresholds.model_copy(
@@ -208,7 +237,7 @@ def test_decision_engine_uses_regime_threshold_when_available() -> None:
 
 
 def test_decision_engine_run_runner_persists_emitted_signals_when_audit_repo_is_configured(monkeypatch) -> None:
-    loaded = load_runtime_model(SHORT_XGB_V2_MANIFEST_PATH)
+    loaded = load_runtime_model(SHORT_XGB_LIVE_MANIFEST_PATH)
     runner = RuntimeModelRunner(loaded)
     feature_frame = _synthetic_feature_frame(
         list(loaded.manifest.feature_manifest.selected_feature_names),

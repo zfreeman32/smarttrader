@@ -35,8 +35,8 @@ from ote_live.models.loaders import LoadedRuntimeModel, load_live_runtime_manife
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
 from ote_live.contracts.market_data import MarketBar
 
-SHORT_XGB_V1_MANIFEST_PATH = (
-    ROOT / "ote_live" / "runtime_manifests" / "short_ote_xgb_v1_candidate" / "live_runtime_manifest.json"
+SHORT_XGB_LIVE_MANIFEST_PATH = (
+    ROOT / "ote_live" / "runtime_manifests" / "short_reversal_xgb_v2_20260525" / "live_runtime_manifest.json"
 )
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+nX8cAAAAASUVORK5CYII="
@@ -440,13 +440,13 @@ def test_runtime_persists_primary_hold_decisions_for_dashboard_confidence() -> N
         reopened_audit = LiveAuditRepository(reopened_store)
         confidence = fetch_confidence_history(
             reopened_audit,
-            model_id="short_ote_xgb_v1_candidate",
+            model_id="short_reversal_xgb_v2_20260525",
             direction="short",
             limit=10,
         )
         signals = fetch_recent_signals(
             reopened_audit,
-            model_ids=("short_ote_xgb_v1_candidate",),
+            model_ids=("short_reversal_xgb_v2_20260525",),
             decisions=("hold",),
             limit=10,
         )
@@ -513,7 +513,7 @@ def _build_signal_processor(
     global_threshold: float = 0.0,
     shadow_mode: bool = False,
 ) -> LiveSignalProcessor:
-    base_manifest = load_live_runtime_manifest(SHORT_XGB_V1_MANIFEST_PATH)
+    base_manifest = load_live_runtime_manifest(SHORT_XGB_LIVE_MANIFEST_PATH)
     selected_feature_names = [
         "rsi_14",
         "dist_to_prior_high_20_atr",

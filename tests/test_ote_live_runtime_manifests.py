@@ -39,47 +39,53 @@ def test_candidate_registry_exports_direction_manifests() -> None:
     manifests = _build_packaged_manifests()
 
     assert set(manifests) == {"long", "short"}
-    assert len(manifests["long"].models) == 4
-    assert len(manifests["short"].models) == 4
-    assert manifests["long"].recommendations.recommended_primary_model_id == "long_ote_tcn_v2_candidate"
-    assert manifests["short"].recommendations.recommended_primary_model_id == "short_ote_tcn_v2_candidate"
-    assert manifests["long"].recommendations.recommended_strongest_v2_model_id == "long_ote_tcn_v2_candidate"
-    assert manifests["short"].recommendations.recommended_strongest_v2_model_id == "short_ote_tcn_v2_candidate"
+    assert len(manifests["long"].models) == 5
+    assert len(manifests["short"].models) == 3
+    assert manifests["long"].recommendations.recommended_primary_model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    assert manifests["short"].recommendations.recommended_primary_model_id == "short_reversal_xgb_v2_20260525"
+    assert manifests["long"].recommendations.recommended_strongest_v2_model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    assert manifests["short"].recommendations.recommended_strongest_v2_model_id == "short_reversal_xgb_v2_20260525"
 
-    long_v2 = next(model for model in manifests["long"].models if model.model_id == "long_ote_tcn_v2_candidate")
-    short_v2 = next(model for model in manifests["short"].models if model.model_id == "short_ote_tcn_v2_candidate")
+    long_primary = next(
+        model for model in manifests["long"].models if model.model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    )
+    short_primary = next(
+        model for model in manifests["short"].models if model.model_id == "short_reversal_xgb_v2_20260525"
+    )
     long_model_ids = {model.model_id for model in manifests["long"].models}
     short_model_ids = {model.model_id for model in manifests["short"].models}
     long_breakout = next(model for model in manifests["long"].models if model.model_id == "long_breakout_tcn_champion")
-    short_reversal = next(model for model in manifests["short"].models if model.model_id == "short_reversal_xgb_v1")
+    long_union = next(
+        model for model in manifests["long"].models if model.model_id == "long_ote_union_tcn_candidate_20260523"
+    )
 
-    assert long_v2.live_policy.policy_status == "complete"
-    assert short_v2.live_policy.policy_status == "complete"
+    assert long_primary.live_policy.policy_status == "complete"
+    assert short_primary.live_policy.policy_status == "complete"
     assert long_breakout.live_policy.policy_status == "complete"
-    assert short_reversal.live_policy.policy_status == "complete"
+    assert long_union.live_policy.policy_status == "complete"
     assert long_model_ids == {
-        "long_ote_tcn_v2_candidate",
-        "long_reversal_tcn_champion",
+        "long_reversal_tcn_v2_20260525_narrow48",
+        "long_ote_union_tcn_candidate_20260523",
         "long_breakout_tcn_champion",
         "long_ote_meta_tcn_champion",
+        "long_breakout_xgb_v1",
     }
     assert short_model_ids == {
-        "short_ote_tcn_v2_candidate",
-        "short_reversal_xgb_v1",
-        "short_breakout_tcn_champion",
+        "short_reversal_xgb_v2_20260525",
         "short_ote_meta_tcn_champion",
+        "short_ote_union_tcn_candidate_20260520",
     }
-    assert long_v2.status == "active"
-    assert short_reversal.status == "active"
+    assert long_primary.status == "active"
+    assert short_primary.status == "active"
     assert long_breakout.status == "candidate"
-    assert long_v2.live_policy.thresholds.regime_thresholds["strong_down_high"] == 0.8
-    assert short_v2.live_policy.thresholds.global_threshold == 0.75
-    assert short_v2.live_policy.abstain_policy.enabled is False
+    assert long_primary.live_policy.thresholds.global_threshold == pytest.approx(0.85)
+    assert short_primary.live_policy.thresholds.global_threshold == pytest.approx(0.80)
+    assert short_primary.live_policy.abstain_policy.enabled is False
 
     output_dir = write_direction_runtime_manifests(manifests, output_dir=_make_local_tmp_dir())
     assert (output_dir / "live_runtime_manifest_long.json").exists()
     assert (output_dir / "live_runtime_manifest_short.json").exists()
-    assert (output_dir / long_v2.model_id / "live_policy.json").exists()
+    assert (output_dir / long_primary.model_id / "live_policy.json").exists()
 
 
 def test_selected_features_exist_in_canonical_feature_catalog() -> None:
@@ -97,31 +103,30 @@ def test_selected_features_exist_in_canonical_feature_catalog() -> None:
                 assert any("stale direction list" in note for note in model_manifest.notes)
 
 
-def test_family_candidate_registry_allows_stale_direction_feature_lists() -> None:
-    manifests = build_direction_runtime_manifests(
-        registry_path=Path("models/ote_model_registry_champion_models_candidates.json"),
-        packaged_policy_dir=_make_local_tmp_dir(),
-    )
+def test_live_registry_allows_stale_direction_feature_lists() -> None:
+    manifests = build_direction_runtime_manifests(packaged_policy_dir=_make_local_tmp_dir())
 
-    assert set(manifests) == {"long", "short"}
-    assert len(manifests["long"].models) == 3
-    assert len(manifests["short"].models) == 3
+    clean_direction_models: list[str] = []
+    stale_direction_models: list[str] = []
+    for direction_manifest in manifests.values():
+        for model_manifest in direction_manifest.models:
+            validation = model_manifest.feature_manifest.validation
+            if validation.selected_features_in_direction_feature_list:
+                clean_direction_models.append(model_manifest.model_id)
+                continue
+            stale_direction_models.append(model_manifest.model_id)
+            assert validation.missing_from_canonical_catalog == []
+            assert any("stale direction list" in note for note in model_manifest.notes)
 
-    long_reversal = next(model for model in manifests["long"].models if model.model_id == "long_reversal_tcn_champion")
-    short_breakout = next(model for model in manifests["short"].models if model.model_id == "short_breakout_tcn_champion")
-    long_meta = next(model for model in manifests["long"].models if model.model_id == "long_ote_meta_tcn_champion")
-
-    assert long_meta.feature_manifest.validation.selected_features_in_direction_feature_list
-    assert not long_reversal.feature_manifest.validation.selected_features_in_direction_feature_list
-    assert not short_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
-    assert long_reversal.feature_manifest.validation.missing_from_canonical_catalog == []
-    assert short_breakout.feature_manifest.validation.missing_from_canonical_catalog == []
-    assert any("stale direction list" in note for note in long_reversal.notes)
+    assert clean_direction_models
+    assert stale_direction_models
 
 
 def test_live_policy_schema_requires_abstain_fields_and_context_rows() -> None:
     manifests = _build_packaged_manifests()
-    primary_long = next(model for model in manifests["long"].models if model.model_id == "long_ote_tcn_v2_candidate")
+    primary_long = next(
+        model for model in manifests["long"].models if model.model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    )
 
     validate_manifest_for_live_decisions(primary_long, require_complete_policy=True)
 
@@ -143,11 +148,11 @@ def test_written_policy_file_is_versioned_json() -> None:
     manifests = _build_packaged_manifests()
     output_dir = write_direction_runtime_manifests(manifests, output_dir=_make_local_tmp_dir())
 
-    policy_path = output_dir / "long_ote_tcn_v2_candidate" / "live_policy.json"
+    policy_path = output_dir / "long_reversal_tcn_v2_20260525_narrow48" / "live_policy.json"
     payload = json.loads(policy_path.read_text(encoding="utf-8"))
 
     assert payload["schema_version"] == "1.0.0"
-    assert payload["model_id"] == "long_ote_tcn_v2_candidate"
+    assert payload["model_id"] == "long_reversal_tcn_v2_20260525_narrow48"
 
 
 def test_legacy_active_registry_still_exports_direction_manifests() -> None:

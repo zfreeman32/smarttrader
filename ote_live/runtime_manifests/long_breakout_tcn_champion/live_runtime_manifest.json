@@ -1,0 +1,278 @@
+{
+  "manifest_version": "1.0.0",
+  "generated_at_utc": "2026-05-28T01:27:43.852026Z",
+  "registry_path": "models/ote_model_registry_live_multifamily.json",
+  "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/multifamily_live_v1/run_summary.json",
+  "asset": "EURUSD",
+  "timeframe": "5m",
+  "model_id": "long_breakout_tcn_champion",
+  "direction": "long",
+  "role": "candidate",
+  "backend": "tcn",
+  "status": "candidate",
+  "promotion_date": "2026-05-27",
+  "promotion_reason": "Included as the primary long breakout shadow candidate after the repaired artifact posted the best breakout-family live-like result.",
+  "calibration_method": "platt",
+  "artifact_references": {
+    "artifact_dir": "models/live/long_breakout_tcn",
+    "model_file": "models/live/long_breakout_tcn/model.pt",
+    "scaler_file": "models/live/long_breakout_tcn/scaler.joblib",
+    "calibrator_file": "models/live/long_breakout_tcn/calibrator.joblib",
+    "model_config_file": "models/live/long_breakout_tcn/model_config.json",
+    "training_summary_file": "models/live/long_breakout_tcn/training_summary.json",
+    "test_predictions_file": "models/live/long_breakout_tcn/test_predictions.csv"
+  },
+  "registry_metrics": {
+    "cv_mean_ap": 0.9504390205906796,
+    "cv_mean_event_f05": 0.8754366914674891,
+    "test_ap": 0.9897790501336851,
+    "test_event_f05": 0.9607366226546212
+  },
+  "artifact_test_metrics": {
+    "average_precision": 0.9897790501336851,
+    "roc_auc": 0.9996393760841471,
+    "brier": 0.0016592220636084676,
+    "threshold": 0.9199999999999999,
+    "event_precision": 0.9946043165467626,
+    "event_recall": 0.845565749235474,
+    "event_f1": 0.9140495867768595,
+    "event_fbeta_0_5": 0.9607366226546212,
+    "predicted_events": 556.0,
+    "true_events": 654.0,
+    "matched_events": 553.0
+  },
+  "context_requirements": {
+    "window_size": 32,
+    "context_rows": 31,
+    "feature_builder_warmup_rows": 250,
+    "resolved_purge_bars": 132,
+    "minimum_runtime_history_bars": 250,
+    "label_horizon_assumptions": {
+      "label_max_holding_bars": 120,
+      "label_exclusion_pre_bars": 10,
+      "label_zone_pre_bars": 2,
+      "purge_buffer_bars": 12,
+      "event_tolerance_bars": 2,
+      "event_cooldown_bars": 6
+    }
+  },
+  "feature_manifest": {
+    "canonical_feature_metadata_file": "data/features/eurusd_5min_ote_full.metadata.json",
+    "canonical_feature_count": 1607,
+    "direction_feature_file": "data/prepared/eurusd_5min_ote_full/long_ote/features.json",
+    "direction_feature_count": 1052,
+    "selected_feature_names": [
+      "strategy__membership_based_trading_signals__mean_reversion",
+      "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__long",
+      "strategy__cotton_trading_signals__trading_signal__short",
+      "strategy__smi_signals__smi",
+      "strategy__breakout_trading_signals_the_internal_bar_strength_ibs_indicator_strategy__signal__long",
+      "strategy__ema_signals__ema_bearish_signal",
+      "strategy__spectrum_bars_le_signals__spectrum_bars_buy_signal",
+      "strategy__linear_regression_signals__signal__long",
+      "strategy__breakout_trading_signals__final_signal__long",
+      "close_return_5_zscore_100",
+      "strategy__rubber_band_strategy__signal__neutral",
+      "close_return_1_winsor_100",
+      "interaction_vol_adjusted_momentum",
+      "strategy__dual_momentum_signals__trade_signal__long",
+      "strategy__rei_signals__rei",
+      "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__neutral",
+      "close_return_1_zscore_100",
+      "dist_to_prior_high_20_atr_lag_1",
+      "strategy__quantified_strategy_signals__strategy_signal__short",
+      "strategy__calculate_pzo_calculate_pzo__0",
+      "rsi_slope_decay_8_21_sigma_norm_60",
+      "close_vs_ema_8_atr_lag_10",
+      "rsi_slope_decay_8_21",
+      "candle_body",
+      "strategy__overnight_trading_signals__signal__neutral",
+      "price_position_50",
+      "rsi_slope_8",
+      "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__neutral",
+      "price_position_50_roll_std_10",
+      "strategy__membership_based_trading_signals__signal__long",
+      "close_vs_ema_50_atr",
+      "strategy__rocwb_signals__rocwb_buy_signal",
+      "breakout_high_20",
+      "close_vs_sma_20_atr",
+      "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long",
+      "strategy__momentum_strategy_signals__signal__long",
+      "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__short",
+      "strategy__strategy_w5_8_13__w5_8_13_buy_signal",
+      "strategy__stc_signals__stc_oversold_signal",
+      "strategy__strategy_5_8_13__5_8_13_buy_signal",
+      "strategy__quantified_strategies_signals__strategy_signal__neutral",
+      "strategy__fisher_transform_signals__fisher",
+      "close_return_5_roll_mean_10",
+      "return_slope_decay_8_21_sigma_norm_60",
+      "bars_since_sweep_high",
+      "strategy__eurnzd_forex_strategy__signal__short",
+      "failed_continuation_bull",
+      "close_return_5_lag_2",
+      "close_vs_ema_21_atr_lag_1",
+      "stoch_position_14",
+      "strategy__hacolt_signals__hacolt",
+      "strategy__dual_momentum_signals__trade_signal__short",
+      "close_return_3_lag_3",
+      "strategy__vols_switch_signals__vols_switch_buy_signal",
+      "atr_ratio_14_50_lag_2",
+      "strategy__membership_plans_signals_what_are_the_worst_trading_days_for_stocks_strategy__final_signal__short",
+      "log_return_1",
+      "momentum_atr_5",
+      "roc_10_lag_1",
+      "strategy__rocwb_signals__rocwb_sell_signal",
+      "strategy__moving_average_strategy__moving_average_sell_signal",
+      "return_slope_decay_8_21",
+      "strategy__weekly_trading_signals__signal__long",
+      "macd_hist",
+      "exhaustion_score",
+      "return_slope_8_winsor_100",
+      "strategy__seasonal_trading_signals__signal__short",
+      "htf_1h_ema_spread_21_50_atr",
+      "return_slope_8_sigma_norm_60",
+      "strategy__trend_reversal_signals__signal__neutral",
+      "close_return_10",
+      "rsi_14_roll_mean_10",
+      "ict_dist_to_swing_high_atr",
+      "htf_30m_dist_to_swing_low_atr",
+      "close_return_5_lag_1",
+      "close_return_3_lag_1",
+      "bars_since_sweep_high_lag_3",
+      "interaction_lowvol_bear_reversion",
+      "close_vs_ema_21_atr_lag_2",
+      "close_return_1_lag_2"
+    ],
+    "selected_feature_count": 80,
+    "strategy_feature_count": 37,
+    "lag_steps": [],
+    "delta_feature_count": 0,
+    "validation": {
+      "selected_features_in_canonical_catalog": true,
+      "selected_features_in_direction_feature_list": false,
+      "missing_from_canonical_catalog": [],
+      "missing_from_direction_feature_list": [
+        "atr_ratio_14_50_lag_2",
+        "close_return_10",
+        "log_return_1",
+        "return_slope_decay_8_21",
+        "strategy__cotton_trading_signals__trading_signal__short",
+        "strategy__eurnzd_forex_strategy__signal__short",
+        "strategy__membership_based_trading_signals__signal__long",
+        "strategy__moving_average_strategy__moving_average_sell_signal"
+      ]
+    }
+  },
+  "timezone_contract": {
+    "source_timezone": "UTC",
+    "canonical_timezone": "UTC",
+    "feature_clock_timezone": "America/New_York",
+    "london_timezone": "Europe/London",
+    "new_york_timezone": "America/New_York",
+    "market_close_timezone": "America/New_York",
+    "market_close_time": "17:00"
+  },
+  "source_lineage": {
+    "feature_csv": "data\\features\\eurusd_5min_ote_full.csv",
+    "feature_metadata_file": "data\\features\\eurusd_5min_ote_full.metadata.json",
+    "feature_builder_source_path": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+    "feature_builder_source_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_source_path": "data\\currency_data\\eurusd-5m.csv",
+    "upstream_metadata_file": "data\\labeling\\labeled_data\\eurusd_5min_ote_labels_full.metadata.json",
+    "upstream_bar_timestamp_semantics": "as_provided",
+    "upstream_timezone_contract": {
+      "source_timezone": "GMT-6",
+      "canonical_timezone": "UTC",
+      "csv_timezone": "UTC",
+      "csv_timestamps_are_timezone_aware": false,
+      "timestamp_column": "timestamp"
+    }
+  },
+  "live_policy": {
+    "schema_version": "1.0.0",
+    "model_id": "long_breakout_tcn_champion",
+    "direction": "long",
+    "backend": "tcn",
+    "calibration_method": "platt",
+    "policy_status": "complete",
+    "thresholds": {
+      "global_threshold": 0.9199999999999999,
+      "regime_thresholds": null
+    },
+    "abstain_policy": {
+      "enabled": true,
+      "abstain_high_stress": true,
+      "abstain_off_hours": true,
+      "cooldown_bars": 6,
+      "minimum_expected_move_to_spread": 2.0,
+      "abstain_session_regimes": [],
+      "abstain_composite_regimes": [
+        "strong_down_high",
+        "strong_down_low",
+        "strong_down_medium",
+        "ranging_high",
+        "ranging_low",
+        "strong_up_low"
+      ],
+      "abstain_composite_session_pairs": [
+        [
+          "strong_up_medium",
+          "asia"
+        ]
+      ],
+      "abstain_composite_stress_pairs": [
+        [
+          "strong_up_medium",
+          "elevated"
+        ]
+      ],
+      "minimum_probability_quantile": 0.2
+    },
+    "cost_assumptions": {
+      "fixed_slippage_pips_per_trade": 0.0,
+      "commission_pips_per_trade": 0.0,
+      "session_spread_pips": {
+        "overlap": 1.0,
+        "london": 1.5,
+        "new_york": 1.5,
+        "asia": 2.5,
+        "off_hours": 3.0
+      },
+      "targeted_filter_preset": "long_breakout_regime_prune_v3"
+    },
+    "lineage": {
+      "threshold_registry_path": "models/ote_model_registry_live_multifamily.json",
+      "policy_source_type": "threshold_policy_search_package",
+      "policy_backtest_summary_path": "model_testing/reports/ote_policy_backtests/long_breakout_tcn_repair_20260513_v2_regime_prune_v3/run_summary.json",
+      "policy_search_summary_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/run_summary.json",
+      "policy_table_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/long_breakout_tcn_champion/policy_table.csv",
+      "policy_evaluation_path": "model_testing/reports/ote_threshold_policies/multifamily_live_v1/long_breakout_tcn_champion/policy_evaluation.csv",
+      "active_registry_path": null,
+      "source_model_id": "long_breakout_tcn_champion",
+      "selected_policy_name": "global_threshold_plus_abstain",
+      "qualified_policy_names": [
+        "global_threshold_plus_abstain"
+      ],
+      "source_match_type": "artifact_path",
+      "notes": [
+        "Registry abstain overrides from long_breakout_regime_prune_v3 are applied to the packaged live policy.",
+        "Composite abstain regimes: ranging_high, ranging_low, strong_down_high, strong_down_low, strong_down_medium, strong_up_low.",
+        "Composite/session abstains: strong_up_medium x asia.",
+        "Composite/stress abstains: strong_up_medium x elevated.",
+        "Signals below probability quantile 0.20 are filtered out.",
+        "Costs in this threshold-search package reflect spread-aware search defaults with fixed slippage and commission set to 0.0.",
+        "Packaged from threshold search output for long_breakout_tcn_champion."
+      ]
+    }
+  },
+  "notes": [
+    "Registry abstain overrides from long_breakout_regime_prune_v3 are applied to the packaged live policy.",
+    "Composite abstain regimes: ranging_high, ranging_low, strong_down_high, strong_down_low, strong_down_medium, strong_up_low.",
+    "Composite/session abstains: strong_up_medium x asia.",
+    "Composite/stress abstains: strong_up_medium x elevated.",
+    "Signals below probability quantile 0.20 are filtered out.",
+    "Costs in this threshold-search package reflect spread-aware search defaults with fixed slippage and commission set to 0.0.",
+    "Packaged from threshold search output for long_breakout_tcn_champion.",
+    "Selected features were missing from the direction feature list (data/prepared/eurusd_5min_ote_full/long_ote/features.json) but present in the canonical feature catalog; live manifest export tolerated the stale direction list."
+  ]
+}

@@ -37,26 +37,29 @@ def test_resolve_dashboard_model_selection_stays_pinned_to_configured_primary() 
         audit = LiveAuditRepository(store)
         _record_signal(
             audit,
-            model_id="long_ote_tcn_v1_candidate",
+            model_id="long_ote_union_tcn_candidate_20260523",
             direction="long",
             timestamp=datetime(2026, 4, 7, 3, 50, tzinfo=UTC),
         )
 
         selection = _resolve_dashboard_model_selection(
             audit,
-            configured_model_id="long_ote_tcn_v2_candidate",
+            configured_model_id="long_reversal_tcn_v2_20260525_narrow48",
             direction="long",
             manifest_model_ids=(
-                "long_ote_tcn_v2_candidate",
-                "long_ote_tcn_v1_candidate",
-                "long_ote_xgb_v2_candidate",
+                "long_reversal_tcn_v2_20260525_narrow48",
+                "long_ote_union_tcn_candidate_20260523",
+                "long_ote_meta_tcn_champion",
             ),
         )
 
-    assert selection.configured_model_id == "long_ote_tcn_v2_candidate"
-    assert selection.resolved_model_id == "long_ote_tcn_v2_candidate"
+    assert selection.configured_model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    assert selection.resolved_model_id == "long_reversal_tcn_v2_20260525_narrow48"
     assert selection.used_fallback is False
-    assert _confidence_title("Long Primary Confidence", selection) == "Long Primary Confidence | long_ote_tcn_v2_candidate"
+    assert (
+        _confidence_title("Long Primary Confidence", selection)
+        == "Long Primary Confidence | long_reversal_tcn_v2_20260525_narrow48"
+    )
 
 
 def test_override_signal_selection_from_query_routes_by_signal_direction() -> None:
@@ -92,7 +95,7 @@ def test_build_model_confidence_panels_renders_probability_and_threshold_graph(m
     model_manifest = next(
         item
         for item in direction_manifest.models
-        if item.model_id == "long_ote_tcn_v2_candidate"
+        if item.model_id == "long_reversal_tcn_v2_20260525_narrow48"
     )
     monkeypatch.setattr(
         "ote_live.dashboard.app.build_confidence_figure",
