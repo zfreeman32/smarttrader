@@ -257,7 +257,6 @@ def test_preprocessing_uses_safe_negatives_and_builds_multiple_targets(tmp_path:
         len(pd.read_csv(short_dir / filename))
         for filename in ("train.csv", "val.csv", "test.csv")
     )
-
     long_report = json.loads((long_dir / "report.json").read_text(encoding="utf-8"))
     short_report = json.loads((short_dir / "report.json").read_text(encoding="utf-8"))
 
@@ -265,6 +264,29 @@ def test_preprocessing_uses_safe_negatives_and_builds_multiple_targets(tmp_path:
     assert short_total == short_report["row_counts"]["rows_usable"]
     assert long_report["row_counts"]["rows_excluded_as_ambiguous"] > 0
     assert short_report["row_counts"]["rows_excluded_as_ambiguous"] > 0
+
+
+def test_preprocessing_runtime_tuning_expands_analysis_cap_for_1m_metadata(tmp_path: Path) -> None:
+    dataset_path = _write_dataset(tmp_path)
+    metadata_path = dataset_path.with_suffix(".metadata.json")
+    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    payload["input_bar_minutes"] = 1.0
+    payload["input_timeframe"] = "1m"
+    metadata_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    output_dir = tmp_path / "prepared_1m"
+    pipeline = FeaturePreprocessingPipeline(
+        PreprocessingConfig(
+            target_columns=["label_long_entry"],
+            min_usable_rows=5,
+            min_train_rows=3,
+            min_positive_samples=1,
+        )
+    )
+    summary = pipeline.run(dataset_path, output_dir)
+
+    assert summary["runtime_bar_interval_tuning"]["applied"] is True
+    assert summary["config"]["max_analysis_rows"] == 500000
 
 
 def test_preprocessing_writes_source_row_idx_to_each_split(tmp_path: Path) -> None:
@@ -426,6 +448,33 @@ def test_discover_targets_supports_reversal_continuation_and_breakout_families()
     assert breakout_entry.exclude_column == "exclude_short_breakout"
     assert breakout_entry.safe_negative_column == "neg_ok_short_breakout"
     assert breakout_entry.label_kind == "breakout_entry"
+
+
+def test_discover_targets_supports_breakout_sustained_family() -> None:
+    df = pd.DataFrame(
+        columns=[
+            "label_long_breakout_sustained",
+            "sample_weight_long_breakout_sustained",
+            "label_quality_long_breakout_sustained",
+            "exclude_long_breakout_sustained",
+            "neg_ok_long_breakout_sustained",
+        ]
+    )
+
+    specs = discover_targets(
+        df,
+        PreprocessingConfig(target_columns=["label_long_breakout_sustained"]),
+    )
+    specs_by_name = {spec.name: spec for spec in specs}
+
+    assert "long_breakout_sustained" in specs_by_name
+    sustained = specs_by_name["long_breakout_sustained"]
+    assert sustained.target_column == "label_long_breakout_sustained"
+    assert sustained.sample_weight_column == "sample_weight_long_breakout_sustained"
+    assert sustained.quality_column == "label_quality_long_breakout_sustained"
+    assert sustained.exclude_column == "exclude_long_breakout_sustained"
+    assert sustained.safe_negative_column == "neg_ok_long_breakout_sustained"
+    assert sustained.label_kind == "breakout_sustained"
 
 
 def test_discover_targets_synthesizes_meta_ote_targets_from_family_zone_labels() -> None:

@@ -14,13 +14,26 @@ from ote_live.features.incremental_engine import (
     IncrementalFeatureEngine,
     build_manifest_feature_plan,
     build_runtime_feature_config,
+    infer_required_history_bars,
 )
 from ote_live.features.manifest import LiveRuntimeManifest
 from ote_live.features.strategy_adapter import StrategyFeatureAdapter
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-LONG_V2_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "long_ote_tcn_v2_candidate" / "live_runtime_manifest.json"
-SHORT_V2_MANIFEST_PATH = REPO_ROOT / "ote_live" / "runtime_manifests" / "short_ote_tcn_v2_candidate" / "live_runtime_manifest.json"
+LONG_V2_MANIFEST_PATH = (
+    REPO_ROOT
+    / "ote_live"
+    / "runtime_manifests"
+    / "long_reversal_tcn_v2_20260525_narrow48"
+    / "live_runtime_manifest.json"
+)
+SHORT_V2_MANIFEST_PATH = (
+    REPO_ROOT
+    / "ote_live"
+    / "runtime_manifests"
+    / "short_reversal_xgb_v2_20260525"
+    / "live_runtime_manifest.json"
+)
 EURUSD_5M_PATH = REPO_ROOT / "data" / "currency_data" / "eurusd-5m.csv"
 
 _LAG_PATTERN = re.compile(r"^(?P<base>.+)_lag_(?P<period>\d+)$")
@@ -119,43 +132,51 @@ def test_runtime_feature_config_prunes_transforms_to_selected_manifest_features(
     config = build_runtime_feature_config(plan)
     default_config = FeatureBuilderConfig.from_recipe(DEFAULT_RECIPE_PATH)
 
+    expected_feature_names = plan.built_feature_names
+
     lag_columns, lag_periods = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _LAG_PATTERN,
         "period",
         allowed_bases=set(default_config.lag_columns),
     )
     rolling_columns, rolling_windows = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _ROLLING_PATTERN,
         "window",
         allowed_bases=set(default_config.rolling_stat_columns),
     )
     zscore_columns, zscore_windows = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _ZSCORE_PATTERN,
         "window",
         allowed_bases=set(default_config.zscore_columns),
     )
     percentile_columns, percentile_windows = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _PERCENTILE_PATTERN,
         "window",
         allowed_bases=set(default_config.percentile_rank_columns),
     )
+    if {
+        "interaction_lowvol_bull_reversion",
+        "interaction_lowvol_bear_reversion",
+    } & set(expected_feature_names):
+        percentile_columns.add("rolling_vol_20")
+        percentile_windows.add(60)
     atr_columns = _collect_columns(
-        plan.selected_feature_names,
+        expected_feature_names,
         _ATR_PATTERN,
         allowed_bases=set(default_config.atr_normalization_columns),
     )
     sigma_columns, sigma_windows = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _SIGMA_PATTERN,
         "window",
         allowed_bases=set(default_config.sigma_normalization_columns),
     )
     winsor_columns, winsor_windows = _collect_columns_and_values(
-        plan.selected_feature_names,
+        expected_feature_names,
         _WINSOR_PATTERN,
         "window",
         allowed_bases=set(default_config.winsorize_columns),
@@ -202,6 +223,27 @@ def test_runtime_feature_config_prunes_transforms_to_selected_manifest_features(
     )
 
 
+def test_infer_required_history_bars_expands_for_htf_context_features() -> None:
+    assert infer_required_history_bars(["htf_30m_ema_spread_21_50_atr"]) >= 1000
+    assert infer_required_history_bars(["htf_1h_ema_spread_21_50_atr"]) >= 2000
+    assert infer_required_history_bars(["htf_alignment_score"]) >= 2000
+
+
+def test_manifest_plan_prefers_htf_history_over_strategy_default_budget() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(LONG_V2_MANIFEST_PATH),
+        [
+            "strategy__smi_signals__smi",
+            "htf_1h_ema_spread_21_50_atr",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+
+    assert plan.inferred_history_bars >= 2000
+    assert plan.runtime_history_bars >= 2000
+
+
 def test_incremental_engine_builds_selected_subset_with_single_strategy_feature() -> None:
     base_manifest = _load_manifest(LONG_V2_MANIFEST_PATH)
     selected_feature_names = [
@@ -225,3 +267,35 @@ def test_incremental_engine_builds_selected_subset_with_single_strategy_feature(
     assert manifest.model_id in snapshots
     assert set(snapshots[manifest.model_id].feature_values) == set(selected_feature_names)
     assert snapshots[manifest.model_id].valid_feature_count == len(selected_feature_names)
+
+
+def test_incremental_engine_can_include_policy_context_features_without_changing_model_subset() -> None:
+    base_manifest = _load_manifest(LONG_V2_MANIFEST_PATH)
+    selected_feature_names = [
+        "rsi_14",
+        "dist_to_prior_high_20_atr",
+        "atr_ratio_14_50_roll_mean_100",
+    ]
+    manifest = _subset_manifest(base_manifest, selected_feature_names)
+
+    engine = IncrementalFeatureEngine([manifest], rolling_window_bars=600)
+    market_frame = pd.read_csv(EURUSD_5M_PATH).tail(600).reset_index(drop=True)
+
+    selected_feature_frame = engine.build_feature_frame(market_frame)
+    policy_feature_frame = engine.build_feature_frame(market_frame, include_policy_features=True)
+
+    assert list(selected_feature_frame.columns) == selected_feature_names
+    assert list(policy_feature_frame.columns[: len(selected_feature_names)]) == selected_feature_names
+    assert {
+        "ema_alignment",
+        "atr_14",
+        "range_shock_20",
+        "close_vs_ema_50_atr",
+        "hour",
+        "hour_sin",
+        "hour_cos",
+    }.issubset(policy_feature_frame.columns)
+    latest_policy_row = policy_feature_frame.iloc[-1]
+    assert pd.notna(latest_policy_row["ema_alignment"])
+    assert pd.notna(latest_policy_row["atr_14"])
+    assert pd.notna(latest_policy_row["range_shock_20"])

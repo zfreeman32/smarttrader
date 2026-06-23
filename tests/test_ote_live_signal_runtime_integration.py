@@ -173,7 +173,84 @@ def test_runtime_emits_signal_and_automatically_persists_notification_and_screen
     assert Path(reconstructed.media_artifacts[0].file_path).exists()
 
 
-def test_runtime_shadow_signal_still_persists_notification_and_screenshot() -> None:
+def test_runtime_emits_signal_sends_notifications_without_operator_artifacts() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    chart_root = tmp_root / "charts"
+
+    seed_bars = [_minute_bar(offset) for offset in range(1_250)]
+    live_cycle_bars = [_minute_bar(offset) for offset in range(1_250, 1_255)]
+
+    store = SQLiteLiveDataStore(db_path)
+    audit = LiveAuditRepository(store)
+    email_transport = _RecordingEmailTransport()
+    sms_transport = _RecordingSmsTransport()
+    signal_processor = _build_signal_processor(
+        store=store,
+        audit=audit,
+        email_transport=email_transport,
+        sms_transport=sms_transport,
+        chart_root=chart_root,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="1m",
+            aggregation_timeframes=("5m",),
+            startup_history_bars=len(seed_bars),
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=_FakeClient(seed_bars=seed_bars),  # type: ignore[arg-type]
+        stream=_FakeStream(live_cycle_bars),  # type: ignore[arg-type]
+        backfill_connector=_FakeBackfill(),  # type: ignore[arg-type]
+        store=store,
+        service=LiveBarIngestionService(
+            stream=_FakeStream([]),
+            backfill=_FakeBackfill(),
+            store=store,
+            gap_detector=GapDetector(asset="EURUSD", timeframe="1m"),
+            aggregator=MultiTimeframeBarAggregator(target_timeframes=("5m",)),
+            heartbeat_monitor=HeartbeatMonitor(source="runtime-signal-test"),
+            audit_repository=audit,
+        ),
+        audit_repository=audit,
+        signal_processor=signal_processor,
+    )
+    runtime.service.stream = runtime.stream
+    runtime.service.backfill = runtime.backfill_connector
+    runtime._process_signal_cycle = lambda cycle_result: runtime.signal_processor.process_new_bars_from_store(  # type: ignore[assignment]
+        emit_operator_artifacts=False,
+        max_timestamp=runtime._latest_signal_processing_timestamp(),
+    )
+
+    summary = asyncio.run(runtime.run())
+
+    assert summary.emitted_signals == 1
+    assert summary.sent_notifications == 2
+    assert summary.captured_media_artifacts == 0
+    assert len(email_transport.messages) == 1
+    assert len(sms_transport.messages) == 1
+
+    with SQLiteLiveDataStore(db_path) as reopened_store:
+        reopened_audit = LiveAuditRepository(reopened_store)
+        signals = fetch_recent_signals(
+            reopened_audit,
+            decisions=("emit",),
+            limit=10,
+        )
+        assert len(signals) == 1
+        signal_decision_id = int(signals.iloc[0]["signal_decision_id"])
+        reconstructed = reopened_audit.reconstruct_signal(signal_decision_id, include_bars=False)
+
+    assert len(reconstructed.notifications) == 2
+    assert reconstructed.notifications[0].status == "sent"
+    assert reconstructed.notifications[1].status == "sent"
+    assert len(reconstructed.media_artifacts) == 0
+
+
+def test_runtime_shadow_signal_above_threshold_persists_screenshot_without_notifications() -> None:
     tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
     db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
@@ -226,10 +303,10 @@ def test_runtime_shadow_signal_still_persists_notification_and_screenshot() -> N
 
     assert summary.evaluated_signals == 1
     assert summary.emitted_signals == 0
-    assert summary.sent_notifications == 2
+    assert summary.sent_notifications == 0
     assert summary.captured_media_artifacts == 1
-    assert len(email_transport.messages) == 1
-    assert len(sms_transport.messages) == 1
+    assert len(email_transport.messages) == 0
+    assert len(sms_transport.messages) == 0
 
     with SQLiteLiveDataStore(db_path) as reopened_store:
         reopened_audit = LiveAuditRepository(reopened_store)
@@ -243,12 +320,85 @@ def test_runtime_shadow_signal_still_persists_notification_and_screenshot() -> N
         reconstructed = reopened_audit.reconstruct_signal(signal_decision_id, include_bars=False)
 
     assert reconstructed.signal.decision == "shadow"
-    assert len(reconstructed.notifications) == 2
-    assert reconstructed.notifications[0].status == "sent"
-    assert reconstructed.notifications[1].status == "sent"
+    assert len(reconstructed.notifications) == 0
     assert len(reconstructed.media_artifacts) == 1
     assert reconstructed.media_artifacts[0].artifact_type == "chart_screenshot"
     assert Path(reconstructed.media_artifacts[0].file_path).exists()
+
+
+def test_runtime_shadow_signal_below_threshold_does_not_send_notifications() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    chart_root = tmp_root / "charts"
+
+    seed_bars = [_minute_bar(offset) for offset in range(1_250)]
+    live_cycle_bars = [_minute_bar(offset) for offset in range(1_250, 1_255)]
+
+    store = SQLiteLiveDataStore(db_path)
+    audit = LiveAuditRepository(store)
+    email_transport = _RecordingEmailTransport()
+    sms_transport = _RecordingSmsTransport()
+    signal_processor = _build_signal_processor(
+        store=store,
+        audit=audit,
+        email_transport=email_transport,
+        sms_transport=sms_transport,
+        chart_root=chart_root,
+        global_threshold=0.99,
+        shadow_mode=True,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="1m",
+            aggregation_timeframes=("5m",),
+            startup_history_bars=len(seed_bars),
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=_FakeClient(seed_bars=seed_bars),  # type: ignore[arg-type]
+        stream=_FakeStream(live_cycle_bars),  # type: ignore[arg-type]
+        backfill_connector=_FakeBackfill(),  # type: ignore[arg-type]
+        store=store,
+        service=LiveBarIngestionService(
+            stream=_FakeStream([]),
+            backfill=_FakeBackfill(),
+            store=store,
+            gap_detector=GapDetector(asset="EURUSD", timeframe="1m"),
+            aggregator=MultiTimeframeBarAggregator(target_timeframes=("5m",)),
+            heartbeat_monitor=HeartbeatMonitor(source="runtime-signal-test"),
+            audit_repository=audit,
+        ),
+        audit_repository=audit,
+        signal_processor=signal_processor,
+    )
+    runtime.service.stream = runtime.stream
+    runtime.service.backfill = runtime.backfill_connector
+
+    summary = asyncio.run(runtime.run())
+
+    assert summary.evaluated_signals == 1
+    assert summary.emitted_signals == 0
+    assert summary.sent_notifications == 0
+    assert summary.captured_media_artifacts == 0
+    assert len(email_transport.messages) == 0
+    assert len(sms_transport.messages) == 0
+
+    with SQLiteLiveDataStore(db_path) as reopened_store:
+        reopened_audit = LiveAuditRepository(reopened_store)
+        signals = fetch_recent_signals(
+            reopened_audit,
+            decisions=("shadow",),
+            limit=10,
+        )
+        assert len(signals) == 1
+        signal_decision_id = int(signals.iloc[0]["signal_decision_id"])
+        reconstructed = reopened_audit.reconstruct_signal(signal_decision_id, include_bars=False)
+
+    assert reconstructed.signal.decision == "shadow"
+    assert len(reconstructed.notifications) == 0
+    assert len(reconstructed.media_artifacts) == 0
 
 
 def test_live_signal_processor_requires_the_configured_primary_model(monkeypatch) -> None:
@@ -487,6 +637,7 @@ def test_build_policy_frame_batches_feature_columns_without_changing_overwrite_b
         "asset",
         "timeframe",
         "timestamp",
+        "datetime",
         "open",
         "high",
         "low",
@@ -501,6 +652,10 @@ def test_build_policy_frame_batches_feature_columns_without_changing_overwrite_b
     assert policy_frame["open"].tolist() == [10.0, 11.0]
     assert policy_frame["custom_feature"].tolist() == [0.25, 0.50]
     assert policy_frame["timestamp"].tolist() == [_minute_bar(1).timestamp, _minute_bar(2).timestamp]
+    assert pd.to_datetime(policy_frame["datetime"], utc=True).tolist() == [
+        pd.Timestamp(_minute_bar(1).timestamp),
+        pd.Timestamp(_minute_bar(2).timestamp),
+    ]
 
 
 def _build_signal_processor(

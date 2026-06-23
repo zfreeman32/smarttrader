@@ -20,6 +20,7 @@ from model_training.ote_training.ote_xgboost_pipeline import (
     OTETrainingConfig,
     PreparedTargetDataset,
     PurgedWalkForwardSplitter,
+    build_sequence_fold_datasets,
     build_sequence_windows,
     build_sparse_lag_view,
     cross_validate_trial,
@@ -190,6 +191,40 @@ def test_build_sequence_windows_alignment():
         dtype=np.float32,
     )
     np.testing.assert_allclose(transformed[0], expected)
+
+
+def test_build_sequence_fold_datasets_returns_lazy_window_source():
+    dataset = make_synthetic_dataset(dev_rows=120, test_rows=24, feature_count=4)
+    selected_feature_idx = np.arange(4, dtype=np.int64)
+    train_idx = np.arange(20, 50, dtype=np.int64)
+    val_idx = np.arange(56, 66, dtype=np.int64)
+
+    X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
+        X_dev=dataset.dev_X,
+        y_dev=dataset.dev_y,
+        w_dev=dataset.dev_w,
+        train_idx=train_idx,
+        val_idx=val_idx,
+        selected_feature_idx=selected_feature_idx,
+        window_size=4,
+        config=OTETrainingConfig(),
+    )
+
+    assert hasattr(X_train, "matrix")
+    assert hasattr(X_val, "matrix")
+    assert X_train.matrix.shape == (33, 4)
+    assert X_val.matrix.shape == (13, 4)
+    assert len(X_train) == len(train_idx)
+    assert len(X_val) == len(val_idx)
+    np.testing.assert_array_equal(y_train, dataset.dev_y[20:50])
+    np.testing.assert_array_equal(y_val, dataset.dev_y[56:66])
+    np.testing.assert_array_equal(w_train, dataset.dev_w[20:50])
+    np.testing.assert_array_equal(w_val, dataset.dev_w[56:66])
+
+
+def test_estimate_sequence_window_nbytes():
+    estimated = pipeline.estimate_sequence_window_nbytes(row_count=10, feature_count=2, window_size=4)
+    assert estimated == 7 * 4 * 2 * np.dtype(np.float32).itemsize
 
 
 def test_event_metrics_respects_zone_matching():
@@ -394,6 +429,115 @@ def test_cross_validate_trial_records_oof_fold_ids(monkeypatch: pytest.MonkeyPat
     assert np.all(artifacts.oof_fold_id[:46] == -1)
 
 
+def test_cross_validate_trial_respects_cv_max_folds(monkeypatch: pytest.MonkeyPatch):
+    dataset = make_synthetic_dataset()
+    config = OTETrainingConfig(
+        cv_initial_train_rows=40,
+        cv_val_rows=20,
+        cv_step_rows=20,
+        cv_min_folds=3,
+        cv_max_folds=2,
+        min_train_positive_rows=3,
+        min_val_positive_rows=2,
+        min_val_true_events=2,
+        max_loaded_features=6,
+        window_min=4,
+        window_max=4,
+        label_max_holding_bars=4,
+        label_exclusion_pre_bars=1,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=0,
+        calibration_method="none",
+        verbosity=0,
+    )
+    params = {
+        "window_size": 4,
+        "lag_count": 3,
+        "delta_feature_count": 2,
+        "hard_negative_radius": 1,
+        "hard_negative_multiplier": 1.0,
+    }
+
+    def fake_train_and_score_fold(**kwargs):
+        y_val = kwargs["y_val"]
+        probabilities = np.linspace(0.25, 0.75, num=len(y_val), dtype=np.float32)
+        return probabilities, {
+            "average_precision": 0.4,
+            "roc_auc": 0.7,
+            "brier": 0.2,
+            "threshold": 0.5,
+            "event_precision": 0.75,
+            "event_recall": 0.5,
+            "event_f1": 0.6,
+            "event_fbeta_0_5": 0.68,
+            "predicted_events": 3.0,
+            "true_events": 2.0,
+            "matched_events": 2.0,
+        }
+
+    monkeypatch.setattr(pipeline, "train_and_score_fold", fake_train_and_score_fold)
+
+    artifacts = cross_validate_trial(dataset=dataset, params=params, config=config)
+
+    assert len(artifacts.fold_diagnostics) == 2
+    assert [fold["fold"] for fold in artifacts.fold_diagnostics] == [2, 3]
+
+
+def test_cross_validate_trial_respects_max_train_rows_in_model_rows(monkeypatch: pytest.MonkeyPatch):
+    dataset = make_synthetic_dataset(dev_rows=180, test_rows=24, feature_count=6)
+    config = OTETrainingConfig(
+        cv_initial_train_rows=40,
+        cv_val_rows=20,
+        cv_step_rows=20,
+        cv_max_train_rows=50,
+        cv_min_folds=4,
+        min_train_positive_rows=3,
+        min_val_positive_rows=2,
+        min_val_true_events=2,
+        max_loaded_features=6,
+        window_min=4,
+        window_max=4,
+        label_max_holding_bars=4,
+        label_exclusion_pre_bars=1,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=0,
+        calibration_method="none",
+        verbosity=0,
+    )
+    params = {
+        "window_size": 4,
+        "lag_count": 3,
+        "delta_feature_count": 2,
+        "hard_negative_radius": 1,
+        "hard_negative_multiplier": 1.0,
+    }
+
+    def fake_train_and_score_fold(**kwargs):
+        y_val = kwargs["y_val"]
+        probabilities = np.linspace(0.1, 0.9, num=len(y_val), dtype=np.float32)
+        return probabilities, {
+            "average_precision": 0.45,
+            "roc_auc": 0.72,
+            "brier": 0.18,
+            "threshold": 0.5,
+            "event_precision": 0.8,
+            "event_recall": 0.55,
+            "event_f1": 0.65,
+            "event_fbeta_0_5": 0.7,
+            "predicted_events": 3.0,
+            "true_events": 2.0,
+            "matched_events": 2.0,
+        }
+
+    monkeypatch.setattr(pipeline, "train_and_score_fold", fake_train_and_score_fold)
+
+    artifacts = cross_validate_trial(dataset=dataset, params=params, config=config)
+
+    assert max(fold["train_rows_model"] for fold in artifacts.fold_diagnostics) == 50
+    assert artifacts.fold_diagnostics[-1]["train_rows_raw"] == 50
+    assert artifacts.fold_diagnostics[-1]["train_rows_model"] == 50
+
+
 def test_load_prepared_target_dataset_reads_source_row_idx():
     prepared_root = ROOT / "tmp" / f"test_load_prepared_target_dataset_reads_source_row_idx_{uuid4().hex}"
     target_dir = prepared_root / "long_ote"
@@ -575,6 +719,8 @@ def test_save_training_outputs_includes_source_row_idx():
             "test_raw": np.linspace(0.2, 0.8, num=len(dataset.y_test), dtype=np.float32),
             "test_calibrated": np.linspace(0.25, 0.85, num=len(dataset.y_test), dtype=np.float32),
             "training_history": [],
+            "requested_calibration_method": "platt",
+            "resolved_calibration_method": "platt",
             "model_config": {"backend": "xgboost", "model_type": "xgboost"},
         }
 
@@ -897,3 +1043,150 @@ def test_cross_validate_trial_torch_smoke():
     assert len(artifacts.fold_metrics) >= 2
     assert np.nanmax(artifacts.oof_pred) <= 1.0
     assert np.nanmin(artifacts.oof_pred) >= 0.0
+
+
+def test_build_sequence_fold_datasets_uses_lazy_sequence_source_under_tight_budget():
+    X_dev = np.zeros((64, 8), dtype=np.float32)
+    y_dev = np.zeros(64, dtype=np.uint8)
+    w_dev = np.ones(64, dtype=np.float32)
+    train_idx = np.arange(48, dtype=np.int64)
+    val_idx = np.arange(48, 64, dtype=np.int64)
+    selected_feature_idx = np.arange(8, dtype=np.int64)
+    config = OTETrainingConfig(
+        backend="torch",
+        model_type="tcn",
+        sequence_memory_budget_gib=1e-7,
+    )
+
+    X_train, y_train, w_train, X_val, y_val, w_val = pipeline.build_sequence_fold_datasets(
+        X_dev=X_dev,
+        y_dev=y_dev,
+        w_dev=w_dev,
+        train_idx=train_idx,
+        val_idx=val_idx,
+        selected_feature_idx=selected_feature_idx,
+        window_size=16,
+        config=config,
+    )
+
+    assert hasattr(X_train, "matrix")
+    assert hasattr(X_val, "matrix")
+    assert len(X_train) == len(y_train) == len(w_train) == 33
+    assert len(X_val) == len(y_val) == len(w_val) == 16
+
+
+def test_resolve_sequence_memory_budget_bytes_honors_auto_fraction(monkeypatch):
+    monkeypatch.setattr(pipeline, "detect_available_memory_bytes", lambda: 1_000)
+    config = OTETrainingConfig(
+        backend="torch",
+        model_type="tcn",
+        sequence_memory_budget_gib=0.0,
+        sequence_memory_auto_fraction=0.75,
+    )
+
+    assert pipeline.resolve_sequence_memory_budget_bytes(config) == 750
+
+
+def test_build_torch_training_config_threads_high_memory_runtime_flags():
+    config = OTETrainingConfig(
+        backend="torch",
+        model_type="tcn",
+        torch_preload_to_device=True,
+        torch_allow_tf32=True,
+        torch_cudnn_benchmark=True,
+    )
+    trainer_config = pipeline.build_torch_training_config(
+        input_size=12,
+        params={
+            "focal_alpha": 0.8,
+            "focal_gamma": 2.0,
+        },
+        config=config,
+    )
+
+    assert trainer_config["preload_to_device"] is True
+    assert trainer_config["allow_tf32"] is True
+    assert trainer_config["cudnn_benchmark"] is True
+    assert trainer_config["num_workers"] == 0
+    assert trainer_config["eval_num_workers"] == 0
+
+
+def test_cross_validate_trial_prunes_torch_memory_errors(monkeypatch):
+    dataset = make_synthetic_dataset(dev_rows=120, test_rows=24, feature_count=6)
+    config = OTETrainingConfig(
+        backend="torch",
+        model_type="tcn",
+        cv_initial_train_rows=40,
+        cv_val_rows=20,
+        cv_step_rows=20,
+        cv_min_folds=2,
+        min_train_positive_rows=0,
+        min_val_positive_rows=0,
+        min_val_true_events=0,
+        max_loaded_features=6,
+        label_max_holding_bars=8,
+        label_exclusion_pre_bars=2,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=2,
+        batch_size=32,
+        epochs=1,
+        hidden_size=8,
+        num_layers=1,
+        dropout=0.1,
+        use_amp=False,
+        window_size=8,
+        verbosity=0,
+    )
+    params = {
+        "window_size": 8,
+        "learning_rate": 1e-3,
+        "focal_alpha": 0.85,
+        "focal_gamma": 2.0,
+        "hard_negative_radius": 2,
+        "hard_negative_multiplier": 1.2,
+    }
+
+    def boom(*args, **kwargs):
+        raise MemoryError("oom")
+
+    monkeypatch.setattr(pipeline, "train_and_score_fold", boom)
+
+    with pytest.raises(optuna.TrialPruned, match="Sequence window allocation failed"):
+        pipeline.cross_validate_trial(
+            dataset=dataset,
+            params=params,
+            config=config,
+            trial=optuna.trial.FixedTrial(params),
+        )
+
+
+def test_train_target_pipeline_raises_when_all_trials_pruned(monkeypatch):
+    dataset = make_synthetic_dataset(dev_rows=120, test_rows=24, feature_count=6)
+    config = OTETrainingConfig(
+        backend="torch",
+        model_type="tcn",
+        n_trials=1,
+        cv_initial_train_rows=40,
+        cv_val_rows=20,
+        cv_step_rows=20,
+        cv_min_folds=2,
+        min_train_positive_rows=0,
+        min_val_positive_rows=0,
+        min_val_true_events=0,
+        window_min=8,
+        window_max=8,
+        max_loaded_features=6,
+        label_max_holding_bars=8,
+        label_exclusion_pre_bars=2,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=2,
+        verbosity=0,
+    )
+
+    def always_prune(*args, **kwargs):
+        raise optuna.TrialPruned("too large")
+
+    monkeypatch.setattr(pipeline, "cross_validate_trial", always_prune)
+
+    with pytest.raises(RuntimeError, match="No training trials completed successfully"):
+        pipeline.train_target_pipeline(dataset=dataset, config=config)

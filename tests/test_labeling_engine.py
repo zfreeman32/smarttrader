@@ -18,8 +18,15 @@ from data.labeling.labeling_engine import (
     build_output_metadata,
     filter_date_range,
     load_fx_csv,
+    retune_combined_params,
     write_metadata,
 )
+from data.labeling.ote_breakout_labeling_engine import (
+    BreakoutParams,
+    annotate_sustained_breakout_confirmations,
+    create_sustained_breakout_zone_labels,
+)
+from data.labeling.reversal_labeling_engine import SwingPoint
 
 
 def test_load_fx_csv_normalizes_gmt_minus_6_input_and_builds_metadata() -> None:
@@ -142,3 +149,67 @@ def test_write_metadata_handles_numpy_and_pandas_scalars() -> None:
         assert saved["family_diagnostics"]["reversal"]["timestamp"] == "2024-01-01T00:00:00+00:00"
     finally:
         shutil.rmtree(test_root, ignore_errors=True)
+
+
+def test_retune_combined_params_scales_5m_bar_counts_for_1m_runtime() -> None:
+    params = retune_combined_params(build_default_params(), 1.0)
+
+    assert params.reversal.min_bars_between_swings == 90
+    assert params.reversal.tb_max_bars == 600
+    assert params.continuation.max_pullback_bars == 240
+    assert params.breakout.breakout_lookback_bars == 100
+    assert params.breakout.compression_lookback_bars == 60
+    assert params.breakout.sustained_confirm_max_bars == 30
+    assert params.breakout.sustained_min_followthrough_bars == 10
+    assert params.breakout.sustained_retest_lookahead_bars == 30
+    assert params.breakout.sustained_retest_hold_bars == 5
+    assert params.breakout.sustained_zone_post_bars == 10
+    assert params.reversal.auto_scale_bar_counts is False
+
+
+def test_annotate_sustained_breakout_confirmation_waits_for_followthrough() -> None:
+    index = pd.date_range("2024-01-01 00:00:00+00:00", periods=6, freq="5min")
+    df = pd.DataFrame(
+        {
+            "open": [1.0990, 1.0995, 1.1000, 1.1012, 1.1015, 1.1019],
+            "high": [1.1000, 1.1000, 1.1014, 1.1018, 1.1022, 1.1024],
+            "low": [1.0985, 1.0990, 1.0999, 1.1008, 1.1010, 1.1014],
+            "close": [1.0995, 1.0998, 1.1012, 1.1015, 1.1019, 1.1021],
+        },
+        index=index,
+    )
+    structural_atr = pd.Series(np.full(len(df), 0.0010), index=index)
+    params = BreakoutParams(
+        build_sustained_variant=True,
+        sustained_min_followthrough_bars=2,
+        sustained_zone_post_bars=0,
+    )
+
+    event = SwingPoint(
+        swing_type="low",
+        swing_time=index[1],
+        swing_index=1,
+        swing_price=1.0992,
+        confirm_time=index[2],
+        confirm_index=2,
+        confirm_lag=1,
+        atr_at_swing=0.0010,
+        swing_size_atr=1.0,
+        source_tf="5m",
+        tb_outcome="tp",
+        trend_scan_pass=True,
+        label_quality=0.6,
+        label_tier="C",
+    )
+    event.breakout_level = 1.1000
+
+    annotate_sustained_breakout_confirmations(df, [event], structural_atr, params)
+    long_labels, short_labels = create_sustained_breakout_zone_labels(len(df), [event], params)
+
+    assert event.sustained_confirm_index == 4
+    assert event.sustained_confirm_time == index[4]
+    assert event.sustained_confirmation_reason == "followthrough"
+    assert event.sustained_bars_after_confirm == 2
+    assert np.isclose(event.sustained_followthrough_atr, 1.9)
+    assert long_labels.tolist() == [0, 0, 0, 0, 1, 0]
+    assert short_labels.tolist() == [0, 0, 0, 0, 0, 0]

@@ -74,14 +74,14 @@ LIVE_MODEL_SPECS = (
         ),
     },
     {
-        "model_id": "long_breakout_xgb_v1",
+        "model_id": "short_breakout_tcn_champion",
         "registry_source_path": LIVE_REGISTRY_SOURCE_PATH,
-        "artifact_path": "models/live/long_breakout_xgb",
+        "artifact_path": "models/live/short_breakout_tcn",
         "status": "candidate",
         "promotion_date": "2026-05-27",
         "promotion_reason": (
-            "Included as the second long breakout shadow candidate for comparative live monitoring even though "
-            "its post-training conversion remains weak."
+            "Restored as the short breakout shadow candidate so the live app carries a balanced four-model "
+            "short panel while breakout reevaluation continues."
         ),
     },
     {
@@ -118,7 +118,7 @@ SOURCE_ROOTS = {
         REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "long_ote_union_vs_v2_meta_20260523",
         REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "short_ote_union_vs_v2_20260521",
         REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "long_breakout_tcn_repair_20260513_v2",
-        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "breakout_reversal_xgb_20260509",
+        REPO_ROOT / "model_testing" / "reports" / "ote_regime_slices" / "champion_models_20260508_v2",
     ),
     "threshold": (
         REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_reversal_tcn_v2_20260525_narrow48",
@@ -127,7 +127,7 @@ SOURCE_ROOTS = {
         REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_ote_union_vs_v2_meta_20260523",
         REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "short_ote_union_vs_v2_20260521",
         REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "long_breakout_tcn_repair_20260513_v2",
-        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "breakout_reversal_xgb_20260509",
+        REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / "champion_models_20260508_v2",
     ),
     "backtest": (
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_reversal_xgb_v2_20260525",
@@ -135,9 +135,8 @@ SOURCE_ROOTS = {
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_ote_meta_tcn_repair_20260511_v2_regime_prune_v1",
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "long_ote_union_prune_v1_pairs_20260525",
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "short_ote_union_regime_prune_v1_20260521",
-        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "champion_models_20260508_v2_min5",
         REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "long_breakout_tcn_repair_20260513_v2_regime_prune_v3",
-        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "breakout_reversal_xgb_20260509",
+        REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "champion_models_20260508_v2_min5",
     ),
 }
 

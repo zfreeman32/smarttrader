@@ -39,8 +39,8 @@ def test_candidate_registry_exports_direction_manifests() -> None:
     manifests = _build_packaged_manifests()
 
     assert set(manifests) == {"long", "short"}
-    assert len(manifests["long"].models) == 5
-    assert len(manifests["short"].models) == 3
+    assert len(manifests["long"].models) == 4
+    assert len(manifests["short"].models) == 4
     assert manifests["long"].recommendations.recommended_primary_model_id == "long_reversal_tcn_v2_20260525_narrow48"
     assert manifests["short"].recommendations.recommended_primary_model_id == "short_reversal_xgb_v2_20260525"
     assert manifests["long"].recommendations.recommended_strongest_v2_model_id == "long_reversal_tcn_v2_20260525_narrow48"
@@ -55,6 +55,9 @@ def test_candidate_registry_exports_direction_manifests() -> None:
     long_model_ids = {model.model_id for model in manifests["long"].models}
     short_model_ids = {model.model_id for model in manifests["short"].models}
     long_breakout = next(model for model in manifests["long"].models if model.model_id == "long_breakout_tcn_champion")
+    short_breakout = next(
+        model for model in manifests["short"].models if model.model_id == "short_breakout_tcn_champion"
+    )
     long_union = next(
         model for model in manifests["long"].models if model.model_id == "long_ote_union_tcn_candidate_20260523"
     )
@@ -62,22 +65,24 @@ def test_candidate_registry_exports_direction_manifests() -> None:
     assert long_primary.live_policy.policy_status == "complete"
     assert short_primary.live_policy.policy_status == "complete"
     assert long_breakout.live_policy.policy_status == "complete"
+    assert short_breakout.live_policy.policy_status == "complete"
     assert long_union.live_policy.policy_status == "complete"
     assert long_model_ids == {
         "long_reversal_tcn_v2_20260525_narrow48",
         "long_ote_union_tcn_candidate_20260523",
         "long_breakout_tcn_champion",
         "long_ote_meta_tcn_champion",
-        "long_breakout_xgb_v1",
     }
     assert short_model_ids == {
         "short_reversal_xgb_v2_20260525",
         "short_ote_meta_tcn_champion",
         "short_ote_union_tcn_candidate_20260520",
+        "short_breakout_tcn_champion",
     }
     assert long_primary.status == "active"
     assert short_primary.status == "active"
     assert long_breakout.status == "candidate"
+    assert short_breakout.status == "candidate"
     assert long_primary.live_policy.thresholds.global_threshold == pytest.approx(0.85)
     assert short_primary.live_policy.thresholds.global_threshold == pytest.approx(0.80)
     assert short_primary.live_policy.abstain_policy.enabled is False
@@ -103,23 +108,30 @@ def test_selected_features_exist_in_canonical_feature_catalog() -> None:
                 assert any("stale direction list" in note for note in model_manifest.notes)
 
 
-def test_live_registry_allows_stale_direction_feature_lists() -> None:
+def test_live_registry_uses_model_prepared_feature_catalogs_for_breakout_artifacts() -> None:
     manifests = build_direction_runtime_manifests(packaged_policy_dir=_make_local_tmp_dir())
 
-    clean_direction_models: list[str] = []
-    stale_direction_models: list[str] = []
-    for direction_manifest in manifests.values():
-        for model_manifest in direction_manifest.models:
-            validation = model_manifest.feature_manifest.validation
-            if validation.selected_features_in_direction_feature_list:
-                clean_direction_models.append(model_manifest.model_id)
-                continue
-            stale_direction_models.append(model_manifest.model_id)
-            assert validation.missing_from_canonical_catalog == []
-            assert any("stale direction list" in note for note in model_manifest.notes)
+    long_breakout = next(model for model in manifests["long"].models if model.model_id == "long_breakout_tcn_champion")
+    short_breakout = next(
+        model for model in manifests["short"].models if model.model_id == "short_breakout_tcn_champion"
+    )
 
-    assert clean_direction_models
-    assert stale_direction_models
+    assert long_breakout.feature_manifest.direction_feature_file == (
+        "data/prepared/eurusd_5min_ote_full/long_breakout/features.json"
+    )
+    assert short_breakout.feature_manifest.direction_feature_file == (
+        "data/prepared/eurusd_5min_ote_full/short_breakout/features.json"
+    )
+    assert long_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert long_breakout.feature_manifest.validation.missing_from_direction_feature_list == []
+    assert not short_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert short_breakout.feature_manifest.validation.missing_from_direction_feature_list == [
+        "close_return_10",
+        "rsi_14",
+        "rsi_slope_decay_3_8",
+        "strategy__cmo_absolute_indicator_signals__cmo",
+        "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long",
+    ]
 
 
 def test_live_policy_schema_requires_abstain_fields_and_context_rows() -> None:

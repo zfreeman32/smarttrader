@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Focused 1-minute short_reversal TCN run for a RunPod-style GPU box.
+# This wraps the generic RunPod helper with short-side defaults based on:
+# - the strong 1m short_reversal XGB research result,
+# - historical short_reversal TCNs converging around window_size ~= 24,
+# - the long_reversal 1m RunPod recipe that successfully completed.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+export TARGET="${TARGET:-short_reversal}"
+export PROFILE="${PROFILE:-reversal}"
+
+export SEQUENCE_MEMORY_AUTO_FRACTION="${SEQUENCE_MEMORY_AUTO_FRACTION:-0.78}"
+export PRELOAD_TO_DEVICE="${PRELOAD_TO_DEVICE:-1}"
+export ALLOW_TF32="${ALLOW_TF32:-1}"
+export CUDNN_BENCHMARK="${CUDNN_BENCHMARK:-1}"
+export USE_AMP="${USE_AMP:-0}"
+
+export TORCH_NUM_WORKERS="${TORCH_NUM_WORKERS:-8}"
+export TORCH_EVAL_NUM_WORKERS="${TORCH_EVAL_NUM_WORKERS:-0}"
+export TORCH_PREFETCH_FACTOR="${TORCH_PREFETCH_FACTOR:-4}"
+export TORCH_PERSISTENT_WORKERS="${TORCH_PERSISTENT_WORKERS:-0}"
+
+export N_TRIALS="${N_TRIALS:-18}"
+export CV_INITIAL_TRAIN_ROWS="${CV_INITIAL_TRAIN_ROWS:-400000}"
+export CV_VAL_ROWS="${CV_VAL_ROWS:-80000}"
+export CV_STEP_ROWS="${CV_STEP_ROWS:-120000}"
+export CV_MAX_TRAIN_ROWS="${CV_MAX_TRAIN_ROWS:-700000}"
+export CV_MIN_FOLDS="${CV_MIN_FOLDS:-3}"
+export CV_MAX_FOLDS="${CV_MAX_FOLDS:-6}"
+
+export MAX_LOADED_FEATURES="${MAX_LOADED_FEATURES:-96}"
+export TOP_FEATURE_MIN="${TOP_FEATURE_MIN:-24}"
+export TOP_FEATURE_MAX="${TOP_FEATURE_MAX:-96}"
+
+# Historical short-reversal TCNs landed near 24 bars, so keep the search narrow.
+export WINDOW_MIN="${WINDOW_MIN:-22}"
+export WINDOW_MAX="${WINDOW_MAX:-28}"
+
+export EPOCHS="${EPOCHS:-40}"
+export BATCH_SIZE="${BATCH_SIZE:-512}"
+export HIDDEN_SIZE="${HIDDEN_SIZE:-64}"
+export NUM_LAYERS="${NUM_LAYERS:-3}"
+export LEARNING_RATE="${LEARNING_RATE:-0.001}"
+
+# Bias the search toward cleaner, precision-preserving short reversal behavior.
+export THRESHOLD_EVENT_FBETA_WEIGHT="${THRESHOLD_EVENT_FBETA_WEIGHT:-0.40}"
+export THRESHOLD_EVENT_PRECISION_WEIGHT="${THRESHOLD_EVENT_PRECISION_WEIGHT:-0.60}"
+export THRESHOLD_TURNOVER_PENALTY_WEIGHT="${THRESHOLD_TURNOVER_PENALTY_WEIGHT:-0.45}"
+export THRESHOLD_TURNOVER_TARGET_RATIO="${THRESHOLD_TURNOVER_TARGET_RATIO:-0.80}"
+
+export OBJECTIVE_AVERAGE_PRECISION_WEIGHT="${OBJECTIVE_AVERAGE_PRECISION_WEIGHT:-0.30}"
+export OBJECTIVE_THRESHOLD_SCORE_WEIGHT="${OBJECTIVE_THRESHOLD_SCORE_WEIGHT:-0.60}"
+export OBJECTIVE_BRIER_PENALTY_WEIGHT="${OBJECTIVE_BRIER_PENALTY_WEIGHT:-0.10}"
+
+export FOCAL_ALPHA_MIN="${FOCAL_ALPHA_MIN:-0.72}"
+export FOCAL_ALPHA_MAX="${FOCAL_ALPHA_MAX:-0.82}"
+export FOCAL_GAMMA_MIN="${FOCAL_GAMMA_MIN:-2.40}"
+export FOCAL_GAMMA_MAX="${FOCAL_GAMMA_MAX:-3.20}"
+export HARD_NEGATIVE_RADIUS_MIN="${HARD_NEGATIVE_RADIUS_MIN:-1}"
+export HARD_NEGATIVE_RADIUS_MAX="${HARD_NEGATIVE_RADIUS_MAX:-1}"
+export HARD_NEGATIVE_MULTIPLIER_MIN="${HARD_NEGATIVE_MULTIPLIER_MIN:-2.00}"
+export HARD_NEGATIVE_MULTIPLIER_MAX="${HARD_NEGATIVE_MULTIPLIER_MAX:-2.40}"
+
+export TORCH_WARMUP_EPOCHS="${TORCH_WARMUP_EPOCHS:-5}"
+export TORCH_MAIN_EPOCHS="${TORCH_MAIN_EPOCHS:-18}"
+export TORCH_FINE_EPOCHS="${TORCH_FINE_EPOCHS:-10}"
+export TORCH_TAIL_EPOCHS="${TORCH_TAIL_EPOCHS:-7}"
+export TORCH_FINE_LR_SCALE="${TORCH_FINE_LR_SCALE:-0.20}"
+export TORCH_TAIL_LR_SCALE="${TORCH_TAIL_LR_SCALE:-0.07}"
+
+# Avoid the low open-file limit issue we hit on prior hosted runs.
+ulimit -n "${ULIMIT_NOFILE:-65535}" || true
+
+exec "${SCRIPT_DIR}/run_runpod_tcn.sh" "$@"

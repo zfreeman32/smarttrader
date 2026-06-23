@@ -86,6 +86,58 @@ def test_builder_can_downcast_generated_feature_dtypes() -> None:
     assert "transform:rolling_stats" in metadata["build_timings_seconds"]
 
 
+def test_fill_numeric_columns_forward_fills_and_zero_fills_by_dtype() -> None:
+    working = pd.DataFrame(
+        {
+            "float_feature": [np.nan, 1.5, np.nan, 3.0],
+            "int_feature": pd.Series([pd.NA, 2, pd.NA, 4], dtype="Int64"),
+            "label": ["a", "b", "c", "d"],
+        }
+    )
+
+    filled = FeatureDatasetBuilder._fill_numeric_columns(
+        working.copy(),
+        working.select_dtypes(include=[np.number]).columns,
+    )
+
+    assert filled["float_feature"].tolist() == [0.0, 1.5, 1.5, 3.0]
+    assert filled["int_feature"].tolist() == [0, 2, 2, 4]
+    assert str(filled["int_feature"].dtype) == "Int64"
+    assert filled["label"].tolist() == ["a", "b", "c", "d"]
+
+
+def test_builder_uses_low_memory_numeric_fill_helper(monkeypatch) -> None:
+    market = _sample_market_frame(rows=96)
+    called = {"count": 0}
+    original = FeatureDatasetBuilder._fill_numeric_columns
+
+    def tracking_fill(working: pd.DataFrame, numeric_columns: pd.Index) -> pd.DataFrame:
+        called["count"] += 1
+        return original(working, numeric_columns)
+
+    monkeypatch.setattr(FeatureDatasetBuilder, "_fill_numeric_columns", staticmethod(tracking_fill))
+
+    config = FeatureBuilderConfig(
+        feature_sets=["price_action"],
+        warmup_rows=0,
+        drop_warmup_rows=False,
+        enable_lags=False,
+        enable_rolling_stats=False,
+        enable_zscores=False,
+        enable_winsorization=False,
+        enable_percentile_ranks=False,
+        enable_atr_normalization=False,
+        enable_sigma_normalization=False,
+        enable_interactions=False,
+        fillna_numeric=True,
+    )
+
+    dataset, _ = FeatureDatasetBuilder(config).build(market)
+
+    assert called["count"] == 1
+    assert dataset["close_return_1"].iloc[0] == 0.0
+
+
 def test_builder_emits_progress_events() -> None:
     market = _sample_market_frame(rows=96)
     events = []
@@ -187,6 +239,67 @@ def test_builder_produces_identical_time_features_for_equivalent_utc_and_gmt_min
         gmt6_dataset.loc[:, compare_columns].to_numpy(dtype=float),
         equal_nan=True,
     )
+
+
+def test_builder_runtime_tuning_scales_feature_windows_for_1m_inputs() -> None:
+    market = _sample_market_frame(rows=360)
+    market["datetime"] = pd.date_range("2024-01-01 00:00:00", periods=len(market), freq="1min")
+    config = FeatureBuilderConfig(
+        feature_sets=["price_action", "volatility", "session"],
+        drop_warmup_rows=False,
+        enable_interactions=False,
+        enable_sigma_normalization=False,
+        enable_atr_normalization=False,
+    )
+
+    _, metadata = FeatureDatasetBuilder(config).build(market)
+
+    assert metadata["input_bar_minutes"] == 1.0
+    assert metadata["input_timeframe"] == "1m"
+    assert metadata["runtime_bar_interval_tuning"]["applied"] is True
+    assert metadata["config"]["warmup_rows"] == 1000
+    assert metadata["config"]["lag_periods"] == [5, 15, 25, 50]
+    assert metadata["config"]["rolling_windows"] == [25, 50, 100, 250]
+
+
+def test_builder_avoids_whole_frame_replace_during_non_finite_cleanup(monkeypatch) -> None:
+    market = _sample_market_frame(rows=4)
+    config = FeatureBuilderConfig(
+        feature_sets=[],
+        warmup_rows=0,
+        drop_warmup_rows=False,
+        enable_lags=False,
+        enable_rolling_stats=False,
+        enable_zscores=False,
+        enable_winsorization=False,
+        enable_percentile_ranks=False,
+        enable_atr_normalization=False,
+        enable_sigma_normalization=False,
+        enable_interactions=False,
+        fillna_numeric=True,
+    )
+
+    def fake_transform_blocks(self, working, step_timings, config):
+        return [
+            (
+                "fake",
+                pd.DataFrame(
+                    {
+                        "problem_feature": [0.0, np.inf, -np.inf, np.nan],
+                    }
+                ),
+            )
+        ]
+
+    def fail_replace(self, *args, **kwargs):
+        raise AssertionError("whole-frame DataFrame.replace should not be used here")
+
+    monkeypatch.setattr(FeatureDatasetBuilder, "_build_transform_blocks", fake_transform_blocks)
+    monkeypatch.setattr(pd.DataFrame, "replace", fail_replace)
+
+    dataset, _ = FeatureDatasetBuilder(config).build(market)
+
+    assert dataset["problem_feature"].tolist() == [0.0, 0.0, 0.0, 0.0]
 
 
 def test_prepare_strategy_input_preserves_original_columns_and_adds_aliases() -> None:

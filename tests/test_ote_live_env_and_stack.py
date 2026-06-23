@@ -54,6 +54,7 @@ def test_build_process_plan_includes_dashboard_url_and_runtime_commands() -> Non
         dashboard_port=8050,
         dashboard_refresh_interval_ms=10000,
         dashboard_signal_limit=120,
+        dashboard_model_chart_lookback_hours=24,
         max_cycles=5,
         skip_policy_package=False,
         skip_manifest_export=False,
@@ -73,6 +74,8 @@ def test_build_process_plan_includes_dashboard_url_and_runtime_commands() -> Non
     assert plan.export_command == ("python", "-m", "ote_live.scripts.export_live_runtime_manifests")
     assert plan.dashboard_command is not None
     assert "--debug" in plan.dashboard_command
+    assert "--model-chart-lookback-hours" in plan.dashboard_command
+    assert "24" in plan.dashboard_command
     assert plan.collector_command is not None
     assert "--dashboard-url" in plan.collector_command
     assert "--max-cycles" in plan.collector_command

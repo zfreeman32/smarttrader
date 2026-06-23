@@ -93,7 +93,6 @@ def test_direction_model_loader_can_skip_unavailable_torch_backends() -> None:
         "long_ote_union_tcn_candidate_20260523",
         "long_ote_meta_tcn_champion",
         "long_breakout_tcn_champion",
-        "long_breakout_xgb_v1",
     }
 
     if TORCH_AVAILABLE:
@@ -103,8 +102,8 @@ def test_direction_model_loader_can_skip_unavailable_torch_backends() -> None:
         assert bundle.primary_model.backend == "tcn"
         assert bundle.primary_model.model_id == "long_reversal_tcn_v2_20260525_narrow48"
     else:
-        assert set(bundle.unavailable_models) == expected_long_ids - {"long_breakout_xgb_v1"}
-        assert set(bundle.loaded_models) == {"long_breakout_xgb_v1"}
+        assert set(bundle.unavailable_models) == expected_long_ids
+        assert set(bundle.loaded_models) == set()
         assert bundle.primary_model is None
 
 
@@ -118,6 +117,16 @@ def test_runtime_model_loader_handles_torch_dependency() -> None:
     else:
         with pytest.raises(ImportError, match="torch"):
             load_runtime_model(LONG_TCN_LIVE_MANIFEST_PATH)
+
+
+def test_runtime_model_loader_disables_amp_for_cpu_tcn_inference() -> None:
+    if not TORCH_AVAILABLE:
+        pytest.skip("torch is not available in this environment.")
+
+    loaded = load_runtime_model(LONG_TCN_LIVE_MANIFEST_PATH)
+
+    assert loaded.backend == "tcn"
+    assert loaded.use_amp is False
 
 
 def test_runtime_model_runner_supports_torch_backends_when_available() -> None:

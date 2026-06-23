@@ -18,6 +18,7 @@ from ote_live.dashboard.app import (
     _build_model_confidence_panels,
     _confidence_title,
     _override_signal_selection_from_query,
+    _resolve_confidence_history_fetch_limit,
     _resolve_dashboard_model_selection,
     create_dashboard_app,
 )
@@ -121,6 +122,7 @@ def test_build_model_confidence_panels_renders_probability_and_threshold_graph(m
             audit,
             models=(model_manifest,),
             history_limit=20,
+            timeframe="5m",
             focus_model_id=model_manifest.model_id,
         )
 
@@ -133,6 +135,83 @@ def test_build_model_confidence_panels_renders_probability_and_threshold_graph(m
     trace_names = [str(trace.name) for trace in graph["figure"].data]
     assert "Calibrated probability" in trace_names
     assert any("threshold" in name.lower() for name in trace_names)
+
+
+def test_build_model_confidence_panels_trims_chart_to_recent_lookback_window(monkeypatch) -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_dashboard_app_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    direction_manifest = load_direction_runtime_manifest(LONG_RUNTIME_MANIFEST_PATH)
+    model_manifest = next(
+        item
+        for item in direction_manifest.models
+        if item.model_id == "long_reversal_tcn_v2_20260525_narrow48"
+    )
+    monkeypatch.setattr(
+        "ote_live.dashboard.app.build_confidence_figure",
+        lambda confidence, **kwargs: _FakeFigure(
+            trace_names=("Calibrated probability", "Active threshold"),
+            confidence=confidence,
+            title=kwargs.get("title"),
+            xaxis_range=kwargs.get("xaxis_range"),
+        ),
+    )
+
+    oldest = datetime(2026, 4, 5, 3, 50, tzinfo=UTC)
+    near_latest = datetime(2026, 4, 6, 4, 0, tzinfo=UTC)
+    latest = datetime(2026, 4, 7, 3, 50, tzinfo=UTC)
+
+    with SQLiteLiveDataStore(db_path) as store:
+        audit = LiveAuditRepository(store)
+        _record_signal(
+            audit,
+            model_id=model_manifest.model_id,
+            direction="long",
+            timestamp=oldest,
+        )
+        _record_signal(
+            audit,
+            model_id=model_manifest.model_id,
+            direction="long",
+            timestamp=near_latest,
+        )
+        _record_signal(
+            audit,
+            model_id=model_manifest.model_id,
+            direction="long",
+            timestamp=latest,
+        )
+
+        panels = _build_model_confidence_panels(
+            _FakeComponentFactory(),
+            _FakeComponentFactory(),
+            audit,
+            models=(model_manifest,),
+            history_limit=20,
+            timeframe="5m",
+            lookback_hours=24,
+            focus_model_id=model_manifest.model_id,
+        )
+
+    graph = next(
+        child
+        for child in panels[0]["children"]
+        if child["tag"] == "Graph"
+    )
+    visible_timestamps = list(graph["figure"].confidence["timestamp"])
+    assert visible_timestamps == [near_latest, latest]
+    assert graph["figure"].xaxis_range == (
+        datetime(2026, 4, 6, 3, 50, tzinfo=UTC),
+        latest,
+    )
+
+
+def test_resolve_confidence_history_fetch_limit_scales_to_lookback_window() -> None:
+    assert _resolve_confidence_history_fetch_limit(
+        timeframe="5m",
+        history_limit=120,
+        lookback_hours=24,
+    ) == 290
 
 
 def test_build_price_signal_figure_only_plots_emitted_arrows_and_hides_legend(monkeypatch) -> None:
@@ -364,10 +443,18 @@ class _FakeTrace:
 
 
 class _FakeFigure:
-    def __init__(self, *, trace_names: tuple[str, ...], confidence, title: str | None) -> None:
+    def __init__(
+        self,
+        *,
+        trace_names: tuple[str, ...],
+        confidence,
+        title: str | None,
+        xaxis_range=None,
+    ) -> None:
         self.data = tuple(_FakeTrace(name) for name in trace_names)
         self.confidence = confidence
         self.title = title
+        self.xaxis_range = xaxis_range
 
 
 def _flatten_titles(node) -> list[str]:

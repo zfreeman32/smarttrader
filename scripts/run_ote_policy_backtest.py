@@ -38,6 +38,7 @@ def run_policy_backtest(
     min_train_years: int = 2,
     test_window_months: int = 3,
     rolling_step_months: int = 3,
+    min_scheduled_test_start: str | None = None,
     min_folds: int = 8,
     max_folds: int | None = None,
     min_positive_events: int = 50,
@@ -96,6 +97,7 @@ def run_policy_backtest(
             min_train_years=min_train_years,
             test_window_months=test_window_months,
             rolling_step_months=rolling_step_months,
+            min_scheduled_test_start=_parse_optional_utc_timestamp(min_scheduled_test_start),
             purge_gap_bars=effective_purge_gap,
             min_folds=min_folds,
             max_folds=max_folds,
@@ -164,6 +166,7 @@ def run_policy_backtest(
         "min_train_years": int(min_train_years),
         "test_window_months": int(test_window_months),
         "rolling_step_months": int(rolling_step_months),
+        "min_scheduled_test_start": min_scheduled_test_start,
         "min_folds": int(min_folds),
         "max_folds": None if max_folds is None else int(max_folds),
         "min_positive_events": int(min_positive_events),
@@ -223,6 +226,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-train-years", type=int, default=2)
     parser.add_argument("--test-window-months", type=int, default=3)
     parser.add_argument("--rolling-step-months", type=int, default=3)
+    parser.add_argument(
+        "--min-scheduled-test-start",
+        type=str,
+        default=None,
+        help="Optional earliest scheduled walk-forward test start date, for example 2024-01-01.",
+    )
     parser.add_argument("--min-folds", type=int, default=8)
     parser.add_argument("--max-folds", type=int, default=None)
     parser.add_argument("--min-positive-events", type=int, default=50)
@@ -260,6 +269,7 @@ def main() -> None:
         min_train_years=args.min_train_years,
         test_window_months=args.test_window_months,
         rolling_step_months=args.rolling_step_months,
+        min_scheduled_test_start=args.min_scheduled_test_start,
         min_folds=args.min_folds,
         max_folds=args.max_folds,
         min_positive_events=args.min_positive_events,
@@ -323,6 +333,15 @@ def _resolve_label_assumption(
         return int(config[key])
 
     return default
+
+
+def _parse_optional_utc_timestamp(value: str | None) -> pd.Timestamp | None:
+    if value is None:
+        return None
+    parsed = pd.Timestamp(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.tz_localize("UTC")
+    return parsed
 
 
 def _load_backtest_prediction_frame(model_report_dir: Path) -> pd.DataFrame:

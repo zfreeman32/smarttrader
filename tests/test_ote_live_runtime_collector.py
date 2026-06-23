@@ -247,6 +247,52 @@ def test_runtime_bootstrap_expands_seed_history_to_cover_signal_warmup_requireme
     assert client.last_fetch_kwargs["outputsize"] == 260
 
 
+def test_runtime_bootstrap_prefers_feature_engine_runtime_history_budget() -> None:
+    client = _FakeClient(seed_bars=[_five_minute_bar(index) for index in range(2010)])
+    tmp_root = ROOT / "tmp" / "ote_live_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    stream = _FakeStream([])
+    backfill = _FakeBackfill({})
+    service = LiveBarIngestionService(
+        stream=stream,
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="EURUSD", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-runtime"),
+        audit_repository=audit,
+    )
+    runtime = LiveCollectorRuntime(
+        config=LiveCollectorConfig(
+            asset="EURUSD",
+            source_timeframe="5m",
+            aggregation_timeframes=("30m",),
+            signal_timeframe="5m",
+            startup_history_bars=240,
+            poll_interval_seconds=0.0,
+            max_cycles=1,
+        ),
+        client=client,  # type: ignore[arg-type]
+        stream=stream,  # type: ignore[arg-type]
+        backfill_connector=backfill,  # type: ignore[arg-type]
+        store=store,
+        service=service,
+        audit_repository=audit,
+    )
+    runtime.signal_processor = _WarmupAwareSignalProcessor(  # type: ignore[assignment]
+        minimum_runtime_history_bars=250,
+        runtime_history_bars=2000,
+    )
+
+    summary = asyncio.run(runtime.bootstrap())
+    asyncio.run(runtime.close())
+
+    assert summary.seeded_history_bars == 2010
+    assert client.last_fetch_kwargs["outputsize"] == 2010
+
+
 def test_runtime_bootstrap_refreshes_recent_finalized_source_bars(monkeypatch) -> None:
     fixed_now = datetime(2024, 1, 2, 10, 7, tzinfo=timezone.utc)
     monkeypatch.setattr("ote_live.ingestion.runtime.utc_now", lambda: fixed_now)
@@ -475,7 +521,12 @@ class _RecordingSignalProcessor:
 
 
 class _WarmupAwareSignalProcessor:
-    def __init__(self, *, minimum_runtime_history_bars: int) -> None:
+    def __init__(
+        self,
+        *,
+        minimum_runtime_history_bars: int,
+        runtime_history_bars: int | None = None,
+    ) -> None:
         self.bindings = [
             SimpleNamespace(
                 loaded_model=SimpleNamespace(
@@ -487,6 +538,10 @@ class _WarmupAwareSignalProcessor:
                 )
             )
         ]
+        if runtime_history_bars is not None:
+            self.feature_engine = SimpleNamespace(
+                plan=SimpleNamespace(runtime_history_bars=runtime_history_bars)
+            )
         self.warm_calls = 0
 
     def warm_from_store(self) -> int:
