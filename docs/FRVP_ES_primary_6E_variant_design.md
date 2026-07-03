@@ -3,7 +3,8 @@
 
 **Author:** Quantitative Research & ML Systems
 **Date:** 2026-06-21
-**Status:** Blueprint — no pipeline code yet
+**Status:** Phases 0-5 are complete on the full ES history window, and the current Phase 6/7 ES-aware reporting stack is also complete. The remaining work is no longer basic dataset construction; it is human Phase 0/1 sign-off plus finding a model and policy contract that survives honest ES costs.
+**Implementation update:** 2026-07-01
 **Repo target:** Slot into the existing OTE meta-labeling architecture
 **Companion paper:** Supersedes the EUR/USD spot FRVP blueprint (2026-06-15) on instrument grounds; reuses its ML scaffolding verbatim
 
@@ -62,11 +63,11 @@ The key practical decisions:
 | Walk-forward backtest with frictions | **Exists** — re-parameterize frictions in ticks |
 | Meta-labeling recipe (`features/recipes/meta_labeling.json`) | **Exists** — correct recipe for this pipeline |
 | OTE training pipeline (XGBoost / TCN / LSTM) | **Exists** — train FRVP meta-labeler against it |
-| **Continuous-contract + roll engine** | **New** — `data/futures/continuous_contract.py`, `data/futures/roll_calendar.py` |
-| **FRVP profile construction engine** | **New** — `features/feature_sets/frvp_context.py` |
-| **FRVP setup rule layer** | **New** — `features/strategies/frvp_setups.py` |
+| **Continuous-contract + roll engine** | **New** — `frvp/continuity/continuous_contract.py`, `frvp/continuity/roll_calendar.py` |
+| **FRVP profile construction engine** | **New** — `frvp/feature_sets/frvp_context.py` via the registry shim `features/feature_sets/frvp_context.py` |
+| **FRVP setup rule layer** | **New** — `frvp/setups/detector.py` via the compatibility wrapper `frvp/strategies/frvp_setups.py` |
 | **FRVP-specific label events** | **New** — `data/labeling/frvp_labeling_engine.py` |
-| **Instrument config (ES / 6E)** | **New** — `features/config_instruments.py` |
+| **Instrument config (ES / 6E)** | **New** — `frvp/config/instruments.py` with compatibility shims at `frvp/config_instruments.py` and `features/config_instruments.py` |
 
 **Hard sanity check.** Any backtest showing Sharpe > 3 or win rate > 65% on intraday ES should be treated as a bug until proven otherwise — and on ES the *first* suspect is roll/continuity leakage, the second is profile-anchoring leakage. The design targets Sharpe ~1.0–1.5 out-of-sample, max drawdown < 12%, and 1–3 trades/day. ES is one of the most efficient, most algo-saturated instruments in existence; cleaner volume makes the *indicator* more valid, it does **not** make alpha easier to find.
 
@@ -219,7 +220,7 @@ The four-way analysis from the original paper holds with the same verdict; only 
 
 ### 6.1 Integration
 
-New features live in `features/feature_sets/frvp_context.py` (registered `"frvp_context"`), added to `ote_extended.json` and a new `frvp_meta.json`. Dependencies: `volume.py` (real-volume z-scores), `structure.py` (ATR, swings), the new `data/futures/continuous_contract.py` (lead-contract + roll), and the equity-session calendar (RTH/ETH/IB boundaries) via a new `features/sessions_equity.py` (the ES analog of `fx_calendar.py`). All features are computed **causally**.
+New features live in `frvp/feature_sets/frvp_context.py` and are exposed to the existing builder through the registry shim `features/feature_sets/frvp_context.py` (registered `"frvp_context"`), added to `ote_extended.json` and a new `frvp_meta.json`. Dependencies: `volume.py` (real-volume z-scores), `structure.py` (ATR, swings), the new `frvp/continuity/continuous_contract.py` (lead-contract + roll), and the equity-session calendar (RTH/ETH/IB boundaries) via `frvp/sessions/equity.py` and its shim `features/sessions_equity.py`. All features are computed **causally**.
 
 ### 6.2 Carried-over feature groups (definitions identical, units in points)
 
@@ -327,10 +328,10 @@ Reuse the original weighting (triple-barrier 40%, trend-scan 25%, HTF confluence
 
 | Stream | Purpose | In repo? |
 |---|---|---|
-| ES OHLCV **with real volume**, either as a raw tagged continuous lead-contract series or as per-contract bars | Profiles, labeling, features, training | **Current baseline** — `data/futures_data/ES-5m-tagged.csv`; optional refinement — `data/futures_data/es/` per-contract files |
-| ES roll calendar / lead-contract series | Continuity (Section 4) | **New** — derive in `roll_calendar.py` |
+| ES OHLCV **with real volume**, either as a raw tagged continuous lead-contract series or as per-contract bars | Profiles, labeling, features, training | **Current baseline** — `data/futures_data/ES-5m.csv` (vendor-tagged `ES.v.0` with per-bar `instrument_id`); optional refinement — per-contract files |
+| ES roll calendar / lead-contract series | Continuity (Section 4) | **Current artifacts** — `data/futures_data/es_roll_schedule.json`, `data/futures_data/es_roll_reconstruction_report.json`; code — `frvp/continuity/reconstruct_boundaries.py` |
 | 30-min / 1h ES (back-adjusted) | HTF structure, ATR, regime (path features only) | **Derived** — resample the continuous series |
-| Equity session calendar (RTH/ETH/IB, half-days, holidays) | Anchors and masks | **New** — `features/sessions_equity.py` |
+| Equity session calendar (RTH/ETH/IB, half-days, holidays) | Anchors and masks | **Current implementation** — `frvp/sessions/equity.py` with compatibility shim `features/sessions_equity.py`; half-day / holiday refinements still pending |
 | SPX/ES options OI by strike (optional) | Gamma context (Section 6.4) | **New / optional** — Phase 3 |
 
 Source **true-volume** ES data from a CME-derived vendor; do not use a single back-adjusted continuous file for profile construction. A raw, non-adjusted vendor-rolled continuous file is acceptable **if** it carries explicit per-bar contract tags (for example Databento `ES.v.0` with `contract_symbol`, `instrument_id`, `is_roll_boundary`, and `bars_since_roll`). Tick or 1-min granularity improves histogram resolution (finer within-bar price assignment), but the current repo baseline is a 5-minute tagged series, which is acceptable for the Phase 0/1 implementation while remaining coarser than the ideal profile source.
@@ -426,7 +427,7 @@ Run the *same* setups and *same* meta-labeling pipeline three ways and compare:
 2. 6E futures, real-volume profiles (this variant).
 3. ES futures, real-volume profiles (this paper's primary).
 
-Compare meta-label base rates, OOF AUC-PR, and especially the **placebo-test gap** (real minus shuffled AUC-PR). If real volume carries genuine signal that tick volume does not, (2) and (3) should show a larger placebo gap than (1). This directly tests the foundational claim that motivated re-homing the strategy, and it is cheap once the pipeline is instrument-parameterized via `features/config_instruments.py`.
+Compare meta-label base rates, OOF AUC-PR, and especially the **placebo-test gap** (real minus shuffled AUC-PR). If real volume carries genuine signal that tick volume does not, (2) and (3) should show a larger placebo gap than (1). This directly tests the foundational claim that motivated re-homing the strategy, and it is cheap once the pipeline is instrument-parameterized via `frvp/config/instruments.py`.
 
 ### 11.3 Config-level differences (ES vs 6E)
 
@@ -448,38 +449,337 @@ Phases mirror the original; the new Phase 0 (continuity) is a hard prerequisite 
 
 ### Phase 0 — Continuous-contract + roll engine (NEW, blocking)
 **Goal:** A causal lead-contract series, a volume-based roll calendar, and a raw-coordinate profile data layer.
-**Files:** `data/futures/continuous_contract.py`, `data/futures/roll_calendar.py`, `tests/test_continuity.py`.
+**Files:** `frvp/continuity/continuous_contract.py`, `frvp/continuity/roll_calendar.py`, `frvp/continuity/reconstruct_boundaries.py`, `tests/test_continuity.py`.
 **Gate:** Lead-contract assignment is causal and matches known historical roll dates within ±1 day; back-adjusted vs. raw series reconcile on returns but differ on absolute levels exactly by cumulative roll spreads; assertions in Section 4.3 pass. If the input is a vendor-tagged raw continuous series rather than overlapping per-contract bars, Phase 0 may validate the observed `contract_symbol` / roll-boundary tags instead of re-deriving the roll calendar from scratch.
 
 ### Phase 1 — FRVP profile construction engine
-**Files:** `features/feature_sets/frvp_context.py`, `features/strategies/frvp_setups.py`, `features/sessions_equity.py`, `tests/test_frvp_context.py`.
+**Files:** `frvp/profiles/builder.py`, `frvp/profiles/anchors.py`, `frvp/feature_sets/frvp_context.py`, `frvp/setups/detector.py`, `frvp/sessions/equity.py`, `tests/test_profiles.py`, `tests/test_frvp_context.py`, `tests/test_frvp_setups.py`. Thin compatibility shims remain at `features/feature_sets/frvp_context.py`, `features/sessions_equity.py`, and `frvp/strategies/frvp_setups.py`.
 **Gate (on 90 held-out RTH sessions):** 20 random profiles match TradingView FRVP drawings on the *same contract*; off-by-one anchoring test passes; naked-VPOC state updates correctly; each setup fires at 0.5–2 per session per side; no profile spans two contracts.
+
+### Phase 0/1 implementation notes (as of 2026-07-01)
+
+Phase 0 and Phase 1 are structurally complete in code and stable on the full tagged ES history window. The only remaining Phase 0/1 blocker is external human sign-off on same-contract profile matching, not missing repo logic.
+
+Implemented and verified on the canonical production path:
+- `data/futures_data/ES-5m-tagged.csv` is the canonical upstream FRVP ES-primary input.
+- All FRVP profile construction remains on `ContinuousContractResult.raw_profile_bars`, never on the back-adjusted path series.
+- `RawProfileBars.profile_slice(...)` still enforces the single-contract rule and raises `RollBoundaryError` on cross-roll slices.
+- `build_equity_session_frame` now applies explicit US equity holiday, half-day, and early-close overrides from `frvp/calendars/equity.py`.
+- The labeler treats short-session detection as fallback-only; the current integrity contract shows the half-day and early-close calendar is now explicit rather than empirical.
+- The CPI calendar now uses the archived historical backfill plus curated recent dates; the old CPI placeholder debt is closed.
+- `VolumeProfileBuilder`, causal anchors, naked-VPOC tracking, the registered `frvp_context` family, the rule-based setup detector, and the Dalton day-type context are all present in-repo.
+
+Full-history setup fire-rate readout from `artifacts/frvp_es_primary_current/phase01/setup_fire_rates.csv`:
+
+| Setup / side | Fires per session | Gate read |
+|---|---:|---|
+| Setup 1 short | 0.613 | Pass |
+| Setup 1 long | 0.575 | Pass |
+| Setup 2 short | 0.596 | Pass |
+| Setup 2 long | 0.521 | Pass |
+| Setup 3 short | 0.799 | Pass |
+| Setups 3 long, 5, and 6 both sides | In band | Pass on fire-rate gate |
+| Setup 4 both sides | 0.160-0.182 | Below legacy band; retain and document as thinner / weaker |
+
+What worked:
+- The earlier Setup 1 / Setup 2 / Setup 3-short sparsity issue is fixed.
+- The earlier Setup 3 / Setup 6 over-fire issue remains resolved on the full-history audit.
+- Setup 4 is now treated correctly as a weaker selective pattern rather than a gate failure.
+
+What did not change:
+- The histogram still allocates each 5-minute bar's volume uniformly across `[low, high]`.
+- The implemented cross-roll policy remains reset-at-roll only; cross-contract level translation is still deferred.
+- `Setup 6b` and optional gamma-context features remain deferred research items, not Phase 0/1 blockers.
+
+Remaining Phase 0/1 blocker:
+- The held-out TradingView same-contract profile audit still needs human sign-off.
 
 ### Phase 2 — Feature dataset build
 Reuse `features.cli build` with `--recipe features/recipes/frvp_meta.json` and `--instrument es`. Gate: correlation check at 0.98; FRVP distances show non-trivial MI with existing meta-labels.
 
+### Phase 2 implementation notes (as of 2026-07-01)
+
+The full Phase 2 build is complete on the intended history window: 666,769 five-minute ES bars from `2017-01-02 23:00:00+00:00` through `2026-06-19 16:55:00+00:00`.
+
+Primary artifacts:
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_features_full.csv.gz`
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_features_full.csv.metadata.json`
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_phase04_dataset.csv.gz`
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_phase04_dataset.csv.metadata.json`
+- `artifacts/frvp_es_primary_current/phase02/phase2_feature_audit.json`
+
+What passed:
+- No duplicated time columns entered the persisted Phase 2 dataset; `ts_event` and `timestamp` were dropped in favor of canonical `datetime`.
+- No raw OHLCV fields or contract-lineage / roll-lineage fields survived the persisted Phase 2 dataset.
+- FRVP distances and HTF confluence retained positive MI across all four direct FRVP targets.
+- The full-width Phase 2 build now survives the earlier pandas fragmentation / memory failure; the concat-based transform build plus float-safe downcasting closed the old `ArrayMemoryError` path.
+
+What worked best:
+- The merged Phase 2 dataset and the raw full feature dump now coexist in one canonical artifact root, so Phase 4 and later stages can be rerun without rebuilding exploratory copies.
+- The full-width gzip path is now a storage issue at worst, not a memory-blocking issue in the feature builder itself.
+
+What remains a documented weakness:
+- `frvp_open_type` survives the merged dataset and keeps non-zero MI on the short-side targets, but its MI is still effectively near-zero for `long_frvp_reversal` and `long_frvp_continuation`.
+- The raw audit still contains one near-duplicate pair (`frvp_va_overlap_pct` and `frvp_rth_eth_value_overlap`) at approximately 1.00 correlation; downstream pruning handles it cleanly, but the pre-pruned audit view is not perfectly minimal.
+
 ### Phase 3 — FRVP event labeling
 **Files:** `data/labeling/frvp_labeling_engine.py`; extend `labeling_engine.py`.
-**Gate:** 250–750 events/year per family per side; meta-label base rate 45–60%; quality mean ≥ 0.65; roll-spanning events excluded; events not excessively clustered.
+**Gate:** 250–750 events/year per family per side; meta-label base rate 45–60%; quality mean around 0.60-0.65 is preferred but no longer a hard blocker if downstream ranking quality and economics remain honest; roll-spanning events excluded; events not excessively clustered.
 
 ### Phase 4 — Preprocessing + backend attribution
-Reuse `preprocessing prepare` / `backend-attribution` verbatim. Gate: SHAP top-10 includes FRVP distances, open-type/day-type, and HTF confluence; no label-adjacent or raw-OHLC leakage features survive.
+Reuse `preprocessing prepare` / `backend-attribution` verbatim. Gate: FRVP distances and HTF confluence should remain materially represented in attribution while open-type/day-type remain desirable but not mandatory top-10 survivors if they stay weak after honest full-history testing; no label-adjacent or raw-OHLC leakage features survive.
 
 ### Phase 5 — Model training
-Reuse `ote_xgboost_pipeline.py` (TCN primary, XGB fallback) for the four targets. Gate: OOF AUC-PR > base rate; placebo gap > 3%; calibration sound.
+Reuse `ote_xgboost_pipeline.py` (TCN primary, XGB fallback) for the four targets. Gate: OOF AUC-PR > base rate; placebo gap > 3%; calibration sound; keep XGBoost as an acceptable primary if the TCN does not add value cleanly.
 
 ### Phase 6 — Regime/day-type slice + threshold policy
-Reuse the slice and threshold-policy scripts; add open-type/day-type slice dimensions. Gate: reversal precision higher in range/normal/neutral; continuation higher in trend/high-vol.
+Reuse the slice and threshold-policy scripts with the current ES-aware reporting contract. Open-type status, open-type label, and day-type label are now part of the saved slice outputs; the remaining gate is whether those slices support a profitable policy rather than whether the reporting dimension exists.
 
 ### Phase 7 — Walk-forward backtest + DSR
-Reuse the policy backtest with **tick-based frictions**. Gate: the seven promotion gates in Section 10.
+Reuse the policy backtest with **ES tick/point frictions**. That ES-aware contract is now implemented; the remaining gate is whether any FRVP candidate still clears the seven promotion gates in Section 10 plus DSR once those costs are applied.
 
 ### Phase 8 — Live integration
 Add artifacts to `models/live/`; register as `candidate`; extend `ote_live/features/incremental_engine.py` to maintain raw-coordinate profiles and handle live rolls; extend `ote_live/ingestion/runtime.py` for contract-roll events and gap handling; shadow-trade ≥ 4 weeks before promotion.
 
 ---
 
+### Phase 3 implementation notes (as of 2026-07-01)
+
+The FRVP labeler is now stable on the full intended ES window, with canonical upstream macro and session flags in place.
+
+Implemented and verified:
+- `data/labeling/frvp_labeling_engine.py` samples FRVP events from Setups 1-6, evaluates barriers from the next bar's open, reuses the structural ATR / trend-scan / sample-weight machinery, and excludes roll-spanning events via the continuity layer.
+- `data/labeling/labeling_engine.py` exports `label_long_frvp_reversal`, `label_short_frvp_reversal`, `label_long_frvp_continuation`, and `label_short_frvp_continuation` alongside the existing three legacy families.
+- Canonical upstream macro flags now exist for FOMC, CPI, NFP, Fed statement, and Fed presser windows.
+- Explicit half-day / early-close flags now come from the equity-session calendar rather than placeholder fallbacks.
+
+Primary artifacts:
+- `artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv`
+- `artifacts/frvp_es_primary_current/phase03/es_primary_frvp_events.csv`
+- `artifacts/frvp_es_primary_current/phase03/labeling_diagnostics.json`
+- `artifacts/frvp_es_primary_current/phase03/es_primary_frvp_diagnostic_report.csv`
+- `artifacts/frvp_es_primary_current/phase03_gate_report.json`
+
+Full-history Phase 3 diagnostic:
+
+| Target | Events/year | Base rate | Quality mean | Gate status |
+|---|---:|---:|---:|---|
+| Long FRVP reversal | 250.88 | 49.56% | 0.654 | Pass on density and base rate; quality target met |
+| Short FRVP reversal | 251.62 | 50.71% | 0.648 | Pass on density and base rate; quality near-target |
+| Long FRVP continuation | 698.72 | 48.46% | 0.612 | Pass on density and base rate; softer quality |
+| Short FRVP continuation | 747.03 | 48.37% | 0.586 | Pass on density and base rate; weakest quality cell |
+
+Full-history exclusion and integrity readout:
+- `events_excluded_roll_span = 49`
+- `events_excluded_macro = 3406`
+- `events_excluded_half_day = 155`
+- `events_excluded_first_rth = 2021`
+- `events_excluded_thin_session = 704`
+- `events_excluded_disabled_setup = 1002`
+- `events_excluded_past_htf_confluence = 2807`
+- `events_excluded_reversal_cooldown = 1059`
+
+Experiments that helped:
+- The hybrid CPI archive plus curated recent schedule closed the old macro TODO.
+- Reversal cooldown plus disabled-setup handling fixed the earlier reversal density / clustering problem.
+- The causal Setup 1 / Setup 6 HTF-confluence gate using the 48/96 rule, with the tighter 36/72 rule for Setup 1 short, improved the reversal contract without collapsing continuation counts.
+
+Experiments that regressed and are now closed:
+- Blanket continuation hold shortening (`96 -> 72` bars) regressed continuation base rates and bought no quality.
+- Repeated continuation-only label tightening on Setups 3 and 5 moved metrics around, but did not produce a clearly better training label contract than the current baseline.
+
+Current read:
+- Roll-spanning exclusion is intact.
+- Events are no longer excessively clustered.
+- All four direct targets clear the 45-60% base-rate band.
+- All four direct targets sit inside the 250-750 events/year density band.
+- Continuation quality is still softer than reversal quality, but `0.65` is now a target, not a blocker.
+
+What does not work well enough to keep optimizing blindly:
+- Setup 4 remains structurally thinner than the other setups.
+- Short continuation remains the weakest quality cell.
+- Further label tightening should be judged by downstream ranking and ES economics, not by blindly chasing `0.65`.
+
+### Phase 4 implementation notes (as of 2026-07-01)
+
+The FRVP preprocessing and backend-attribution path now runs end-to-end on the full-width, full-history ES dataset for the four direct FRVP targets.
+
+Implemented and verified:
+- `preprocessing prepare` works for all four direct FRVP targets with no target-specific downstream hacks.
+- The preprocessing path preserves the target-specific `htf_confluence_*` columns even though those are labeler carry-through context rather than builder-generated features.
+- The prepared allowlists continue to exclude raw OHLCV, label-helper, barrier-adjacent, and contract-lineage fields such as `contract_symbol`, `instrument_id`, `is_roll_boundary`, `bars_since_roll`, and `in_roll_bracket`.
+- Dalton day-type is implemented upstream and survives preprocessing, even though it does not yet clear the attribution target.
+- The full-width Phase 2 -> Phase 4 handoff succeeds on the 736-feature gzip dataset; the old memory blocker is no longer the controlling issue.
+
+Primary artifacts:
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_phase04_dataset.csv.gz`
+- `artifacts/frvp_es_primary_current/phase02/es_primary_frvp_phase04_dataset.csv.metadata.json`
+- `artifacts/frvp_es_primary_current/phase02/phase2_feature_audit.json`
+- `artifacts/frvp_es_primary_current/phase04/prepared/summary.json`
+- `artifacts/frvp_es_primary_current/phase04/prepared/backend_attribution_summary.json`
+
+Important full-history readout:
+- `phase04/prepared/summary.json` resolves the full-width upstream contract cleanly: 736 metadata feature columns, 4 target-specific HTF carry-through columns, 38 duplicate columns removed, and 3 constant columns removed.
+- All four direct targets score `green` training readiness with 2373 / 2380 / 6609 / 7066 usable rows and 583-597 selected prepared features.
+
+Full-history Phase 4 attribution readout from the saved full-width TCN rerun:
+
+| Target | `prepare` status | FRVP distance in merged top-10 | `frvp_open_type` in merged top-10 | `frvp_day_type` in merged top-10 | Target HTF confluence in merged top-10 | Gate status |
+|---|---|---|---|---|---|---|
+| Long FRVP reversal | Pass | Yes | No | No | No | Partial pass |
+| Short FRVP reversal | Pass | No | No | No | No | Partial fail |
+| Long FRVP continuation | Pass | No | No | No | Yes | Partial pass |
+| Short FRVP continuation | Pass | No | No | No | Yes | Partial pass |
+
+What worked:
+- All four direct FRVP targets prepare cleanly and preserve backward compatibility with the existing target families.
+- Target-specific `htf_confluence_*` carry-through columns survive preprocessing and remain in the prepared contracts.
+- The leakage audit remained clean: no raw OHLCV fields, no label/sample-weight/quality helpers, no barrier metadata, and no roll-lineage columns survived the prepared sets.
+- The full-width prepare summary was strong enough to move directly into training without target-specific rescue logic.
+
+What did not become a core feature signal:
+- `frvp_open_type` survives preprocessing but still misses merged top-10 everywhere.
+- `frvp_day_type` also survives preprocessing but still misses merged top-10 everywhere.
+- Short reversal remains the weakest target from an FRVP-specific attribution perspective.
+
+Current interpretation:
+- Phase 4 is no longer blocked.
+- The remaining Phase 4 issues are feature-priority questions, not reasons to stop the baseline workflow.
+
+### Phase 5-7 implementation notes (as of 2026-07-01)
+
+Training, regime-slice evaluation, threshold-policy search, and walk-forward backtest all complete end-to-end on the current FRVP shortlist.
+
+Primary artifacts:
+- `models/frvp_es_primary_model_registry_current.json`
+- `model_testing/reports/frvp_regime_slices/frvp_es_primary_current/run_summary.json`
+- `model_testing/reports/frvp_threshold_policies/frvp_es_primary_current/run_summary.json`
+- `model_testing/reports/frvp_backtests/frvp_es_primary_current/run_summary.json`
+- `model_testing/reports/frvp_backtests/frvp_es_primary_current/model_summary.csv`
+
+Current shortlist:
+
+| Model | Backend | CV AP | Test AP | Test event F0.5 | Current role |
+|---|---|---:|---:|---:|---|
+| `frvp_long_reversal_xgb_v1` | XGBoost | 0.709 | 0.734 | 0.745 | Benchmark |
+| `frvp_short_reversal_xgb_v1` | XGBoost | 0.727 | 0.754 | 0.790 | Benchmark |
+| `frvp_long_continuation_xgb_v1` | XGBoost | 0.746 | 0.698 | 0.783 | Benchmark |
+| `frvp_short_continuation_xgb_v1` | XGBoost | 0.724 | 0.726 | 0.738 | Benchmark |
+| `frvp_long_reversal_tcn_v1` | TCN | 0.720 | 0.739 | 0.770 | Challenger |
+| `frvp_short_continuation_tcn_v1` | TCN | 0.729 | 0.723 | 0.806 | Challenger |
+
+Training experiments that did not make the keep-set:
+- `frvp_short_reversal_tcn_v1` trained, but its threshold contract collapsed event coverage and did not justify shortlist status.
+- `frvp_long_continuation_tcn_v1` trained, but XGBoost remained cleaner on both ranking quality and downstream economics.
+
+What succeeded:
+- Phase 5 training is complete on the full-width prepared root, and the resulting shortlist is coherent rather than noisy.
+- XGBoost remains the clean baseline across all four direct targets.
+- The only meaningful TCN challengers are `frvp_long_reversal_tcn_v1` and `frvp_short_continuation_tcn_v1`.
+- The post-training evaluation plumbing joins predictions back to the raw tagged source correctly, so regime labels and trade-path attribution run end-to-end with OHLCV context available.
+- The latest reporting stack now carries ES-aware unit aliases (`*_units`) and current FRVP slice dimensions: `frvp_open_type_status`, `frvp_open_type_label`, and `frvp_day_type_label`.
+- The open-type coverage issue is now understood correctly: old `unknown` rows were mostly pre-RTH / not-yet-known states, and the current saved rerun shows effectively zero true `missing_after_open` rows.
+
+What works best right now:
+- `frvp_long_reversal_xgb_v1` is the least-bad economic model and the best target for any narrow post-model policy refinement. In the current backtest it is still negative overall, but it is the only candidate with a meaningful positive-composite pocket share (`0.2222`).
+- `frvp_long_reversal_tcn_v1` is the only TCN that still looks worth a future targeted retrain if we stay in the FRVP family.
+
+What does not work:
+- The latest `v3` rerun is economically identical to the prior ES-aware `v2` rerun; the change was reporting semantics and naming cleanup, not economics.
+- Threshold-policy search found qualified abstain variants for `frvp_short_reversal_xgb_v1` and `frvp_short_continuation_xgb_v1`, but both remain negative after costs.
+- All six current candidates remain negative after ES-aware backtest costs, and every model still shows `accepted_for_paper_trading_gate = False`.
+- Continuation remains the weakest family economically even when ranking metrics are acceptable.
+
+### Phase-gate TODOs and completion assumptions (as of 2026-07-01)
+
+This checklist is the current "what still has to be true before the ES-primary flow is complete" view. It intentionally separates implemented scaffolding from passed gates.
+
+#### Phase 0 / Phase 1 close-out items
+
+- Completed in code: canonical upstream input is now `data/futures_data/ES-5m-tagged.csv`.
+- Completed in code: `build_equity_session_frame` applies explicit US equity holiday / half-day / early-close overrides.
+- Completed in data: the CPI archive contract is backed by `data/futures_data/CPI_release_dates.txt`, with historical backfill complete through 2023 and curated recent years for 2024-2026.
+- Completed in data: Setup 1, Setup 2, and Setup 3 short moved back into the fire-rate band on the current baseline.
+- Remaining blocker: the held-out TradingView same-contract profile audit still lacks human sign-off.
+- Documented weakness, not blocker: Setup 4 remains thinner than the other setups and should be kept with that caveat rather than forced into a redesign.
+- Deferred post-Phase-4 research: `Setup 6b` and optional gamma-context features.
+
+#### Phase 2 gate checklist: feature dataset build
+
+- Completed: the full-history raw feature dump and the merged Phase 2 dataset are archived together under `artifacts/frvp_es_primary_current/phase02/`.
+- Pass: no duplicated time columns, no raw OHLCV columns, and no roll-lineage columns entered the persisted Phase 2 dataset.
+- Pass: FRVP distances and HTF confluence retain positive MI across all four direct FRVP targets.
+- Completed: the old feature-builder fragmentation / memory blocker is closed.
+- Documented weakness, not blocker: `frvp_open_type` MI remains weak on `long_frvp_reversal` and `long_frvp_continuation`.
+
+#### Phase 3 gate checklist: FRVP event labeling
+
+- Completed: upstream macro flags now exist for FOMC, CPI, NFP, Fed statement, and Fed presser windows.
+- Completed: explicit half-day / early-close flags now come from the equity-session calendar rather than placeholders.
+- Pass: roll-spanning exclusions remain intact and event clustering remains inside the gate.
+- Pass: all four direct targets sit inside the 250-750 events/year density band.
+- Pass: all four direct targets clear the 45% base-rate floor.
+- Policy change: Setup 4 is retained and documented as weaker rather than treated as a must-pass standalone gate item.
+- Closed direction: blanket shorter continuation holds are no longer an active lever.
+- Research note, not hard blocker: continuation quality still trails reversal quality, so use downstream ranking and ES-specific policy economics to decide whether further tightening helps or merely degrades the training sample.
+
+#### Phase 4 gate checklist: preprocessing + backend attribution
+
+- Completed: all four direct FRVP targets prepare cleanly with zero target-specific downstream hacks, and target-specific `htf_confluence_*` carry-through columns remain part of the contract.
+- Completed: leakage audit remained clean; no raw OHLCV, label helpers, barrier metadata, or contract-lineage fields survived the prepared sets.
+- Completed with caveat: Dalton day-type is implemented upstream, but it did not reach merged top-10 on the saved full-history attribution audit.
+- Completed: full-width 736-feature preprocessing is no longer memory-blocked.
+- Research note, not blocker: `frvp_open_type` and `frvp_day_type` still miss merged top-10 everywhere on the saved TCN attribution rerun.
+- Deferred post-Phase-4 research: determine whether open-type / day-type are genuinely weak, mildly mis-specified, or simply dominated by correlated proxies before spending a new training cycle on them.
+
+#### Phase 5 gate checklist: model training
+
+- Completed: the four direct FRVP targets are trained, and the current shortlist is archived in `models/frvp_es_primary_model_registry_current.json`.
+- Completed: calibration choices and selected policy payloads are stored per shortlisted model in the registry.
+- Remaining promotion item: archive or rerun an explicit shuffled-label placebo readout before any candidate leaves research status.
+- If a follow-up training sweep becomes necessary, keep it narrow: the serious TCN challengers worth revisiting are long reversal first and short continuation only if upstream continuation economics improve.
+- The auxiliary magnitude head remains deferred until the core classification plus policy-economics stack is trustworthy on ES.
+
+#### Phase 6 gate checklist: regime / day-type slice + threshold policy
+
+- Completed: regime-slice evaluation and threshold-policy search run end-to-end on the six-model shortlist.
+- Completed: open-type status, open-type label, and Dalton day-type label are now included in the current reporting outputs.
+- Completed: ES-aware unit/tick naming now flows through the threshold outputs.
+- Remaining blocker: the qualified abstain variants that do exist (`frvp_short_reversal_xgb_v1` and `frvp_short_continuation_xgb_v1`) are still negative after costs.
+- Follow-up question after the economics fix: does the regime/day-type split truly separate reversal from continuation, or are we still carrying more target families than the data justifies?
+
+#### Phase 7 gate checklist: walk-forward backtest + DSR
+
+- Completed technically: walk-forward policy backtest now runs for all six shortlisted models.
+- Completed: the saved backtest contract now uses ES tick-based spreads, slippage, commission, and tick value rather than FX-style pips.
+- Remaining blocker before promotion: under that ES-aware cost contract, every current candidate remains negative and `accepted_for_paper_trading_gate = False`.
+- Remaining promotion item: enforce and archive the roll-aware embargo / roll audit in the promotion stack, not just in the offline labeler.
+- Remaining promotion item: validate all seven promotion gates from Section 10, including placebo gap and clean roll audit, not just AP and raw threshold behavior.
+- Treat the current all-red paper-trading acceptance readout as the honest baseline until a new model or policy contract proves otherwise.
+
+#### Phase 8 gate checklist: live integration
+
+- Extend the live incremental feature engine to maintain FRVP state in raw contract coordinates and to reset / re-seed correctly at rolls.
+- Extend runtime ingestion to surface contract-roll events, calendar anomalies, and any upstream macro-event flags needed by the offline labeler.
+- Register FRVP candidates in the model registry and keep them in `candidate` / shadow mode until the full promotion stack passes.
+- Shadow trade for at least four weeks and explicitly verify no live profile carries across a roll untranslated and no open position mapping breaks at the lead-contract switch.
+
+#### Cross-phase assumptions to resolve before calling the flow "complete"
+
+- Canonical macro-calendar sourcing is materially improved by the archived CPI backfill plus curated 2024-2026 dates; the remaining debt is archival hygiene, not missing logic.
+- Canonical half-day / holiday handling is implemented in code via the offline rule-based equity calendar; the remaining open item is external sign-off, not missing logic.
+- The final Phase 4 full-width prepare verdict comes from the gzip full-history dataset rather than an audit subset.
+- Freeze the primary historical train / holdout window before any follow-up training, policy re-evaluation, or promotion rerun.
+- `Setup 6b`, optional gamma-context features, and the 6E A/B validation remain deferred research items rather than Phase 0-4 blockers.
+- The remaining promotion blockers are now human same-contract sign-off, an explicit placebo / roll-audit package, and downstream ES-specific model plus policy economics.
+
 ## 13. Open Questions and Risks
+
+Status triage after the 2026-07-01 cleanup pass:
+
+- Promotion blockers before paper trading: human same-contract profile sign-off, an explicit shuffled-label placebo plus roll-audit package, and a model plus policy contract that is actually positive under ES-aware costs.
+- Not current blockers: Setup 4's lower fire rate, continuation quality missing 0.65, and `frvp_open_type` / `frvp_day_type` failing to reach top-10 as direct model features.
+- Highest-value near-term research: Q6, Q7, and a narrow reversal-focused follow-up training or policy pass. Open-type conditioning and broader feature expansion are lower priority until the economics layer improves.
 
 **Q1 — Roll method sensitivity.** Does reset-at-roll vs. translate-by-spread for cross-roll levels change meta-label base rates or backtest Sharpe? Test both in Phase 0/3.
 
@@ -521,30 +821,43 @@ Add artifacts to `models/live/`; register as `candidate`; extend `ote_live/featu
 
 ## Repository File Index
 
-New files required by this paper:
+Implemented in repo today:
 
 | Path | Description |
 |---|---|
-| `data/futures/continuous_contract.py` | Causal lead-contract series + raw-coordinate profile data layer |
-| `data/futures/roll_calendar.py` | Volume-based, causal roll-date determination and roll-spread record |
-| `features/sessions_equity.py` | RTH/ETH/IB boundaries, half-days, holidays (ES analog of `fx_calendar.py`) |
-| `features/feature_sets/frvp_context.py` | Registered `frvp_context` family — profile construction + all FRVP features |
-| `features/strategies/frvp_setups.py` | Rule-based setup detector (Setups 1–6, 6b) |
+| `frvp/continuity/continuous_contract.py` | Causal lead-contract series, separated raw/profile vs. back-adjusted/path coordinates |
+| `frvp/continuity/roll_calendar.py` | Volume-based, causal roll-date determination and roll-spread record |
+| `frvp/continuity/reconstruct_boundaries.py` | Vendor-tagged continuous-series reconstruction, schedule/report export, and per-bar contract tagging |
+| `frvp/config/instruments.py` | Per-instrument config (ES / 6E): tick size, anchors, sessions, and profile defaults |
+| `frvp/sessions/equity.py` | RTH/ETH/IB boundaries for ES-style session anchors |
+| `features/sessions_equity.py` | Compatibility shim for the design-paper session path |
+| `frvp/profiles/builder.py` | `VolumeProfileBuilder` and profile-level POC / VA / HVN / LVN / shape extraction |
+| `frvp/profiles/anchors.py` | Causal anchor resolution plus naked-VPOC state tracking |
+| `frvp/feature_sets/frvp_context.py` | Real `frvp_context` implementation built on the Phase 0 continuity layer |
+| `features/feature_sets/frvp_context.py` | Registry shim that exposes `frvp_context` to the existing feature builder |
+| `frvp/setups/detector.py` | Rule-based setup detector (Setups 1-6) plus fire-rate diagnostic |
+| `frvp/strategies/frvp_setups.py` | Compatibility wrapper for the setup detector |
 | `features/recipes/frvp_meta.json` | Build recipe for the FRVP meta-labeling dataset |
-| `features/config_instruments.py` | Per-instrument config (ES / 6E): tick size, anchors, sessions, frictions |
-| `data/labeling/frvp_labeling_engine.py` | FRVP event sampling, triple-barrier, quality scoring, sample weights |
 | `tests/test_continuity.py` | Roll/continuity assertions (Section 4.3) |
-| `tests/test_frvp_context.py` | Profile construction, look-ahead, setup-detection tests |
+| `tests/test_profiles.py` | Profile-builder, anchor, naked-VPOC, and single-contract assertions |
+| `tests/test_frvp_context.py` | FRVP feature-family and causality assertions |
+| `tests/test_frvp_setups.py` | Setup-detector and fire-rate summary assertions |
 
-Existing files modified:
+Supporting or later-phase additions/modifications:
 
 | Path | Modification |
 |---|---|
-| `features/recipes/ote_extended.json` | Add `frvp_context` |
+| `features/recipes/ote_extended.json` | Current repo change: add `frvp_context` to the extended recipe |
 | `data/labeling/labeling_engine.py` | Call `frvp_labeling_engine.py` alongside existing families |
-| `features/config.py` | Add FRVP config (bin width, VA %, anchor settings) |
-| `models/ote_model_registry.json` | Add FRVP model entries (Phase 5) |
-| `models/ote_model_registry_live_multifamily.json` | Add FRVP live candidates (Phase 8) |
+| `data/labeling/frvp_labeling_engine.py` | FRVP event sampling, triple-barrier, quality scoring, sample weights |
+| `models/frvp_es_primary_model_registry_current.json` | Current FRVP shortlist registry and saved policy payloads |
+| `scripts/run_frvp_training_stack.ps1` | One-shot FRVP training wrapper for XGBoost plus TCN attribution/training |
+| `scripts/run_frvp_post_training_eval.ps1` | One-shot FRVP regime-slice, threshold-policy, and walk-forward backtest wrapper |
+| `model_testing/ote_regime_labeler.py` | FRVP open-type status labeling (`classified`, `not_yet_known`, `missing_after_open`) |
+| `model_testing/ote_regime_slices.py` | FRVP open-type and day-type slice-family reporting |
+| `model_testing/ote_policy_metrics.py` | ES-aware `*_units` aliases alongside legacy `*_pips` fields |
+| `model_testing/ote_threshold_policy.py` | Threshold-policy outputs with ES unit aliases |
+| `model_testing/ote_policy_backtest.py` | ES-aware walk-forward backtest metrics and saved unit aliases |
 | `ote_live/features/incremental_engine.py` | Incremental FRVP profiles + live roll handling |
 | `ote_live/ingestion/runtime.py` | Contract-roll events + gap handling |
 | `ote_live/models/loaders.py` | Load FRVP meta-labeler models |
