@@ -68,6 +68,9 @@ class _BucketState:
     bid: float | None
     ask: float | None
     spread: float | None
+    symbol: str | None
+    contract_symbol: str | None
+    instrument_id: int | None
 
     @classmethod
     def from_bar(cls, bucket_start, bar: MarketBar) -> "_BucketState":
@@ -81,6 +84,9 @@ class _BucketState:
             bid=bar.bid,
             ask=bar.ask,
             spread=bar.spread,
+            symbol=bar.symbol,
+            contract_symbol=bar.contract_symbol,
+            instrument_id=bar.instrument_id,
         )
 
     def update(self, bar: MarketBar) -> None:
@@ -94,6 +100,12 @@ class _BucketState:
             self.ask = bar.ask
         if bar.spread is not None:
             self.spread = bar.spread
+        if bar.symbol is not None:
+            self.symbol = bar.symbol
+        if bar.contract_symbol is not None:
+            self.contract_symbol = bar.contract_symbol
+        if bar.instrument_id is not None:
+            self.instrument_id = bar.instrument_id
 
 
 class MultiTimeframeBarAggregator:
@@ -173,6 +185,9 @@ class MultiTimeframeBarAggregator:
             ask=state.ask,
             spread=state.spread,
             source=f"{self.source_name}:{source_timeframe}->{timeframe}",
+            symbol=state.symbol,
+            contract_symbol=state.contract_symbol,
+            instrument_id=state.instrument_id,
         )
 
 

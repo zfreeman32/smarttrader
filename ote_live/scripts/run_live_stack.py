@@ -17,6 +17,7 @@ DEFAULT_DASHBOARD_HOST = "127.0.0.1"
 DEFAULT_DASHBOARD_PORT = 8050
 DEFAULT_DASHBOARD_REFRESH_INTERVAL_MS = 10_000
 DEFAULT_DASHBOARD_SIGNAL_LIMIT = 120
+DEFAULT_DASHBOARD_MODEL_CHART_LOOKBACK_HOURS = 24
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--dashboard-signal-limit",
         type=int,
         default=env_int("OTE_LIVE_DASHBOARD_SIGNAL_LIMIT", DEFAULT_DASHBOARD_SIGNAL_LIMIT),
+    )
+    parser.add_argument(
+        "--dashboard-model-chart-lookback-hours",
+        type=int,
+        default=env_int(
+            "OTE_LIVE_DASHBOARD_MODEL_CHART_LOOKBACK_HOURS",
+            DEFAULT_DASHBOARD_MODEL_CHART_LOOKBACK_HOURS,
+        ),
     )
     parser.add_argument("--max-cycles", type=int, default=env_int("OTE_LIVE_MAX_CYCLES"))
     parser.add_argument("--skip-policy-package", action="store_true")
@@ -108,6 +117,8 @@ def build_process_plan(args: argparse.Namespace) -> StackProcessPlan:
             str(args.dashboard_refresh_interval_ms),
             "--signal-limit",
             str(args.dashboard_signal_limit),
+            "--model-chart-lookback-hours",
+            str(args.dashboard_model_chart_lookback_hours),
             *tuple(args.dashboard_arg),
         )
 

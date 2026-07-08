@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,7 +47,9 @@ def standardize_market_frame(
     df = df.rename(columns=rename_map)
 
     if "datetime" not in df.columns:
-        if {"date", "time"}.issubset(df.columns):
+        if "ts_event" in df.columns:
+            df["datetime"] = df["ts_event"]
+        elif {"date", "time"}.issubset(df.columns):
             combined = df["date"].astype(str).str.strip() + " " + df["time"].astype(str).str.strip()
             parsed = pd.to_datetime(combined, format="%Y%m%d %H:%M:%S", errors="coerce")
             if parsed.isna().all():
@@ -100,7 +103,19 @@ def save_dataset(
     """Save the feature dataset plus a metadata sidecar."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_path, index=False)
+    try:
+        df.to_csv(output_path, index=False)
+    except OSError as exc:
+        if exc.errno == errno.ENOSPC:
+            raise OSError(
+                errno.ENOSPC,
+                (
+                    f"No space left on device while writing '{output_path}'. "
+                    "Free disk space, choose a different output path, or write compressed output "
+                    "such as '.csv.gz'."
+                ),
+            ) from exc
+        raise
 
     metadata_path = output_path.with_suffix(".metadata.json")
     payload = dict(metadata)

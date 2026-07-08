@@ -1,5 +1,5 @@
 """
-Continuation pullback labeling engine for 5-minute FX data.
+Continuation pullback labeling engine for FX data.
 
 This module intentionally mirrors the structure of the reversal labeler
 while targeting a different setup family: shallow pullbacks that resume an
@@ -32,8 +32,11 @@ try:
         create_quality_arrays,
         create_zone_labels,
         detect_swings_zigzag,
+        format_bar_timeframe,
+        infer_bar_minutes,
         map_htf_atr_to_ltf,
         print_diagnostics,
+        retune_bar_count_params,
         run_diagnostics,
         trend_scan_swings,
         validate_swings_triple_barrier,
@@ -56,8 +59,11 @@ except ImportError:
         create_quality_arrays,
         create_zone_labels,
         detect_swings_zigzag,
+        format_bar_timeframe,
+        infer_bar_minutes,
         map_htf_atr_to_ltf,
         print_diagnostics,
+        retune_bar_count_params,
         run_diagnostics,
         trend_scan_swings,
         validate_swings_triple_barrier,
@@ -148,7 +154,7 @@ def build_trend_context(
     df_1hr: pd.DataFrame | None = None,
     atr_1hr: pd.Series | None = None,
 ) -> pd.DataFrame:
-    """Build causal trend context on 30m/1h and map it to 5m bars."""
+    """Build causal trend context on 30m/1h and map it to the base bars."""
 
     ctx = pd.DataFrame(index=df_5m.index)
 
@@ -381,16 +387,28 @@ def build_continuation_pullback_labels(
 ):
     """Master pipeline for continuation-pullback labels."""
 
-    if params is None:
-        params = ContinuationPullbackParams()
-    params.validate()
+    raw_params = params or ContinuationPullbackParams()
 
     df_5m = _prep(df_5m)
     df_30m = _prep(df_30m)
+    base_bar_minutes = infer_bar_minutes(df_5m.index)
+    base_tf = format_bar_timeframe(base_bar_minutes)
+    params = retune_bar_count_params(
+        raw_params,
+        base_bar_minutes,
+        extra_count_fields=("max_pullback_bars",),
+    )
+    params.validate()
     anomaly_count = int(df_5m.attrs.get("anomaly_count", 0))
     n = len(df_5m)
+    htf_warmup_bars = max(raw_params.warmup_bars, raw_params.atr_period * 2)
     if verbose:
-        print(f"[Continuation] {n:,} bars on 5m")
+        print(f"[Continuation] {n:,} bars on {base_tf}")
+        if abs(base_bar_minutes - params.bar_count_reference_minutes) >= 1e-9:
+            print(
+                f"[Continuation] Runtime bar-count tuning: "
+                f"{format_bar_timeframe(params.bar_count_reference_minutes)} -> {base_tf}"
+            )
 
     atr_5m = compute_atr(df_5m, params.atr_period, params.atr_smoothing)
     atr_30m = compute_atr(df_30m, params.atr_period, params.atr_smoothing)
@@ -405,14 +423,14 @@ def build_continuation_pullback_labels(
         if verbose:
             valid = satr_5m.dropna()
             if len(valid):
-                print(f"[Continuation] Structural ATR (1hr->5m): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
+                print(f"[Continuation] Structural ATR (1hr->{base_tf}): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
     else:
         satr_5m = map_htf_atr_to_ltf(atr_30m, df_5m.index)
         satr_30m = atr_30m
         if verbose:
             valid = satr_5m.dropna()
             if len(valid):
-                print(f"[Continuation] Structural ATR (30m->5m): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
+                print(f"[Continuation] Structural ATR (30m->{base_tf}): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
 
     df_5m["atr"] = atr_5m
     df_5m["structural_atr"] = satr_5m
@@ -430,10 +448,10 @@ def build_continuation_pullback_labels(
         params.min_bars_between_swings,
         params.warmup_bars,
         params.confirm_use_close,
-        "5m",
+        base_tf,
     )
     if verbose:
-        print(f"[Continuation] Raw 5m swings: {len(raw_swings)}")
+        print(f"[Continuation] Raw {base_tf} swings: {len(raw_swings)}")
 
     sw30 = detect_swings_zigzag(
         df_30m,
@@ -442,7 +460,7 @@ def build_continuation_pullback_labels(
         params.htf_min_swing_atr,
         params.min_swing_distance_atr * 0.8,
         params.htf_min_bars_between,
-        params.warmup_bars,
+        htf_warmup_bars,
         params.confirm_use_close,
         "30m",
     )
@@ -458,7 +476,7 @@ def build_continuation_pullback_labels(
             params.htf_min_swing_atr * 0.8,
             params.min_swing_distance_atr * 0.7,
             max(2, params.htf_min_bars_between // 2),
-            params.warmup_bars,
+            htf_warmup_bars,
             params.confirm_use_close,
             "1hr",
         )
@@ -471,7 +489,14 @@ def build_continuation_pullback_labels(
         if sw1h
         else {}
     )
-    raw_swings = annotate_swing_context(raw_swings, sw30, sw1h, htf_match_30m, htf_match_1h)
+    raw_swings = annotate_swing_context(
+        raw_swings,
+        sw30,
+        sw1h,
+        htf_match_30m,
+        htf_match_1h,
+        base_bar_minutes=base_bar_minutes,
+    )
 
     cont_swings = filter_continuation_candidates(df_5m, raw_swings, satr_5m, trend_context, params)
     if verbose:

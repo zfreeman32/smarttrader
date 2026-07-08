@@ -33,58 +33,30 @@ def build_price_signal_figure(
             )
         )
 
-    if not signals.empty:
-        palette = (
-            "#0d6efd",
-            "#dc3545",
-            "#198754",
-            "#fd7e14",
-            "#6f42c1",
-            "#0dcaf0",
-            "#6c757d",
-            "#20c997",
-        )
-        model_ids = [
-            str(model_id)
-            for model_id in signals.get("model_id", pd.Series(dtype=str)).dropna().astype(str).unique()
-        ]
-        color_by_model = {
-            model_id: palette[index % len(palette)]
-            for index, model_id in enumerate(model_ids)
-        }
-
-        grouped = signals.groupby(["model_id", "direction", "decision"], dropna=False)
-        for (model_id, direction, decision), group in grouped:
+    emitted_signals = _aggregate_emitted_signals(signals)
+    if not emitted_signals.empty:
+        for direction, group in emitted_signals.groupby("direction", dropna=False):
             resolved_direction = str(direction or "unknown")
-            resolved_decision = str(decision or "unknown")
-            resolved_model_id = str(model_id or "unknown_model")
             price_column = "bar_low" if resolved_direction == "long" else "bar_high"
-            fallback_symbol = "circle-open"
-            symbol = {
-                ("long", "emit"): "triangle-up",
-                ("short", "emit"): "triangle-down",
-                ("long", "shadow"): "triangle-up-open",
-                ("short", "shadow"): "triangle-down-open",
-            }.get((resolved_direction, resolved_decision), fallback_symbol)
+            marker_symbol = "triangle-up" if resolved_direction == "long" else "triangle-down"
+            marker_color = "#22c55e" if resolved_direction == "long" else "#ef4444"
             scale = 0.9998 if resolved_direction == "long" else 1.0002
             y_values = group[price_column].fillna(group["bar_close"]) * scale
-            marker_size = 12 if resolved_decision == "emit" else 8
-            marker_opacity = 0.95 if resolved_decision == "emit" else 0.55
             fig.add_trace(
                 go.Scatter(
                     x=group["timestamp"],
                     y=y_values,
                     mode="markers",
                     marker=dict(
-                        size=marker_size,
-                        symbol=symbol,
-                        color=color_by_model.get(resolved_model_id, "#6c757d"),
-                        opacity=marker_opacity,
+                        size=13,
+                        symbol=marker_symbol,
+                        color=marker_color,
+                        opacity=0.95,
                         line=dict(width=1),
                     ),
-                    name=f"{resolved_model_id} | {resolved_direction} {resolved_decision}",
+                    name=f"{resolved_direction} emit",
                     text=[
-                        _signal_hover_text(row)
+                        _aggregated_signal_hover_text(row)
                         for row in group.itertuples(index=False)
                     ],
                     hoverinfo="text",
@@ -98,6 +70,46 @@ def build_price_signal_figure(
         margin=dict(l=30, r=20, t=60, b=30),
         hovermode="x unified",
         xaxis_rangeslider_visible=False,
+        showlegend=False,
+    )
+    _apply_dark_chart_theme(fig)
+    return fig
+
+
+def build_frvp_price_figure(
+    bars: pd.DataFrame,
+    signals: pd.DataFrame,
+    *,
+    runtime_state: dict | None,
+    title: str = "FRVP Price And Live State",
+):
+    go = _plotly_go()
+
+    fig = go.Figure()
+    if not bars.empty:
+        fig.add_trace(
+            go.Candlestick(
+                x=bars["timestamp"],
+                open=bars["open"],
+                high=bars["high"],
+                low=bars["low"],
+                close=bars["close"],
+                name="Price",
+            )
+        )
+
+    _add_frvp_overlay_traces(fig, bars=bars, runtime_state=runtime_state)
+    _add_emitted_signal_traces(fig, signals)
+    _add_frvp_setup_traces(fig, bars=bars, runtime_state=runtime_state)
+
+    fig.update_layout(
+        template="plotly_dark",
+        title=title,
+        height=640,
+        margin=dict(l=30, r=20, t=60, b=30),
+        hovermode="x unified",
+        xaxis_rangeslider_visible=False,
+        showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
     )
     _apply_dark_chart_theme(fig)
@@ -110,6 +122,7 @@ def build_confidence_figure(
     title: str = "Model Confidence",
     line_color: str = "#0d6efd",
     threshold_color: str = "#fd7e14",
+    xaxis_range: tuple[object, object] | None = None,
 ):
     go = _plotly_go()
 
@@ -159,7 +172,7 @@ def build_confidence_figure(
                 )
             )
 
-    fig.update_layout(
+    layout_kwargs = dict(
         template="plotly_dark",
         title=title,
         height=320,
@@ -168,6 +181,9 @@ def build_confidence_figure(
         yaxis=dict(range=[0.0, 1.0]),
         showlegend=False,
     )
+    if xaxis_range is not None:
+        layout_kwargs["xaxis"] = {"range": list(xaxis_range)}
+    fig.update_layout(**layout_kwargs)
     _apply_dark_chart_theme(fig)
     return fig
 
@@ -349,6 +365,29 @@ def _signal_hover_text(row) -> str:
     return "<br>".join(lines)
 
 
+def _setup_hover_text(row) -> str:
+    confidence = _format_probability(getattr(row, "confidence", None))
+    return "<br>".join(
+        [
+            f"{getattr(row, 'label', 'FRVP setup')}",
+            f"Confidence: {confidence}",
+            f"Timestamp: {getattr(row, 'timestamp_utc', 'unknown')}",
+        ]
+    )
+
+
+def _aggregated_signal_hover_text(row) -> str:
+    model_ids = [item for item in str(getattr(row, "model_ids", "")).split(",") if item]
+    lines = [
+        f"{row.direction} emit",
+        f"Models: {', '.join(model_ids) if model_ids else 'unknown'}",
+        f"Emitted models: {int(getattr(row, 'emitted_model_count', 0) or 0)}",
+    ]
+    if getattr(row, "regimes", ""):
+        lines.append(f"Regimes: {row.regimes}")
+    return "<br>".join(lines)
+
+
 def _confidence_hover_text(row) -> str:
     decision = row.decision or "hold/unpersisted"
     active_threshold = getattr(row, "dashboard_active_threshold", None)
@@ -389,3 +428,180 @@ def _format_probability(value: float | None) -> str:
     if magnitude >= 0.001:
         return f"{resolved:.6f}"
     return f"{resolved:.6e}"
+
+
+def _aggregate_emitted_signals(signals: pd.DataFrame) -> pd.DataFrame:
+    if signals.empty:
+        return pd.DataFrame(
+            columns=[
+                "timestamp",
+                "direction",
+                "bar_low",
+                "bar_high",
+                "bar_close",
+                "model_ids",
+                "emitted_model_count",
+                "regimes",
+            ]
+        )
+
+    emitted = signals.loc[
+        (signals["decision"] == "emit")
+        & (signals["direction"].isin(["long", "short"]))
+    ].copy()
+    if emitted.empty:
+        return pd.DataFrame(
+            columns=[
+                "timestamp",
+                "direction",
+                "bar_low",
+                "bar_high",
+                "bar_close",
+                "model_ids",
+                "emitted_model_count",
+                "regimes",
+            ]
+        )
+
+    aggregated_rows: list[dict[str, object]] = []
+    grouped = emitted.groupby(["timestamp", "direction"], dropna=False, sort=True)
+    for (timestamp, direction), group in grouped:
+        model_ids = sorted(
+            {
+                str(model_id)
+                for model_id in group["model_id"].dropna().astype(str).tolist()
+                if str(model_id)
+            }
+        )
+        regimes = sorted(
+            {
+                str(regime)
+                for regime in group["regime"].dropna().astype(str).tolist()
+                if str(regime)
+            }
+        )
+        aggregated_rows.append(
+            {
+                "timestamp": timestamp,
+                "direction": direction,
+                "bar_low": group["bar_low"].dropna().min() if group["bar_low"].notna().any() else None,
+                "bar_high": group["bar_high"].dropna().max() if group["bar_high"].notna().any() else None,
+                "bar_close": group["bar_close"].dropna().iloc[-1] if group["bar_close"].notna().any() else None,
+                "model_ids": ",".join(model_ids),
+                "emitted_model_count": len(model_ids),
+                "regimes": ", ".join(regimes),
+            }
+        )
+
+    return pd.DataFrame(aggregated_rows).sort_values("timestamp").reset_index(drop=True)
+
+
+def _add_emitted_signal_traces(fig, signals: pd.DataFrame) -> None:
+    go = _plotly_go()
+    emitted_signals = _aggregate_emitted_signals(signals)
+    if emitted_signals.empty:
+        return
+    for direction, group in emitted_signals.groupby("direction", dropna=False):
+        resolved_direction = str(direction or "unknown")
+        price_column = "bar_low" if resolved_direction == "long" else "bar_high"
+        marker_symbol = "triangle-up" if resolved_direction == "long" else "triangle-down"
+        marker_color = "#22c55e" if resolved_direction == "long" else "#ef4444"
+        scale = 0.9998 if resolved_direction == "long" else 1.0002
+        y_values = group[price_column].fillna(group["bar_close"]) * scale
+        fig.add_trace(
+            go.Scatter(
+                x=group["timestamp"],
+                y=y_values,
+                mode="markers",
+                marker=dict(
+                    size=13,
+                    symbol=marker_symbol,
+                    color=marker_color,
+                    opacity=0.95,
+                    line=dict(width=1),
+                ),
+                name=f"{resolved_direction} emit",
+                text=[
+                    _aggregated_signal_hover_text(row)
+                    for row in group.itertuples(index=False)
+                ],
+                hoverinfo="text",
+            )
+        )
+
+
+def _add_frvp_overlay_traces(fig, *, bars: pd.DataFrame, runtime_state: dict | None) -> None:
+    if runtime_state is None or not runtime_state.get("levels"):
+        return
+    if bars.empty:
+        return
+    go = _plotly_go()
+    x_values = [bars["timestamp"].iloc[0], bars["timestamp"].iloc[-1]]
+    for name, label, color, dash in (
+        ("poc", "POC", "#fbbf24", "solid"),
+        ("vah", "VAH", "#38bdf8", "dash"),
+        ("val", "VAL", "#38bdf8", "dash"),
+        ("ib_high", "IB High", "#34d399", "dot"),
+        ("ib_low", "IB Low", "#f87171", "dot"),
+        ("naked_vpoc_above", "Naked VPOC +", "#f59e0b", "dashdot"),
+        ("naked_vpoc_below", "Naked VPOC -", "#fb923c", "dashdot"),
+    ):
+        level_value = runtime_state["levels"].get(name)
+        if level_value is None:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=[level_value, level_value],
+                mode="lines",
+                line=dict(color=color, width=1.5, dash=dash),
+                name=label,
+                hovertemplate=f"{label}: %{{y:.2f}}<extra></extra>",
+            )
+        )
+
+
+def _add_frvp_setup_traces(fig, *, bars: pd.DataFrame, runtime_state: dict | None) -> None:
+    if runtime_state is None:
+        return
+    setups = list(runtime_state.get("recent_setups") or [])
+    if not setups or bars.empty:
+        return
+    go = _plotly_go()
+    frame = pd.DataFrame(setups)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp_utc"], errors="coerce", utc=True)
+    frame = frame.dropna(subset=["timestamp"])
+    if frame.empty:
+        return
+    latest_bars = bars.loc[:, ["timestamp", "low", "high", "close"]].copy()
+    merged = frame.merge(latest_bars, on="timestamp", how="left")
+    for side_value, group in merged.groupby("setup_side", dropna=False):
+        resolved_side = int(side_value or 0)
+        if resolved_side == 0:
+            continue
+        is_long = resolved_side > 0
+        price_column = "low" if is_long else "high"
+        fallback_close = group["close"]
+        y_values = group[price_column].fillna(fallback_close) * (0.9996 if is_long else 1.0004)
+        fig.add_trace(
+            go.Scatter(
+                x=group["timestamp"],
+                y=y_values,
+                mode="markers+text",
+                marker=dict(
+                    size=12,
+                    symbol="triangle-up" if is_long else "triangle-down",
+                    color="#22c55e" if is_long else "#ef4444",
+                    line=dict(width=1),
+                ),
+                text=list(group["label"]),
+                textposition="top center" if is_long else "bottom center",
+                name="FRVP long setup" if is_long else "FRVP short setup",
+                textfont=dict(size=10, color=CHART_TEXT_COLOR),
+                hoverinfo="text",
+                hovertext=[
+                    _setup_hover_text(row)
+                    for row in group.itertuples(index=False)
+                ],
+            )
+        )

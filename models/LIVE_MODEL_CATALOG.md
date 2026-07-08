@@ -30,7 +30,7 @@ These models are in the live registry with `status="candidate"` so they still lo
 | --- | --- | --- | --- |
 | `long_ote_meta_tcn_champion` | `models/live/long_meta_tcn` | meta tcn | Strong training profile, but only `4/6` post-training gates. |
 | `long_breakout_tcn_champion` | `models/live/long_breakout_tcn` | long breakout | Best repaired breakout artifact, but still weaker live conversion than the champion set. |
-| `long_breakout_xgb_v1` | `models/live/long_breakout_xgb` | long breakout | Included as the second long-breakout comparison model even though post-training performance is weak. |
+| `short_breakout_tcn_champion` | `models/live/short_breakout_tcn` | short breakout | Restored as the short breakout shadow candidate so the live app keeps four models per side while breakout reevaluation continues. |
 
 ## Legacy
 
@@ -42,7 +42,7 @@ Important examples moved out of the active live set:
 - `short_ote_tcn_v2_candidate`
 - `long_reversal_tcn_champion`
 - `short_reversal_xgb_v1`
-- `short_breakout_tcn_champion`
+- `long_breakout_xgb_v1`
 - `short_reversal_tcn_champion`
 - `long_reversal_tcn_v3_20260526_overlap_ny_dd_repair`
 

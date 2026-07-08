@@ -32,6 +32,12 @@ from ote_live.ingestion.connector_backfill import (
     FMPConfig,
     FMPRESTClient,
 )
+from ote_live.ingestion.connector_ibkr import (
+    IBKRBackfillConnector,
+    IBKRHistoricalBarClient,
+    IBKRPollingBarStream,
+    IBKRRuntimeConfig,
+)
 from ote_live.ingestion.connector_stream import FMPPollingBarStream
 from ote_live.ingestion.normalizer import canonical_asset_to_fmp_symbol, canonical_timeframe_to_fmp_interval
 from ote_live.ingestion.gap_detector import GapDetector
@@ -72,6 +78,8 @@ def resolve_heartbeat_stale_after_seconds(
 
 @dataclass(frozen=True)
 class LiveCollectorConfig:
+    group_name: str = "OTE"
+    data_supplier: str = "FMP"
     asset: str = "EURUSD"
     source_timeframe: CanonicalTimeframe = "5m"
     aggregation_timeframes: tuple[CanonicalTimeframe, ...] = ("5m", "30m", "1h")
@@ -93,14 +101,20 @@ class LiveCollectorConfig:
     long_runtime_manifest_path: Path = DEFAULT_LONG_RUNTIME_MANIFEST_PATH
     short_runtime_manifest_path: Path = DEFAULT_SHORT_RUNTIME_MANIFEST_PATH
     skip_unavailable_model_backends: bool = True
+    all_models_active: bool = False
     enable_signal_chart_capture: bool = True
     signal_chart_output_root: Path = DEFAULT_SIGNAL_CHART_OUTPUT_ROOT
     signal_chart_lookback_bars: int = 120
     dashboard_url: str | None = None
     alert_email_recipients: tuple[str, ...] = ()
     alert_sms_recipients: tuple[str, ...] = ()
+    ibkr: IBKRRuntimeConfig | None = None
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "group_name", str(self.group_name).strip().upper() or "OTE")
+        object.__setattr__(self, "data_supplier", str(self.data_supplier).strip().upper() or "FMP")
+        if self.data_supplier not in {"FMP", "IBKR"}:
+            raise ValueError(f"Unsupported live data supplier {self.data_supplier!r}.")
         poll_interval_seconds = max(0.0, float(self.poll_interval_seconds))
         object.__setattr__(self, "poll_interval_seconds", poll_interval_seconds)
         finalized_bar_grace_seconds = max(0.0, float(self.finalized_bar_grace_seconds))
@@ -138,6 +152,8 @@ class LiveCollectorConfig:
                 self.heartbeat_stale_after_seconds,
             ),
         )
+        if self.data_supplier == "IBKR" and self.ibkr is None:
+            object.__setattr__(self, "ibkr", IBKRRuntimeConfig())
 
 
 @dataclass
@@ -177,9 +193,9 @@ class LiveCollectorRuntime:
         self,
         *,
         config: LiveCollectorConfig,
-        client: FMPRESTClient,
-        stream: FMPPollingBarStream,
-        backfill_connector: FMPBackfillConnector,
+        client: Any,
+        stream: Any,
+        backfill_connector: Any,
         store: SQLiteLiveDataStore,
         service: LiveBarIngestionService,
         audit_repository: LiveAuditRepository | None = None,
@@ -204,26 +220,45 @@ class LiveCollectorRuntime:
         signal_sms_sender: LiveSignalSmsSender | None = None,
         signal_chart_capture_service: SignalChartCaptureService | None = None,
     ) -> "LiveCollectorRuntime":
-        fmp_config = FMPConfig(
-            api_key=api_key or FMPConfig().api_key,
-            default_timezone=config.default_timezone,
-        )
-        client = FMPRESTClient(fmp_config)
-        stream = FMPPollingBarStream(
-            client,
-            asset=config.asset,
-            timeframe=config.source_timeframe,
-            outputsize=config.stream_outputsize,
-            poll_interval_seconds=config.poll_interval_seconds,
-            finalized_bar_grace_seconds=config.finalized_bar_grace_seconds,
-        )
-        backfill_connector = FMPBackfillConnector(client)
+        if config.data_supplier == "IBKR":
+            ibkr_config = config.ibkr or IBKRRuntimeConfig()
+            client = IBKRHistoricalBarClient(
+                ibkr_config,
+                asset=config.asset,
+                timeframe=config.source_timeframe,
+            )
+            stream = IBKRPollingBarStream(
+                client,
+                asset=config.asset,
+                timeframe=config.source_timeframe,
+                outputsize=config.stream_outputsize,
+                poll_interval_seconds=config.poll_interval_seconds,
+                finalized_bar_grace_seconds=config.finalized_bar_grace_seconds,
+            )
+            backfill_connector = IBKRBackfillConnector(client)
+            heartbeat_source = "ibkr.historical.polling"
+        else:
+            fmp_config = FMPConfig(
+                api_key=api_key or FMPConfig().api_key,
+                default_timezone=config.default_timezone,
+            )
+            client = FMPRESTClient(fmp_config)
+            stream = FMPPollingBarStream(
+                client,
+                asset=config.asset,
+                timeframe=config.source_timeframe,
+                outputsize=config.stream_outputsize,
+                poll_interval_seconds=config.poll_interval_seconds,
+                finalized_bar_grace_seconds=config.finalized_bar_grace_seconds,
+            )
+            backfill_connector = FMPBackfillConnector(client)
+            heartbeat_source = "fmp.polling"
         store = SQLiteLiveDataStore(config.db_path)
         audit_repository = LiveAuditRepository(store)
         gap_detector = GapDetector(asset=config.asset, timeframe=config.source_timeframe)
         aggregator = MultiTimeframeBarAggregator(target_timeframes=config.aggregation_timeframes)
         heartbeat_monitor = HeartbeatMonitor(
-            source="fmp.polling",
+            source=heartbeat_source,
             stale_after=timedelta(seconds=config.heartbeat_stale_after_seconds),
         )
         service = LiveBarIngestionService(
@@ -286,6 +321,9 @@ class LiveCollectorRuntime:
                     chart_capture_service=resolved_chart_capture_service,
                     dashboard_url=config.dashboard_url,
                     skip_unavailable_backends=config.skip_unavailable_model_backends,
+                    all_models_active=config.all_models_active,
+                    group_name=config.group_name,
+                    data_supplier=config.data_supplier,
                 )
                 if signal_processor is None:
                     LOGGER.warning("Live signal runtime is enabled, but no eligible runtime models were loaded.")
@@ -769,6 +807,10 @@ class LiveCollectorRuntime:
             ),
             default=0,
         )
+        feature_engine = getattr(self.signal_processor, "feature_engine", None)
+        feature_plan = getattr(feature_engine, "plan", None)
+        resolved_runtime_history_bars = int(getattr(feature_plan, "runtime_history_bars", 0) or 0)
+        required_signal_bars = max(required_signal_bars, resolved_runtime_history_bars)
         # Add a small cushion so the first live bar after bootstrap can evaluate immediately.
         return max(startup_history_bars, required_signal_bars + 10)
 

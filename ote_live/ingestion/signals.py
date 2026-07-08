@@ -11,7 +11,12 @@ from ote_live.alerts.emailer import EmailDispatchResult, LiveSignalEmailer
 from ote_live.alerts.sms import LiveSignalSmsSender, SmsDispatchResult
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
-from ote_live.features.incremental_engine import IncrementalFeatureEngine
+from ote_live.contracts.signal import SignalDecision
+from ote_live.dashboard.view_state import persist_frvp_dashboard_state
+from ote_live.features.incremental_engine import (
+    FRVP_DASHBOARD_EXTRA_FEATURE_NAMES,
+    IncrementalFeatureEngine,
+)
 from ote_live.media.chart_capture import CapturedChartArtifact, SignalChartCaptureService
 from ote_live.models.ensemble import load_direction_models
 from ote_live.models.loaders import LoadedRuntimeModel
@@ -52,6 +57,8 @@ class LiveSignalProcessor:
         chart_capture_service: SignalChartCaptureService | None = None,
         dashboard_url: str | None = None,
         rolling_window_bars: int | None = None,
+        group_name: str = "OTE",
+        data_supplier: str = "FMP",
     ) -> None:
         self.bindings = tuple(bindings)
         if not self.bindings:
@@ -59,9 +66,17 @@ class LiveSignalProcessor:
 
         manifests = [binding.loaded_model.manifest for binding in self.bindings]
         self.audit_repository = audit_repository
+        self.group_name = str(group_name).strip().upper() or "OTE"
+        self.data_supplier = str(data_supplier).strip().upper() or "FMP"
+        self._frvp_dashboard_state_enabled = _contains_frvp_models(manifests)
         self.feature_engine = feature_engine or IncrementalFeatureEngine(
             manifests,
             rolling_window_bars=rolling_window_bars,
+            extra_feature_names=(
+                FRVP_DASHBOARD_EXTRA_FEATURE_NAMES
+                if self._frvp_dashboard_state_enabled
+                else ()
+            ),
         )
         self.decision_engine = decision_engine or LiveDecisionEngine(
             audit_repository=audit_repository,
@@ -94,6 +109,9 @@ class LiveSignalProcessor:
         rolling_window_bars: int | None = None,
         skip_unavailable_backends: bool = True,
         require_complete_policy: bool = False,
+        all_models_active: bool = False,
+        group_name: str = "OTE",
+        data_supplier: str = "FMP",
     ) -> LiveSignalProcessor | None:
         bindings: list[SignalRuntimeModelBinding] = []
         for manifest_path in (long_manifest_path, short_manifest_path):
@@ -106,7 +124,7 @@ class LiveSignalProcessor:
             )
             configured_primary_id = bundle.direction_manifest.recommendations.recommended_primary_model_id
             primary = bundle.primary_model
-            if configured_primary_id is not None and primary is None:
+            if configured_primary_id is not None and primary is None and not all_models_active:
                 loaded_model_ids = ", ".join(sorted(bundle.loaded_models)) or "none"
                 unavailable_reason = bundle.unavailable_models.get(configured_primary_id)
                 detail = unavailable_reason or "configured primary model was not loaded from the direction bundle"
@@ -115,18 +133,31 @@ class LiveSignalProcessor:
                     f"{configured_primary_id!r} could not be loaded from {manifest_path!s}. "
                     f"Loaded models: {loaded_model_ids}. Reason: {detail}"
                 )
-            if primary is not None:
-                bindings.append(
-                    SignalRuntimeModelBinding(
-                        loaded_model=primary,
-                        shadow_mode=False,
+            if all_models_active:
+                for model_manifest in bundle.direction_manifest.models:
+                    if getattr(model_manifest, "status", None) == "deprecated":
+                        continue
+                    loaded_model = bundle.loaded_models.get(model_manifest.model_id)
+                    if loaded_model is None:
+                        continue
+                    bindings.append(
+                        SignalRuntimeModelBinding(
+                            loaded_model=loaded_model,
+                            shadow_mode=False,
+                        )
                     )
-                )
-            for shadow_model in bundle.shadow_models:
+                continue
+            for model_manifest in bundle.direction_manifest.models:
+                if getattr(model_manifest, "status", None) == "deprecated":
+                    continue
+                loaded_model = bundle.loaded_models.get(model_manifest.model_id)
+                if loaded_model is None:
+                    continue
+                shadow_mode = getattr(model_manifest, "status", None) != "active"
                 bindings.append(
                     SignalRuntimeModelBinding(
-                        loaded_model=shadow_model,
-                        shadow_mode=True,
+                        loaded_model=loaded_model,
+                        shadow_mode=shadow_mode,
                     )
                 )
         if not bindings:
@@ -139,6 +170,8 @@ class LiveSignalProcessor:
             chart_capture_service=chart_capture_service,
             dashboard_url=dashboard_url,
             rolling_window_bars=rolling_window_bars,
+            group_name=group_name,
+            data_supplier=data_supplier,
         )
 
     def warm_from_store(self) -> int:
@@ -189,7 +222,7 @@ class LiveSignalProcessor:
             self.last_processed_timestamp = bar.timestamp
 
             try:
-                feature_frame = self.feature_engine.build_feature_frame()
+                feature_frame = self.feature_engine.build_feature_frame(include_policy_features=True)
             except Exception as exc:
                 self._record_health_event(
                     component="signal_runtime.features",
@@ -211,6 +244,7 @@ class LiveSignalProcessor:
 
             policy_frame = self._build_policy_frame(feature_frame)
             source_row_idx = self._resolve_source_row_idx(bar)
+            self._persist_dashboard_state(bar=bar, policy_frame=policy_frame)
 
             for binding in self.bindings:
                 loaded_model = binding.loaded_model
@@ -279,10 +313,14 @@ class LiveSignalProcessor:
                 sms_notification = None
                 if (
                     emit_operator_artifacts
-                    and decision_path.signal.decision == "emit"
+                    and _should_capture_operator_artifacts(decision_path.signal)
                     and signal_decision_id is not None
                 ):
                     media_artifact = self._capture_chart(signal_decision_id)
+                if (
+                    _should_send_notifications(decision_path.signal)
+                    and signal_decision_id is not None
+                ):
                     notification = self._send_email_alert(
                         signal_decision_id,
                         screenshot_path=media_artifact.file_path if media_artifact is not None else None,
@@ -316,9 +354,27 @@ class LiveSignalProcessor:
             aligned_market = aligned_market.drop(columns=list(overlapping_columns))
 
         policy_frame = pd.concat([aligned_market, aligned_features], axis=1)
+        if "timestamp" in policy_frame.columns and "datetime" not in policy_frame.columns:
+            insert_at = policy_frame.columns.get_loc("timestamp") + 1
+            policy_frame.insert(
+                insert_at,
+                "datetime",
+                pd.to_datetime(policy_frame["timestamp"], errors="coerce", utc=True),
+            )
+        ordered_market_columns = list(market_frame.columns)
+        if "datetime" in policy_frame.columns:
+            if "timestamp" in ordered_market_columns:
+                insert_at = ordered_market_columns.index("timestamp") + 1
+                ordered_market_columns.insert(insert_at, "datetime")
+            else:
+                ordered_market_columns.append("datetime")
         ordered_columns = [
-            *market_frame.columns,
-            *[column for column in aligned_features.columns if column not in market_frame.columns],
+            *ordered_market_columns,
+            *[
+                column
+                for column in aligned_features.columns
+                if column not in market_frame.columns and column != "datetime"
+            ],
         ]
         return policy_frame.loc[:, ordered_columns]
 
@@ -337,7 +393,22 @@ class LiveSignalProcessor:
     def _fetch_recent_signal_bars(self, *, limit: int) -> list[MarketBar]:
         rows = self.audit_repository.store.connection.execute(
             """
-            SELECT asset, timeframe, timestamp_utc, open, high, low, close, volume, bid, ask, spread, source
+            SELECT
+                asset,
+                timeframe,
+                timestamp_utc,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                bid,
+                ask,
+                spread,
+                source,
+                symbol,
+                contract_symbol,
+                instrument_id
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
             ORDER BY timestamp_utc DESC
@@ -357,7 +428,22 @@ class LiveSignalProcessor:
         max_timestamp: datetime | None = None,
     ) -> list[MarketBar]:
         query = """
-            SELECT asset, timeframe, timestamp_utc, open, high, low, close, volume, bid, ask, spread, source
+            SELECT
+                asset,
+                timeframe,
+                timestamp_utc,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                bid,
+                ask,
+                spread,
+                source,
+                symbol,
+                contract_symbol,
+                instrument_id
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ? AND timestamp_utc > ?
         """
@@ -460,6 +546,35 @@ class LiveSignalProcessor:
             payload=payload,
         )
 
+    def _persist_dashboard_state(self, *, bar: MarketBar, policy_frame: pd.DataFrame) -> None:
+        if not self._frvp_dashboard_state_enabled:
+            return
+        try:
+            persist_frvp_dashboard_state(
+                self.audit_repository.store,
+                group_name=self.group_name,
+                asset=self.asset,
+                timeframe=self.timeframe,
+                data_supplier=self.data_supplier,
+                policy_frame=policy_frame,
+                bar=bar,
+            )
+        except Exception as exc:
+            self._record_health_event(
+                component="signal_runtime.dashboard_state",
+                event_type="dashboard_state_persist_failed",
+                severity="error",
+                message="Persisting FRVP dashboard state failed.",
+                payload={
+                    "group_name": self.group_name,
+                    "asset": bar.asset,
+                    "timeframe": bar.timeframe,
+                    "timestamp_utc": bar.timestamp.isoformat(),
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                },
+            )
+
 
 def _bar_from_row(row) -> MarketBar:
     return MarketBar(
@@ -475,6 +590,9 @@ def _bar_from_row(row) -> MarketBar:
         ask=float(row["ask"]) if row["ask"] is not None else None,
         spread=float(row["spread"]) if row["spread"] is not None else None,
         source=row["source"],
+        symbol=row["symbol"],
+        contract_symbol=row["contract_symbol"],
+        instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
     )
 
 
@@ -485,3 +603,26 @@ def _to_python_scalar(value):
         except (TypeError, ValueError):
             return value
     return value
+
+
+def _should_send_notifications(signal: SignalDecision) -> bool:
+    return str(signal.decision) == "emit"
+
+
+def _should_capture_operator_artifacts(signal: SignalDecision) -> bool:
+    decision = str(signal.decision)
+    if decision == "emit":
+        return True
+    if decision != "shadow":
+        return False
+    if signal.threshold is None:
+        return False
+    return float(signal.probability) >= float(signal.threshold)
+
+
+def _contains_frvp_models(manifests: Sequence[object]) -> bool:
+    for manifest in manifests:
+        model_id = str(getattr(manifest, "model_id", "") or "").lower()
+        if model_id.startswith("frvp_"):
+            return True
+    return False

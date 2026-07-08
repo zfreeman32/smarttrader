@@ -81,8 +81,9 @@ class SQLiteLiveDataStore:
             """
             INSERT INTO canonical_bars (
                 asset, timeframe, timestamp_utc, open, high, low, close, volume,
-                bid, ask, spread, source, inserted_at_utc, updated_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                bid, ask, spread, source, symbol, contract_symbol, instrument_id,
+                inserted_at_utc, updated_at_utc
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(asset, timeframe, timestamp_utc) DO UPDATE SET
                 open = excluded.open,
                 high = excluded.high,
@@ -93,6 +94,9 @@ class SQLiteLiveDataStore:
                 ask = excluded.ask,
                 spread = excluded.spread,
                 source = excluded.source,
+                symbol = excluded.symbol,
+                contract_symbol = excluded.contract_symbol,
+                instrument_id = excluded.instrument_id,
                 updated_at_utc = excluded.updated_at_utc
             """,
             (
@@ -108,6 +112,9 @@ class SQLiteLiveDataStore:
                 bar.ask,
                 bar.spread,
                 bar.source,
+                bar.symbol,
+                bar.contract_symbol,
+                bar.instrument_id,
                 now,
                 now,
             ),
@@ -299,7 +306,22 @@ class SQLiteLiveDataStore:
         end: datetime | None = None,
     ) -> list[MarketBar]:
         query = """
-            SELECT asset, timeframe, timestamp_utc, open, high, low, close, volume, bid, ask, spread, source
+            SELECT
+                asset,
+                timeframe,
+                timestamp_utc,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                bid,
+                ask,
+                spread,
+                source,
+                symbol,
+                contract_symbol,
+                instrument_id
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
         """
@@ -327,6 +349,9 @@ class SQLiteLiveDataStore:
                 ask=float(row["ask"]) if row["ask"] is not None else None,
                 spread=float(row["spread"]) if row["spread"] is not None else None,
                 source=row["source"],
+                symbol=row["symbol"],
+                contract_symbol=row["contract_symbol"],
+                instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
             )
             for row in rows
         ]

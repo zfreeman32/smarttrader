@@ -47,7 +47,22 @@ def fetch_recent_bars(
 ) -> pd.DataFrame:
     rows = store.connection.execute(
         """
-        SELECT asset, timeframe, timestamp_utc, open, high, low, close, volume, bid, ask, spread, source
+        SELECT
+            asset,
+            timeframe,
+            timestamp_utc,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            bid,
+            ask,
+            spread,
+            source,
+            symbol,
+            contract_symbol,
+            instrument_id
         FROM canonical_bars
         WHERE asset = ? AND timeframe = ?
         ORDER BY timestamp_utc DESC
@@ -69,6 +84,9 @@ def fetch_recent_bars(
             "ask": float(row["ask"]) if row["ask"] is not None else None,
             "spread": float(row["spread"]) if row["spread"] is not None else None,
             "source": row["source"],
+            "symbol": row["symbol"],
+            "contract_symbol": row["contract_symbol"],
+            "instrument_id": int(row["instrument_id"]) if row["instrument_id"] is not None else None,
         }
         for row in reversed(rows)
     ]
@@ -380,9 +398,11 @@ def compute_signal_markouts(
     horizon_bars: int = 3,
     limit: int = 100,
     decisions: Sequence[str] = ("emit",),
+    model_ids: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     signals = fetch_recent_signals(
         audit_repository,
+        model_ids=model_ids,
         decisions=decisions,
         limit=limit,
     )

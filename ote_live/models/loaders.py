@@ -99,11 +99,10 @@ def load_runtime_model(
             _nested_get(training_summary, "config", "batch_size"),
             DEFAULT_BATCH_SIZE,
         )),
-        use_amp=bool(_first_non_none(
-            _nested_get(training_summary, "model_config", "trainer", "use_amp"),
-            _nested_get(training_summary, "config", "use_amp"),
-            False,
-        )),
+        use_amp=_resolve_runtime_amp_usage(
+            manifest=manifest,
+            training_summary=training_summary,
+        ),
     )
 
 
@@ -176,3 +175,39 @@ def _first_non_none(*values: Any) -> Any:
         if value is not None:
             return value
     return None
+
+
+def _resolve_runtime_amp_usage(
+    *,
+    manifest: LiveRuntimeManifest,
+    training_summary: dict[str, Any],
+) -> bool:
+    requested_use_amp = bool(
+        _first_non_none(
+            _nested_get(training_summary, "model_config", "trainer", "use_amp"),
+            _nested_get(training_summary, "config", "use_amp"),
+            False,
+        )
+    )
+    if manifest.backend not in {"tcn", "lstm"}:
+        return False
+
+    try:
+        import torch
+        from model_training.ote_training.torch_trainer import resolve_amp_usage
+    except ImportError:
+        return False
+
+    model_type = str(
+        _first_non_none(
+            _nested_get(training_summary, "model_config", "model_type"),
+            manifest.backend,
+        )
+    )
+    return bool(
+        resolve_amp_usage(
+            model_type=model_type,
+            requested_use_amp=requested_use_amp,
+            device=torch.device("cpu"),
+        )
+    )

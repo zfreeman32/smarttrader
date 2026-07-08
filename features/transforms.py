@@ -6,6 +6,39 @@ import numpy as np
 import pandas as pd
 
 
+def _to_transform_series(
+    name: str,
+    values: pd.Series | np.ndarray,
+    *,
+    index: pd.Index,
+    downcast_float32: bool = True,
+) -> pd.Series:
+    series = values if isinstance(values, pd.Series) else pd.Series(values, index=index)
+    if downcast_float32 and pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
+        series = series.astype(np.float32)
+    return series.rename(name)
+
+
+def _build_transform_frame(
+    columns: Sequence[tuple[str, pd.Series | np.ndarray]],
+    *,
+    index: pd.Index,
+    downcast_float32: bool = True,
+) -> pd.DataFrame:
+    if not columns:
+        return pd.DataFrame(index=index)
+    series_list = [
+        _to_transform_series(
+            name,
+            values,
+            index=index,
+            downcast_float32=downcast_float32,
+        )
+        for name, values in columns
+    ]
+    return pd.concat(series_list, axis=1)
+
+
 def safe_divide(
     numerator: pd.Series | np.ndarray,
     denominator: pd.Series | np.ndarray,
@@ -187,17 +220,22 @@ def add_rolling_winsorized_features(
     upper_quantile: float = 0.99,
 ) -> pd.DataFrame:
     """Add rolling historical winsorized versions of return-like features."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
-        out[f"{column}_winsor_{window}"] = rolling_winsorize_series(
-            df[column],
-            window=window,
-            lower_quantile=lower_quantile,
-            upper_quantile=upper_quantile,
+        generated.append(
+            (
+                f"{column}_winsor_{window}",
+                rolling_winsorize_series(
+                    df[column],
+                    window=window,
+                    lower_quantile=lower_quantile,
+                    upper_quantile=upper_quantile,
+                ),
+            )
         )
-    return out
+    return _build_transform_frame(generated, index=df.index)
 
 
 def _rolling_percentile_rank_last(values: np.ndarray) -> float:
@@ -214,19 +252,20 @@ def add_rolling_percentile_rank_features(
     window: int,
 ) -> pd.DataFrame:
     """Add rolling percentile ranks for selected regime-style features."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
         rolling = pd.to_numeric(df[column], errors="coerce").rolling(window, min_periods=window)
         try:
-            out[f"{column}_pct_rank_{window}"] = rolling.rank(pct=True)
+            ranked = rolling.rank(pct=True)
         except AttributeError:
-            out[f"{column}_pct_rank_{window}"] = rolling.apply(
+            ranked = rolling.apply(
                 _rolling_percentile_rank_last,
                 raw=True,
             )
-    return out
+        generated.append((f"{column}_pct_rank_{window}", ranked))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def add_atr_normalized_features(
@@ -236,19 +275,19 @@ def add_atr_normalized_features(
     atr_column: str = "atr_14",
 ) -> pd.DataFrame:
     """Normalize selected price-unit features by ATR."""
-    out = pd.DataFrame(index=df.index)
     if atr_column in df.columns:
         atr = df[atr_column]
     elif {"high", "low", "close"}.issubset(df.columns):
         atr = calculate_atr(df)
     else:
-        return out
+        return pd.DataFrame(index=df.index)
 
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
-        out[f"{column}_atr_norm"] = safe_divide(df[column], atr)
-    return out
+        generated.append((f"{column}_atr_norm", safe_divide(df[column], atr)))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def add_sigma_normalized_features(
@@ -257,12 +296,12 @@ def add_sigma_normalized_features(
     window: int,
 ) -> pd.DataFrame:
     """Normalize selected features by rolling historical sigma."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
-        out[f"{column}_sigma_norm_{window}"] = rolling_sigma_normalize(df[column], window)
-    return out
+        generated.append((f"{column}_sigma_norm_{window}", rolling_sigma_normalize(df[column], window)))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def add_lag_features(
@@ -271,13 +310,13 @@ def add_lag_features(
     periods: Sequence[int],
 ) -> pd.DataFrame:
     """Create lag features for the selected columns."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
         for period in periods:
-            out[f"{column}_lag_{period}"] = df[column].shift(period)
-    return out
+            generated.append((f"{column}_lag_{period}", df[column].shift(period)))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def add_rolling_statistics(
@@ -286,14 +325,16 @@ def add_rolling_statistics(
     windows: Sequence[int],
 ) -> pd.DataFrame:
     """Add rolling means and standard deviations."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
         for window in windows:
-            out[f"{column}_roll_mean_{window}"] = df[column].rolling(window).mean()
-            out[f"{column}_roll_std_{window}"] = df[column].rolling(window).std()
-    return out
+            rolling = numeric.rolling(window)
+            generated.append((f"{column}_roll_mean_{window}", rolling.mean()))
+            generated.append((f"{column}_roll_std_{window}", rolling.std()))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def add_rolling_zscores(
@@ -302,14 +343,15 @@ def add_rolling_zscores(
     window: int,
 ) -> pd.DataFrame:
     """Rolling z-scores using past data only."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
-        mean = df[column].rolling(window).mean()
-        std = df[column].rolling(window).std().replace(0, np.nan)
-        out[f"{column}_zscore_{window}"] = (df[column] - mean) / std
-    return out
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        mean = numeric.rolling(window).mean()
+        std = numeric.rolling(window).std().replace(0, np.nan)
+        generated.append((f"{column}_zscore_{window}", (numeric - mean) / std))
+    return _build_transform_frame(generated, index=df.index)
 
 
 def _combine_max(series_list: Sequence[pd.Series]) -> pd.Series | None:
@@ -336,40 +378,51 @@ def proximity_score(
 
 def add_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     """Curated interaction features inspired by the pipeline docs."""
-    out = pd.DataFrame(index=df.index)
+    generated: list[tuple[str, pd.Series]] = []
 
     if {"ema_alignment", "roc_5"}.issubset(df.columns):
-        out["interaction_trend_momentum"] = df["ema_alignment"] * df["roc_5"]
+        generated.append(("interaction_trend_momentum", df["ema_alignment"] * df["roc_5"]))
 
     if {"ema_alignment", "rsi_from_mid"}.issubset(df.columns):
-        out["interaction_trend_rsi"] = df["ema_alignment"] * df["rsi_from_mid"]
+        generated.append(("interaction_trend_rsi", df["ema_alignment"] * df["rsi_from_mid"]))
 
     if {"roc_5", "atr_ratio_14_50"}.issubset(df.columns):
-        out["interaction_vol_adjusted_momentum"] = safe_divide(
-            df["roc_5"],
-            df["atr_ratio_14_50"],
+        generated.append(
+            (
+                "interaction_vol_adjusted_momentum",
+                safe_divide(
+                    df["roc_5"],
+                    df["atr_ratio_14_50"],
+                ),
+            )
         )
 
     if {"in_london_session", "roc_5"}.issubset(df.columns):
-        out["interaction_london_momentum"] = df["in_london_session"] * df["roc_5"]
+        generated.append(("interaction_london_momentum", df["in_london_session"] * df["roc_5"]))
 
     if {"in_newyork_session", "roc_5"}.issubset(df.columns):
-        out["interaction_newyork_momentum"] = df["in_newyork_session"] * df["roc_5"]
+        generated.append(("interaction_newyork_momentum", df["in_newyork_session"] * df["roc_5"]))
 
     if {"sweep_low_20", "in_discount_zone", "ema_alignment"}.issubset(df.columns):
-        out["interaction_bull_reversal_context"] = (
-            df["sweep_low_20"]
-            * (df["in_discount_zone"] + (df["ema_alignment"] > 0).astype(int))
+        generated.append(
+            (
+                "interaction_bull_reversal_context",
+                df["sweep_low_20"]
+                * (df["in_discount_zone"] + (df["ema_alignment"] > 0).astype(int)),
+            )
         )
 
     if {"sweep_high_20", "in_premium_zone", "ema_alignment"}.issubset(df.columns):
-        out["interaction_bear_reversal_context"] = (
-            df["sweep_high_20"]
-            * (df["in_premium_zone"] + (df["ema_alignment"] < 0).astype(int))
+        generated.append(
+            (
+                "interaction_bear_reversal_context",
+                df["sweep_high_20"]
+                * (df["in_premium_zone"] + (df["ema_alignment"] < 0).astype(int)),
+            )
         )
 
     if {"volume_imbalance_10", "close_return_1"}.issubset(df.columns):
-        out["interaction_orderflow_return"] = df["volume_imbalance_10"] * df["close_return_1"]
+        generated.append(("interaction_orderflow_return", df["volume_imbalance_10"] * df["close_return_1"]))
 
     htf_trend_score = None
     if "htf_alignment_score" in df.columns:
@@ -380,13 +433,13 @@ def add_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
         htf_trend_score = df["htf_1h_ema_alignment"]
 
     if htf_trend_score is not None and "roc_5" in df.columns:
-        out["interaction_htf_trend_momentum"] = htf_trend_score * df["roc_5"]
+        generated.append(("interaction_htf_trend_momentum", htf_trend_score * df["roc_5"]))
 
     if htf_trend_score is not None and "rsi_from_mid" in df.columns:
-        out["interaction_htf_trend_rsi"] = htf_trend_score * df["rsi_from_mid"]
+        generated.append(("interaction_htf_trend_rsi", htf_trend_score * df["rsi_from_mid"]))
 
     if htf_trend_score is not None and "ema_alignment" in df.columns:
-        out["interaction_htf_ltf_alignment"] = htf_trend_score * df["ema_alignment"]
+        generated.append(("interaction_htf_ltf_alignment", htf_trend_score * df["ema_alignment"]))
 
     bull_proximity_parts = [
         proximity_score(df[column])
@@ -420,24 +473,44 @@ def add_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     bear_structure_proximity = _combine_max(bear_proximity_parts)
 
     if bull_structure_proximity is not None:
-        out["interaction_bull_structure_proximity"] = bull_structure_proximity
+        generated.append(("interaction_bull_structure_proximity", bull_structure_proximity))
     if bear_structure_proximity is not None:
-        out["interaction_bear_structure_proximity"] = bear_structure_proximity
+        generated.append(("interaction_bear_structure_proximity", bear_structure_proximity))
 
     if bull_structure_proximity is not None and "bullish_rejection" in df.columns:
-        out["interaction_bull_rejection_structure"] = bull_structure_proximity * df["bullish_rejection"]
+        generated.append(
+            (
+                "interaction_bull_rejection_structure",
+                bull_structure_proximity * df["bullish_rejection"],
+            )
+        )
     if bear_structure_proximity is not None and "bearish_rejection" in df.columns:
-        out["interaction_bear_rejection_structure"] = bear_structure_proximity * df["bearish_rejection"]
+        generated.append(
+            (
+                "interaction_bear_rejection_structure",
+                bear_structure_proximity * df["bearish_rejection"],
+            )
+        )
 
     if bull_structure_proximity is not None and "sweep_low_20" in df.columns:
-        out["interaction_bull_sweep_structure"] = bull_structure_proximity * df["sweep_low_20"]
+        generated.append(("interaction_bull_sweep_structure", bull_structure_proximity * df["sweep_low_20"]))
     if bear_structure_proximity is not None and "sweep_high_20" in df.columns:
-        out["interaction_bear_sweep_structure"] = bear_structure_proximity * df["sweep_high_20"]
+        generated.append(("interaction_bear_sweep_structure", bear_structure_proximity * df["sweep_high_20"]))
 
     if bull_structure_proximity is not None and "in_discount_zone" in df.columns:
-        out["interaction_bull_discount_structure"] = bull_structure_proximity * df["in_discount_zone"]
+        generated.append(
+            (
+                "interaction_bull_discount_structure",
+                bull_structure_proximity * df["in_discount_zone"],
+            )
+        )
     if bear_structure_proximity is not None and "in_premium_zone" in df.columns:
-        out["interaction_bear_premium_structure"] = bear_structure_proximity * df["in_premium_zone"]
+        generated.append(
+            (
+                "interaction_bear_premium_structure",
+                bear_structure_proximity * df["in_premium_zone"],
+            )
+        )
 
     bull_reversion_strength = _combine_mean(
         [
@@ -459,14 +532,34 @@ def add_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     if "compression_regime" in df.columns and bull_reversion_strength is not None:
-        out["interaction_compression_bull_reversion"] = df["compression_regime"] * bull_reversion_strength
+        generated.append(
+            (
+                "interaction_compression_bull_reversion",
+                df["compression_regime"] * bull_reversion_strength,
+            )
+        )
     if "compression_regime" in df.columns and bear_reversion_strength is not None:
-        out["interaction_compression_bear_reversion"] = df["compression_regime"] * bear_reversion_strength
+        generated.append(
+            (
+                "interaction_compression_bear_reversion",
+                df["compression_regime"] * bear_reversion_strength,
+            )
+        )
 
     if "rolling_vol_20_pct_rank_60" in df.columns and bull_reversion_strength is not None:
-        out["interaction_lowvol_bull_reversion"] = (1.0 - df["rolling_vol_20_pct_rank_60"]) * bull_reversion_strength
+        generated.append(
+            (
+                "interaction_lowvol_bull_reversion",
+                (1.0 - df["rolling_vol_20_pct_rank_60"]) * bull_reversion_strength,
+            )
+        )
     if "rolling_vol_20_pct_rank_60" in df.columns and bear_reversion_strength is not None:
-        out["interaction_lowvol_bear_reversion"] = (1.0 - df["rolling_vol_20_pct_rank_60"]) * bear_reversion_strength
+        generated.append(
+            (
+                "interaction_lowvol_bear_reversion",
+                (1.0 - df["rolling_vol_20_pct_rank_60"]) * bear_reversion_strength,
+            )
+        )
 
     bull_setup_score = _combine_mean(
         ([bull_structure_proximity] if bull_structure_proximity is not None else [])
@@ -484,16 +577,16 @@ def add_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     if bull_setup_score is not None and "in_london_killzone" in df.columns:
-        out["interaction_london_bull_setup"] = df["in_london_killzone"] * bull_setup_score
+        generated.append(("interaction_london_bull_setup", df["in_london_killzone"] * bull_setup_score))
     if bear_setup_score is not None and "in_london_killzone" in df.columns:
-        out["interaction_london_bear_setup"] = df["in_london_killzone"] * bear_setup_score
+        generated.append(("interaction_london_bear_setup", df["in_london_killzone"] * bear_setup_score))
     if bull_setup_score is not None and "in_newyork_killzone" in df.columns:
-        out["interaction_newyork_bull_setup"] = df["in_newyork_killzone"] * bull_setup_score
+        generated.append(("interaction_newyork_bull_setup", df["in_newyork_killzone"] * bull_setup_score))
     if bear_setup_score is not None and "in_newyork_killzone" in df.columns:
-        out["interaction_newyork_bear_setup"] = df["in_newyork_killzone"] * bear_setup_score
+        generated.append(("interaction_newyork_bear_setup", df["in_newyork_killzone"] * bear_setup_score))
     if bull_setup_score is not None and "in_london_ny_overlap" in df.columns:
-        out["interaction_overlap_bull_setup"] = df["in_london_ny_overlap"] * bull_setup_score
+        generated.append(("interaction_overlap_bull_setup", df["in_london_ny_overlap"] * bull_setup_score))
     if bear_setup_score is not None and "in_london_ny_overlap" in df.columns:
-        out["interaction_overlap_bear_setup"] = df["in_london_ny_overlap"] * bear_setup_score
+        generated.append(("interaction_overlap_bear_setup", df["in_london_ny_overlap"] * bear_setup_score))
 
-    return out
+    return _build_transform_frame(generated, index=df.index)

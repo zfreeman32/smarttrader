@@ -60,6 +60,9 @@ class FeatureRuntimeState:
                     "ask",
                     "spread",
                     "source",
+                    "symbol",
+                    "contract_symbol",
+                    "instrument_id",
                 ]
             )
 
@@ -77,6 +80,9 @@ class FeatureRuntimeState:
                 "ask": bar.ask,
                 "spread": bar.spread,
                 "source": bar.source,
+                "symbol": bar.symbol,
+                "contract_symbol": bar.contract_symbol,
+                "instrument_id": bar.instrument_id,
             }
             for bar in self._bars
         ]

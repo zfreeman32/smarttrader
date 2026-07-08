@@ -121,6 +121,8 @@ class AbstainPolicy(ManifestModel):
     minimum_expected_move_to_spread: float
     abstain_session_regimes: list[str] = Field(default_factory=list)
     abstain_composite_regimes: list[str] = Field(default_factory=list)
+    abstain_composite_session_pairs: list[tuple[str, str]] = Field(default_factory=list)
+    abstain_composite_stress_pairs: list[tuple[str, str]] = Field(default_factory=list)
     minimum_probability_quantile: float | None = None
 
 

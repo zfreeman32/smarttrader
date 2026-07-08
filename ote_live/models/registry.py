@@ -31,16 +31,22 @@ from ote_live.features.manifest import (
 from ote_live.policies.packager import DEFAULT_POLICY_ARTIFACT_DIR
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CANDIDATE_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_v1_v2_candidates.json"
+DEFAULT_MULTIFAMILY_CANDIDATE_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_live_multifamily.json"
+DEFAULT_LIVE_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry_live_multifamily.json"
+DEFAULT_CANDIDATE_REGISTRY_PATH = DEFAULT_LIVE_REGISTRY_PATH
 DEFAULT_ACTIVE_REGISTRY_PATH = REPO_ROOT / "models" / "ote_model_registry.json"
 DEFAULT_PREPARED_SUMMARY_PATH = REPO_ROOT / "data" / "prepared" / "eurusd_5min_ote_full" / "summary.json"
 DEFAULT_FEATURE_METADATA_PATH = REPO_ROOT / "data" / "features" / "eurusd_5min_ote_full.metadata.json"
 DEFAULT_LONG_FEATURE_PATH = REPO_ROOT / "data" / "prepared" / "eurusd_5min_ote_full" / "long_ote" / "features.json"
 DEFAULT_SHORT_FEATURE_PATH = REPO_ROOT / "data" / "prepared" / "eurusd_5min_ote_full" / "short_ote" / "features.json"
 DEFAULT_POLICY_BACKTEST_SUMMARY_PATH = (
-    REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "v1_v2_tcn_focus" / "run_summary.json"
+    REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / "multifamily_live_v1" / "run_summary.json"
 )
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "ote_live" / "runtime_manifests"
+DEFAULT_PREFERRED_PRIMARY_MODEL_IDS = {
+    "long": "long_reversal_tcn_v2_20260525_narrow48",
+    "short": "short_reversal_xgb_v2_20260525",
+}
 NON_LIVE_SAFE_SELECTED_FEATURE_NAMES = frozenset(
     {
         "strategy__price_action_signals__signal__short",
@@ -99,6 +105,7 @@ def build_direction_runtime_manifests(
     short_feature_path: str | Path = DEFAULT_SHORT_FEATURE_PATH,
     policy_backtest_summary_path: str | Path = DEFAULT_POLICY_BACKTEST_SUMMARY_PATH,
     packaged_policy_dir: str | Path = DEFAULT_POLICY_ARTIFACT_DIR,
+    preferred_primary_model_ids: dict[str, str] | None = None,
 ) -> dict[str, DirectionRuntimeManifest]:
     registry_path = _resolve_path(registry_path)
     prepared_summary_path = _resolve_path(prepared_summary_path)
@@ -116,11 +123,14 @@ def build_direction_runtime_manifests(
         short_feature_path=short_feature_path,
     )
     policy_sources = _load_policy_sources(policy_backtest_summary_path)
+    preferred_primary_by_direction = preferred_primary_model_ids or DEFAULT_PREFERRED_PRIMARY_MODEL_IDS
 
     generated_at_utc = datetime.now(timezone.utc)
     manifests_by_direction: dict[str, list[LiveRuntimeManifest]] = {"long": [], "short": []}
 
     for model_record in registry.models:
+        if model_record.status == "deprecated":
+            continue
         manifest = _build_live_runtime_manifest(
             model_record=model_record,
             registry_path=registry_path,
@@ -142,7 +152,11 @@ def build_direction_runtime_manifests(
             continue
         manifests.sort(key=lambda manifest: _manifest_sort_key(manifest, policy_sources_by_model), reverse=True)
         recommendations = DirectionRecommendations(
-            recommended_primary_model_id=_recommended_primary_model_id(manifests, policy_sources_by_model),
+            recommended_primary_model_id=_recommended_primary_model_id(
+                manifests,
+                policy_sources_by_model,
+                preferred_model_id=preferred_primary_by_direction.get(direction),
+            ),
             recommended_strongest_overall_model_id=manifests[0].model_id,
             recommended_strongest_v2_model_id=_recommended_v2_model_id(manifests, policy_sources_by_model),
         )
@@ -269,12 +283,16 @@ def _build_live_runtime_manifest(
         )
     )
 
-    feature_path, direction_features = feature_catalogs.for_direction(model_record.direction)
+    feature_path, direction_features = _resolve_model_feature_catalog(
+        model_record=model_record,
+        training_summary=training_summary,
+        feature_catalogs=feature_catalogs,
+    )
     canonical_feature_set = set(feature_catalogs.canonical_features)
     direction_feature_set = set(direction_features)
     missing_from_canonical = sorted(set(selected_feature_names) - canonical_feature_set)
     missing_from_direction = sorted(set(selected_feature_names) - direction_feature_set)
-    if missing_from_canonical or missing_from_direction:
+    if missing_from_canonical and missing_from_direction:
         raise ValueError(
             f"Model {model_record.model_id} failed feature validation: "
             f"missing_from_canonical={missing_from_canonical}, "
@@ -328,10 +346,18 @@ def _build_live_runtime_manifest(
     )
 
     asset, timeframe = _infer_asset_and_timeframe(source_lineage_payload["upstream_source_path"])
+    resolved_source_lineage_payload, used_synthesized_upstream_timezone_contract = _resolve_source_lineage_payload(
+        source_lineage_payload=source_lineage_payload,
+        timezone_payload=timezone_payload,
+    )
     notes = _build_manifest_notes(
         model_record=model_record,
         training_summary=training_summary,
         live_policy=live_policy,
+        missing_from_canonical=missing_from_canonical,
+        missing_from_direction=missing_from_direction,
+        feature_path=feature_path,
+        used_synthesized_upstream_timezone_contract=used_synthesized_upstream_timezone_contract,
     )
 
     return LiveRuntimeManifest(
@@ -391,9 +417,9 @@ def _build_live_runtime_manifest(
         timezone_contract=TimezoneContract(**timezone_payload),
         source_lineage=SourceLineage(
             **{
-                **source_lineage_payload,
+                **resolved_source_lineage_payload,
                 "upstream_timezone_contract": UpstreamTimezoneContract(
-                    **source_lineage_payload["upstream_timezone_contract"]
+                    **resolved_source_lineage_payload["upstream_timezone_contract"]
                 ),
             }
         ),
@@ -457,7 +483,7 @@ def _build_live_policy(
             global_threshold=model_record.global_threshold,
             regime_thresholds=model_record.regime_thresholds,
         ),
-        abstain_policy=AbstainPolicy(**source_record.targeted_filters),
+        abstain_policy=AbstainPolicy(**_sanitize_abstain_policy_payload(source_record.targeted_filters)),
         cost_assumptions=PolicyCostAssumptions(
             fixed_slippage_pips_per_trade=source_record.fixed_slippage_pips_per_trade,
             commission_pips_per_trade=source_record.commission_pips_per_trade,
@@ -481,8 +507,28 @@ def _build_manifest_notes(
     model_record: OTEModelRecord,
     training_summary: dict[str, Any],
     live_policy: LivePolicy,
+    missing_from_canonical: list[str],
+    missing_from_direction: list[str],
+    feature_path: Path,
+    used_synthesized_upstream_timezone_contract: bool,
 ) -> list[str]:
     notes = list(live_policy.lineage.notes)
+    if used_synthesized_upstream_timezone_contract:
+        notes.append(
+            "Training artifacts left upstream_timezone_contract unset; live manifest export synthesized a UTC-aware "
+            "ts_event contract from the prepared timezone metadata."
+        )
+    if missing_from_canonical:
+        notes.append(
+            "Selected features were missing from the configured canonical feature catalog but present in the "
+            "target-specific direction feature list; live manifest export tolerated the stale canonical catalog."
+        )
+    if missing_from_direction:
+        notes.append(
+            "Selected features were missing from the direction feature list "
+            f"({_repo_relative_str(feature_path)}) but present in the canonical feature catalog; "
+            "live manifest export tolerated the stale direction list."
+        )
     artifact_threshold = training_summary.get("threshold") or training_summary.get("test_metrics", {}).get("threshold")
     if artifact_threshold is not None and model_record.global_threshold is not None:
         if abs(float(artifact_threshold) - float(model_record.global_threshold)) > 1e-9:
@@ -501,6 +547,8 @@ def _build_manifest_notes(
 
 
 def _is_live_eligible_manifest(manifest: LiveRuntimeManifest) -> bool:
+    if manifest.status == "deprecated":
+        return False
     return not any(
         feature_name in NON_LIVE_SAFE_SELECTED_FEATURE_NAMES
         for feature_name in manifest.feature_manifest.selected_feature_names
@@ -526,20 +574,89 @@ def _load_feature_catalogs(
     )
 
 
+def _resolve_source_lineage_payload(
+    *,
+    source_lineage_payload: dict[str, Any],
+    timezone_payload: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    resolved_payload = dict(source_lineage_payload)
+    if resolved_payload.get("upstream_metadata_file") is None:
+        resolved_payload["upstream_metadata_file"] = ""
+    upstream_timezone_contract = resolved_payload.get("upstream_timezone_contract")
+    if upstream_timezone_contract is not None:
+        return resolved_payload, False
+
+    resolved_payload["upstream_timezone_contract"] = _synthesize_upstream_timezone_contract(
+        upstream_source_path=str(resolved_payload.get("upstream_source_path") or ""),
+        timezone_payload=timezone_payload,
+    )
+    return resolved_payload, True
+
+
+def _synthesize_upstream_timezone_contract(
+    *,
+    upstream_source_path: str,
+    timezone_payload: dict[str, Any],
+) -> dict[str, Any]:
+    source_timezone = str(
+        timezone_payload.get("source_timezone")
+        or timezone_payload.get("canonical_timezone")
+        or "UTC"
+    )
+    canonical_timezone = str(timezone_payload.get("canonical_timezone") or source_timezone)
+    csv_timezone = source_timezone
+    normalized_path = upstream_source_path.replace("\\", "/").lower()
+    timestamp_column = "ts_event" if normalized_path.endswith(".csv") else "timestamp"
+    if "futures_data/" in normalized_path or normalized_path.endswith("-tagged.csv"):
+        timestamp_column = "ts_event"
+    return {
+        "source_timezone": source_timezone,
+        "canonical_timezone": canonical_timezone,
+        "csv_timezone": csv_timezone,
+        "csv_timestamps_are_timezone_aware": True,
+        "timestamp_column": timestamp_column,
+    }
+
+
+def _resolve_model_feature_catalog(
+    *,
+    model_record: OTEModelRecord,
+    training_summary: dict[str, Any],
+    feature_catalogs: FeatureCatalogs,
+) -> tuple[Path, tuple[str, ...]]:
+    default_feature_path, default_direction_features = feature_catalogs.for_direction(model_record.direction)
+    prepared_dir = training_summary.get("prepared_dir")
+    if not prepared_dir:
+        return default_feature_path, default_direction_features
+
+    candidate_feature_path = _resolve_path(Path(prepared_dir) / "features.json")
+    if not candidate_feature_path.exists():
+        return default_feature_path, default_direction_features
+
+    payload = _read_json(candidate_feature_path)
+    return candidate_feature_path, tuple(payload.get("features", []))
+
+
 def _load_policy_sources(
     policy_backtest_summary_path: Path,
 ) -> tuple[dict[str, PolicySourceRecord], dict[str, PolicySourceRecord], dict[str, PolicySourceRecord]]:
     payload = _read_json(policy_backtest_summary_path)
-    source_registry_path = _resolve_path(payload.get("registry_path", DEFAULT_ACTIVE_REGISTRY_PATH))
+    source_registry_path = _resolve_path(payload.get("registry_path", DEFAULT_MULTIFAMILY_CANDIDATE_REGISTRY_PATH))
     source_registry = load_ote_model_registry(source_registry_path)
-    active_registry_path = _resolve_path(DEFAULT_ACTIVE_REGISTRY_PATH)
+    active_registry_path = _resolve_path(DEFAULT_LIVE_REGISTRY_PATH)
     active_registry = load_ote_model_registry(active_registry_path)
 
     by_artifact: dict[str, PolicySourceRecord] = {}
     by_direction: dict[str, PolicySourceRecord] = {}
     by_model: dict[str, PolicySourceRecord] = {}
     for model_output in payload.get("model_outputs", []):
-        source_record = source_registry.get_model(model_output["model_id"])
+        try:
+            source_record = source_registry.get_model(model_output["model_id"])
+        except KeyError:
+            # The consolidated backtest summary can lag the live registry during
+            # slot rotations; ignore stale entries that no longer belong to the
+            # current live candidate set.
+            continue
         try:
             active_record = active_registry.get_model(model_output["model_id"])
         except KeyError:
@@ -610,10 +727,25 @@ def _load_packaged_live_policy(
     return policy
 
 
+def _sanitize_abstain_policy_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    allowed_keys = set(AbstainPolicy.model_fields)
+    return {
+        key: value
+        for key, value in dict(payload).items()
+        if key in allowed_keys
+    }
+
+
 def _recommended_primary_model_id(
     manifests: list[LiveRuntimeManifest],
     policy_sources_by_model: dict[str, PolicySourceRecord],
+    *,
+    preferred_model_id: str | None = None,
 ) -> str | None:
+    if preferred_model_id is not None:
+        for manifest in manifests:
+            if manifest.model_id == preferred_model_id:
+                return preferred_model_id
     complete_manifests = [manifest for manifest in manifests if manifest.live_policy.policy_status == "complete"]
     if complete_manifests:
         complete_manifests.sort(
@@ -642,15 +774,22 @@ def _manifest_sort_key(
     manifest: LiveRuntimeManifest,
     policy_sources_by_model: dict[str, PolicySourceRecord],
 ) -> tuple[float, ...]:
+    status_priority = {
+        "active": 2.0,
+        "candidate": 1.0,
+        "deprecated": 0.0,
+    }.get(manifest.status, 0.0)
     policy_source = policy_sources_by_model.get(manifest.model_id)
     if policy_source is not None:
         return (
+            status_priority,
             1.0 if manifest.live_policy.policy_status == "complete" else 0.0,
             *_policy_source_sort_key(policy_source),
             manifest.registry_metrics.test_ap,
             manifest.registry_metrics.test_event_f05,
         )
     return (
+        status_priority,
         1.0 if manifest.live_policy.policy_status == "complete" else 0.0,
         manifest.registry_metrics.test_ap,
         manifest.registry_metrics.cv_mean_ap,
@@ -692,7 +831,9 @@ def _infer_asset_and_timeframe(upstream_source_path: str) -> tuple[str, str]:
     stem = Path(upstream_source_path).stem.lower()
     if "-" not in stem:
         return "EURUSD", "5m"
-    asset, timeframe = stem.split("-", 1)
+    parts = stem.split("-")
+    asset = parts[0]
+    timeframe = parts[1] if len(parts) > 1 else "5m"
     return asset.upper(), timeframe
 
 

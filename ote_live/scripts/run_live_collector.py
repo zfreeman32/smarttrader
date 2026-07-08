@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_repo_env
+from ote_live.ingestion.connector_ibkr import IBKRRuntimeConfig
 from ote_live.ingestion.runtime import (
     DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS,
     DEFAULT_DB_PATH,
@@ -36,6 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
     load_repo_env()
     parser = argparse.ArgumentParser(
         description="Run the OTE live collector with runtime supervision hooks and local operator artifacts.",
+    )
+    parser.add_argument("--group-name", default=env_str("OTE_LIVE_GROUP_NAME", "OTE"))
+    parser.add_argument(
+        "--data-supplier",
+        default=str(env_str("OTE_LIVE_DATA_SUPPLIER", "FMP") or "FMP").upper(),
+        choices=("FMP", "IBKR"),
     )
     parser.add_argument("--asset", default=env_str("OTE_LIVE_ASSET", "EURUSD"))
     parser.add_argument(
@@ -100,6 +107,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timezone", default=env_str("OTE_LIVE_TIMEZONE", "UTC"))
     parser.add_argument("--api-key", default=env_str("FMP_API_KEY") or env_str("TWELVEDATA_API_KEY"))
+    parser.add_argument("--ibkr-host", default=env_str("IBKR_HOST", "127.0.0.1"))
+    parser.add_argument("--ibkr-port", type=int, default=env_int("IBKR_PORT", 7497))
+    parser.add_argument("--ibkr-client-id", type=int, default=env_int("IBKR_CLIENT_ID", 17))
+    parser.add_argument("--ibkr-market-data-type", type=int, default=env_int("IBKR_MARKET_DATA_TYPE", 1))
+    parser.add_argument("--ibkr-symbol", default=env_str("IBKR_ES_SYMBOL", "ES"))
+    parser.add_argument("--ibkr-exchange", default=env_str("IBKR_ES_EXCHANGE", "CME"))
+    parser.add_argument("--ibkr-currency", default=env_str("IBKR_ES_CURRENCY", "USD"))
+    parser.add_argument("--ibkr-local-symbol", default=env_str("IBKR_ES_LOCAL_SYMBOL"))
+    parser.add_argument("--ibkr-contract-month", default=env_str("IBKR_ES_CONTRACT_MONTH"))
+    parser.add_argument("--ibkr-con-id", type=int, default=env_int("IBKR_ES_CON_ID"))
+    parser.add_argument("--ibkr-bar-size", default=env_str("IBKR_BAR_SIZE"))
+    parser.add_argument("--ibkr-what-to-show", default=env_str("IBKR_WHAT_TO_SHOW", "TRADES"))
+    parser.add_argument("--ibkr-backfill-duration", default=env_str("IBKR_BACKFILL_DURATION", "2 D"))
+    ibkr_rth_group = parser.add_mutually_exclusive_group()
+    ibkr_rth_group.add_argument("--ibkr-use-rth", dest="ibkr_use_rth", action="store_true")
+    ibkr_rth_group.add_argument("--ibkr-no-use-rth", dest="ibkr_use_rth", action="store_false")
+    parser.set_defaults(ibkr_use_rth=env_bool("IBKR_USE_RTH", False))
+    ibkr_keep_up_to_date_group = parser.add_mutually_exclusive_group()
+    ibkr_keep_up_to_date_group.add_argument(
+        "--ibkr-keep-up-to-date",
+        dest="ibkr_keep_up_to_date",
+        action="store_true",
+    )
+    ibkr_keep_up_to_date_group.add_argument(
+        "--ibkr-no-keep-up-to-date",
+        dest="ibkr_keep_up_to_date",
+        action="store_false",
+    )
+    parser.set_defaults(ibkr_keep_up_to_date=env_bool("IBKR_KEEP_UP_TO_DATE", True))
     parser.add_argument("--max-cycles", type=int, default=env_int("OTE_LIVE_MAX_CYCLES"))
     parser.add_argument("--log-level", default=env_str("OTE_LIVE_LOG_LEVEL", "INFO"))
     signal_runtime_group = parser.add_mutually_exclusive_group()
@@ -164,6 +200,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 async def _run(args: argparse.Namespace) -> int:
     config = LiveCollectorConfig(
+        group_name=args.group_name,
+        data_supplier=str(args.data_supplier).upper(),
         asset=args.asset,
         source_timeframe=args.source_timeframe,
         db_path=Path(args.db_path),
@@ -189,9 +227,33 @@ async def _run(args: argparse.Namespace) -> int:
         dashboard_url=args.dashboard_url,
         alert_email_recipients=_parse_recipients(args.alert_email_recipients),
         alert_sms_recipients=_parse_recipients(args.alert_sms_recipients),
+        ibkr=(
+            IBKRRuntimeConfig(
+                host=args.ibkr_host,
+                port=int(args.ibkr_port),
+                client_id=int(args.ibkr_client_id),
+                market_data_type=int(args.ibkr_market_data_type),
+                symbol=args.ibkr_symbol,
+                exchange=args.ibkr_exchange,
+                currency=args.ibkr_currency,
+                local_symbol=args.ibkr_local_symbol,
+                contract_month=args.ibkr_contract_month,
+                con_id=args.ibkr_con_id,
+                use_rth=bool(args.ibkr_use_rth),
+                bar_size=args.ibkr_bar_size,
+                what_to_show=args.ibkr_what_to_show,
+                keep_up_to_date=bool(args.ibkr_keep_up_to_date),
+                backfill_duration=args.ibkr_backfill_duration,
+            )
+            if str(args.data_supplier).upper() == "IBKR"
+            else None
+        ),
     )
     runtime = LiveCollectorRuntime.from_config(config, api_key=args.api_key)
-    service_name = str(args.service_name)
+    service_name = _resolve_service_name(
+        configured_service_name=str(args.service_name),
+        group_name=str(args.group_name),
+    )
     heartbeat_writer = ServiceHeartbeatWriter(Path(args.heartbeat_file))
     disk_monitor = DiskSpaceMonitor(
         minimum_free_bytes=int(max(0.0, float(args.min_disk_free_gb)) * (1024 ** 3)),
@@ -287,7 +349,7 @@ def main() -> int:
     load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
-    if args.api_key is None:
+    if str(args.data_supplier).upper() != "IBKR" and args.api_key is None:
         parser.error("Provide --api-key or set FMP_API_KEY in the environment.")
     configure_live_logging(
         args.log_level,
@@ -304,6 +366,14 @@ def main() -> int:
 
 def _parse_recipients(value: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _resolve_service_name(*, configured_service_name: str, group_name: str) -> str:
+    resolved_group = str(group_name).strip().upper() or "OTE"
+    service_name = str(configured_service_name).strip() or DEFAULT_SERVICE_NAME
+    if service_name != DEFAULT_SERVICE_NAME or resolved_group == "OTE":
+        return service_name
+    return f"{resolved_group.lower()}-live-signal-service"
 
 
 def _build_bootstrap_payload(summary) -> dict[str, object]:

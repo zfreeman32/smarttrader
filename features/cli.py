@@ -60,6 +60,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Timezone that defines FX market-day and market-week close boundaries.",
     )
     build_parser.add_argument(
+        "--instrument",
+        default=None,
+        help="Optional instrument override for instrument-aware feature families such as FRVP (`es`, `6e`).",
+    )
+    build_parser.add_argument(
         "--feature-set",
         action="append",
         default=None,
@@ -289,6 +294,8 @@ def _handle_build(args: argparse.Namespace) -> int:
         config.feature_clock_timezone = args.feature_clock_timezone
     if args.market_close_timezone is not None:
         config.market_close_timezone = args.market_close_timezone
+    if args.instrument is not None:
+        config.instrument = str(args.instrument).strip().lower() or None
 
     selected_strategies = list(config.strategy_ids)
     if args.strategy:

@@ -26,6 +26,51 @@ def _default_strategies_dir() -> Path:
     return Path(__file__).resolve().parent / "strategies"
 
 
+class _LegacyCompatibleSeries(pd.Series):
+    _metadata = ["_parent_frame", "_parent_column"]
+
+    @property
+    def _constructor(self):  # type: ignore[override]
+        return _LegacyCompatibleSeries
+
+    def __setitem__(self, key, value) -> None:
+        super().__setitem__(key, value)
+        parent_frame = getattr(self, "_parent_frame", None)
+        parent_column = getattr(self, "_parent_column", None)
+        if parent_frame is None or parent_column is None:
+            return
+        parent_frame[parent_column] = pd.Series(self.to_numpy(copy=True), index=parent_frame.index, name=parent_column)
+
+
+class _LegacyCompatibleDataFrame(pd.DataFrame):
+    @property
+    def _constructor(self):  # type: ignore[override]
+        return _LegacyCompatibleDataFrame
+
+    @property
+    def _constructor_sliced(self):  # type: ignore[override]
+        return _LegacyCompatibleSeries
+
+    def __getitem__(self, key):
+        result = super().__getitem__(key)
+        if isinstance(key, str) and isinstance(result, pd.Series):
+            series = _LegacyCompatibleSeries(result)
+            series._parent_frame = self
+            series._parent_column = key
+            return series
+        return result
+
+
+@contextlib.contextmanager
+def _legacy_dataframe_context():
+    original_dataframe = pd.DataFrame
+    try:
+        pd.DataFrame = _LegacyCompatibleDataFrame  # type: ignore[assignment]
+        yield
+    finally:
+        pd.DataFrame = original_dataframe  # type: ignore[assignment]
+
+
 def normalize_strategy_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
@@ -49,18 +94,19 @@ def _run_strategy_with_legacy_pandas_compat(
         else pd.option_context("mode.copy_on_write", False)
     )
 
-    with copy_on_write_context:
-        with warnings.catch_warnings():
-            if chained_assignment_warning is not None:
-                warnings.simplefilter("ignore", chained_assignment_warning)
-            if setting_with_copy_warning is not None:
-                warnings.simplefilter("ignore", setting_with_copy_warning)
-            warnings.filterwarnings(
-                "ignore",
-                message=r".*ChainedAssignmentError.*",
-                category=FutureWarning,
-            )
-            return builder(working)
+    with _legacy_dataframe_context():
+        with copy_on_write_context:
+            with warnings.catch_warnings():
+                if chained_assignment_warning is not None:
+                    warnings.simplefilter("ignore", chained_assignment_warning)
+                if setting_with_copy_warning is not None:
+                    warnings.simplefilter("ignore", setting_with_copy_warning)
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r".*ChainedAssignmentError.*",
+                    category=FutureWarning,
+                )
+                return builder(working)
 
 
 @dataclass(frozen=True)
@@ -267,7 +313,7 @@ def prepare_strategy_input(
             )
 
     if additions:
-        prepared = pd.concat([prepared, pd.DataFrame(additions)], axis=1, copy=False)
+        prepared = pd.concat([prepared, pd.DataFrame(additions)], axis=1)
 
     return prepared
 

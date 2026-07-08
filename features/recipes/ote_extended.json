@@ -13,6 +13,7 @@
     "microstructure",
     "session",
     "temporal_context",
+    "frvp_context",
     "fractional_diff",
     "quality"
   ],

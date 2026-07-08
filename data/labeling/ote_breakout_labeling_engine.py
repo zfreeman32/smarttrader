@@ -1,5 +1,5 @@
 """
-Breakout labeling engine for 5-minute FX data.
+Breakout labeling engine for FX data.
 
 This module mirrors the broader structure of the reversal and continuation
 labelers while targeting compression-to-expansion breakout setups.
@@ -24,9 +24,12 @@ try:
         compute_swing_quality,
         create_exclusion_masks,
         detect_swings_zigzag,
+        format_bar_timeframe,
+        infer_bar_minutes,
         is_positive_swing,
         map_htf_atr_to_ltf,
         print_diagnostics,
+        retune_bar_count_params,
         run_diagnostics,
         trend_scan_swings,
         validate_swings_triple_barrier,
@@ -41,9 +44,12 @@ except ImportError:
         compute_swing_quality,
         create_exclusion_masks,
         detect_swings_zigzag,
+        format_bar_timeframe,
+        infer_bar_minutes,
         is_positive_swing,
         map_htf_atr_to_ltf,
         print_diagnostics,
+        retune_bar_count_params,
         run_diagnostics,
         trend_scan_swings,
         validate_swings_triple_barrier,
@@ -52,7 +58,7 @@ except ImportError:
 
 @dataclass
 class BreakoutParams(ReversalParams):
-    """Parameter set tuned for smaller 5-minute breakout structures."""
+    """Parameter set tuned for smaller breakout structures."""
 
     structural_atr_tf: str = "30m"
     confirm_atr_mult: float = 0.25
@@ -220,6 +226,8 @@ def detect_breakout_events(
     structural_atr: pd.Series,
     breakout_context: pd.DataFrame,
     params: BreakoutParams,
+    *,
+    source_tf: str,
 ) -> List[SwingPoint]:
     """Detect causal breakout candidates from prior range breaks after compression."""
 
@@ -306,7 +314,7 @@ def detect_breakout_events(
                 1,
                 float(atr_at),
                 float(range_width_atr),
-                "5m_breakout",
+                f"{source_tf}_breakout",
             )
             event.breakout_direction = "up"
             event.breakout_level = float(range_high)
@@ -334,7 +342,7 @@ def detect_breakout_events(
                 1,
                 float(atr_at),
                 float(range_width_atr),
-                "5m_breakout",
+                f"{source_tf}_breakout",
             )
             event.breakout_direction = "down"
             event.breakout_level = float(range_low)
@@ -359,6 +367,7 @@ def annotate_breakout_context(
     htf_swings_30m: List[SwingPoint] | None = None,
     htf_swings_1h: List[SwingPoint] | None = None,
     *,
+    base_bar_minutes: float,
     window_minutes_30m: int,
     window_minutes_1h: int,
 ) -> List[SwingPoint]:
@@ -368,7 +377,7 @@ def annotate_breakout_context(
     lows_30m = sorted(s.swing_time.value for s in (htf_swings_30m or []) if s.swing_type == "low")
     highs_1h = sorted(s.swing_time.value for s in (htf_swings_1h or []) if s.swing_type == "high")
     lows_1h = sorted(s.swing_time.value for s in (htf_swings_1h or []) if s.swing_type == "low")
-    bar_ns = int(pd.Timedelta(minutes=5).value)
+    bar_ns = max(int(pd.Timedelta(minutes=max(base_bar_minutes, 1e-6)).value), 1)
     w30 = int(pd.Timedelta(minutes=window_minutes_30m).value)
     w1h = int(pd.Timedelta(minutes=window_minutes_1h).value)
 
@@ -666,16 +675,28 @@ def build_breakout_labels(
 ):
     """Master pipeline for breakout labels."""
 
-    if params is None:
-        params = BreakoutParams()
-    params.validate()
+    raw_params = params or BreakoutParams()
 
     df_5m = _prep(df_5m)
     df_30m = _prep(df_30m)
+    base_bar_minutes = infer_bar_minutes(df_5m.index)
+    base_tf = format_bar_timeframe(base_bar_minutes)
+    params = retune_bar_count_params(
+        raw_params,
+        base_bar_minutes,
+        extra_count_fields=("breakout_lookback_bars", "compression_lookback_bars"),
+    )
+    params.validate()
     anomaly_count = int(df_5m.attrs.get("anomaly_count", 0))
     n = len(df_5m)
+    htf_warmup_bars = max(raw_params.warmup_bars, raw_params.atr_period * 2)
     if verbose:
-        print(f"[Breakout] {n:,} bars on 5m")
+        print(f"[Breakout] {n:,} bars on {base_tf}")
+        if abs(base_bar_minutes - params.bar_count_reference_minutes) >= 1e-9:
+            print(
+                f"[Breakout] Runtime bar-count tuning: "
+                f"{format_bar_timeframe(params.bar_count_reference_minutes)} -> {base_tf}"
+            )
 
     atr_5m = compute_atr(df_5m, params.atr_period, params.atr_smoothing)
     atr_30m = compute_atr(df_30m, params.atr_period, params.atr_smoothing)
@@ -690,14 +711,14 @@ def build_breakout_labels(
         if verbose:
             valid = satr_5m.dropna()
             if len(valid):
-                print(f"[Breakout] Structural ATR (1hr->5m): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
+                print(f"[Breakout] Structural ATR (1hr->{base_tf}): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
     else:
         satr_5m = map_htf_atr_to_ltf(atr_30m, df_5m.index)
         satr_30m = atr_30m
         if verbose:
             valid = satr_5m.dropna()
             if len(valid):
-                print(f"[Breakout] Structural ATR (30m->5m): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
+                print(f"[Breakout] Structural ATR (30m->{base_tf}): {valid.mean():.6f} ({valid.mean() * 10000:.1f} pips)")
 
     df_5m["atr"] = atr_5m
     df_5m["structural_atr"] = satr_5m
@@ -721,7 +742,7 @@ def build_breakout_labels(
         params.htf_min_swing_atr,
         params.min_swing_distance_atr * 0.8,
         params.htf_min_bars_between,
-        params.warmup_bars,
+        htf_warmup_bars,
         params.confirm_use_close,
         "30m",
     )
@@ -737,14 +758,14 @@ def build_breakout_labels(
             params.htf_min_swing_atr * 0.8,
             params.min_swing_distance_atr * 0.7,
             max(2, params.htf_min_bars_between // 2),
-            params.warmup_bars,
+            htf_warmup_bars,
             params.confirm_use_close,
             "1hr",
         )
         if verbose:
             print(f"[Breakout] 1hr swings: {len(sw1h)}")
 
-    events = detect_breakout_events(df_5m, satr_5m, breakout_context, params)
+    events = detect_breakout_events(df_5m, satr_5m, breakout_context, params, source_tf=base_tf)
     if verbose:
         print(f"[Breakout] Raw breakout events: {len(events)}")
 
@@ -752,6 +773,7 @@ def build_breakout_labels(
         events,
         sw30,
         sw1h,
+        base_bar_minutes=base_bar_minutes,
         window_minutes_30m=params.htf_confluence_window_minutes,
         window_minutes_1h=params.htf_confluence_window_minutes * 2,
     )

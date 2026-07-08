@@ -1,9 +1,9 @@
 """
-Unified EURUSD 5-minute labeling workflow.
+Unified EURUSD labeling workflow.
 
-This script generates reversal, continuation-pullback, and breakout labels in
-one pass and saves a single bar-level CSV with separate named columns for each
-label family.
+This script generates reversal, continuation-pullback, breakout, and optional
+FRVP labels in one pass and saves a single bar-level CSV with separate named
+columns for each label family.
 """
 
 from __future__ import annotations
@@ -26,21 +26,37 @@ if str(PROJECT_ROOT) not in sys.path:
 from features.fx_calendar import normalize_datetime_series
 
 try:
+    from .frvp_labeling_engine import FRVPLabelingParams, build_frvp_labels, frvp_events_to_frame
     from .ote_breakout_labeling_engine import BreakoutParams, build_breakout_labels, plot_breakouts
     from .ote_continuation_pullback_labeling_engine import (
         ContinuationPullbackParams,
         build_continuation_pullback_labels,
         plot_continuation_pullbacks,
     )
-    from .reversal_labeling_engine import ReversalParams, build_reversal_labels, plot_reversal_swings
+    from .reversal_labeling_engine import (
+        ReversalParams,
+        build_reversal_labels,
+        format_bar_timeframe,
+        infer_bar_minutes,
+        plot_reversal_swings,
+        retune_bar_count_params,
+    )
 except ImportError:
+    from frvp_labeling_engine import FRVPLabelingParams, build_frvp_labels, frvp_events_to_frame  # type: ignore
     from ote_breakout_labeling_engine import BreakoutParams, build_breakout_labels, plot_breakouts  # type: ignore
     from ote_continuation_pullback_labeling_engine import (  # type: ignore
         ContinuationPullbackParams,
         build_continuation_pullback_labels,
         plot_continuation_pullbacks,
     )
-    from reversal_labeling_engine import ReversalParams, build_reversal_labels, plot_reversal_swings  # type: ignore
+    from reversal_labeling_engine import (  # type: ignore
+        ReversalParams,
+        build_reversal_labels,
+        format_bar_timeframe,
+        infer_bar_minutes,
+        plot_reversal_swings,
+        retune_bar_count_params,
+    )
 
 DEFAULT_INPUT_PATH = PROJECT_ROOT / "data" / "currency_data" / "EURUSD_5min.csv"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "labeling" / "labeled_data" / "eurusd_5min_all_labels.csv"
@@ -60,6 +76,7 @@ class CombinedLabelingParams:
     reversal: ReversalParams = field(default_factory=ReversalParams)
     continuation: ContinuationPullbackParams = field(default_factory=ContinuationPullbackParams)
     breakout: BreakoutParams = field(default_factory=BreakoutParams)
+    frvp: FRVPLabelingParams = field(default_factory=FRVPLabelingParams)
 
 
 def detect_anomalies(df: pd.DataFrame, atr_period: int = 20, range_atr_mult: float = 10.0) -> pd.Series:
@@ -142,6 +159,7 @@ def load_fx_csv(
     df = pd.read_csv(path)
     raw_row_count = int(len(df))
     columns_lower = {col.strip().lower(): col for col in df.columns}
+    timestamp_source_column: Optional[str] = None
 
     if "date" in columns_lower and "time" in columns_lower:
         df["timestamp"] = pd.to_datetime(
@@ -151,9 +169,14 @@ def load_fx_csv(
         )
         df = df.drop(columns=[columns_lower["date"], columns_lower["time"]])
     elif "timestamp" in columns_lower:
-        df["timestamp"] = pd.to_datetime(df[columns_lower["timestamp"]], errors="coerce")
+        timestamp_source_column = columns_lower["timestamp"]
+        df["timestamp"] = pd.to_datetime(df[timestamp_source_column], errors="coerce")
     elif "datetime" in columns_lower:
-        df["timestamp"] = pd.to_datetime(df[columns_lower["datetime"]], errors="coerce")
+        timestamp_source_column = columns_lower["datetime"]
+        df["timestamp"] = pd.to_datetime(df[timestamp_source_column], errors="coerce")
+    elif "ts_event" in columns_lower:
+        timestamp_source_column = columns_lower["ts_event"]
+        df["timestamp"] = pd.to_datetime(df[timestamp_source_column], errors="coerce")
     else:
         raise ValueError(f"Could not find a timestamp column in {path}. Columns: {df.columns.tolist()}")
 
@@ -182,13 +205,23 @@ def load_fx_csv(
         source_timezone=source_timezone,
         canonical_timezone=canonical_timezone,
     )
+    if timestamp_source_column and timestamp_source_column in df.columns and timestamp_source_column != "timestamp":
+        df[timestamp_source_column] = df["timestamp"]
     df = df.dropna(subset=["timestamp", "open", "high", "low", "close"])
     df = df.set_index("timestamp").sort_index()
     df = df[~df.index.duplicated(keep="first")]
     if "volume" not in df.columns:
         df["volume"] = 0
 
-    df = df[["open", "high", "low", "close", "volume"]].copy()
+    ordered_columns = ["open", "high", "low", "close", "volume"]
+    ordered_columns.extend(
+        [
+            column
+            for column in df.columns
+            if column not in {"open", "high", "low", "close", "volume"}
+        ]
+    )
+    df = df.loc[:, ordered_columns].copy()
     anomaly_mask = detect_anomalies(df)
     anomaly_count = int(anomaly_mask.sum())
     df["is_anomaly"] = anomaly_mask.astype(bool)
@@ -310,12 +343,6 @@ def _serialize_labeling_params(params: Any) -> Any:
 
 
 def _make_json_safe(value: Any) -> Any:
-    if value is None or isinstance(value, (str, bool, int, float)):
-        return value
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, (datetime, pd.Timestamp)):
-        return value.isoformat()
     if isinstance(value, np.bool_):
         return bool(value)
     if isinstance(value, np.integer):
@@ -324,6 +351,12 @@ def _make_json_safe(value: Any) -> Any:
         if np.isnan(value):
             return None
         return float(value)
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.isoformat()
     if isinstance(value, np.ndarray):
         return [_make_json_safe(item) for item in value.tolist()]
     if isinstance(value, pd.Series):
@@ -355,15 +388,20 @@ def build_output_metadata(
     bar_timestamp_semantics: str,
     output_rows: int,
 ) -> dict:
+    base_bar_minutes = infer_bar_minutes(df_5m.index)
+    base_timeframe = format_bar_timeframe(base_bar_minutes)
     return {
         "output_kind": output_kind,
         "source_path": str(source_path),
         "output_path": str(output_path),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "base_bar_minutes": base_bar_minutes,
+        "base_timeframe": base_timeframe,
         "row_counts": {
             "source_rows": int(df_5m.attrs.get("source_row_count", len(df_5m))),
             "rows_before_date_filter": int(df_5m.attrs.get("rows_before_date_filter", len(df_5m))),
             "rows_removed_by_date_filter": int(df_5m.attrs.get("rows_removed_by_date_filter", 0)),
+            "rows_base_after_cleanup": int(len(df_5m)),
             "rows_5m_after_cleanup": int(len(df_5m)),
             "rows_30m": int(len(df_30m)),
             "rows_1h": int(len(df_1hr)),
@@ -439,6 +477,36 @@ def build_default_params() -> CombinedLabelingParams:
         ),
         continuation=ContinuationPullbackParams(),
         breakout=BreakoutParams(),
+        frvp=FRVPLabelingParams(),
+    )
+
+
+def retune_combined_params(
+    params: CombinedLabelingParams,
+    base_bar_minutes: float,
+) -> CombinedLabelingParams:
+    return CombinedLabelingParams(
+        reversal=retune_bar_count_params(params.reversal, base_bar_minutes),
+        continuation=retune_bar_count_params(
+            params.continuation,
+            base_bar_minutes,
+            extra_count_fields=("max_pullback_bars",),
+        ),
+        breakout=retune_bar_count_params(
+            params.breakout,
+            base_bar_minutes,
+            extra_count_fields=("breakout_lookback_bars", "compression_lookback_bars"),
+        ),
+        frvp=retune_bar_count_params(
+            params.frvp,
+            base_bar_minutes,
+            extra_count_fields=(
+                "mean_reversion_max_bars",
+                "continuation_max_bars",
+                "failed_auction_max_bars",
+                "first_rth_exclusion_bars",
+            ),
+        ),
     )
 
 
@@ -472,24 +540,41 @@ def summarize_labels(df_labeled: pd.DataFrame) -> str:
             "label_quality_long_breakout",
             "label_quality_short_breakout",
         ),
+        (
+            "FRVP Reversal",
+            "label_long_frvp_reversal",
+            "label_short_frvp_reversal",
+            None,
+            None,
+            "label_quality_long_frvp_reversal",
+            "label_quality_short_frvp_reversal",
+        ),
+        (
+            "FRVP Continuation",
+            "label_long_frvp_continuation",
+            "label_short_frvp_continuation",
+            None,
+            None,
+            "label_quality_long_frvp_continuation",
+            "label_quality_short_frvp_continuation",
+        ),
     ]
 
     lines = ["", f"Bars after warmup: {int(usable.sum()):,}"]
     for family_name, long_col, short_col, long_entry, short_entry, long_quality, short_quality in families:
+        if long_col not in df_labeled.columns or short_col not in df_labeled.columns:
+            continue
         long_quality_values = df_labeled.loc[usable & (df_labeled[long_quality] > 0), long_quality]
         short_quality_values = df_labeled.loc[usable & (df_labeled[short_quality] > 0), short_quality]
-        lines.extend(
-            [
-                f"{family_name} long positives:   {int(df_labeled.loc[usable, long_col].sum()):,}",
-                f"{family_name} short positives:  {int(df_labeled.loc[usable, short_col].sum()):,}",
-                f"{family_name} long entries:     {int(df_labeled.loc[usable, long_entry].sum()):,}",
-                f"{family_name} short entries:    {int(df_labeled.loc[usable, short_entry].sum()):,}",
-                (
-                    f"{family_name} quality L/S:    "
-                    f"{float(long_quality_values.mean()) if not long_quality_values.empty else 0.0:.3f} / "
-                    f"{float(short_quality_values.mean()) if not short_quality_values.empty else 0.0:.3f}"
-                ),
-            ]
+        lines.append(f"{family_name} long positives:   {int(df_labeled.loc[usable, long_col].sum()):,}")
+        lines.append(f"{family_name} short positives:  {int(df_labeled.loc[usable, short_col].sum()):,}")
+        if long_entry and short_entry and long_entry in df_labeled.columns and short_entry in df_labeled.columns:
+            lines.append(f"{family_name} long entries:     {int(df_labeled.loc[usable, long_entry].sum()):,}")
+            lines.append(f"{family_name} short entries:    {int(df_labeled.loc[usable, short_entry].sum()):,}")
+        lines.append(
+            f"{family_name} quality L/S:    "
+            f"{float(long_quality_values.mean()) if not long_quality_values.empty else 0.0:.3f} / "
+            f"{float(short_quality_values.mean()) if not short_quality_values.empty else 0.0:.3f}"
         )
     return "\n".join(lines)
 
@@ -631,12 +716,19 @@ def breakout_events_to_frame(events: list) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def combine_event_frames(reversal_events: list, continuation_events: list, breakout_events: list) -> pd.DataFrame:
+def combine_event_frames(
+    reversal_events: list,
+    continuation_events: list,
+    breakout_events: list,
+    frvp_events: Optional[list] = None,
+) -> pd.DataFrame:
     frames = [
         reversal_events_to_frame(reversal_events),
         continuation_events_to_frame(continuation_events),
         breakout_events_to_frame(breakout_events),
     ]
+    if frvp_events:
+        frames.append(frvp_events_to_frame(frvp_events))
     populated = [frame for frame in frames if not frame.empty]
     if not populated:
         return pd.DataFrame()
@@ -676,16 +768,19 @@ def build_combined_label_frame(
     reversal_df: pd.DataFrame,
     continuation_df: pd.DataFrame,
     breakout_df: pd.DataFrame,
+    frvp_df: pd.DataFrame,
     params: CombinedLabelingParams,
 ) -> pd.DataFrame:
     merged = merge_reversal_output(df_5m, reversal_df)
     merged = merge_prefixed_output(merged, continuation_df, "continuation")
     merged = merge_prefixed_output(merged, breakout_df, "breakout")
+    merged = merge_prefixed_output(merged, frvp_df, "frvp")
 
     warmup_bars = max(
         params.reversal.warmup_bars,
         params.continuation.warmup_bars,
         params.breakout.warmup_bars,
+        params.frvp.warmup_bars,
     )
     warmup_mask = pd.Series(False, index=merged.index)
     warmup_mask.iloc[:warmup_bars] = True
@@ -755,10 +850,12 @@ def main() -> None:
             "No rows remain after applying the requested date filter. "
             f"start-date={args.start_date!r}, end-date={args.end_date!r}"
         )
+    base_bar_minutes = infer_bar_minutes(df_5m.index)
+    base_timeframe = format_bar_timeframe(base_bar_minutes)
     df_30m = resample_ohlcv(df_5m, "30min")
     df_1hr = resample_ohlcv(df_5m, "1h")
 
-    print(f"5m rows:  {len(df_5m):,}")
+    print(f"Base rows ({base_timeframe}): {len(df_5m):,}")
     print(f"30m rows: {len(df_30m):,}")
     print(f"1h rows:  {len(df_1hr):,}")
     print(f"Anomaly bars removed: {int(df_5m.attrs.get('anomaly_count', 0)):,}")
@@ -770,8 +867,10 @@ def main() -> None:
         )
     print(f"Timezone normalization: {args.source_timezone} -> {args.canonical_timezone}")
     print(f"Date range: {df_5m.index[0]} -> {df_5m.index[-1]}")
+    if abs(base_bar_minutes - 5.0) >= 1e-9:
+        print(f"Runtime bar-count tuning enabled: 5m defaults -> {base_timeframe}")
 
-    params = build_default_params()
+    params = retune_combined_params(build_default_params(), base_bar_minutes)
 
     reversal_df, reversal_diag, reversal_events = build_reversal_labels(
         df_5m=df_5m,
@@ -794,15 +893,23 @@ def main() -> None:
         params=params.breakout,
         verbose=True,
     )
+    frvp_df, frvp_diag, frvp_events = build_frvp_labels(
+        df_5m=df_5m,
+        df_30m=df_30m,
+        df_1hr=df_1hr,
+        params=params.frvp,
+        verbose=True,
+    )
 
     df_labeled = build_combined_label_frame(
         df_5m,
         reversal_df,
         continuation_df,
         breakout_df,
+        frvp_df,
         params,
     )
-    combined_events = combine_event_frames(reversal_events, continuation_events, breakout_events)
+    combined_events = combine_event_frames(reversal_events, continuation_events, breakout_events, frvp_events)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     labeled_to_save = df_labeled.reset_index().rename(columns={"index": "timestamp"})
@@ -836,6 +943,7 @@ def main() -> None:
         "reversal": reversal_diag,
         "continuation": continuation_diag,
         "breakout": breakout_diag,
+        "frvp": frvp_diag,
     }
     events_metadata = build_output_metadata(
         output_kind="combined_label_events",
@@ -854,6 +962,7 @@ def main() -> None:
         "reversal": len(reversal_events),
         "continuation": len(continuation_events),
         "breakout": len(breakout_events),
+        "frvp": len(frvp_events),
     }
     labels_metadata_path = write_metadata(args.output, labels_metadata)
     events_metadata_path = write_metadata(args.events_output, events_metadata)

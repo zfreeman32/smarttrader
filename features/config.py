@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
+REFERENCE_BAR_MINUTES = 5.0
+
+
 def _default_feature_sets() -> List[str]:
     return [
         "price_action",
@@ -45,10 +48,13 @@ class FeatureBuilderConfig:
 
     feature_sets: List[str] = field(default_factory=_default_feature_sets)
     preserve_columns: List[str] = field(default_factory=_default_preserve_columns)
+    instrument: str | None = None
     strategy_ids: List[str] = field(default_factory=list)
     include_all_strategies: bool = False
     skip_failed_strategies: bool = False
 
+    auto_retune_for_bar_interval: bool = True
+    bar_interval_reference_minutes: float = REFERENCE_BAR_MINUTES
     warmup_rows: int = 200
     drop_warmup_rows: bool = True
     drop_invalid_ohlc: bool = True

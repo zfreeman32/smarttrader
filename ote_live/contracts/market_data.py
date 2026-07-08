@@ -22,6 +22,9 @@ class MarketBar(BaseModel):
     ask: float | None = None
     spread: float | None = None
     source: str | None = None
+    symbol: str | None = None
+    contract_symbol: str | None = None
+    instrument_id: int | None = None
 
     @model_validator(mode="after")
     def _validate_ohlc(self) -> "MarketBar":
@@ -32,4 +35,3 @@ class MarketBar(BaseModel):
         if self.low > self.high:
             raise ValueError("low must be less than or equal to high")
         return self
-

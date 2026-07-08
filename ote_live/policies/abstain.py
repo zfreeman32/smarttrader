@@ -65,6 +65,28 @@ def evaluate_live_abstain(
     if composite_regime in blocked_composites:
         return LiveAbstainDecision(abstain=True, reason="composite_filter")
 
+    blocked_composite_session_pairs = {
+        (str(composite_value), str(session_value))
+        for composite_value, session_value in abstain_policy.abstain_composite_session_pairs
+    }
+    if (
+        composite_regime is not None
+        and session_regime is not None
+        and (composite_regime, session_regime) in blocked_composite_session_pairs
+    ):
+        return LiveAbstainDecision(abstain=True, reason="composite_session_filter")
+
+    blocked_composite_stress_pairs = {
+        (str(composite_value), str(stress_value))
+        for composite_value, stress_value in abstain_policy.abstain_composite_stress_pairs
+    }
+    if (
+        composite_regime is not None
+        and stress_regime is not None
+        and (composite_regime, stress_regime) in blocked_composite_stress_pairs
+    ):
+        return LiveAbstainDecision(abstain=True, reason="composite_stress_filter")
+
     minimum_quantile = abstain_policy.minimum_probability_quantile
     if minimum_quantile is not None and state is not None and state.candidate_probabilities:
         history = np.asarray([*state.candidate_probabilities, float(probability)], dtype=np.float32)

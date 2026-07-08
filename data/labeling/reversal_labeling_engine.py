@@ -27,7 +27,7 @@ Author: Quantitative ML Pipeline — Module 1 (Labeling)
 
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Tuple, Dict, List, Any
 from bisect import bisect_left
 import warnings
@@ -35,6 +35,9 @@ import warnings
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
+
+REFERENCE_BAR_MINUTES = 5.0
+
 
 @dataclass
 class ReversalParams:
@@ -108,13 +111,19 @@ class ReversalParams:
     
     # --- Warmup ---
     warmup_bars: int = 50
+    auto_scale_bar_counts: bool = True
+    bar_count_reference_minutes: float = REFERENCE_BAR_MINUTES
     
     def validate(self):
-        assert 0 <= self.zone_pre_bars <= 5
-        assert 5 <= self.exclusion_pre_bars <= 20
+        assert self.bar_count_reference_minutes > 0
+        assert self.zone_pre_bars >= 0
+        assert self.zone_post_bars >= 0
+        assert self.exclusion_pre_bars >= 0
         assert self.atr_period >= 5
         assert self.confirm_atr_mult > 0
         assert self.min_swing_atr > 0
+        assert self.min_bars_between_swings >= 1
+        assert self.tb_max_bars >= 1
         assert self.entry_lookback_bars >= 0
         assert self.entry_max_delay_after_swing >= 0
         assert self.entry_eval_bars_after_confirm >= 1
@@ -126,6 +135,112 @@ class ReversalParams:
         assert self.trend_scan_min_abs_t > 0
         assert 0 <= self.min_label_quality <= 1
         assert self.event_match_bars >= 0
+
+
+def infer_bar_minutes(index: pd.DatetimeIndex) -> float:
+    """Infer the dominant bar interval in minutes from a datetime index."""
+    if not isinstance(index, pd.DatetimeIndex) or len(index) < 2:
+        return REFERENCE_BAR_MINUTES
+
+    ordered = index.sort_values()
+    diffs = ordered.to_series().diff().dropna()
+    diffs = diffs[diffs > pd.Timedelta(0)]
+    if diffs.empty:
+        return REFERENCE_BAR_MINUTES
+
+    dominant_minutes = float((diffs.dt.total_seconds() / 60.0).mode().iloc[0])
+    return max(dominant_minutes, 1e-6)
+
+
+def format_bar_timeframe(bar_minutes: float) -> str:
+    """Render a concise timeframe label like 1m, 30m, or 1h."""
+    rounded = round(bar_minutes)
+    if abs(bar_minutes - rounded) < 1e-9:
+        if rounded % 60 == 0:
+            hours = rounded // 60
+            return "1h" if hours == 1 else f"{hours}h"
+        return f"{rounded}m"
+    return f"{bar_minutes:g}m"
+
+
+def _scale_bar_count(
+    count_at_reference: int,
+    *,
+    base_bar_minutes: float,
+    reference_bar_minutes: float,
+    minimum: int = 1,
+) -> int:
+    if count_at_reference <= 0:
+        return 0
+    scale = reference_bar_minutes / max(base_bar_minutes, 1e-6)
+    return max(minimum, int(round(count_at_reference * scale)))
+
+
+def _scale_bar_windows(
+    windows_at_reference: Tuple[int, ...],
+    *,
+    base_bar_minutes: float,
+    reference_bar_minutes: float,
+) -> Tuple[int, ...]:
+    scaled = [
+        _scale_bar_count(
+            int(window),
+            base_bar_minutes=base_bar_minutes,
+            reference_bar_minutes=reference_bar_minutes,
+            minimum=1,
+        )
+        for window in windows_at_reference
+    ]
+    return tuple(sorted(dict.fromkeys(scaled)))
+
+
+def retune_bar_count_params(
+    params: ReversalParams,
+    base_bar_minutes: float,
+    *,
+    extra_count_fields: Tuple[str, ...] = (),
+) -> ReversalParams:
+    """Scale base-timeframe bar counts from a 5m reference to the runtime base bar size."""
+    if not getattr(params, "auto_scale_bar_counts", False):
+        return params
+
+    reference_bar_minutes = float(getattr(params, "bar_count_reference_minutes", REFERENCE_BAR_MINUTES))
+    if base_bar_minutes <= 0 or abs(base_bar_minutes - reference_bar_minutes) < 1e-9:
+        return replace(params, auto_scale_bar_counts=False)
+
+    common_count_fields = (
+        "min_bars_between_swings",
+        "tb_max_bars",
+        "zone_pre_bars",
+        "zone_post_bars",
+        "entry_lookback_bars",
+        "entry_max_delay_after_swing",
+        "entry_eval_bars_after_confirm",
+        "event_match_bars",
+        "exclusion_pre_bars",
+        "warmup_bars",
+    )
+
+    updates: Dict[str, Any] = {}
+    for field_name in dict.fromkeys((*common_count_fields, *extra_count_fields)):
+        if not hasattr(params, field_name):
+            continue
+        updates[field_name] = _scale_bar_count(
+            int(getattr(params, field_name)),
+            base_bar_minutes=base_bar_minutes,
+            reference_bar_minutes=reference_bar_minutes,
+            minimum=1,
+        )
+
+    if hasattr(params, "trend_scan_windows"):
+        updates["trend_scan_windows"] = _scale_bar_windows(
+            tuple(int(window) for window in params.trend_scan_windows),
+            base_bar_minutes=base_bar_minutes,
+            reference_bar_minutes=reference_bar_minutes,
+        )
+
+    updates["auto_scale_bar_counts"] = False
+    return replace(params, **updates)
 
 
 # ============================================================================
@@ -191,7 +306,7 @@ class SwingPoint:
     confirm_lag: int
     atr_at_swing: float
     swing_size_atr: float
-    source_tf: str = "5m"
+    source_tf: str = "base"
     tb_outcome: Optional[str] = None
     tb_return: Optional[float] = None
     tb_bars_held: Optional[int] = None
@@ -219,7 +334,7 @@ class SwingPoint:
 def detect_swings_zigzag(
     df, structural_atr, confirm_atr_mult, min_swing_atr,
     min_swing_distance_atr, min_bars_between, warmup_bars,
-    confirm_use_close=True, source_tf="5m"
+    confirm_use_close=True, source_tf="base"
 ) -> List[SwingPoint]:
     """
     Causal zigzag using structural ATR for meaningful thresholds.
@@ -445,7 +560,15 @@ def trend_scan_swings(df, swings, params):
     return swings
 
 
-def annotate_swing_context(swings, htf_swings_30m=None, htf_swings_1h=None, htf_match_30m=None, htf_match_1h=None):
+def annotate_swing_context(
+    swings,
+    htf_swings_30m=None,
+    htf_swings_1h=None,
+    htf_match_30m=None,
+    htf_match_1h=None,
+    *,
+    base_bar_minutes: float = REFERENCE_BAR_MINUTES,
+):
     """Attach HTF agreement and same-direction spacing metadata to swings."""
     htf_30m_ns = {
         "low": sorted(s.swing_time.value for s in (htf_swings_30m or []) if s.swing_type == "low"),
@@ -455,7 +578,7 @@ def annotate_swing_context(swings, htf_swings_30m=None, htf_swings_1h=None, htf_
         "low": sorted(s.swing_time.value for s in (htf_swings_1h or []) if s.swing_type == "low"),
         "high": sorted(s.swing_time.value for s in (htf_swings_1h or []) if s.swing_type == "high"),
     }
-    bar_ns = int(pd.Timedelta(minutes=5).value)
+    bar_ns = max(int(pd.Timedelta(minutes=max(base_bar_minutes, 1e-6)).value), 1)
     for sp in sorted(swings, key=lambda item: item.swing_index):
         if htf_match_30m:
             sp.htf_match_30m = bool(htf_match_30m.get(sp.swing_index, False))
@@ -1082,13 +1205,23 @@ def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, v
     
     v2: Uses structural ATR from 1hr timeframe for all thresholds.
     """
-    if params is None: params = ReversalParams()
-    params.validate()
-    
+    raw_params = params or ReversalParams()
     df_5m = _prep(df_5m); df_30m = _prep(df_30m)
+    base_bar_minutes = infer_bar_minutes(df_5m.index)
+    base_tf = format_bar_timeframe(base_bar_minutes)
+    params = retune_bar_count_params(raw_params, base_bar_minutes)
+    params.validate()
+
     anomaly_count = int(df_5m.attrs.get("anomaly_count", 0))
     n = len(df_5m)
-    if verbose: print(f"[Reversal v2] {n:,} bars on 5m")
+    htf_warmup_bars = max(raw_params.warmup_bars, raw_params.atr_period * 2)
+    if verbose:
+        print(f"[Reversal v2] {n:,} bars on {base_tf}")
+        if abs(base_bar_minutes - params.bar_count_reference_minutes) >= 1e-9:
+            print(
+                f"[Reversal v2] Runtime bar-count tuning: "
+                f"{format_bar_timeframe(params.bar_count_reference_minutes)} -> {base_tf}"
+            )
     
     # ATR
     atr_5m = compute_atr(df_5m, params.atr_period, params.atr_smoothing)
@@ -1102,13 +1235,13 @@ def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, v
         satr_30m = map_htf_atr_to_ltf(atr_1hr, df_30m.index)
         if verbose:
             v = satr_5m.dropna()
-            if len(v): print(f"[Reversal v2] Structural ATR (1hr->5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
+            if len(v): print(f"[Reversal v2] Structural ATR (1hr->{base_tf}): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
     else:
         satr_5m = map_htf_atr_to_ltf(atr_30m, df_5m.index)
         satr_30m = atr_30m
         if verbose:
             v = satr_5m.dropna()
-            if len(v): print(f"[Reversal v2] Structural ATR (30m->5m): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
+            if len(v): print(f"[Reversal v2] Structural ATR (30m->{base_tf}): {v.mean():.6f} ({v.mean()*10000:.1f} pips)")
     
     df_5m["atr"] = atr_5m; df_5m["structural_atr"] = satr_5m
     
@@ -1117,19 +1250,19 @@ def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, v
     cusum_ev = cusum_filter(df_5m["close"], ct, params.cusum_use_dynamic, params.cusum_fixed_threshold)
     if verbose: print(f"[Reversal v2] CUSUM events: {len(cusum_ev):,}")
     
-    # 5m swings with structural ATR
+    # Base-timeframe swings with structural ATR
     sw5 = detect_swings_zigzag(
         df_5m, satr_5m, params.confirm_atr_mult, params.min_swing_atr,
         params.min_swing_distance_atr, params.min_bars_between_swings,
-        params.warmup_bars, params.confirm_use_close, "5m"
+        params.warmup_bars, params.confirm_use_close, base_tf
     )
-    if verbose: print(f"[Reversal v2] 5m swings: {len(sw5)}")
+    if verbose: print(f"[Reversal v2] {base_tf} swings: {len(sw5)}")
     
     # 30m swings
     sw30 = detect_swings_zigzag(
         df_30m, satr_30m, params.htf_confirm_atr_mult, params.htf_min_swing_atr,
         params.min_swing_distance_atr * 0.8, params.htf_min_bars_between,
-        params.warmup_bars, params.confirm_use_close, "30m"
+        htf_warmup_bars, params.confirm_use_close, "30m"
     )
     if verbose: print(f"[Reversal v2] 30m swings: {len(sw30)}")
     
@@ -1140,7 +1273,7 @@ def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, v
         sw1h = detect_swings_zigzag(
             df_1hr, atr1h, params.htf_confirm_atr_mult,
             params.htf_min_swing_atr * 0.7, params.min_swing_distance_atr * 0.7,
-            max(2, params.htf_min_bars_between // 2), params.warmup_bars,
+            max(2, params.htf_min_bars_between // 2), htf_warmup_bars,
             params.confirm_use_close, "1hr"
         )
         if verbose: print(f"[Reversal v2] 1hr swings: {len(sw1h)}")
@@ -1148,7 +1281,14 @@ def build_reversal_labels(df_5m, df_30m, params=None, df_1m=None, df_1hr=None, v
     # HTF matching / timing metadata
     htf_match = compute_htf_swing_match(sw5, sw30, params.htf_confluence_window_minutes)
     htf_match_1h = compute_htf_swing_match(sw5, sw1h, params.htf_confluence_window_minutes * 2) if sw1h else {}
-    sw5 = annotate_swing_context(sw5, sw30, sw1h, htf_match, htf_match_1h)
+    sw5 = annotate_swing_context(
+        sw5,
+        sw30,
+        sw1h,
+        htf_match,
+        htf_match_1h,
+        base_bar_minutes=base_bar_minutes,
+    )
     
     # Triple barrier
     sw5 = validate_swings_triple_barrier(df_5m, sw5, satr_5m, params)

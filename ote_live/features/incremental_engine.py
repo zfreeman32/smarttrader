@@ -26,6 +26,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECIPE_PATH = REPO_ROOT / "features" / "recipes" / "ote_extended.json"
 DEFAULT_WEEKLY_CONTEXT_HISTORY_BARS = 8000
 DEFAULT_DAILY_CONTEXT_HISTORY_BARS = 2000
+DEFAULT_HTF_30M_CONTEXT_HISTORY_BARS = 1000
+DEFAULT_HTF_1H_CONTEXT_HISTORY_BARS = 2000
 ADDITIVE_SEED_PREFIX_BARS = 1
 ADDITIVE_CUMULATIVE_FEATURE_NAMES = frozenset(
     {
@@ -45,6 +47,51 @@ _LOWVOL_INTERACTIONS = {
     "interaction_lowvol_bull_reversion",
     "interaction_lowvol_bear_reversion",
 }
+POLICY_CONTEXT_FEATURE_NAMES = (
+    "ema_alignment",
+    "atr_14",
+    "range_shock_20",
+    "close_vs_ema_50_atr",
+    "hour",
+    "hour_sin",
+    "hour_cos",
+    "in_asian_session",
+    "in_london_session",
+    "in_newyork_session",
+)
+FRVP_DASHBOARD_EXTRA_FEATURE_NAMES = (
+    "atr_14",
+    "volume_zscore_50",
+    "displacement_bullish",
+    "displacement_bearish",
+    "bars_since_sweep_high",
+    "bars_since_sweep_low",
+    "frvp_dist_poc_session_atr",
+    "frvp_dist_vah_atr",
+    "frvp_dist_val_atr",
+    "frvp_dist_ib_high_atr",
+    "frvp_dist_ib_low_atr",
+    "frvp_naked_vpoc_dist_above_atr",
+    "frvp_naked_vpoc_dist_below_atr",
+    "frvp_naked_vpoc_count",
+    "frvp_naked_vpoc_age_sessions",
+    "frvp_setup_type",
+    "frvp_setup_side",
+    "frvp_setup_confidence_rule",
+    "frvp_profile_shape",
+    "frvp_open_type",
+    "frvp_open_drive_flag",
+    "frvp_in_va",
+    "frvp_above_vah",
+    "frvp_below_val",
+    "frvp_dist_nearest_lvn_atr",
+    "frvp_hvn_above_close",
+    "frvp_hvn_below_close",
+)
+_ASSET_TO_FEATURE_INSTRUMENT = {
+    "ES": "es",
+    "6E": "6e",
+}
 
 
 @dataclass(frozen=True)
@@ -52,6 +99,9 @@ class ManifestFeaturePlan:
     asset: str
     timeframe: str
     selected_feature_names: tuple[str, ...]
+    extra_feature_names: tuple[str, ...]
+    policy_feature_names: tuple[str, ...]
+    built_feature_names: tuple[str, ...]
     model_feature_names: dict[str, tuple[str, ...]]
     strategy_adapter: StrategyFeatureAdapter
     additive_seed_feature_names: tuple[str, ...]
@@ -65,6 +115,7 @@ def build_manifest_feature_plan(
     manifests: Iterable[LiveRuntimeManifest],
     *,
     rolling_window_bars: int | None = None,
+    extra_feature_names: Sequence[str] = (),
 ) -> ManifestFeaturePlan:
     manifests = tuple(manifests)
     if not manifests:
@@ -89,14 +140,26 @@ def build_manifest_feature_plan(
             if feature_name not in selected_feature_names:
                 selected_feature_names.append(feature_name)
 
-    strategy_adapter = StrategyFeatureAdapter.from_feature_names(selected_feature_names)
+    resolved_extra_feature_names = tuple(
+        feature_name
+        for feature_name in dict.fromkeys(str(name) for name in extra_feature_names if str(name))
+        if feature_name not in selected_feature_names
+    )
+
+    policy_feature_names = tuple(
+        feature_name
+        for feature_name in POLICY_CONTEXT_FEATURE_NAMES
+        if feature_name not in selected_feature_names and feature_name not in resolved_extra_feature_names
+    )
+    built_feature_names = tuple((*selected_feature_names, *resolved_extra_feature_names, *policy_feature_names))
+    strategy_adapter = StrategyFeatureAdapter.from_feature_names(built_feature_names)
     additive_seed_feature_names = tuple(
         feature_name
-        for feature_name in selected_feature_names
+        for feature_name in built_feature_names
         if feature_name in ADDITIVE_CUMULATIVE_FEATURE_NAMES
     )
     additive_seed_prefix_bars = ADDITIVE_SEED_PREFIX_BARS if additive_seed_feature_names else 0
-    inferred_history_bars = infer_required_history_bars(selected_feature_names)
+    inferred_history_bars = infer_required_history_bars(built_feature_names)
     minimum_history_bars = max(resolve_required_history_bars(manifests), inferred_history_bars)
     runtime_history_bars = resolve_runtime_history_bars(
         manifests,
@@ -109,6 +172,9 @@ def build_manifest_feature_plan(
         asset=asset,
         timeframe=timeframe,
         selected_feature_names=tuple(selected_feature_names),
+        extra_feature_names=resolved_extra_feature_names,
+        policy_feature_names=policy_feature_names,
+        built_feature_names=built_feature_names,
         model_feature_names=model_feature_names,
         strategy_adapter=strategy_adapter,
         additive_seed_feature_names=additive_seed_feature_names,
@@ -135,8 +201,10 @@ def build_runtime_feature_config(
     if strategy_timeout_seconds is not None:
         config.strategy_timeout_seconds = None if strategy_timeout_seconds <= 0 else float(strategy_timeout_seconds)
 
-    _prune_transform_settings(config, plan.selected_feature_names)
+    _prune_transform_settings(config, plan.built_feature_names)
     plan.strategy_adapter.apply_to_config(config)
+    if any(feature_name.startswith("frvp_") for feature_name in plan.built_feature_names):
+        config.instrument = _ASSET_TO_FEATURE_INSTRUMENT.get(plan.asset.upper(), config.instrument)
     return config
 
 
@@ -150,9 +218,14 @@ class IncrementalFeatureEngine:
         transform_workers: int | None = None,
         strategy_timeout_seconds: float | None = None,
         feature_seed_offsets: dict[str, float] | None = None,
+        extra_feature_names: Sequence[str] = (),
     ) -> None:
         self.manifests = tuple(manifests)
-        self.plan = build_manifest_feature_plan(self.manifests, rolling_window_bars=rolling_window_bars)
+        self.plan = build_manifest_feature_plan(
+            self.manifests,
+            rolling_window_bars=rolling_window_bars,
+            extra_feature_names=extra_feature_names,
+        )
         self.config = build_runtime_feature_config(
             self.plan,
             recipe_path=recipe_path,
@@ -182,18 +255,27 @@ class IncrementalFeatureEngine:
         for bar in bars:
             self.ingest_bar(bar)
 
-    def build_feature_frame(self, market_frame: pd.DataFrame | None = None) -> pd.DataFrame:
+    def build_feature_frame(
+        self,
+        market_frame: pd.DataFrame | None = None,
+        *,
+        include_policy_features: bool = False,
+    ) -> pd.DataFrame:
         if market_frame is None:
             signature = (self.state.latest_timestamp, len(self.state))
             if self._cached_state_signature == signature and self._cached_feature_frame is not None:
-                return self._cached_feature_frame.copy()
+                cached = self._cached_feature_frame.copy()
+                if include_policy_features:
+                    return cached
+                return cached.loc[:, list(self.plan.selected_feature_names)].copy()
             source_frame = self.state.to_frame()
         else:
             signature = None
             source_frame = market_frame
 
         if source_frame.empty:
-            empty = pd.DataFrame(columns=list(self.plan.selected_feature_names))
+            columns = self.plan.built_feature_names if include_policy_features else self.plan.selected_feature_names
+            empty = pd.DataFrame(columns=list(columns))
             if signature is not None:
                 self._cached_feature_frame = empty
                 self._cached_state_signature = signature
@@ -203,7 +285,7 @@ class IncrementalFeatureEngine:
         built_frame, _ = self.builder.build(bounded)
         built_frame = self._apply_feature_seed_offsets(built_frame)
         missing_feature_names = [
-            feature_name for feature_name in self.plan.selected_feature_names if feature_name not in built_frame.columns
+            feature_name for feature_name in self.plan.built_feature_names if feature_name not in built_frame.columns
         ]
         if missing_feature_names:
             raise ValueError(
@@ -211,13 +293,15 @@ class IncrementalFeatureEngine:
                 + ", ".join(missing_feature_names[:20])
             )
 
-        selected = built_frame.loc[:, list(self.plan.selected_feature_names)].copy()
-        if len(selected) > self.plan.runtime_history_bars:
-            selected = selected.iloc[-self.plan.runtime_history_bars :].reset_index(drop=True)
+        available = built_frame.loc[:, list(self.plan.built_feature_names)].copy()
+        if len(available) > self.plan.runtime_history_bars:
+            available = available.iloc[-self.plan.runtime_history_bars :].reset_index(drop=True)
         if signature is not None:
-            self._cached_feature_frame = selected
+            self._cached_feature_frame = available
             self._cached_state_signature = signature
-        return selected.copy()
+        if include_policy_features:
+            return available.copy()
+        return available.loc[:, list(self.plan.selected_feature_names)].copy()
 
     def warmup_status(
         self,
@@ -340,6 +424,9 @@ class IncrementalFeatureEngine:
                 "ask": bar.ask,
                 "spread": bar.spread,
                 "source": bar.source,
+                "symbol": bar.symbol,
+                "contract_symbol": bar.contract_symbol,
+                "instrument_id": bar.instrument_id,
             }
             for bar in bars
         ]
@@ -516,6 +603,13 @@ def infer_required_history_bars(selected_feature_names: Sequence[str]) -> int:
         required_bars = max(required_bars, DEFAULT_WEEKLY_CONTEXT_HISTORY_BARS)
     if any("rolling_daily" in feature_name for feature_name in selected_feature_names):
         required_bars = max(required_bars, DEFAULT_DAILY_CONTEXT_HISTORY_BARS)
+    if any(feature_name.startswith("htf_30m_") for feature_name in selected_feature_names):
+        required_bars = max(required_bars, DEFAULT_HTF_30M_CONTEXT_HISTORY_BARS)
+    if any(
+        feature_name == "htf_alignment_score" or feature_name.startswith("htf_1h_")
+        for feature_name in selected_feature_names
+    ):
+        required_bars = max(required_bars, DEFAULT_HTF_1H_CONTEXT_HISTORY_BARS)
 
     return required_bars
 

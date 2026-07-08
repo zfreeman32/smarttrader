@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
 from preprocessing.config import PreprocessingConfig
-from preprocessing.feature_importance import association_scores
+from preprocessing.feature_importance import association_scores, prepare_feature_importance_frame
 from preprocessing.pipeline import FeaturePreprocessingPipeline as _BaseFeaturePreprocessingPipeline
 
 
@@ -43,6 +43,7 @@ def compute_feature_importance(
     weight_analysis = sample_weight.iloc[-analysis_rows:]
 
     association = association_scores(X_analysis, y_analysis)
+    prepared_analysis, discrete_features = prepare_feature_importance_frame(X_analysis)
 
     mi_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
     if y_analysis.nunique(dropna=True) >= 2 and len(X_analysis) > 3:
@@ -50,17 +51,19 @@ def compute_feature_importance(
             neighbors = min(config.mutual_info_neighbors, max(1, len(X_analysis) - 1))
             if is_binary:
                 mi_values = mutual_info_classif(
-                    X_analysis,
+                    prepared_analysis,
                     y_analysis,
                     random_state=42,
                     n_neighbors=neighbors,
+                    discrete_features=discrete_features,
                 )
             else:
                 mi_values = mutual_info_regression(
-                    X_analysis,
+                    prepared_analysis,
                     y_analysis,
                     random_state=42,
                     n_neighbors=neighbors,
+                    discrete_features=discrete_features,
                 )
             mi_scores = pd.Series(mi_values, index=X_analysis.columns, dtype=float)
         except Exception:
@@ -93,7 +96,7 @@ def compute_feature_importance(
                     oob_score=True,
                 )
 
-            model.fit(X_analysis, y_analysis, sample_weight=weight_analysis)
+            model.fit(prepared_analysis, y_analysis, sample_weight=weight_analysis)
             rf_scores = pd.Series(
                 model.feature_importances_,
                 index=X_analysis.columns,

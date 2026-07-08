@@ -1,6 +1,11 @@
 # OTE Live Stack
 
-The live stack now supports repo-root `.env` loading for the Python entrypoints under `ote_live/scripts`.
+The live Dash app now serves both operator views from one process:
+
+- `OTE`: the existing EURUSD / OTE live view.
+- `FRVP`: an ES `5m` shadow view fed by IBKR and rendered from persisted runtime state.
+
+The FRVP tab does not talk to IBKR directly. The collector writes completed ES bars, model outputs, and FRVP chart/setup state into the shared SQLite store, and the dashboard reads that store.
 
 ## Install
 
@@ -8,88 +13,127 @@ The live stack now supports repo-root `.env` loading for the Python entrypoints 
 pip install -r ote_requirements.txt
 ```
 
-## Minimum `.env`
+`ote_requirements.txt` now includes `ib_insync` for the IBKR-backed FRVP collector.
+
+## Example Env
+
+Use `ote_live/.env.example` as the starting point.
+
+Minimum OTE-only env:
 
 ```dotenv
 FMP_API_KEY=replace_me
+OTE_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
 ```
 
-Optional launcher settings:
+Example FRVP / IBKR additions:
 
 ```dotenv
-OTE_LIVE_ASSET=EURUSD
-OTE_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
-OTE_LIVE_SOURCE_TIMEFRAME=5m
-OTE_LIVE_COLLECTOR_POLL_INTERVAL_SECONDS=300
-OTE_LIVE_STREAM_OUTPUTSIZE=2
-OTE_LIVE_FINALIZED_BAR_GRACE_SECONDS=90
-OTE_LIVE_SIGNAL_PROCESSING_DELAY_SECONDS=120
-OTE_LIVE_CYCLE_FINALIZED_REFRESH_LOOKBACK_BARS=6
-OTE_LIVE_REGISTRY_PATH=models/ote_model_registry_v1_v2_candidates.json
-OTE_LIVE_DASHBOARD_HOST=127.0.0.1
-OTE_LIVE_DASHBOARD_PORT=8050
-OTE_LIVE_DASHBOARD_TIMEFRAME=5m
-OTE_LIVE_DASHBOARD_REFRESH_INTERVAL_MS=10000
-OTE_LIVE_DASHBOARD_SIGNAL_LIMIT=120
-OTE_LIVE_DASHBOARD_URL=http://127.0.0.1:8050
-OTE_LIVE_LONG_RUNTIME_MANIFEST_PATH=ote_live/runtime_manifests/live_runtime_manifest_long.json
-OTE_LIVE_SHORT_RUNTIME_MANIFEST_PATH=ote_live/runtime_manifests/live_runtime_manifest_short.json
-OTE_LIVE_OPEN_BROWSER=1
-OTE_LIVE_ALERT_EMAIL_RECIPIENTS=
-OTE_LIVE_ALERT_SMS_RECIPIENTS=
+FRVP_LIVE_ASSET=ES
+FRVP_LIVE_TIMEFRAME=5m
+FRVP_LIVE_DATA_SUPPLIER=IBKR
+FRVP_LIVE_DB_PATH=ote_live/runtime_data/live_market_data.sqlite3
+FRVP_LIVE_REGISTRY_PATH=models/frvp_es_shadow_live_registry_20260705.json
+FRVP_LIVE_LONG_RUNTIME_MANIFEST_PATH=ote_live/runtime_manifests/frvp_es_shadow_20260705/live_runtime_manifest_long.json
+FRVP_LIVE_SHORT_RUNTIME_MANIFEST_PATH=ote_live/runtime_manifests/frvp_es_shadow_20260705/live_runtime_manifest_short.json
+
+IBKR_HOST=127.0.0.1
+IBKR_PORT=7497
+IBKR_CLIENT_ID=17
+IBKR_MARKET_DATA_TYPE=1
+IBKR_ES_SYMBOL=ES
+IBKR_ES_EXCHANGE=CME
+IBKR_ES_CURRENCY=USD
+IBKR_ES_LOCAL_SYMBOL=ESU6
+# Or:
+# IBKR_ES_CONTRACT_MONTH=202609
+IBKR_USE_RTH=false
+IBKR_BAR_SIZE=5 mins
+IBKR_WHAT_TO_SHOW=TRADES
+IBKR_KEEP_UP_TO_DATE=true
+IBKR_BACKFILL_DURATION=2 D
 ```
 
-`OTE_LIVE_ALERT_SMS_RECIPIENTS` now accepts either normal SMS destinations for the Twilio path or email-to-text gateway addresses such as `15555550123@vtext.com`. Gateway-style recipients reuse the `OTE_ALERT_EMAIL_*` SMTP settings and send a compact text-only alert body with no screenshot attachments.
+Keep `FRVP_LIVE_DB_PATH` aligned with `OTE_LIVE_DB_PATH` if you want the combined dashboard to show both tabs from the same store.
 
-## One-command startup
+## Run Commands
 
-PowerShell:
+Combined dashboard with tabs:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start_ote_live_stack.ps1
+python -m ote_live.scripts.run_live_dashboard
 ```
 
-Batch:
+Existing OTE collector:
 
-```cmd
-scripts\start_ote_live_stack.bat
+```powershell
+python -m ote_live.scripts.run_live_collector --dashboard-url http://127.0.0.1:8050
 ```
 
-Python module:
+FRVP IBKR collector:
+
+```powershell
+python -m ote_live.scripts.run_frvp_live_collector --dashboard-url http://127.0.0.1:8050
+```
+
+Typical operator flow for both tabs:
+
+```powershell
+python -m ote_live.scripts.run_live_collector --dashboard-url http://127.0.0.1:8050
+python -m ote_live.scripts.run_frvp_live_collector --dashboard-url http://127.0.0.1:8050
+python -m ote_live.scripts.run_live_dashboard
+```
+
+If you only launch the FRVP collector, the FRVP tab will populate and the OTE tab will still render, but it will only show data already present in the shared store.
+
+## FRVP Defaults
+
+The FRVP tab and collector default to the shadow bundle already in the repo:
+
+- `models/frvp_es_shadow_live_registry_20260705.json`
+- `ote_live/runtime_manifests/frvp_es_shadow_20260705/live_runtime_manifest_long.json`
+- `ote_live/runtime_manifests/frvp_es_shadow_20260705/live_runtime_manifest_short.json`
+- `ote_live/runtime_manifests/frvp_es_shadow_20260705/shadow_selection_summary.json`
+- `ote_live/policy_artifacts/frvp_es_shadow_20260705/`
+- `model_testing/reports/frvp_backtests/frvp_es_shadow_live_bundle_20260705/run_summary.json`
+
+The FRVP dashboard ordering prioritizes:
+
+1. `frvp_long_continuation_xgb_v1`
+2. `frvp_long_reversal_xgb_v1`
+3. `frvp_short_meta_xgb_v1`
+
+The tab still renders every model loaded from the long/short FRVP manifests.
+
+## Dashboard Notes
+
+The tabbed dashboard keeps the existing OTE card layout and adds:
+
+- ES `5m` price bars on the FRVP tab.
+- Persisted FRVP overlays for `POC`, `VAH`, `VAL`, `IB high`, `IB low`, and nearest naked VPOCs when the runtime has those distances available.
+- FRVP setup markers sourced from persisted runtime state.
+- Per-model probability / threshold / decision cards using the saved live policies from the manifests.
+
+The FRVP runtime persists its chart/setup state into `runtime_state` under the `FRVP` dashboard key so Dash callbacks do not need to recompute expensive FRVP context on refresh.
+
+## Existing OTE Launcher
+
+The legacy convenience launcher still exists:
 
 ```powershell
 python -m ote_live.scripts.run_live_stack
 ```
 
-What the launcher does:
+It remains OTE-oriented. FRVP v1 is launched with the dedicated `run_frvp_live_collector` command above.
 
-1. Packages live policy artifacts.
-2. Exports fresh runtime manifests from the v1/v2 candidate registry so the live primaries default to the long and short TCN v2 models.
-3. Starts the Dash dashboard.
-4. Starts the live collector with signal generation and SQLite storage.
+## IBKR Requirements And Limits
 
-The dashboard now stays pinned to the configured long and short primary models from the runtime manifests. If a configured primary has not produced stored live predictions yet, its primary confidence and inspection panels stay empty instead of silently switching to another model. The main price chart still shows all stored model signals.
-
-The live collector now defaults to the Financial Modeling Prep `5min` forex
-chart endpoint for `EURUSD`, adds a short post-close grace window before a bar
-is accepted as finalized, and refreshes a small recent window each cycle before
-signal evaluation so the runtime leans on reconciled candles instead of the
-first post-close snapshot.
-
-## Useful options
-
-```powershell
-python -m ote_live.scripts.run_live_stack --dry-run
-python -m ote_live.scripts.run_live_stack --no-open-browser
-python -m ote_live.scripts.run_live_stack --skip-policy-package --skip-manifest-export
-python -m ote_live.scripts.run_live_stack --collector-arg=--max-cycles --collector-arg=5
-```
-
-Direct entrypoints still work and now auto-load `.env`:
-
-```powershell
-python -m ote_live.scripts.run_live_collector
-python -m ote_live.scripts.run_live_dashboard
-python -m ote_live.scripts.package_candidate_policies
-python -m ote_live.scripts.export_live_runtime_manifests
-```
+- TWS or IB Gateway must be running locally with API access enabled.
+- Real-time ES data requires the correct CME market data subscription.
+- The collector requests `TRADES` bars so ES volume remains real traded contract volume.
+- v1 uses safe historical-bar polling for ongoing updates. `IBKR_KEEP_UP_TO_DATE` is accepted in config, but the current collector does not open a persistent `keepUpToDate` subscription.
+- IBKR pacing still applies, so the runtime caches bars locally and backfills only missing windows.
+- Completed `5m` bars only are used for FRVP inference and chart state.
+- Safe ES auto-roll handling is not implemented in v1.
+- You must set the active front-month contract manually with `IBKR_ES_LOCAL_SYMBOL`, `IBKR_ES_CONTRACT_MONTH`, or `conId`.
+- Do not let FRVP absolute profile levels span silent contract-coordinate changes.

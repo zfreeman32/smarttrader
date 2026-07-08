@@ -85,11 +85,11 @@ def _coerce_policy_frame(
     policy_context: pd.DataFrame | pd.Series | Mapping[str, Any],
 ) -> pd.DataFrame:
     if isinstance(policy_context, pd.DataFrame):
-        return policy_context.copy()
+        return _normalize_policy_frame_columns(policy_context.copy())
     if isinstance(policy_context, pd.Series):
-        return policy_context.to_frame().T
+        return _normalize_policy_frame_columns(policy_context.to_frame().T)
     if isinstance(policy_context, Mapping):
-        return pd.DataFrame([dict(policy_context)])
+        return _normalize_policy_frame_columns(pd.DataFrame([dict(policy_context)]))
     raise TypeError("policy_context must be a pandas DataFrame, Series, or mapping.")
 
 
@@ -97,3 +97,9 @@ def _optional_str(value: Any) -> str | None:
     if value is None or pd.isna(value):
         return None
     return str(value)
+
+
+def _normalize_policy_frame_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    if "datetime" not in frame.columns and "timestamp" in frame.columns:
+        frame["datetime"] = frame["timestamp"]
+    return frame

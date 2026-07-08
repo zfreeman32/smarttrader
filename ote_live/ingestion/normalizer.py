@@ -92,6 +92,9 @@ def bars_to_dataframe(bars: list[MarketBar]) -> pd.DataFrame:
                 "ask",
                 "spread",
                 "source",
+                "symbol",
+                "contract_symbol",
+                "instrument_id",
             ]
         )
 
@@ -109,6 +112,9 @@ def bars_to_dataframe(bars: list[MarketBar]) -> pd.DataFrame:
             "ask": bar.ask,
             "spread": bar.spread,
             "source": bar.source,
+            "symbol": bar.symbol,
+            "contract_symbol": bar.contract_symbol,
+            "instrument_id": bar.instrument_id,
         }
         for bar in bars
     ]
@@ -158,6 +164,9 @@ def dataframe_to_market_bars(
                 ask=_optional_float(getattr(row, "ask", None)),
                 spread=_optional_float(getattr(row, "spread", None)),
                 source=source,
+                symbol=_optional_str(getattr(row, "symbol", None)),
+                contract_symbol=_optional_str(getattr(row, "contract_symbol", None)),
+                instrument_id=_optional_int(getattr(row, "instrument_id", None)),
             )
         )
     return bars
@@ -287,3 +296,16 @@ def _optional_float(value: Any) -> float | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     return float(value)
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    return int(value)
+
+
+def _optional_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
