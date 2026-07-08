@@ -21,6 +21,24 @@ TARGET_HELPER_FAMILY_ALIASES: Dict[str, Tuple[str, ...]] = {
 }
 
 SYNTHETIC_TARGET_COMPONENTS: Dict[str, Dict[str, Any]] = {
+    "label_long_frvp_meta": {
+        "name": "long_frvp_meta",
+        "direction": "long",
+        "label_kind": "frvp_meta",
+        "component_target_columns": [
+            "label_long_frvp_reversal",
+            "label_long_frvp_continuation",
+        ],
+    },
+    "label_short_frvp_meta": {
+        "name": "short_frvp_meta",
+        "direction": "short",
+        "label_kind": "frvp_meta",
+        "component_target_columns": [
+            "label_short_frvp_reversal",
+            "label_short_frvp_continuation",
+        ],
+    },
     "label_long_ote": {
         "name": "long_ote",
         "direction": "long",
@@ -29,6 +47,8 @@ SYNTHETIC_TARGET_COMPONENTS: Dict[str, Dict[str, Any]] = {
             "label_long_reversal",
             "label_long_continuation_pullback",
             "label_long_breakout",
+            "label_long_frvp_reversal",
+            "label_long_frvp_continuation",
         ],
     },
     "label_short_ote": {
@@ -39,6 +59,8 @@ SYNTHETIC_TARGET_COMPONENTS: Dict[str, Dict[str, Any]] = {
             "label_short_reversal",
             "label_short_continuation_pullback",
             "label_short_breakout",
+            "label_short_frvp_reversal",
+            "label_short_frvp_continuation",
         ],
     },
 }
@@ -90,7 +112,6 @@ def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
         "label_quality_",
         "exclude_",
         "neg_ok_",
-        "htf_confluence_",
         "bars_since_1h_swing_",
         "bars_since_30m_swing_",
         "concurrency_",
@@ -100,6 +121,7 @@ def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
         "date",
         "time",
         "timestamp",
+        "ts_event",
         "source_row_idx",
         "open",
         "high",
@@ -110,6 +132,24 @@ def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
         "is_anomaly",
         "atr",
         "structural_atr",
+        "reversal_atr",
+        "reversal_structural_atr",
+        "continuation_atr",
+        "continuation_structural_atr",
+        "breakout_atr",
+        "breakout_structural_atr",
+        "frvp_atr",
+        "frvp_structural_atr",
+        "symbol",
+        "instrument_id",
+        "contract_id",
+        "contract_symbol",
+        "contract_expiration",
+        "is_roll_boundary",
+        "bars_since_roll",
+        "market_day_close",
+        "market_day_index",
+        "in_roll_bracket",
     }
     return [
         column
@@ -118,10 +158,76 @@ def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
     ]
 
 
+def _parse_target_column(target_column: str) -> Optional[Tuple[str, str, bool]]:
+    body = target_column.removeprefix("label_")
+    if body == target_column:
+        return None
+
+    direction = None
+    remainder = ""
+    for candidate in ("long", "short"):
+        prefix = f"{candidate}_"
+        if body.startswith(prefix):
+            direction = candidate
+            remainder = body[len(prefix) :]
+            break
+    if direction is None or not remainder:
+        return None
+
+    is_entry = remainder == "entry" or remainder.endswith("_entry")
+    family = remainder[: -len("_entry")].rstrip("_") if is_entry else remainder
+    if not family and not is_entry:
+        return None
+
+    return direction, family, is_entry
+
+
+def _target_context_feature_candidates(target_column: str) -> List[str]:
+    parsed = _parse_target_column(target_column)
+    if parsed is None:
+        return []
+
+    direction, family, _is_entry = parsed
+    family_aliases = TARGET_HELPER_FAMILY_ALIASES.get(family, (family,))
+    candidates: List[str] = []
+
+    for alias in family_aliases:
+        if alias:
+            candidates.append(f"htf_confluence_{direction}_{alias}")
+            candidates.append(f"htf_confluence_{direction}_{alias}_1hr")
+        else:
+            candidates.append(f"htf_confluence_{direction}")
+            candidates.append(f"htf_confluence_{direction}_1hr")
+
+    return list(dict.fromkeys(candidates))
+
+
+def resolve_target_context_feature_columns(
+    df: pd.DataFrame,
+    target_specs: Iterable[TargetDatasetSpec],
+) -> List[str]:
+    columns: List[str] = []
+
+    for spec in target_specs:
+        target_columns = (
+            spec.component_target_columns
+            if spec.is_synthetic
+            else [spec.target_column]
+        )
+        for target_column in target_columns:
+            for candidate in _target_context_feature_candidates(str(target_column)):
+                if candidate in df.columns:
+                    columns.append(candidate)
+
+    return list(dict.fromkeys(columns))
+
+
 def resolve_feature_columns(
     df: pd.DataFrame,
     metadata: Dict[str, Any],
     config: PreprocessingConfig,
+    *,
+    target_specs: Optional[Iterable[TargetDatasetSpec]] = None,
 ) -> List[str]:
     metadata_features = [
         column
@@ -133,6 +239,11 @@ def resolve_feature_columns(
     if config.include_base_price_columns:
         for column in ("open", "high", "low", "close", "volume"):
             if column in df.columns and column not in features:
+                features.append(column)
+
+    if target_specs is not None:
+        for column in resolve_target_context_feature_columns(df, target_specs):
+            if column not in features:
                 features.append(column)
 
     return list(dict.fromkeys(features))
@@ -278,28 +389,13 @@ def _build_direct_target_spec(
     if target_column not in df.columns:
         return None
 
+    parsed = _parse_target_column(target_column)
+    if parsed is None:
+        return None
+
+    direction, family, is_entry = parsed
     body = target_column.removeprefix("label_")
-    if body == target_column:
-        return None
-
-    direction = None
-    remainder = ""
-    for candidate in ("long", "short"):
-        prefix = f"{candidate}_"
-        if body.startswith(prefix):
-            direction = candidate
-            remainder = body[len(prefix) :]
-            break
-    if direction is None or not remainder:
-        return None
-
-    is_entry = remainder == "entry" or remainder.endswith("_entry")
-    if is_entry:
-        family = remainder[: -len("_entry")].rstrip("_")
-        label_kind = f"{family}_entry" if family else "entry"
-    else:
-        family = remainder
-        label_kind = family
+    label_kind = f"{family}_entry" if is_entry and family else ("entry" if is_entry else family)
 
     family_aliases = TARGET_HELPER_FAMILY_ALIASES.get(family, (family,))
 
@@ -402,11 +498,15 @@ def discover_targets(
         spec = get_direct_spec(target_column)
         if spec is None and target_column in SYNTHETIC_TARGET_COMPONENTS:
             component_target_columns = SYNTHETIC_TARGET_COMPONENTS[target_column]["component_target_columns"]
-            component_specs = [get_direct_spec(str(column)) for column in component_target_columns]
-            if all(component_spec is not None for component_spec in component_specs):
+            component_specs = [
+                component_spec
+                for component_spec in (get_direct_spec(str(column)) for column in component_target_columns)
+                if component_spec is not None
+            ]
+            if component_specs:
                 spec = _build_synthetic_target_spec(
                     target_column,
-                    [component_spec for component_spec in component_specs if component_spec is not None],
+                    component_specs,
                 )
 
         if spec is None or spec.name in seen_names:
@@ -720,5 +820,6 @@ __all__ = [
     "remove_low_variance_columns",
     "resolve_source_row_idx",
     "resolve_feature_columns",
+    "resolve_target_context_feature_columns",
     "resolve_sample_weight",
 ]

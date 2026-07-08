@@ -13,6 +13,25 @@ from features.fx_calendar import (
 )
 
 
+FRVP_OPEN_TYPE_LABELS = {
+    -1: "below_value",
+    0: "inside_value",
+    1: "above_value",
+}
+FRVP_OPEN_TYPE_STATUS_CLASSIFIED = "classified"
+FRVP_OPEN_TYPE_STATUS_NOT_YET_KNOWN = "not_yet_known"
+FRVP_OPEN_TYPE_STATUS_MISSING_AFTER_OPEN = "missing_after_open"
+FRVP_OPEN_TYPE_STATUS_UNKNOWN = "unknown"
+
+FRVP_DAY_TYPE_LABELS = {
+    1: "normal",
+    2: "normal_variation",
+    3: "trend",
+    4: "double_distribution_trend",
+    5: "neutral",
+}
+
+
 @dataclass(frozen=True)
 class RegimeLabelConfig:
     time_column: str = "datetime"
@@ -116,6 +135,11 @@ def label_regimes(
     labeled["session_regime"] = session_regime
     labeled["stress_regime"] = stress_regime
     labeled["composite_regime"] = trend_regime + "_" + vol_regime
+    _attach_frvp_context_labels(
+        labeled,
+        datetime_utc=datetime_utc,
+        config=config,
+    )
     return labeled
 
 
@@ -279,3 +303,63 @@ def _resolve_session_hour(
         return pd.Series(hour, index=df.index).astype("Int64")
 
     return None
+
+
+def _attach_frvp_context_labels(
+    labeled: pd.DataFrame,
+    *,
+    datetime_utc: Optional[pd.Series],
+    config: RegimeLabelConfig,
+) -> None:
+    if "frvp_open_type" in labeled.columns:
+        open_type = pd.to_numeric(labeled["frvp_open_type"], errors="coerce")
+        open_type_label = (
+            open_type.round()
+            .astype("Int64")
+            .map(FRVP_OPEN_TYPE_LABELS)
+            .astype("object")
+        )
+        open_type_status = _resolve_frvp_open_type_status(
+            open_type_label,
+            datetime_utc=datetime_utc,
+            config=config,
+        )
+        labeled["frvp_open_type_label"] = open_type_label
+        labeled["frvp_open_type_status"] = open_type_status.astype("object")
+
+    if "frvp_day_type" in labeled.columns:
+        day_type = pd.to_numeric(labeled["frvp_day_type"], errors="coerce")
+        labeled["frvp_day_type_label"] = (
+            day_type.round()
+            .astype("Int64")
+            .map(FRVP_DAY_TYPE_LABELS)
+            .fillna("unknown")
+            .astype("object")
+        )
+
+
+def _resolve_frvp_open_type_status(
+    open_type_label: pd.Series,
+    *,
+    datetime_utc: Optional[pd.Series],
+    config: RegimeLabelConfig,
+) -> pd.Series:
+    status = pd.Series(
+        FRVP_OPEN_TYPE_STATUS_CLASSIFIED,
+        index=open_type_label.index,
+        dtype="object",
+    )
+    missing_mask = open_type_label.isna()
+    if not bool(missing_mask.any()):
+        return status
+
+    if datetime_utc is None:
+        status.loc[missing_mask] = FRVP_OPEN_TYPE_STATUS_UNKNOWN
+        return status
+
+    local_datetimes = datetime_utc.dt.tz_convert(config.feature_clock_timezone)
+    local_minutes = (local_datetimes.dt.hour * 60) + local_datetimes.dt.minute
+    open_known_mask = local_minutes.ge((9 * 60) + 30) & local_minutes.lt(16 * 60)
+    status.loc[missing_mask & ~open_known_mask] = FRVP_OPEN_TYPE_STATUS_NOT_YET_KNOWN
+    status.loc[missing_mask & open_known_mask] = FRVP_OPEN_TYPE_STATUS_MISSING_AFTER_OPEN
+    return status

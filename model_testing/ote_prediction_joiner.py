@@ -148,6 +148,7 @@ def reconstruct_source_row_idx_mapping(
         source_frame,
         source_row_idx,
         upstream_info,
+        config=config,
     )
 
     target_specs = {spec.name: spec for spec in discover_targets(source_frame, config)}
@@ -232,7 +233,7 @@ def load_source_frame(
     if source_file is None:
         prepared_root = infer_prepared_root(prediction_path)
         summary = load_prepared_summary(prepared_root)
-        source_file = _resolve_repo_path(summary["input_file"])
+        source_file = _resolve_join_source_file(summary, source_columns)
 
     read_csv_kwargs: Dict[str, Any] = {}
     usecols = _build_source_usecols(source_columns)
@@ -255,11 +256,12 @@ def load_source_columns(
     *,
     prediction_path: Path,
     source_file: Path | None = None,
+    source_columns: Optional[Sequence[str]] = None,
 ) -> list[str]:
     if source_file is None:
         prepared_root = infer_prepared_root(prediction_path)
         summary = load_prepared_summary(prepared_root)
-        source_file = _resolve_repo_path(summary["input_file"])
+        source_file = _resolve_join_source_file(summary, source_columns)
 
     source_header = pd.read_csv(source_file, nrows=0)
     source_header = standardize_market_frame(source_header)
@@ -311,6 +313,67 @@ def load_prepared_summary(prepared_root: Path) -> Dict[str, Any]:
     if not summary_path.exists():
         raise FileNotFoundError(f"Prepared dataset summary not found: {summary_path}")
     return json.loads(summary_path.read_text(encoding="utf-8"))
+
+
+def _resolve_join_source_file(
+    summary: Dict[str, Any],
+    source_columns: Optional[Sequence[str]],
+) -> Path:
+    requested_columns = tuple(
+        column
+        for column in (source_columns or ())
+        if str(column).strip() and str(column) != "source_row_idx"
+    )
+    candidate_paths = _candidate_join_source_paths(summary)
+    if not candidate_paths:
+        raise FileNotFoundError("Prepared summary did not provide any usable source file candidates.")
+
+    if not requested_columns:
+        return candidate_paths[0]
+
+    best_path = candidate_paths[0]
+    best_match_count = -1
+    for candidate_path in candidate_paths:
+        available = set(_load_standardized_header_columns(candidate_path))
+        match_count = sum(1 for column in requested_columns if column in available)
+        if match_count > best_match_count:
+            best_path = candidate_path
+            best_match_count = match_count
+        if all(column in available for column in requested_columns):
+            return candidate_path
+
+    return best_path
+
+
+def _candidate_join_source_paths(summary: Dict[str, Any]) -> list[Path]:
+    candidate_values: list[str | Path] = []
+    if summary.get("input_file"):
+        candidate_values.append(summary["input_file"])
+
+    source_lineage = summary.get("source_lineage", {})
+    if isinstance(source_lineage, dict):
+        for key in ("feature_builder_source_path", "upstream_source_path"):
+            value = source_lineage.get(key)
+            if value:
+                candidate_values.append(value)
+
+    deduped: list[Path] = []
+    seen: set[Path] = set()
+    for value in candidate_values:
+        resolved = _resolve_repo_path(value)
+        if resolved.exists() and resolved not in seen:
+            deduped.append(resolved)
+            seen.add(resolved)
+    return deduped
+
+
+def _load_standardized_header_columns(source_file: Path) -> list[str]:
+    source_header = pd.read_csv(source_file, nrows=0)
+    source_header = standardize_market_frame(source_header)
+    columns = list(source_header.columns)
+    if "source_row_idx" not in columns:
+        columns.insert(0, "source_row_idx")
+    return columns
 
 
 def _extract_direct_source_row_idx(predictions: pd.DataFrame) -> Optional[np.ndarray]:

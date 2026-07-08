@@ -16,6 +16,9 @@ DEFAULT_SLICE_FAMILIES = (
     "session_regime",
     "stress_regime",
     "year",
+    "frvp_open_type_status",
+    "frvp_open_type_label",
+    "frvp_day_type_label",
 )
 DEFAULT_THRESHOLD_GRID = tuple(np.round(np.arange(0.40, 0.901, 0.05), 2).tolist())
 

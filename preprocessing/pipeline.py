@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -56,11 +57,23 @@ class FeaturePreprocessingPipeline:
             Path(metadata_path) if metadata_path is not None else input_path.with_suffix(".metadata.json")
         )
 
-        df = pd.read_csv(input_path)
+        metadata = self._load_metadata(resolved_metadata_path)
+        active_config, runtime_tuning = self._resolve_runtime_config(metadata)
+        read_plan = self._build_csv_read_plan(
+            input_path=input_path,
+            metadata=metadata,
+            time_column=active_config.time_column,
+            load_time_column=bool(active_config.load_time_column),
+        )
+        df = pd.read_csv(
+            input_path,
+            usecols=read_plan["usecols"],
+            dtype=read_plan["dtypes"],
+            parse_dates=read_plan["parse_dates"],
+        )
         df = standardize_market_frame(df)
         source_row_idx = resolve_source_row_idx(df)
         df = optimize_loaded_frame(df)
-        metadata = self._load_metadata(resolved_metadata_path)
         timezone_contract = self._resolve_timezone_contract(metadata)
         source_lineage = self._build_source_lineage(
             input_path=input_path,
@@ -69,24 +82,42 @@ class FeaturePreprocessingPipeline:
         )
 
         upstream_info = self._detect_upstream_preprocessing(metadata)
-        df, source_row_idx, row_window_info = self._apply_row_windowing(df, source_row_idx, upstream_info)
+        df, source_row_idx, row_window_info = self._apply_row_windowing(
+            df,
+            source_row_idx,
+            upstream_info,
+            config=active_config,
+        )
 
-        feature_columns = resolve_feature_columns(df, metadata, self.config)
+        target_specs = discover_targets(df, active_config)
+        if not target_specs:
+            raise ValueError(
+                "No supported target columns were found. "
+                f"Looked for: {active_config.target_columns}"
+            )
+
+        metadata_feature_columns = [
+            column
+            for column in metadata.get("feature_columns", [])
+            if column in df.columns
+        ]
+        feature_columns = resolve_feature_columns(
+            df,
+            metadata,
+            active_config,
+            target_specs=target_specs,
+        )
+        carry_through_feature_columns = [
+            column for column in feature_columns if column not in set(metadata_feature_columns)
+        ]
         encoded_features, encoding_info = encode_candidate_features(df, feature_columns)
         encoded_features, constant_info = remove_global_constant_features(encoded_features)
         encoded_features, duplicate_info = remove_exact_duplicate_features(
             encoded_features,
-            self.config.max_analysis_rows,
+            active_config.max_analysis_rows,
         )
 
-        target_specs = discover_targets(df, self.config)
-        if not target_specs:
-            raise ValueError(
-                "No supported target columns were found. "
-                f"Looked for: {self.config.target_columns}"
-            )
-
-        target_context = build_target_context(df, target_specs, self.config.time_column)
+        target_context = build_target_context(df, target_specs, active_config.time_column)
         target_context["source_row_idx"] = source_row_idx.to_numpy(copy=False)
         del df
         del source_row_idx
@@ -103,16 +134,21 @@ class FeaturePreprocessingPipeline:
                 output_dir=target_output_dir,
                 timezone_contract=timezone_contract,
                 source_lineage=source_lineage,
+                config=active_config,
             )
 
         summary = {
             "input_file": str(input_path),
             "metadata_file": str(resolved_metadata_path),
-            "config": self.config.to_dict(),
+            "config": active_config.to_dict(),
             "upstream_preprocessing": upstream_info,
             "row_windowing": row_window_info,
+            "runtime_bar_interval_tuning": runtime_tuning,
             "feature_pool": {
-                "metadata_feature_count": len(feature_columns),
+                "metadata_feature_count": len(metadata_feature_columns),
+                "carry_through_feature_count": len(carry_through_feature_columns),
+                "carry_through_feature_columns": carry_through_feature_columns,
+                "resolved_feature_count": len(feature_columns),
                 "encoded_feature_count": int(encoded_features.shape[1]),
                 "encoded_categorical_columns": encoding_info["encoded_columns"],
                 "duplicate_columns_removed": duplicate_info["removed_count"],
@@ -142,6 +178,85 @@ class FeaturePreprocessingPipeline:
         with metadata_path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
 
+    def _build_csv_read_plan(
+        self,
+        *,
+        input_path: Path,
+        metadata: Dict[str, Any],
+        time_column: str,
+        load_time_column: bool,
+    ) -> Dict[str, Any]:
+        header = pd.read_csv(input_path, nrows=0)
+        available_columns = [str(column) for column in header.columns]
+
+        declared_feature_columns = [
+            str(column)
+            for column in metadata.get("feature_columns", [])
+            if str(column) in available_columns
+        ]
+        target_context_columns = [
+            str(column)
+            for column in metadata.get("phase02_contract", {}).get("target_context_columns", [])
+            if str(column) in available_columns
+        ]
+
+        helper_prefixes = (
+            "label_",
+            "label_quality_",
+            "sample_weight_",
+            "exclude_",
+            "neg_ok_",
+            "concurrency_",
+            "htf_confluence_",
+        )
+        requested_columns = {
+            "warmup_mask",
+            *declared_feature_columns,
+            *target_context_columns,
+            *self.config.target_columns,
+        }
+        if load_time_column:
+            requested_columns.add(str(time_column))
+        requested_columns.update(
+            column
+            for column in available_columns
+            if any(column.startswith(prefix) for prefix in helper_prefixes)
+        )
+        usecols = [column for column in available_columns if column in requested_columns]
+        if not declared_feature_columns and not target_context_columns:
+            usecols = available_columns
+
+        sample = pd.read_csv(input_path, nrows=64, usecols=usecols)
+        dtype_map: Dict[str, Any] = {}
+        numeric_feature_candidates = set(declared_feature_columns) | set(target_context_columns)
+        for column in usecols:
+            if column == time_column:
+                dtype_map[column] = "string"
+                continue
+            if column not in sample.columns:
+                continue
+            sample_series = sample[column]
+            if column.startswith("label_quality_") or column.startswith("sample_weight_"):
+                dtype_map[column] = np.float32
+                continue
+            if column.startswith("concurrency_"):
+                dtype_map[column] = np.int16
+                continue
+            if column.startswith("exclude_") or column.startswith("neg_ok_") or column == "warmup_mask":
+                dtype_map[column] = np.int8
+                continue
+            if column.startswith("label_"):
+                dtype_map[column] = np.int8
+                continue
+            if column in numeric_feature_candidates and pd.api.types.is_numeric_dtype(sample_series):
+                dtype_map[column] = np.float32
+
+        return {
+            "usecols": usecols,
+            "dtypes": dtype_map,
+            "parse_dates": None,
+        }
+
     def _detect_upstream_preprocessing(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         config = metadata.get("config", {})
         feature_columns = metadata.get("feature_columns", [])
@@ -153,6 +268,51 @@ class FeaturePreprocessingPipeline:
             "numeric_fill_applied_upstream": bool(config.get("fillna_numeric")),
             "duplicate_column_names_blocked_in_builder": True,
         }
+
+    def _resolve_runtime_config(
+        self,
+        metadata: Dict[str, Any],
+    ) -> tuple[PreprocessingConfig, Dict[str, Any]]:
+        input_bar_minutes_raw = metadata.get("input_bar_minutes", metadata.get("base_bar_minutes"))
+        try:
+            input_bar_minutes = float(input_bar_minutes_raw)
+        except (TypeError, ValueError):
+            input_bar_minutes = float(self.config.bar_interval_reference_minutes)
+
+        reference_minutes = float(self.config.bar_interval_reference_minutes)
+        input_timeframe = (
+            metadata.get("input_timeframe")
+            if isinstance(metadata.get("input_timeframe"), str)
+            else f"{int(round(input_bar_minutes))}m"
+        )
+        info: Dict[str, Any] = {
+            "input_bar_minutes": input_bar_minutes,
+            "input_timeframe": input_timeframe,
+            "reference_bar_minutes": reference_minutes,
+            "applied": False,
+            "updated_fields": [],
+        }
+
+        if not self.config.auto_retune_for_bar_interval:
+            return self.config, info
+        if input_bar_minutes <= 0 or input_bar_minutes >= reference_minutes:
+            return replace(self.config, auto_retune_for_bar_interval=False), info
+
+        default_config = PreprocessingConfig()
+        updates: Dict[str, Any] = {}
+        if self.config.max_analysis_rows == default_config.max_analysis_rows:
+            scale = reference_minutes / max(input_bar_minutes, 1e-6)
+            updates["max_analysis_rows"] = int(round(self.config.max_analysis_rows * scale))
+
+        active_config = replace(
+            self.config,
+            **updates,
+            auto_retune_for_bar_interval=False,
+        )
+        if updates:
+            info["applied"] = True
+            info["updated_fields"] = sorted(updates.keys())
+        return active_config, info
 
     def _resolve_timezone_contract(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         timezone_contract = metadata.get("timezone_contract", {})
@@ -181,18 +341,20 @@ class FeaturePreprocessingPipeline:
         df: pd.DataFrame,
         source_row_idx: pd.Series,
         upstream_info: Dict[str, Any],
+        *,
+        config: PreprocessingConfig,
     ) -> tuple[pd.DataFrame, pd.Series, Dict[str, Any]]:
         info = {
             "rows_before": int(len(df)),
-            "additional_skip_rows_requested": int(self.config.additional_skip_rows),
+            "additional_skip_rows_requested": int(config.additional_skip_rows),
             "additional_skip_rows_applied": 0,
-            "analysis_row_cap": int(self.config.max_analysis_rows),
+            "analysis_row_cap": int(config.max_analysis_rows),
         }
 
-        skip_rows = int(self.config.additional_skip_rows)
+        skip_rows = int(config.additional_skip_rows)
         if skip_rows > 0:
             warmup_already_done = upstream_info.get("warmup_rows_already_dropped", False)
-            if warmup_already_done and self.config.respect_upstream_warmup:
+            if warmup_already_done and config.respect_upstream_warmup:
                 info["additional_skip_rows_reason"] = (
                     "skipped_because_upstream_builder_already_removed_warmup_rows"
                 )
@@ -256,15 +418,36 @@ class FeaturePreprocessingPipeline:
                 df,
                 spec.component_sample_weight_columns,
             )
-            safe_negative_mask = self._combine_boolean_columns(
-                df,
-                spec.component_safe_negative_columns,
-                mode="all",
-            )
-            exclude_mask = self._combine_boolean_columns(
-                df,
-                spec.component_exclude_columns,
-                mode="any",
+            positive_mask = target_raw.fillna(0).astype(float) > 0
+            component_negative_masks: list[pd.Series] = []
+            for index, target_column in enumerate(spec.component_target_columns):
+                component_positive = pd.to_numeric(df[target_column], errors="coerce").fillna(0).astype(float) > 0
+                safe_negative_column = (
+                    spec.component_safe_negative_columns[index]
+                    if index < len(spec.component_safe_negative_columns)
+                    else None
+                )
+                exclude_column = (
+                    spec.component_exclude_columns[index]
+                    if index < len(spec.component_exclude_columns)
+                    else None
+                )
+                safe_negative = (
+                    df[safe_negative_column].fillna(False).astype(bool)
+                    if safe_negative_column and safe_negative_column in df.columns
+                    else pd.Series(False, index=df.index)
+                )
+                exclude_mask = (
+                    df[exclude_column].fillna(False).astype(bool)
+                    if exclude_column and exclude_column in df.columns
+                    else pd.Series(False, index=df.index)
+                )
+                component_negative_masks.append((~component_positive) & safe_negative & ~exclude_mask)
+
+            negative_mask = (~positive_mask) & (
+                pd.concat(component_negative_masks, axis=1).any(axis=1)
+                if component_negative_masks
+                else pd.Series(False, index=df.index)
             )
         else:
             target_raw = pd.to_numeric(df[spec.target_column], errors="coerce")
@@ -283,13 +466,12 @@ class FeaturePreprocessingPipeline:
                 if spec.exclude_column and spec.exclude_column in df.columns
                 else None
             )
-
-        positive_mask = target_raw.fillna(0).astype(float) > 0
-        negative_mask = ~positive_mask
-        if safe_negative_mask is not None:
-            negative_mask &= safe_negative_mask
-        if exclude_mask is not None:
-            negative_mask &= ~exclude_mask
+            positive_mask = target_raw.fillna(0).astype(float) > 0
+            negative_mask = ~positive_mask
+            if safe_negative_mask is not None:
+                negative_mask &= safe_negative_mask
+            if exclude_mask is not None:
+                negative_mask &= ~exclude_mask
         return target_raw, positive_mask, negative_mask, sample_weight_source
 
     def _target_construction_report(self, spec: TargetDatasetSpec) -> Dict[str, Any]:
@@ -307,7 +489,7 @@ class FeaturePreprocessingPipeline:
             "component_exclude_columns": spec.component_exclude_columns,
             "component_safe_negative_columns": spec.component_safe_negative_columns,
             "positive_label_rule": "rowwise_any_component_positive",
-            "negative_label_rule": "not_positive AND all_component_safe_negative AND not_any_component_excluded",
+            "negative_label_rule": "not_positive AND any_component_safe_negative_without_component_exclude",
             "sample_weight_rule": "rowwise_max_component_sample_weight",
         }
 
@@ -320,6 +502,7 @@ class FeaturePreprocessingPipeline:
         output_dir: Path,
         timezone_contract: Dict[str, Any],
         source_lineage: Dict[str, Any],
+        config: PreprocessingConfig,
     ) -> Dict[str, Any]:
         target_raw, positive_mask, negative_mask, sample_weight_source = self._resolve_target_inputs(
             df,
@@ -335,7 +518,7 @@ class FeaturePreprocessingPipeline:
         ordered_positions, ordered_time_values = ordered_usable_positions(
             df,
             usable_mask,
-            self.config.time_column,
+            config.time_column,
         )
         target_series = target_raw.iloc[ordered_positions].fillna(0)
 
@@ -350,7 +533,7 @@ class FeaturePreprocessingPipeline:
         source_row_idx = df["source_row_idx"].iloc[ordered_positions].reset_index(drop=True)
 
         usable_rows = int(len(ordered_positions))
-        split_indices = build_split_indices(usable_rows, self.config)
+        split_indices = build_split_indices(usable_rows, config)
         train_idx = split_indices["train"]
         val_idx = split_indices["val"]
         test_idx = split_indices["test"]
@@ -381,13 +564,13 @@ class FeaturePreprocessingPipeline:
 
         X_train, low_variance_info = remove_low_variance_columns(
             X_train,
-            self.config.variance_threshold,
+            config.variance_threshold,
         )
 
         collinearity_info = prune_collinear_features(
             X_train=X_train,
             y_train=y_train,
-            config=self.config,
+            config=config,
         )
         selected_features = [
             column
@@ -414,14 +597,14 @@ class FeaturePreprocessingPipeline:
             X_train,
             X_val,
             X_test,
-            self.config.scaler_type,
+            config.scaler_type,
         )
         importance_df, importance_summary = compute_feature_importance(
             X_train=X_train,
             y_train=y_train,
             sample_weight=w_train,
             is_binary=is_binary,
-            config=self.config,
+            config=config,
         )
 
         split_date_ranges = self._split_date_ranges(ordered_time_values, split_indices)
@@ -442,6 +625,7 @@ class FeaturePreprocessingPipeline:
             importance_summary=importance_summary,
             max_remaining_corr=collinearity_info["max_remaining_correlation"],
             is_binary=is_binary,
+            config=config,
         )
         readiness = self._readiness_report(
             usable_rows=usable_rows,
@@ -450,6 +634,7 @@ class FeaturePreprocessingPipeline:
             class_balance=class_balance,
             importance_summary=importance_summary,
             is_binary=is_binary,
+            config=config,
         )
 
         self._save_split_csv(output_dir / "train.csv", X_train_scaled, y_train, w_train, source_row_idx_train)
@@ -503,12 +688,12 @@ class FeaturePreprocessingPipeline:
             format_target_report(
                 report_payload,
                 importance_df,
-                self.config.top_n_features,
+                config.top_n_features,
             ),
             encoding="utf-8",
         )
 
-        if scaler is not None and self.config.save_scaler:
+        if scaler is not None and config.save_scaler:
             joblib.dump(scaler, output_dir / "scaler.joblib")
 
         del X_train
@@ -582,6 +767,7 @@ class FeaturePreprocessingPipeline:
         importance_summary: Dict[str, Any],
         max_remaining_corr: float,
         is_binary: bool,
+        config: PreprocessingConfig,
     ) -> List[Dict[str, Any]]:
         validations: List[Dict[str, Any]] = []
 
@@ -590,8 +776,8 @@ class FeaturePreprocessingPipeline:
 
         add(
             "usable_rows",
-            usable_rows >= self.config.min_usable_rows,
-            f"usable_rows={usable_rows}, threshold={self.config.min_usable_rows}",
+            usable_rows >= config.min_usable_rows,
+            f"usable_rows={usable_rows}, threshold={config.min_usable_rows}",
         )
         add(
             "selected_features",
@@ -600,15 +786,15 @@ class FeaturePreprocessingPipeline:
         )
         add(
             "train_rows",
-            len(y_train) >= self.config.min_train_rows,
-            f"train_rows={len(y_train)}, threshold={self.config.min_train_rows}",
+            len(y_train) >= config.min_train_rows,
+            f"train_rows={len(y_train)}, threshold={config.min_train_rows}",
         )
         add("val_rows", len(y_val) > 0, f"val_rows={len(y_val)}")
         add("test_rows", len(y_test) > 0, f"test_rows={len(y_test)}")
         add(
             "max_remaining_correlation",
-            max_remaining_corr < self.config.correlation_threshold,
-            f"max_remaining_corr={max_remaining_corr:.4f}, threshold={self.config.correlation_threshold:.4f}",
+            max_remaining_corr < config.correlation_threshold,
+            f"max_remaining_corr={max_remaining_corr:.4f}, threshold={config.correlation_threshold:.4f}",
         )
 
         if is_binary:
@@ -619,8 +805,8 @@ class FeaturePreprocessingPipeline:
             )
             add(
                 "enough_positive_samples_train",
-                int(y_train.sum()) >= self.config.min_positive_samples,
-                f"train_positive_count={int(y_train.sum())}, threshold={self.config.min_positive_samples}",
+                int(y_train.sum()) >= config.min_positive_samples,
+                f"train_positive_count={int(y_train.sum())}, threshold={config.min_positive_samples}",
             )
         else:
             add(
@@ -643,6 +829,7 @@ class FeaturePreprocessingPipeline:
         class_balance: Dict[str, Any],
         importance_summary: Dict[str, Any],
         is_binary: bool,
+        config: PreprocessingConfig,
     ) -> Dict[str, Any]:
         passed_ratio = (
             sum(1 for item in validations if item["passed"]) / len(validations)
@@ -650,11 +837,11 @@ class FeaturePreprocessingPipeline:
             else 0.0
         )
         score = 35.0 * passed_ratio
-        score += 25.0 * min(usable_rows / max(self.config.min_usable_rows, 1), 1.0)
+        score += 25.0 * min(usable_rows / max(config.min_usable_rows, 1), 1.0)
 
         if is_binary:
             positives = float(positive_count or 0)
-            score += 25.0 * min(positives / max(self.config.min_positive_samples, 1), 1.0)
+            score += 25.0 * min(positives / max(config.min_positive_samples, 1), 1.0)
             score += 15.0 * min((importance_summary.get("max_mutual_information") or 0.0) / 0.02, 1.0)
         else:
             score += 15.0 * min(abs(class_balance.get("target_std", 0.0)) / 0.10, 1.0)

@@ -8,6 +8,8 @@ import pandas as pd
 
 from model_testing.ote_abstain_policy import HardAbstainConfig, apply_abstain_policy
 from model_testing.ote_policy_metrics import (
+    add_unit_alias_columns,
+    add_unit_aliases,
     build_equity_curve,
     build_group_breakdown,
     compute_buy_hold_period_returns,
@@ -45,13 +47,17 @@ class WalkForwardFold:
 @dataclass(frozen=True)
 class WalkForwardBacktestConfig:
     min_train_years: int = 2
+    max_train_years: float | None = None
     test_window_months: int = 3
     rolling_step_months: int = 3
+    min_scheduled_test_start: pd.Timestamp | None = None
     purge_gap_bars: int = 40
     min_folds: int = 8
     max_folds: int | None = None
     min_trades_per_week: float = 3.0
+    minimum_annualized_sharpe: float = 0.80
     minimum_wfe: float = 0.50
+    minimum_deflated_sharpe: float = 0.30
     max_single_trade_share: float = 0.10
     minimum_profitable_quarter_share: float = 0.60
     minimum_positive_composite_share: float = 0.60
@@ -133,6 +139,19 @@ def build_walk_forward_folds(
         if config.max_folds is not None and len(folds) >= int(config.max_folds):
             break
 
+    if config.min_scheduled_test_start is not None:
+        min_scheduled_test_start = pd.Timestamp(config.min_scheduled_test_start)
+        if folds and min_scheduled_test_start.tzinfo is None and folds[0].scheduled_test_start.tzinfo is not None:
+            min_scheduled_test_start = min_scheduled_test_start.tz_localize(folds[0].scheduled_test_start.tzinfo)
+        folds = [
+            fold
+            for fold in folds
+            if pd.Timestamp(fold.scheduled_test_start) >= min_scheduled_test_start
+        ]
+        for idx, fold in enumerate(folds, start=1):
+            if fold.fold_index != idx or fold.fold_id != f"fold_{idx:02d}":
+                folds[idx - 1] = replace(fold, fold_index=idx, fold_id=f"fold_{idx:02d}")
+
     return folds
 
 
@@ -146,7 +165,17 @@ def run_walk_forward_backtest(
     abstain_config: HardAbstainConfig | None = None,
     model_id: str | None = None,
     backend: str | None = None,
+    effective_trials: int = 1,
 ) -> dict[str, Any]:
+    if (
+        backtest_config.max_train_years is not None
+        and float(backtest_config.max_train_years) < float(backtest_config.min_train_years)
+    ):
+        raise ValueError(
+            f"max_train_years={backtest_config.max_train_years} must be greater than or equal to "
+            f"min_train_years={backtest_config.min_train_years}."
+        )
+
     prepared = prepare_policy_frame(frame, threshold_config)
     if prepared.empty:
         raise ValueError("Walk-forward backtest requires a non-empty prepared frame.")
@@ -191,8 +220,22 @@ def run_walk_forward_backtest(
     fold_rows: list[dict[str, Any]] = []
 
     for fold in folds:
-        train_frame = _slice_train_frame(prepared, fold, threshold_config=threshold_config)
+        train_frame = _slice_train_frame(
+            prepared,
+            fold,
+            threshold_config=threshold_config,
+            backtest_config=backtest_config,
+        )
         test_frame = _slice_test_frame(prepared, fold, threshold_config=threshold_config)
+        if train_frame.empty:
+            continue
+
+        train_start = pd.Timestamp(
+            pd.to_datetime(train_frame[threshold_config.datetime_column], errors="coerce").min()
+        )
+        train_end = pd.Timestamp(
+            pd.to_datetime(train_frame[threshold_config.datetime_column], errors="coerce").max()
+        )
         policy_table, global_result = search_thresholds_by_composite_regime(
             train_frame,
             direction=direction,
@@ -249,15 +292,17 @@ def run_walk_forward_backtest(
         )
         train_metrics = summarize_trade_performance(
             fold_train_trades,
-            period_start=fold.train_start,
-            period_end=fold.train_end,
+            period_start=train_start,
+            period_end=train_end,
             benchmark_monthly_returns=benchmark_monthly_returns,
+            effective_trials=effective_trials,
         )
         test_metrics = summarize_trade_performance(
             fold_test_trades,
             period_start=fold.scheduled_test_start,
             period_end=fold.scheduled_test_end - pd.Timedelta(microseconds=1),
             benchmark_monthly_returns=benchmark_monthly_returns,
+            effective_trials=effective_trials,
         )
         fold_wfe = None
         if train_metrics.get("annualized_net_pnl_pips") is not None and abs(float(train_metrics["annualized_net_pnl_pips"])) > 0.0:
@@ -271,12 +316,14 @@ def run_walk_forward_backtest(
                 "fold_index": int(fold.fold_index),
                 "scheduled_test_start": fold.scheduled_test_start,
                 "scheduled_test_end": fold.scheduled_test_end,
-                "train_start": fold.train_start,
-                "train_end": fold.train_end,
+                "train_start": train_start,
+                "train_end": train_end,
                 "test_start": fold.test_start,
                 "test_end": fold.test_end,
-                "train_rows": int(fold.train_rows),
+                "train_rows": int(len(train_frame)),
                 "test_rows": int(fold.test_rows),
+                "train_span_years": _compute_span_years(train_start, train_end),
+                "test_span_years": _compute_span_years(fold.test_start, fold.test_end),
                 "purge_gap_bars": int(fold.purge_gap_bars),
                 "global_threshold": float(global_result["threshold"]),
                 "selected_policy_name": selected_policy_name,
@@ -319,11 +366,16 @@ def run_walk_forward_backtest(
         train_trades.append(fold_train_trades)
         test_trades.append(fold_test_trades)
 
-    fold_summary = pd.DataFrame(fold_rows).sort_values("fold_index").reset_index(drop=True)
-    policy_table_frame = pd.concat(policy_tables, ignore_index=True) if policy_tables else pd.DataFrame()
-    policy_evaluation_frame = pd.concat(policy_evaluations, ignore_index=True) if policy_evaluations else pd.DataFrame()
-    train_trade_frame = pd.concat(train_trades, ignore_index=True) if train_trades else pd.DataFrame()
-    test_trade_frame = pd.concat(test_trades, ignore_index=True) if test_trades else pd.DataFrame()
+    fold_summary = add_unit_alias_columns(pd.DataFrame(fold_rows).sort_values("fold_index").reset_index(drop=True))
+    if len(fold_summary) < int(backtest_config.min_folds):
+        raise ValueError(
+            f"Walk-forward backtest only produced {len(fold_summary)} realized folds after train-window slicing; "
+            f"need at least {backtest_config.min_folds}."
+        )
+    policy_table_frame = add_unit_alias_columns(pd.concat(policy_tables, ignore_index=True)) if policy_tables else pd.DataFrame()
+    policy_evaluation_frame = add_unit_alias_columns(pd.concat(policy_evaluations, ignore_index=True)) if policy_evaluations else pd.DataFrame()
+    train_trade_frame = add_unit_alias_columns(pd.concat(train_trades, ignore_index=True)) if train_trades else pd.DataFrame()
+    test_trade_frame = add_unit_alias_columns(pd.concat(test_trades, ignore_index=True)) if test_trades else pd.DataFrame()
 
     test_trade_frame = add_confidence_quintiles(
         test_trade_frame,
@@ -340,6 +392,7 @@ def run_walk_forward_backtest(
         period_start=overall_period_start,
         period_end=overall_period_end,
         benchmark_monthly_returns=benchmark_monthly_returns,
+        effective_trials=effective_trials,
     )
     equity_curve = build_equity_curve(
         test_trade_frame,
@@ -367,14 +420,25 @@ def run_walk_forward_backtest(
     }
     positive_composite_share = _positive_expectancy_share(breakdowns["breakdown_by_composite"])
     wfe_summary = summarize_walk_forward_efficiency(fold_summary)
+    train_window_summary = _summarize_train_window(fold_summary, backtest_config=backtest_config)
     acceptance = {
         "policy_profitable_after_costs": bool(
             float(overall_test_metrics["total_net_pnl_pips"]) > 0.0
             and float(overall_test_metrics["expectancy_pips"]) > 0.0
         ),
+        "annualized_sharpe_above_threshold": bool(
+            overall_test_metrics["monthly_sharpe"] is not None
+            and float(overall_test_metrics["monthly_sharpe"])
+            >= float(backtest_config.minimum_annualized_sharpe)
+        ),
         "wfe_above_threshold": bool(
             wfe_summary["overall_wfe"] is not None
             and float(wfe_summary["overall_wfe"]) > float(backtest_config.minimum_wfe)
+        ),
+        "dsr_above_threshold": bool(
+            overall_test_metrics["approx_deflated_sharpe"] is not None
+            and float(overall_test_metrics["approx_deflated_sharpe"])
+            >= float(backtest_config.minimum_deflated_sharpe)
         ),
         "profitable_quarter_share_above_threshold": bool(
             float(overall_test_metrics["profitable_quarter_share"])
@@ -395,19 +459,26 @@ def run_walk_forward_backtest(
         ),
     }
 
-    summary = {
+    summary = add_unit_aliases(
+        {
         "model_id": model_id,
         "direction": direction,
         "backend": backend,
-        "fold_count": int(len(folds)),
+        "instrument": threshold_config.instrument,
+        "performance_unit_label": threshold_config.unit_label,
+        "price_increment": float(threshold_config.pip_size),
+        "effective_trials": int(max(int(effective_trials), 1)),
+        "fold_count": int(len(fold_summary)),
         "available_prediction_start": prepared[threshold_config.datetime_column].min(),
         "available_prediction_end": prepared[threshold_config.datetime_column].max(),
         "selected_policy_counts": test_trade_frame.get("policy_name", pd.Series(dtype="object")).value_counts().to_dict(),
         "overall_test_metrics": overall_test_metrics,
         "walk_forward_efficiency": wfe_summary,
+        "train_window": train_window_summary,
         "positive_composite_expectancy_share": positive_composite_share,
         "acceptance": acceptance,
-    }
+        }
+    )
 
     return {
         "fold_summary": fold_summary,
@@ -590,7 +661,9 @@ def extract_emitted_trades(
         "trade_outcome",
     ]
     available_columns = [column for column in columns if column in emitted.columns]
-    return emitted.loc[:, available_columns].sort_values(["entry_datetime", "source_row_idx"]).reset_index(drop=True)
+    return add_unit_alias_columns(
+        emitted.loc[:, available_columns].sort_values(["entry_datetime", "source_row_idx"]).reset_index(drop=True)
+    )
 
 
 def add_calendar_columns(
@@ -639,10 +712,17 @@ def _slice_train_frame(
     fold: WalkForwardFold,
     *,
     threshold_config: ThresholdSearchConfig,
+    backtest_config: WalkForwardBacktestConfig,
 ) -> pd.DataFrame:
     datetimes = pd.to_datetime(frame[threshold_config.datetime_column], errors="coerce")
     positions = pd.to_numeric(frame[threshold_config.position_column], errors="coerce")
     mask = (datetimes < fold.scheduled_test_start) & (positions <= float(fold.train_position_end))
+    if backtest_config.max_train_years is not None:
+        train_floor = _subtract_years_from_timestamp(
+            fold.scheduled_test_start,
+            float(backtest_config.max_train_years),
+        )
+        mask = mask & (datetimes >= train_floor)
     return frame.loc[mask].copy()
 
 
@@ -664,6 +744,41 @@ def _positive_expectancy_share(breakdown: pd.DataFrame) -> float:
     if expectancy.empty:
         return 0.0
     return float((expectancy > 0.0).mean())
+
+
+def _compute_span_years(start: pd.Timestamp | None, end: pd.Timestamp | None) -> float | None:
+    if start is None or end is None:
+        return None
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end)
+    if pd.isna(start_ts) or pd.isna(end_ts):
+        return None
+    if end_ts < start_ts:
+        end_ts = start_ts
+    return float((end_ts - start_ts).total_seconds() / (365.25 * 86400.0))
+
+
+def _summarize_train_window(
+    fold_summary: pd.DataFrame,
+    *,
+    backtest_config: WalkForwardBacktestConfig,
+) -> dict[str, Any]:
+    train_spans = pd.to_numeric(fold_summary.get("train_span_years"), errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    scheduled_test_starts = pd.to_datetime(fold_summary.get("scheduled_test_start"), errors="coerce").dropna()
+    scheduled_test_ends = pd.to_datetime(fold_summary.get("scheduled_test_end"), errors="coerce").dropna()
+    return {
+        "min_train_years": float(backtest_config.min_train_years),
+        "max_train_years": None if backtest_config.max_train_years is None else float(backtest_config.max_train_years),
+        "min_scheduled_test_start": backtest_config.min_scheduled_test_start,
+        "configured_test_window_months": int(backtest_config.test_window_months),
+        "configured_rolling_step_months": int(backtest_config.rolling_step_months),
+        "realized_train_span_years_min": float(train_spans.min()) if not train_spans.empty else None,
+        "realized_train_span_years_median": float(train_spans.median()) if not train_spans.empty else None,
+        "realized_train_span_years_max": float(train_spans.max()) if not train_spans.empty else None,
+        "realized_scheduled_test_start_min": scheduled_test_starts.min() if not scheduled_test_starts.empty else None,
+        "realized_scheduled_test_start_max": scheduled_test_starts.max() if not scheduled_test_starts.empty else None,
+        "realized_scheduled_test_end_max": scheduled_test_ends.max() if not scheduled_test_ends.empty else None,
+    }
 
 
 def _lookup_policy_evaluation_row(
@@ -691,3 +806,8 @@ def _next_quarter_start(timestamp: pd.Timestamp) -> pd.Timestamp:
     if timestamp > quarter_start:
         quarter_start = quarter_start + pd.DateOffset(months=3)
     return quarter_start
+
+
+def _subtract_years_from_timestamp(timestamp: pd.Timestamp, years: float) -> pd.Timestamp:
+    months = max(1, int(round(float(years) * 12.0)))
+    return pd.Timestamp(timestamp) - pd.DateOffset(months=months)

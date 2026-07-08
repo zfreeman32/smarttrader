@@ -4,6 +4,9 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
 
+REFERENCE_BAR_MINUTES = 5.0
+
+
 def _default_target_columns() -> List[str]:
     return [
         "label_long_reversal",
@@ -18,6 +21,12 @@ def _default_target_columns() -> List[str]:
         "label_short_breakout",
         "label_long_breakout_entry",
         "label_short_breakout_entry",
+        "label_long_frvp_reversal",
+        "label_short_frvp_reversal",
+        "label_long_frvp_continuation",
+        "label_short_frvp_continuation",
+        "label_long_frvp_meta",
+        "label_short_frvp_meta",
         "label_long_ote",
         "label_short_ote",
         "label_long_entry",
@@ -31,6 +40,9 @@ class PreprocessingConfig:
 
     target_columns: List[str] = field(default_factory=_default_target_columns)
     time_column: str = "datetime"
+    load_time_column: bool = True
+    auto_retune_for_bar_interval: bool = True
+    bar_interval_reference_minutes: float = REFERENCE_BAR_MINUTES
     max_analysis_rows: int = 100_000
     additional_skip_rows: int = 0
     respect_upstream_warmup: bool = True

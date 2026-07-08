@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import os
 import random
 import sys
 from dataclasses import asdict, dataclass, field
@@ -31,6 +32,7 @@ import pandas as pd
 import xgboost as xgb
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
+from optuna.trial import TrialState
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
@@ -64,6 +66,7 @@ LEAKAGE_PATTERNS = (
 )
 
 EPS = 1e-9
+FLOAT32_NBYTES = np.dtype(np.float32).itemsize
 
 
 @dataclass
@@ -85,6 +88,8 @@ class OTETrainingConfig:
     min_val_true_events: int = 50
     final_eval_min_rows: int = 160
     max_loaded_features: int = 160
+    sequence_memory_budget_gib: float = 0.0
+    sequence_memory_auto_fraction: float = 0.50
     top_feature_min: int = 24
     top_feature_max: int = 128
     top_feature_step: int = 8
@@ -138,6 +143,13 @@ class OTETrainingConfig:
     torch_tail_epochs: int = 0
     torch_fine_lr_scale: float = 0.35
     torch_tail_lr_scale: float = 0.10
+    torch_preload_to_device: bool = False
+    torch_allow_tf32: bool = False
+    torch_cudnn_benchmark: bool = False
+    torch_num_workers: int = 0
+    torch_eval_num_workers: int = 0
+    torch_prefetch_factor: int = 2
+    torch_persistent_workers: bool = True
     verbosity: int = 1
 
 
@@ -162,24 +174,36 @@ class PreparedTargetDataset:
     source_row_idx_test: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
     prepared_summary: Dict[str, object] = field(default_factory=dict)
     prepared_summary_path: str | None = None
+    _dev_X_cache: np.ndarray | None = field(default=None, init=False, repr=False)
+    _dev_y_cache: np.ndarray | None = field(default=None, init=False, repr=False)
+    _dev_w_cache: np.ndarray | None = field(default=None, init=False, repr=False)
+    _dev_source_row_idx_cache: np.ndarray | None = field(default=None, init=False, repr=False)
 
     @property
     def dev_X(self) -> np.ndarray:
-        return np.concatenate([self.X_train, self.X_val], axis=0)
+        if self._dev_X_cache is None:
+            self._dev_X_cache = np.concatenate([self.X_train, self.X_val], axis=0)
+        return self._dev_X_cache
 
     @property
     def dev_y(self) -> np.ndarray:
-        return np.concatenate([self.y_train, self.y_val], axis=0)
+        if self._dev_y_cache is None:
+            self._dev_y_cache = np.concatenate([self.y_train, self.y_val], axis=0)
+        return self._dev_y_cache
 
     @property
     def dev_w(self) -> np.ndarray:
-        return np.concatenate([self.w_train, self.w_val], axis=0)
+        if self._dev_w_cache is None:
+            self._dev_w_cache = np.concatenate([self.w_train, self.w_val], axis=0)
+        return self._dev_w_cache
 
     @property
     def dev_source_row_idx(self) -> np.ndarray:
-        train = self._normalize_source_row_idx(self.source_row_idx_train, len(self.y_train))
-        val = self._normalize_source_row_idx(self.source_row_idx_val, len(self.y_val))
-        return np.concatenate([train, val], axis=0)
+        if self._dev_source_row_idx_cache is None:
+            train = self._normalize_source_row_idx(self.source_row_idx_train, len(self.y_train))
+            val = self._normalize_source_row_idx(self.source_row_idx_val, len(self.y_val))
+            self._dev_source_row_idx_cache = np.concatenate([train, val], axis=0)
+        return self._dev_source_row_idx_cache
 
     @property
     def test_source_row_idx(self) -> np.ndarray:
@@ -218,6 +242,59 @@ class TrialArtifacts:
     window_size: int = 1
     context_rows: int = 0
     resolved_purge_bars: int = 0
+
+
+@dataclass
+class SequenceWindowSource:
+    matrix: np.ndarray
+    window_size: int
+    sampled_indices: np.ndarray | None = None
+
+    def __post_init__(self) -> None:
+        if self.matrix.ndim != 2:
+            raise ValueError("SequenceWindowSource expects a 2D feature matrix.")
+        if self.window_size <= 0:
+            raise ValueError(f"Window size must be positive, got {self.window_size}.")
+        if self.matrix.shape[0] < self.window_size:
+            raise ValueError(
+                f"Need at least {self.window_size} rows to build sequence windows, got {self.matrix.shape[0]}."
+            )
+        if self.sampled_indices is not None:
+            indices = np.asarray(self.sampled_indices, dtype=np.int64)
+            if indices.ndim != 1:
+                raise ValueError("SequenceWindowSource sampled indices must be 1D.")
+            if indices.size > 0:
+                max_index = self.available_rows - 1
+                if int(indices.min()) < 0 or int(indices.max()) > max_index:
+                    raise ValueError(
+                        f"SequenceWindowSource sampled indices must stay within [0, {max_index}], got "
+                        f"{int(indices.min())}..{int(indices.max())}."
+                    )
+            self.sampled_indices = indices
+
+    @property
+    def available_rows(self) -> int:
+        return int(self.matrix.shape[0]) - int(self.window_size) + 1
+
+    @property
+    def input_size(self) -> int:
+        return int(self.matrix.shape[1])
+
+    def __len__(self) -> int:
+        if self.sampled_indices is not None:
+            return int(len(self.sampled_indices))
+        return int(self.available_rows)
+
+    def with_sampled_indices(self, indices: np.ndarray) -> "SequenceWindowSource":
+        return SequenceWindowSource(
+            matrix=self.matrix,
+            window_size=self.window_size,
+            sampled_indices=np.asarray(indices, dtype=np.int64),
+        )
+
+
+class SequenceMemoryPressureError(RuntimeError):
+    """Raised when a dense sequence allocation is too large for the current budget."""
 
 
 @dataclass
@@ -508,6 +585,110 @@ def build_sequence_windows(
     return np.ascontiguousarray(windows, dtype=np.float32)
 
 
+def estimate_sequence_window_nbytes(
+    row_count: int,
+    feature_count: int,
+    window_size: int,
+) -> int:
+    effective_rows = int(row_count) - int(window_size) + 1
+    if effective_rows <= 0 or feature_count <= 0 or window_size <= 0:
+        return 0
+    return effective_rows * int(window_size) * int(feature_count) * FLOAT32_NBYTES
+
+
+def format_gib(nbytes: int) -> str:
+    return f"{float(nbytes) / float(1024 ** 3):.1f} GiB"
+
+
+def detect_available_memory_bytes() -> Optional[int]:
+    try:
+        import psutil  # type: ignore
+
+        return int(psutil.virtual_memory().available)
+    except Exception:
+        pass
+
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            status = MEMORYSTATUSEX()
+            status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                return int(status.ullAvailPhys)
+        except Exception:
+            return None
+
+    try:
+        available_pages = int(os.sysconf("SC_AVPHYS_PAGES"))
+        page_size = int(os.sysconf("SC_PAGE_SIZE"))
+        return available_pages * page_size
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def resolve_sequence_memory_budget_bytes(config: OTETrainingConfig) -> Optional[int]:
+    explicit_budget_gib = float(config.sequence_memory_budget_gib)
+    if explicit_budget_gib < 0:
+        return None
+    if explicit_budget_gib > 0:
+        return int(explicit_budget_gib * (1024 ** 3))
+
+    available_bytes = detect_available_memory_bytes()
+    if available_bytes is None or available_bytes <= 0:
+        return None
+    auto_fraction = float(config.sequence_memory_auto_fraction)
+    if auto_fraction <= 0:
+        return None
+    return int(available_bytes * min(auto_fraction, 1.0))
+
+
+def enforce_sequence_memory_budget(
+    *,
+    row_count: int,
+    feature_count: int,
+    window_size: int,
+    config: OTETrainingConfig,
+    label: str,
+) -> None:
+    if config.backend != "torch":
+        return
+
+    budget_bytes = resolve_sequence_memory_budget_bytes(config)
+    if budget_bytes is None or budget_bytes <= 0:
+        return
+
+    estimated_bytes = estimate_sequence_window_nbytes(
+        row_count=row_count,
+        feature_count=feature_count,
+        window_size=window_size,
+    )
+    if estimated_bytes <= budget_bytes:
+        return
+
+    budget_source = "auto-detected" if config.sequence_memory_budget_gib == 0 else "configured"
+    raise SequenceMemoryPressureError(
+        f"{label} sequence allocation is estimated at {format_gib(estimated_bytes)} "
+        f"for rows={row_count}, window={window_size}, features={feature_count}, which exceeds the "
+        f"{budget_source} budget of {format_gib(budget_bytes)}. Reduce --window-min/--window-max, "
+        f"--max-loaded-features, or set --cv-max-train-rows. You can override the guard with "
+        f"--sequence-memory-budget-gib."
+    )
+
+
 def build_sparse_lag_view(
     matrix: np.ndarray,
     lag_steps: Sequence[int],
@@ -590,6 +771,17 @@ def validate_backend_config(config: OTETrainingConfig) -> None:
         raise ValueError("Torch tail LR scale must be positive.")
     if config.torch_tail_epochs < 0:
         raise ValueError("Torch tail epochs cannot be negative.")
+    if config.sequence_memory_auto_fraction < 0 or config.sequence_memory_auto_fraction > 1:
+        raise ValueError(
+            "Torch sequence memory auto fraction must be between 0 and 1 inclusive. "
+            f"Got {config.sequence_memory_auto_fraction}."
+        )
+    if config.torch_num_workers < 0:
+        raise ValueError(f"torch_num_workers must be non-negative, got {config.torch_num_workers}.")
+    if config.torch_eval_num_workers < 0:
+        raise ValueError(f"torch_eval_num_workers must be non-negative, got {config.torch_eval_num_workers}.")
+    if config.torch_prefetch_factor < 0:
+        raise ValueError(f"torch_prefetch_factor must be non-negative, got {config.torch_prefetch_factor}.")
 
     phase_values = {
         "torch_warmup_epochs": config.torch_warmup_epochs,
@@ -1223,6 +1415,7 @@ def build_torch_training_config(
         "hidden_size": int(config.hidden_size),
         "num_layers": int(params.get("num_layers", config.num_layers)),
         "dropout": float(config.dropout),
+        "window_size": int(params.get("window_size", config.window_size)),
         "batch_size": int(config.batch_size),
         "epochs": int(config.epochs),
         "weight_decay": float(config.weight_decay),
@@ -1237,16 +1430,23 @@ def build_torch_training_config(
         "tail_epochs": int(config.torch_tail_epochs),
         "fine_lr_scale": float(config.torch_fine_lr_scale),
         "tail_lr_scale": float(config.torch_tail_lr_scale),
+        "preload_to_device": bool(config.torch_preload_to_device),
+        "allow_tf32": bool(config.torch_allow_tf32),
+        "cudnn_benchmark": bool(config.torch_cudnn_benchmark),
+        "num_workers": int(config.torch_num_workers),
+        "eval_num_workers": int(config.torch_eval_num_workers),
+        "prefetch_factor": int(config.torch_prefetch_factor),
+        "persistent_workers": bool(config.torch_persistent_workers),
         "verbosity": int(config.verbosity),
         "seed": int(config.random_seed),
     }
 
 
 def train_backend_model(
-    X_train: np.ndarray,
+    X_train: np.ndarray | SequenceWindowSource,
     y_train: np.ndarray,
     w_train: np.ndarray,
-    X_eval: np.ndarray,
+    X_eval: np.ndarray | SequenceWindowSource,
     y_eval: np.ndarray,
     w_eval: np.ndarray,
     params: Mapping[str, float],
@@ -1273,8 +1473,13 @@ def train_backend_model(
                 "Torch backend requested, but PyTorch is not available in the active Python environment."
             ) from exc
 
+        if isinstance(X_train, SequenceWindowSource):
+            input_size = X_train.input_size
+        else:
+            input_size = int(X_train.shape[-1])
+
         trainer_config = build_torch_training_config(
-            input_size=X_train.shape[-1],
+            input_size=input_size,
             params=params,
             config=config,
         )
@@ -1363,17 +1568,25 @@ def build_xgboost_fold_datasets(
     if not np.all(np.diff(train_idx) == 1) or not np.all(np.diff(val_idx) == 1):
         raise ValueError("This pipeline expects contiguous expanding-window folds.")
 
+    train_start = int(train_idx[0])
     train_end = int(train_idx[-1]) + 1
     val_start = int(val_idx[0])
     val_end = int(val_idx[-1]) + 1
 
-    X_train_raw = X_dev[:train_end, :][:, selected_feature_idx]
+    train_context_start = max(train_start - max_lag, 0)
+    train_missing_context = max(max_lag - (train_start - train_context_start), 0)
+    train_label_start = train_start + train_missing_context
+    if train_label_start >= train_end:
+        raise ValueError("Training fold does not have enough causal context.")
+
+    X_train_raw = X_dev[train_start:train_end, :][:, selected_feature_idx]
     scaler = fit_scaler(X_train_raw, config)
 
-    X_train_scaled = transform_matrix(scaler, X_train_raw, clip_value=config.scale_clip)
+    X_train_context = X_dev[train_context_start:train_end, :][:, selected_feature_idx]
+    X_train_scaled = transform_matrix(scaler, X_train_context, clip_value=config.scale_clip)
     X_train = build_sparse_lag_view(X_train_scaled, lag_steps, delta_feature_count=delta_feature_count)
-    y_train = y_dev[max_lag:train_end].astype(np.uint8, copy=False)
-    w_train = w_dev[max_lag:train_end].astype(np.float32, copy=True)
+    y_train = y_dev[train_label_start:train_end].astype(np.uint8, copy=False)
+    w_train = w_dev[train_label_start:train_end].astype(np.float32, copy=True)
 
     val_context_start = val_start - max_lag
     if val_context_start < 0:
@@ -1403,17 +1616,25 @@ def build_sequence_fold_datasets(
     if not np.all(np.diff(train_idx) == 1) or not np.all(np.diff(val_idx) == 1):
         raise ValueError("This pipeline expects contiguous expanding-window folds.")
 
+    train_start = int(train_idx[0])
     train_end = int(train_idx[-1]) + 1
     val_start = int(val_idx[0])
     val_end = int(val_idx[-1]) + 1
 
-    X_train_raw = X_dev[:train_end, :][:, selected_feature_idx]
+    train_context_start = max(train_start - context_rows, 0)
+    train_missing_context = max(context_rows - (train_start - train_context_start), 0)
+    train_label_start = train_start + train_missing_context
+    if train_label_start >= train_end:
+        raise ValueError("Training fold does not have enough causal context.")
+
+    X_train_raw = X_dev[train_start:train_end, :][:, selected_feature_idx]
     scaler = fit_scaler(X_train_raw, config)
 
-    X_train_scaled = transform_matrix(scaler, X_train_raw, clip_value=config.scale_clip)
-    X_train = build_sequence_windows(X_train_scaled, window_size=window_size)
-    y_train = y_dev[context_rows:train_end].astype(np.uint8, copy=False)
-    w_train = w_dev[context_rows:train_end].astype(np.float32, copy=True)
+    X_train_context = X_dev[train_context_start:train_end, :][:, selected_feature_idx]
+    X_train_scaled = transform_matrix(scaler, X_train_context, clip_value=config.scale_clip)
+    X_train = SequenceWindowSource(matrix=X_train_scaled, window_size=window_size)
+    y_train = y_dev[train_label_start:train_end].astype(np.uint8, copy=False)
+    w_train = w_dev[train_label_start:train_end].astype(np.float32, copy=True)
 
     val_context_start = val_start - context_rows
     if val_context_start < 0:
@@ -1421,7 +1642,7 @@ def build_sequence_fold_datasets(
 
     X_val_context = X_dev[val_context_start:val_end, :][:, selected_feature_idx]
     X_val_scaled = transform_matrix(scaler, X_val_context, clip_value=config.scale_clip)
-    X_val = build_sequence_windows(X_val_scaled, window_size=window_size)
+    X_val = SequenceWindowSource(matrix=X_val_scaled, window_size=window_size)
     y_val = y_dev[val_start:val_end].astype(np.uint8, copy=False)
     w_val = w_dev[val_start:val_end].astype(np.float32, copy=True)
 
@@ -1430,9 +1651,9 @@ def build_sequence_fold_datasets(
 
 def build_fold_diagnostics(
     fold_plan: FoldPlan,
-    X_train: np.ndarray,
+    X_train: np.ndarray | SequenceWindowSource,
     y_train: np.ndarray,
-    X_val: np.ndarray,
+    X_val: np.ndarray | SequenceWindowSource,
     y_val: np.ndarray,
     window_size: int,
     context_rows: int,
@@ -1450,8 +1671,8 @@ def build_fold_diagnostics(
         "val_end_row": int(fold_plan.val_end - 1),
         "train_rows_raw": int(fold_plan.train_end - fold_plan.train_start),
         "val_rows_raw": int(fold_plan.val_end - fold_plan.val_start),
-        "train_rows_model": int(len(X_train)),
-        "val_rows_model": int(len(X_val)),
+        "train_rows_model": int(len(y_train) if isinstance(X_train, SequenceWindowSource) else len(X_train)),
+        "val_rows_model": int(len(y_val) if isinstance(X_val, SequenceWindowSource) else len(X_val)),
         "train_positive_rows": train_positive_rows,
         "val_positive_rows": val_positive_rows,
         "train_true_events": int(train_true_events),
@@ -1463,13 +1684,13 @@ def build_fold_diagnostics(
 
 
 def apply_fold_training_weights(
-    X_train: np.ndarray,
+    X_train: np.ndarray | SequenceWindowSource,
     y_train: np.ndarray,
     w_train: np.ndarray,
     params: Mapping[str, float],
     config: OTETrainingConfig,
     seed: int,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray | SequenceWindowSource, np.ndarray, np.ndarray]:
     hard_radius = int(params["hard_negative_radius"])
     hard_multiplier = float(params["hard_negative_multiplier"])
     train_weights = apply_hard_negative_weights(y_train, w_train, hard_radius, hard_multiplier)
@@ -1487,14 +1708,17 @@ def apply_fold_training_weights(
     if len(sampled_idx) < max(64, int(np.sum(y_train)) * 6):
         return X_train, y_train, train_weights
 
+    if isinstance(X_train, SequenceWindowSource):
+        return X_train.with_sampled_indices(sampled_idx), y_train[sampled_idx], train_weights[sampled_idx]
+
     return X_train[sampled_idx], y_train[sampled_idx], train_weights[sampled_idx]
 
 
 def train_and_score_fold(
-    X_train: np.ndarray,
+    X_train: np.ndarray | SequenceWindowSource,
     y_train: np.ndarray,
     w_train: np.ndarray,
-    X_val: np.ndarray,
+    X_val: np.ndarray | SequenceWindowSource,
     y_val: np.ndarray,
     w_val: np.ndarray,
     params: Mapping[str, float],
@@ -1673,66 +1897,82 @@ def cross_validate_trial(
     for fold_plan in folds:
         train_idx = np.arange(fold_plan.train_start, fold_plan.train_end, dtype=np.int64)
         val_idx = np.arange(fold_plan.val_start, fold_plan.val_end, dtype=np.int64)
-        if config.backend == "xgboost":
-            X_train, y_train, w_train, X_val, y_val, w_val = build_xgboost_fold_datasets(
-                X_dev=dataset.dev_X,
-                y_dev=dataset.dev_y,
-                w_dev=dataset.dev_w,
-                train_idx=train_idx,
-                val_idx=val_idx,
-                selected_feature_idx=selected_feature_idx,
-                lag_steps=lag_steps,
-                delta_feature_count=delta_feature_count,
-                config=config,
-            )
-        else:
-            X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
-                X_dev=dataset.dev_X,
-                y_dev=dataset.dev_y,
-                w_dev=dataset.dev_w,
-                train_idx=train_idx,
-                val_idx=val_idx,
-                selected_feature_idx=selected_feature_idx,
+        try:
+            if config.backend == "xgboost":
+                X_train, y_train, w_train, X_val, y_val, w_val = build_xgboost_fold_datasets(
+                    X_dev=dataset.dev_X,
+                    y_dev=dataset.dev_y,
+                    w_dev=dataset.dev_w,
+                    train_idx=train_idx,
+                    val_idx=val_idx,
+                    selected_feature_idx=selected_feature_idx,
+                    lag_steps=lag_steps,
+                    delta_feature_count=delta_feature_count,
+                    config=config,
+                )
+            else:
+                X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
+                    X_dev=dataset.dev_X,
+                    y_dev=dataset.dev_y,
+                    w_dev=dataset.dev_w,
+                    train_idx=train_idx,
+                    val_idx=val_idx,
+                    selected_feature_idx=selected_feature_idx,
+                    window_size=window_size,
+                    config=config,
+                )
+
+            diagnostics = build_fold_diagnostics(
+                fold_plan=fold_plan,
+                X_train=X_train,
+                y_train=y_train,
+                X_val=X_val,
+                y_val=y_val,
                 window_size=window_size,
+                context_rows=context_rows,
+            )
+            if diagnostics["train_positive_rows"] < config.min_train_positive_rows:
+                raise optuna.TrialPruned(
+                    f"Insufficient train positives in fold {fold_plan.fold}: "
+                    f"{diagnostics['train_positive_rows']} < {config.min_train_positive_rows}."
+                )
+            if diagnostics["val_positive_rows"] < config.min_val_positive_rows:
+                raise optuna.TrialPruned(
+                    f"Insufficient validation positives in fold {fold_plan.fold}: "
+                    f"{diagnostics['val_positive_rows']} < {config.min_val_positive_rows}."
+                )
+            if diagnostics["val_true_events"] < config.min_val_true_events:
+                raise optuna.TrialPruned(
+                    f"Insufficient validation true events in fold {fold_plan.fold}: "
+                    f"{diagnostics['val_true_events']} < {config.min_val_true_events}."
+                )
+
+            probabilities, metrics = train_and_score_fold(
+                X_train=X_train,
+                y_train=y_train,
+                w_train=w_train,
+                X_val=X_val,
+                y_val=y_val,
+                w_val=w_val,
+                params=params,
                 config=config,
+                seed=config.random_seed + fold_plan.fold,
             )
+        except SequenceMemoryPressureError as exc:
+            if trial is not None:
+                raise optuna.TrialPruned(str(exc)) from exc
+            raise RuntimeError(str(exc)) from exc
+        except MemoryError as exc:
+            message = (
+                f"Sequence window allocation failed for backend={config.backend}, target={dataset.target_name}, "
+                f"window={window_size}, features={len(selected_feature_names)}. Reduce --window-min/--window-max, "
+                f"--max-loaded-features, or set --cv-max-train-rows. You can also set "
+                f"--sequence-memory-budget-gib to a smaller value to prune oversized trials earlier."
+            )
+            if trial is not None:
+                raise optuna.TrialPruned(message) from exc
+            raise RuntimeError(message) from exc
 
-        diagnostics = build_fold_diagnostics(
-            fold_plan=fold_plan,
-            X_train=X_train,
-            y_train=y_train,
-            X_val=X_val,
-            y_val=y_val,
-            window_size=window_size,
-            context_rows=context_rows,
-        )
-        if diagnostics["train_positive_rows"] < config.min_train_positive_rows:
-            raise optuna.TrialPruned(
-                f"Insufficient train positives in fold {fold_plan.fold}: "
-                f"{diagnostics['train_positive_rows']} < {config.min_train_positive_rows}."
-            )
-        if diagnostics["val_positive_rows"] < config.min_val_positive_rows:
-            raise optuna.TrialPruned(
-                f"Insufficient validation positives in fold {fold_plan.fold}: "
-                f"{diagnostics['val_positive_rows']} < {config.min_val_positive_rows}."
-            )
-        if diagnostics["val_true_events"] < config.min_val_true_events:
-            raise optuna.TrialPruned(
-                f"Insufficient validation true events in fold {fold_plan.fold}: "
-                f"{diagnostics['val_true_events']} < {config.min_val_true_events}."
-            )
-
-        probabilities, metrics = train_and_score_fold(
-            X_train=X_train,
-            y_train=y_train,
-            w_train=w_train,
-            X_val=X_val,
-            y_val=y_val,
-            w_val=w_val,
-            params=params,
-            config=config,
-            seed=config.random_seed + fold_plan.fold,
-        )
         oof_predictions[val_idx] = probabilities
         oof_fold_id[val_idx] = int(fold_plan.fold)
         metrics["fold"] = int(fold_plan.fold)
@@ -1808,8 +2048,8 @@ def fit_final_model(
             delta_feature_count=delta_feature_count,
         )
     else:
-        X_dev_windowed = build_sequence_windows(
-            X_dev_scaled,
+        X_dev_windowed = SequenceWindowSource(
+            matrix=X_dev_scaled,
             window_size=window_size,
         )
         feature_names = list(selected_feature_names)
@@ -1831,10 +2071,20 @@ def fit_final_model(
         eval_rows = min(64, max(32, len(X_dev_windowed) // 4))
 
     fit_end = len(X_dev_windowed) - eval_rows
-    X_fit = X_dev_windowed[:fit_end]
+    if config.backend == "torch":
+        X_fit = SequenceWindowSource(
+            matrix=X_dev_scaled[: fit_end + context_rows],
+            window_size=window_size,
+        )
+        X_eval = SequenceWindowSource(
+            matrix=X_dev_scaled[fit_end:],
+            window_size=window_size,
+        )
+    else:
+        X_fit = X_dev_windowed[:fit_end]
+        X_eval = X_dev_windowed[fit_end:]
     y_fit = y_dev[:fit_end]
     w_fit = w_dev[:fit_end]
-    X_eval = X_dev_windowed[fit_end:]
     y_eval = y_dev[fit_end:]
     w_eval = w_dev[fit_end:]
 
@@ -1851,8 +2101,9 @@ def fit_final_model(
     )
 
     if config.final_refit_on_dev:
+        final_train_X = X_dev_windowed
         training_result = train_backend_model(
-            X_train=X_dev_windowed,
+            X_train=final_train_X,
             y_train=y_dev,
             w_train=w_dev,
             X_eval=X_eval,
@@ -1865,6 +2116,7 @@ def fit_final_model(
 
     final_model_object = training_result.model
     checkpoint = training_result.checkpoint
+    prediction_use_amp = False
 
     if config.backend == "torch":
         from model_training.ote_training.torch_trainer import load_torch_model_from_checkpoint, predict_torch_model
@@ -1872,6 +2124,7 @@ def fit_final_model(
         if checkpoint is None:
             raise RuntimeError("Torch training did not produce a checkpoint.")
         final_model_object = load_torch_model_from_checkpoint(checkpoint)
+        prediction_use_amp = bool(checkpoint.get("amp_enabled", False))
     else:
         predict_torch_model = None
 
@@ -1929,14 +2182,16 @@ def fit_final_model(
         )
         raw_test = sigmoid(final_model_object.predict(make_prediction_dmatrix(X_test_windowed))).astype(np.float32)
     else:
-        X_test_windowed = build_sequence_windows(
-            test_scaled,
+        X_test_windowed = SequenceWindowSource(
+            matrix=test_scaled,
             window_size=window_size,
         )
         raw_test = predict_torch_model(
             model=final_model_object,
             X=X_test_windowed,
             batch_size=config.batch_size,
+            preload_to_device=config.torch_preload_to_device,
+            use_amp=prediction_use_amp,
         )
 
     y_test = dataset.y_test.astype(np.uint8, copy=False)
@@ -2234,13 +2489,28 @@ def train_target_pipeline(
     )
     study.optimize(objective, n_trials=config.n_trials, show_progress_bar=False)
 
-    best_artifacts = cross_validate_trial(
-        dataset=dataset,
-        params=study.best_params,
-        config=config,
-        trial=None,
-    )
-    final_model = fit_final_model(dataset=dataset, artifacts=best_artifacts, config=config)
+    completed_trials = [trial for trial in study.trials if trial.state == TrialState.COMPLETE]
+    if not completed_trials:
+        raise RuntimeError(
+            "No training trials completed successfully. The current search space is likely too large "
+            "for available memory. Reduce --window-min/--window-max, --max-loaded-features, or set "
+            "--cv-max-train-rows. You can also lower --sequence-memory-budget-gib to prune oversized "
+            "torch sequence trials earlier."
+        )
+
+    try:
+        best_artifacts = cross_validate_trial(
+            dataset=dataset,
+            params=study.best_params,
+            config=config,
+            trial=None,
+        )
+        final_model = fit_final_model(dataset=dataset, artifacts=best_artifacts, config=config)
+    except MemoryError as exc:
+        raise RuntimeError(
+            "The selected best trial could not be materialized due to memory pressure during final fit. "
+            "Reduce --window-min/--window-max, --max-loaded-features, or set --cv-max-train-rows."
+        ) from exc
 
     output_dir = Path(config.output_root) / dataset.target_name
     save_training_outputs(
@@ -2289,6 +2559,24 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--purge-buffer-bars", type=int, default=12)
     parser.add_argument("--final-eval-min-rows", type=int, default=160)
     parser.add_argument("--max-loaded-features", type=int, default=160)
+    parser.add_argument(
+        "--sequence-memory-budget-gib",
+        type=float,
+        default=0.0,
+        help=(
+            "Dense torch sequence allocation budget in GiB. "
+            "Use 0 to auto-detect from available memory, or a negative value to disable the guard."
+        ),
+    )
+    parser.add_argument(
+        "--sequence-memory-auto-fraction",
+        type=float,
+        default=0.50,
+        help=(
+            "When --sequence-memory-budget-gib is 0, use this fraction of available host RAM "
+            "for the torch sequence-allocation guard."
+        ),
+    )
     parser.add_argument("--top-feature-max", type=int, default=96, help=argparse.SUPPRESS)
     parser.add_argument("--top-feature-min", type=int, default=24, help=argparse.SUPPRESS)
     parser.add_argument("--window-max", type=int, default=40)
@@ -2326,10 +2614,18 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--torch-tail-epochs", type=int, default=0)
     parser.add_argument("--torch-fine-lr-scale", type=float, default=0.35)
     parser.add_argument("--torch-tail-lr-scale", type=float, default=0.10)
+    parser.add_argument("--torch-preload-to-device", action="store_true")
+    parser.add_argument("--torch-allow-tf32", action="store_true")
+    parser.add_argument("--torch-cudnn-benchmark", action="store_true")
+    parser.add_argument("--torch-num-workers", type=int, default=0)
+    parser.add_argument("--torch-eval-num-workers", type=int, default=0)
+    parser.add_argument("--torch-prefetch-factor", type=int, default=2)
+    parser.add_argument("--torch-persistent-workers", dest="torch_persistent_workers", action="store_true")
+    parser.add_argument("--no-torch-persistent-workers", dest="torch_persistent_workers", action="store_false")
     parser.add_argument("--use-amp", dest="use_amp", action="store_true")
     parser.add_argument("--no-use-amp", dest="use_amp", action="store_false")
     parser.add_argument("--seed", type=int, default=42)
-    parser.set_defaults(use_amp=True)
+    parser.set_defaults(use_amp=True, torch_persistent_workers=True)
     args = parser.parse_args()
 
     if args.cv_splits is not None:
@@ -2355,6 +2651,8 @@ def parse_args() -> OTETrainingConfig:
         min_val_true_events=args.min_val_true_events,
         final_eval_min_rows=args.final_eval_min_rows,
         max_loaded_features=args.max_loaded_features,
+        sequence_memory_budget_gib=args.sequence_memory_budget_gib,
+        sequence_memory_auto_fraction=args.sequence_memory_auto_fraction,
         top_feature_max=args.top_feature_max,
         top_feature_min=args.top_feature_min,
         window_max=args.window_max,
@@ -2397,6 +2695,13 @@ def parse_args() -> OTETrainingConfig:
         torch_tail_epochs=args.torch_tail_epochs,
         torch_fine_lr_scale=args.torch_fine_lr_scale,
         torch_tail_lr_scale=args.torch_tail_lr_scale,
+        torch_preload_to_device=args.torch_preload_to_device,
+        torch_allow_tf32=args.torch_allow_tf32,
+        torch_cudnn_benchmark=args.torch_cudnn_benchmark,
+        torch_num_workers=args.torch_num_workers,
+        torch_eval_num_workers=args.torch_eval_num_workers,
+        torch_prefetch_factor=args.torch_prefetch_factor,
+        torch_persistent_workers=args.torch_persistent_workers,
         random_seed=args.seed,
     )
 

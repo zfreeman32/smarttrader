@@ -9,6 +9,8 @@ from sklearn.feature_selection import mutual_info_classif, mutual_info_regressio
 
 from .config import PreprocessingConfig
 
+DISCRETE_FEATURE_MAX_UNIQUE = 16
+
 
 def association_scores(
     X: pd.DataFrame,
@@ -34,6 +36,27 @@ def association_scores(
     with np.errstate(invalid="ignore", divide="ignore"):
         scores = X_positional.corrwith(y_positional).abs()
     return scores.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+
+def prepare_feature_importance_frame(
+    X: pd.DataFrame,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Coerce feature columns for MI/RF scoring while preserving low-cardinality categories."""
+
+    numeric = X.apply(pd.to_numeric, errors="coerce")
+    discrete_mask = np.asarray(
+        [_is_low_cardinality_integer_like(numeric[column]) for column in numeric.columns],
+        dtype=bool,
+    )
+
+    prepared: dict[str, pd.Series] = {}
+    for index, column in enumerate(numeric.columns):
+        series = numeric[column]
+        if discrete_mask[index]:
+            prepared[column] = _encode_discrete_feature(series)
+        else:
+            prepared[column] = _fill_continuous_feature(series)
+    return pd.DataFrame(prepared, index=numeric.index), discrete_mask
 
 
 def compute_feature_importance(
@@ -67,6 +90,7 @@ def compute_feature_importance(
     weight_analysis = sample_weight.iloc[-analysis_rows:]
 
     association = association_scores(X_analysis, y_analysis)
+    prepared_analysis, discrete_features = prepare_feature_importance_frame(X_analysis)
 
     mi_scores = pd.Series(0.0, index=X_analysis.columns, dtype=float)
     if y_analysis.nunique(dropna=True) >= 2 and len(X_analysis) > 3:
@@ -74,17 +98,19 @@ def compute_feature_importance(
             neighbors = min(config.mutual_info_neighbors, max(1, len(X_analysis) - 1))
             if is_binary:
                 mi_values = mutual_info_classif(
-                    X_analysis,
+                    prepared_analysis,
                     y_analysis,
                     random_state=42,
                     n_neighbors=neighbors,
+                    discrete_features=discrete_features,
                 )
             else:
                 mi_values = mutual_info_regression(
-                    X_analysis,
+                    prepared_analysis,
                     y_analysis,
                     random_state=42,
                     n_neighbors=neighbors,
+                    discrete_features=discrete_features,
                 )
             mi_scores = pd.Series(mi_values, index=X_analysis.columns, dtype=float)
         except Exception:
@@ -117,7 +143,7 @@ def compute_feature_importance(
                     oob_score=True,
                 )
 
-            model.fit(X_analysis, y_analysis, sample_weight=weight_analysis)
+            model.fit(prepared_analysis, y_analysis, sample_weight=weight_analysis)
             rf_scores = pd.Series(
                 model.feature_importances_,
                 index=X_analysis.columns,
@@ -168,7 +194,35 @@ def compute_feature_importance(
     return importance_df, summary
 
 
+def _is_low_cardinality_integer_like(series: pd.Series) -> bool:
+    non_null = pd.to_numeric(series, errors="coerce").dropna()
+    if non_null.empty:
+        return False
+    if int(non_null.nunique(dropna=True)) > DISCRETE_FEATURE_MAX_UNIQUE:
+        return False
+    values = non_null.to_numpy(dtype=float, copy=False)
+    return bool(np.all(np.isfinite(values)) and np.allclose(values, np.round(values), atol=1e-9))
+
+
+def _encode_discrete_feature(series: pd.Series) -> pd.Series:
+    codes, uniques = pd.factorize(pd.to_numeric(series, errors="coerce"), sort=True)
+    encoded = pd.Series(codes, index=series.index, dtype="int64")
+    if (encoded < 0).any():
+        encoded = encoded.where(encoded >= 0, len(uniques))
+    return encoded
+
+
+def _fill_continuous_feature(series: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce")
+    if numeric.notna().any():
+        fill_value = float(numeric.median())
+    else:
+        fill_value = 0.0
+    return numeric.fillna(fill_value).astype(float)
+
+
 __all__ = [
     "association_scores",
     "compute_feature_importance",
+    "prepare_feature_importance_frame",
 ]

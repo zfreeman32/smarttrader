@@ -6,6 +6,24 @@ import numpy as np
 import pandas as pd
 
 
+def add_unit_aliases(payload: Mapping[str, Any]) -> dict[str, Any]:
+    aliased = dict(payload)
+    for key, value in payload.items():
+        alias_key = _unit_alias_key(str(key))
+        if alias_key is not None:
+            aliased[alias_key] = value
+    return aliased
+
+
+def add_unit_alias_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    working = frame.copy()
+    for column in list(frame.columns):
+        alias_column = _unit_alias_key(column)
+        if alias_column is not None:
+            working[alias_column] = working[column]
+    return working
+
+
 def _timestamp_to_period(timestamp: pd.Timestamp, *, freq: str) -> pd.Period:
     normalized = timestamp.tz_localize(None) if timestamp.tz is not None else timestamp
     return normalized.to_period(freq)
@@ -102,14 +120,16 @@ def build_equity_curve(
     sort_columns: tuple[str, ...] = ("entry_datetime", "source_row_idx"),
 ) -> pd.DataFrame:
     if trades.empty or timestamp_column not in trades.columns or pnl_column not in trades.columns:
-        return pd.DataFrame(
-            columns=[
-                timestamp_column,
-                pnl_column,
-                "equity_pips",
-                "running_peak_pips",
-                "drawdown_pips",
-            ]
+        return add_unit_alias_columns(
+            pd.DataFrame(
+                columns=[
+                    timestamp_column,
+                    pnl_column,
+                    "equity_pips",
+                    "running_peak_pips",
+                    "drawdown_pips",
+                ]
+            )
         )
 
     working = trades.copy()
@@ -117,14 +137,16 @@ def build_equity_curve(
     working[pnl_column] = pd.to_numeric(working[pnl_column], errors="coerce")
     working = working.dropna(subset=[timestamp_column, pnl_column]).copy()
     if working.empty:
-        return pd.DataFrame(
-            columns=[
-                timestamp_column,
-                pnl_column,
-                "equity_pips",
-                "running_peak_pips",
-                "drawdown_pips",
-            ]
+        return add_unit_alias_columns(
+            pd.DataFrame(
+                columns=[
+                    timestamp_column,
+                    pnl_column,
+                    "equity_pips",
+                    "running_peak_pips",
+                    "drawdown_pips",
+                ]
+            )
         )
 
     available_sort_columns = [column for column in sort_columns if column in working.columns]
@@ -134,7 +156,7 @@ def build_equity_curve(
     working["equity_pips"] = working[pnl_column].cumsum()
     working["running_peak_pips"] = working["equity_pips"].cummax()
     working["drawdown_pips"] = working["equity_pips"] - working["running_peak_pips"]
-    return working
+    return add_unit_alias_columns(working)
 
 
 def summarize_trade_performance(
@@ -146,6 +168,7 @@ def summarize_trade_performance(
     period_start: pd.Timestamp | None = None,
     period_end: pd.Timestamp | None = None,
     benchmark_monthly_returns: pd.Series | None = None,
+    effective_trials: int = 1,
 ) -> dict[str, Any]:
     start = _coerce_timestamp(period_start)
     end = _coerce_timestamp(period_end)
@@ -186,6 +209,7 @@ def summarize_trade_performance(
             monthly_pnl=monthly_pnl,
             quarterly_pnl=quarterly_pnl,
             benchmark_monthly_returns=benchmark_monthly_returns,
+            effective_trials=effective_trials,
         )
 
     working = trades.copy()
@@ -220,6 +244,7 @@ def summarize_trade_performance(
             monthly_pnl=monthly_pnl,
             quarterly_pnl=quarterly_pnl,
             benchmark_monthly_returns=benchmark_monthly_returns,
+            effective_trials=effective_trials,
         )
 
     working = working.sort_values(timestamp_column).reset_index(drop=True)
@@ -253,6 +278,7 @@ def summarize_trade_performance(
         monthly_pnl=monthly_pnl,
         quarterly_pnl=quarterly_pnl,
         benchmark_monthly_returns=benchmark_monthly_returns,
+        effective_trials=effective_trials,
     )
 
     total_net_pnl = float(pnl.sum())
@@ -295,7 +321,7 @@ def summarize_trade_performance(
             "largest_single_trade_share_of_abs_pnl": concentration["largest_abs_share"],
         }
     )
-    return summary
+    return add_unit_aliases(summary)
 
 
 def compute_drawdown_stats(
@@ -304,20 +330,24 @@ def compute_drawdown_stats(
     timestamp_column: str,
 ) -> Mapping[str, float]:
     if equity_curve.empty or "drawdown_pips" not in equity_curve.columns or timestamp_column not in equity_curve.columns:
-        return {
-            "max_drawdown_pips": 0.0,
-            "max_drawdown_duration_days": 0.0,
-        }
+        return add_unit_aliases(
+            {
+                "max_drawdown_pips": 0.0,
+                "max_drawdown_duration_days": 0.0,
+            }
+        )
 
     working = equity_curve.loc[:, [timestamp_column, "drawdown_pips"]].copy()
     working[timestamp_column] = pd.to_datetime(working[timestamp_column], errors="coerce")
     working["drawdown_pips"] = pd.to_numeric(working["drawdown_pips"], errors="coerce")
     working = working.dropna(subset=[timestamp_column, "drawdown_pips"]).reset_index(drop=True)
     if working.empty:
-        return {
-            "max_drawdown_pips": 0.0,
-            "max_drawdown_duration_days": 0.0,
-        }
+        return add_unit_aliases(
+            {
+                "max_drawdown_pips": 0.0,
+                "max_drawdown_duration_days": 0.0,
+            }
+        )
 
     max_drawdown = float(abs(min(float(working["drawdown_pips"].min()), 0.0)))
     max_duration_days = 0.0
@@ -337,10 +367,12 @@ def compute_drawdown_stats(
         duration_days = (last_timestamp - underwater_start).total_seconds() / 86400.0
         max_duration_days = max(max_duration_days, duration_days)
 
-    return {
-        "max_drawdown_pips": max_drawdown,
-        "max_drawdown_duration_days": float(max_duration_days),
-    }
+    return add_unit_aliases(
+        {
+            "max_drawdown_pips": max_drawdown,
+            "max_drawdown_duration_days": float(max_duration_days),
+        }
+    )
 
 
 def build_group_breakdown(
@@ -351,17 +383,19 @@ def build_group_breakdown(
     pnl_column: str = "net_pnl_pips",
 ) -> pd.DataFrame:
     if trades.empty or group_column not in trades.columns:
-        return pd.DataFrame(
-            columns=[
-                group_column,
-                "trade_count",
-                "net_pnl_pips",
-                "expectancy_pips",
-                "hit_rate",
-                "profit_factor",
-                "average_win_pips",
-                "average_loss_pips",
-            ]
+        return add_unit_alias_columns(
+            pd.DataFrame(
+                columns=[
+                    group_column,
+                    "trade_count",
+                    "net_pnl_pips",
+                    "expectancy_pips",
+                    "hit_rate",
+                    "profit_factor",
+                    "average_win_pips",
+                    "average_loss_pips",
+                ]
+            )
         )
 
     rows: list[dict[str, Any]] = []
@@ -385,19 +419,21 @@ def build_group_breakdown(
                 "average_loss_pips": metrics["average_loss_pips"],
             }
         )
-    return pd.DataFrame(rows)
+    return add_unit_alias_columns(pd.DataFrame(rows))
 
 
 def summarize_walk_forward_efficiency(fold_summary: pd.DataFrame) -> dict[str, Any]:
     if fold_summary.empty:
-        return {
-            "fold_count": 0,
-            "mean_train_annualized_net_pnl_pips": 0.0,
-            "mean_test_annualized_net_pnl_pips": 0.0,
-            "overall_wfe": None,
-            "median_fold_wfe": None,
-            "profitable_test_fold_share": 0.0,
-        }
+        return add_unit_aliases(
+            {
+                "fold_count": 0,
+                "mean_train_annualized_net_pnl_pips": 0.0,
+                "mean_test_annualized_net_pnl_pips": 0.0,
+                "overall_wfe": None,
+                "median_fold_wfe": None,
+                "profitable_test_fold_share": 0.0,
+            }
+        )
 
     working = fold_summary.copy()
     working["train_annualized_net_pnl_pips"] = pd.to_numeric(
@@ -422,14 +458,16 @@ def summarize_walk_forward_efficiency(fold_summary: pd.DataFrame) -> dict[str, A
 
     valid_fold_wfe = working["fold_wfe"].replace([np.inf, -np.inf], np.nan).dropna()
     profitable_share = float((working["test_total_net_pnl_pips"] > 0.0).mean()) if not working.empty else 0.0
-    return {
-        "fold_count": int(len(working)),
-        "mean_train_annualized_net_pnl_pips": mean_train,
-        "mean_test_annualized_net_pnl_pips": mean_test,
-        "overall_wfe": overall_wfe,
-        "median_fold_wfe": float(valid_fold_wfe.median()) if not valid_fold_wfe.empty else None,
-        "profitable_test_fold_share": profitable_share,
-    }
+    return add_unit_aliases(
+        {
+            "fold_count": int(len(working)),
+            "mean_train_annualized_net_pnl_pips": mean_train,
+            "mean_test_annualized_net_pnl_pips": mean_test,
+            "overall_wfe": overall_wfe,
+            "median_fold_wfe": float(valid_fold_wfe.median()) if not valid_fold_wfe.empty else None,
+            "profitable_test_fold_share": profitable_share,
+        }
+    )
 
 
 def sanitize_for_json(value: Any) -> Any:
@@ -475,6 +513,7 @@ def _base_performance_summary(
     monthly_pnl: pd.Series,
     quarterly_pnl: pd.Series,
     benchmark_monthly_returns: pd.Series | None,
+    effective_trials: int,
 ) -> dict[str, Any]:
     period_days = max((period_end - period_start).total_seconds() / 86400.0, 1.0 / 288.0)
     period_months = max(period_days / 30.4375, 1.0 / 30.4375)
@@ -485,6 +524,11 @@ def _base_performance_summary(
     quarterly_values = quarterly_pnl.to_numpy(dtype=float, copy=True) if not quarterly_pnl.empty else np.asarray([], dtype=float)
     sharpe = _annualized_sharpe(monthly_values)
     sortino = _annualized_sortino(monthly_values)
+    approx_deflated_sharpe = _approximate_deflated_sharpe(
+        sharpe,
+        observation_count=int(monthly_values.size),
+        effective_trials=effective_trials,
+    )
     profitable_quarter_share = float((quarterly_values > 0.0).mean()) if quarterly_values.size else 0.0
     profitable_month_share = float((monthly_values > 0.0).mean()) if monthly_values.size else 0.0
     average_monthly_profit = float(monthly_values[monthly_values > 0.0].mean()) if np.any(monthly_values > 0.0) else 0.0
@@ -501,7 +545,8 @@ def _base_performance_summary(
         if len(aligned) >= 2 and float(aligned["strategy"].std(ddof=0)) > 0.0 and float(aligned["benchmark"].std(ddof=0)) > 0.0:
             benchmark_correlation = float(aligned["strategy"].corr(aligned["benchmark"]))
 
-    return {
+    return add_unit_aliases(
+        {
         "period_start": period_start,
         "period_end": period_end,
         "period_days": float(period_days),
@@ -525,11 +570,15 @@ def _base_performance_summary(
         "largest_single_trade_share_of_abs_pnl": 0.0,
         "monthly_sharpe": sharpe,
         "monthly_sortino": sortino,
+        "approx_deflated_sharpe": approx_deflated_sharpe,
+        "deflated_sharpe_effective_trials": int(max(int(effective_trials), 1)),
+        "monthly_observation_count": int(monthly_values.size),
         "profitable_quarter_share": profitable_quarter_share,
         "profitable_month_share": profitable_month_share,
         "average_positive_month_pnl_pips": average_monthly_profit,
         "benchmark_monthly_correlation": benchmark_correlation,
-    }
+        }
+    )
 
 
 def _annualized_sharpe(values: np.ndarray) -> float | None:
@@ -551,6 +600,31 @@ def _annualized_sortino(values: np.ndarray) -> float | None:
     return float(np.mean(values) / downside_std * np.sqrt(12.0))
 
 
+def _approximate_deflated_sharpe(
+    sharpe: float | None,
+    *,
+    observation_count: int,
+    effective_trials: int,
+) -> float | None:
+    if sharpe is None:
+        return None
+
+    trials = max(int(effective_trials), 1)
+    if observation_count < 2:
+        return float(sharpe) if trials <= 1 else None
+    if trials <= 1:
+        return float(sharpe)
+
+    sample_penalty = min(1.0, np.sqrt(max(observation_count - 1, 0) / float(trials)))
+    sharpe_cap = float(np.sqrt(2.0 * np.log(max(trials, 2))))
+    if sharpe_cap <= 0.0:
+        return float(sharpe)
+
+    capped_ratio = min((float(sharpe) ** 2) / (sharpe_cap ** 2), 1.0)
+    cap_penalty = np.sqrt(max(0.0, 1.0 - capped_ratio))
+    return float(float(sharpe) * sample_penalty * cap_penalty)
+
+
 def _coerce_timestamp(value: pd.Timestamp | str | None) -> pd.Timestamp | None:
     if value is None:
         return None
@@ -558,3 +632,9 @@ def _coerce_timestamp(value: pd.Timestamp | str | None) -> pd.Timestamp | None:
     if pd.isna(timestamp):
         return None
     return pd.Timestamp(timestamp)
+
+
+def _unit_alias_key(column: str) -> str | None:
+    if "_pips" not in column:
+        return None
+    return column.replace("_pips", "_units")

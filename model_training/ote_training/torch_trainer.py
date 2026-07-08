@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -28,16 +28,116 @@ class SequenceDataset(Dataset):
         X: np.ndarray,
         y: np.ndarray,
         w: np.ndarray,
+        *,
+        device: Optional[torch.device] = None,
+        preload_to_device: bool = False,
     ) -> None:
-        self.X = torch.from_numpy(np.ascontiguousarray(X, dtype=np.float32))
-        self.y = torch.from_numpy(np.ascontiguousarray(y, dtype=np.float32))
-        self.w = torch.from_numpy(np.ascontiguousarray(w, dtype=np.float32))
+        self.X = _array_to_tensor(X, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.y = _array_to_tensor(y, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.w = _array_to_tensor(w, dtype=np.float32, device=device, preload_to_device=preload_to_device)
 
     def __len__(self) -> int:
         return int(self.X.shape[0])
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return self.X[index], self.y[index], self.w[index]
+
+
+def _extract_sequence_source(
+    source: Any,
+) -> Optional[Tuple[np.ndarray, int, Optional[np.ndarray]]]:
+    matrix = getattr(source, "matrix", None)
+    window_size = getattr(source, "window_size", None)
+    if matrix is None or window_size is None:
+        return None
+
+    sampled_indices = getattr(source, "sampled_indices", None)
+    matrix_array = np.asarray(matrix)
+    indices_array = None if sampled_indices is None else np.asarray(sampled_indices, dtype=np.int64)
+    return matrix_array, int(window_size), indices_array
+
+
+class WindowedSequenceDataset(Dataset):
+    def __init__(
+        self,
+        source: Any,
+        y: np.ndarray,
+        w: np.ndarray,
+        *,
+        device: Optional[torch.device] = None,
+        preload_to_device: bool = False,
+        max_rows: Optional[int] = None,
+    ) -> None:
+        sequence_source = _extract_sequence_source(source)
+        if sequence_source is None:
+            raise ValueError("WindowedSequenceDataset requires a sequence-window source.")
+
+        matrix, window_size, sampled_indices = sequence_source
+        self.X = _array_to_tensor(matrix, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.y = _array_to_tensor(y, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.w = _array_to_tensor(w, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.window_size = int(window_size)
+
+        available_rows = int(matrix.shape[0]) - self.window_size + 1
+        if available_rows <= 0:
+            raise ValueError("WindowedSequenceDataset needs at least one available sequence row.")
+
+        if sampled_indices is None:
+            length = available_rows if max_rows is None else min(available_rows, int(max_rows))
+            self.sampled_indices = None
+            self.length = int(length)
+        else:
+            indices = np.asarray(sampled_indices, dtype=np.int64)
+            if max_rows is not None:
+                indices = indices[: int(max_rows)]
+            self.sampled_indices = indices
+            self.length = int(len(indices))
+
+        if self.length != int(self.y.shape[0]) or self.length != int(self.w.shape[0]):
+            raise ValueError(
+                "WindowedSequenceDataset requires labels and weights aligned to the available sequence rows. "
+                f"Got length={self.length}, y={int(self.y.shape[0])}, w={int(self.w.shape[0])}."
+            )
+
+    def __len__(self) -> int:
+        return int(self.length)
+
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        start = int(self.sampled_indices[index]) if self.sampled_indices is not None else int(index)
+        end = start + self.window_size
+        return self.X[start:end], self.y[index], self.w[index]
+
+
+class WindowedFeatureDataset(Dataset):
+    def __init__(
+        self,
+        source: Any,
+        *,
+        device: Optional[torch.device] = None,
+        preload_to_device: bool = False,
+    ) -> None:
+        sequence_source = _extract_sequence_source(source)
+        if sequence_source is None:
+            raise ValueError("WindowedFeatureDataset requires a sequence-window source.")
+
+        matrix, window_size, sampled_indices = sequence_source
+        self.X = _array_to_tensor(matrix, dtype=np.float32, device=device, preload_to_device=preload_to_device)
+        self.window_size = int(window_size)
+        self.sampled_indices = None if sampled_indices is None else np.asarray(sampled_indices, dtype=np.int64)
+        self.length = int(matrix.shape[0]) - self.window_size + 1
+        if self.sampled_indices is not None:
+            self.length = int(len(self.sampled_indices))
+
+        if self.length <= 0:
+            raise ValueError("WindowedFeatureDataset needs at least one available sequence row.")
+
+    def __len__(self) -> int:
+        return int(self.length)
+
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor]:
+        start = int(self.sampled_indices[index]) if self.sampled_indices is not None else int(index)
+        end = start + self.window_size
+        return (self.X[start:end],)
 
 
 class WeightedFocalLoss(nn.Module):
@@ -79,6 +179,82 @@ def safe_average_precision(
 
 def choose_device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def _array_to_tensor(
+    array: np.ndarray,
+    *,
+    dtype: np.dtype,
+    device: Optional[torch.device] = None,
+    preload_to_device: bool = False,
+) -> torch.Tensor:
+    tensor = torch.from_numpy(np.ascontiguousarray(array, dtype=dtype))
+    if preload_to_device and device is not None:
+        return tensor.to(device)
+    return tensor
+
+
+def configure_torch_runtime(
+    *,
+    device: torch.device,
+    allow_tf32: bool,
+    cudnn_benchmark: bool,
+) -> None:
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high" if allow_tf32 else "highest")
+
+    if device.type != "cuda":
+        return
+
+    if hasattr(torch.backends, "cuda") and hasattr(torch.backends.cuda, "matmul"):
+        torch.backends.cuda.matmul.allow_tf32 = bool(allow_tf32)
+    if hasattr(torch.backends, "cudnn"):
+        if hasattr(torch.backends.cudnn, "allow_tf32"):
+            torch.backends.cudnn.allow_tf32 = bool(allow_tf32)
+        torch.backends.cudnn.benchmark = bool(cudnn_benchmark)
+
+
+def estimate_numpy_nbytes(arrays: Sequence[np.ndarray]) -> int:
+    total = 0
+    for array in arrays:
+        sequence_source = _extract_sequence_source(array)
+        if sequence_source is not None:
+            total += int(np.asarray(sequence_source[0]).nbytes)
+            continue
+        total += int(np.asarray(array).nbytes)
+    return total
+
+
+def should_preload_to_device(
+    *,
+    requested: bool,
+    device: torch.device,
+    arrays: Sequence[np.ndarray],
+) -> bool:
+    if not requested or device.type != "cuda":
+        return False
+
+    try:
+        free_bytes, _ = torch.cuda.mem_get_info(device)
+    except Exception:
+        return False
+
+    estimated_bytes = estimate_numpy_nbytes(arrays)
+    if estimated_bytes <= 0:
+        return False
+
+    # Keep some headroom for model weights, activations, and CUDA workspace.
+    return int(estimated_bytes * 1.20) <= int(free_bytes * 0.85)
+
+
+def resolve_loader_workers(
+    requested_workers: int,
+    *,
+    preload_to_device: bool,
+) -> int:
+    if preload_to_device:
+        return 0
+    return max(0, int(requested_workers))
 
 
 @contextmanager
@@ -182,32 +358,70 @@ def build_phase_schedule(
 
 
 def create_loader(
-    X: np.ndarray,
+    X: Any,
     y: np.ndarray,
     w: np.ndarray,
     batch_size: int,
     shuffle: bool,
     pin_memory: bool,
+    *,
+    device: Optional[torch.device] = None,
+    preload_to_device: bool = False,
+    num_workers: int = 0,
+    prefetch_factor: int = 2,
+    persistent_workers: bool = False,
+    max_rows: Optional[int] = None,
 ) -> DataLoader:
-    dataset = SequenceDataset(X=X, y=y, w=w)
+    sequence_source = _extract_sequence_source(X)
+    if sequence_source is not None:
+        dataset: Dataset = WindowedSequenceDataset(
+            source=X,
+            y=y,
+            w=w,
+            device=device,
+            preload_to_device=preload_to_device,
+            max_rows=max_rows,
+        )
+    else:
+        limit = None if max_rows is None else int(max_rows)
+        dataset = SequenceDataset(
+            X=X if limit is None else X[:limit],
+            y=y if limit is None else y[:limit],
+            w=w if limit is None else w[:limit],
+            device=device,
+            preload_to_device=preload_to_device,
+        )
+
+    loader_kwargs: Dict[str, Any] = {
+        "dataset": dataset,
+        "batch_size": batch_size,
+        "shuffle": shuffle,
+        "num_workers": int(num_workers),
+        "pin_memory": pin_memory,
+        "drop_last": False,
+    }
+    if int(num_workers) > 0:
+        loader_kwargs["persistent_workers"] = bool(persistent_workers)
+        if int(prefetch_factor) > 0:
+            loader_kwargs["prefetch_factor"] = int(prefetch_factor)
+
     return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=0,
-        pin_memory=pin_memory,
-        drop_last=False,
+        **loader_kwargs,
     )
 
 
 def evaluate_torch_model(
     model: nn.Module,
-    X_eval: np.ndarray,
+    X_eval: Any,
     y_eval: np.ndarray,
     w_eval: np.ndarray,
     batch_size: int,
     device: torch.device,
     use_amp: bool,
+    preload_to_device: bool = False,
+    num_workers: int = 0,
+    prefetch_factor: int = 2,
+    persistent_workers: bool = False,
 ) -> Tuple[np.ndarray, float]:
     probabilities = predict_torch_model(
         model=model,
@@ -215,16 +429,20 @@ def evaluate_torch_model(
         batch_size=batch_size,
         device=device,
         use_amp=use_amp,
+        preload_to_device=preload_to_device,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        persistent_workers=persistent_workers,
     )
     score = safe_average_precision(y_eval, probabilities, sample_weight=w_eval)
     return probabilities, score
 
 
 def train_torch_model(
-    X_train: np.ndarray,
+    X_train: Any,
     y_train: np.ndarray,
     w_train: np.ndarray,
-    X_eval: np.ndarray,
+    X_eval: Any,
     y_eval: np.ndarray,
     w_eval: np.ndarray,
     trainer_config: Mapping[str, Any],
@@ -240,7 +458,27 @@ def train_torch_model(
         requested_use_amp=bool(trainer_config["use_amp"]),
         device=device,
     )
-    pin_memory = device.type == "cuda"
+    configure_torch_runtime(
+        device=device,
+        allow_tf32=bool(trainer_config.get("allow_tf32", False)),
+        cudnn_benchmark=bool(trainer_config.get("cudnn_benchmark", False)),
+    )
+    preload_to_device = should_preload_to_device(
+        requested=bool(trainer_config.get("preload_to_device", False)),
+        device=device,
+        arrays=(X_train, y_train, w_train, X_eval, y_eval, w_eval),
+    )
+    pin_memory = device.type == "cuda" and not preload_to_device
+    train_num_workers = resolve_loader_workers(
+        int(trainer_config.get("num_workers", 0) or 0),
+        preload_to_device=preload_to_device,
+    )
+    eval_num_workers = resolve_loader_workers(
+        int(trainer_config.get("eval_num_workers", 0) or 0),
+        preload_to_device=preload_to_device,
+    )
+    prefetch_factor = max(0, int(trainer_config.get("prefetch_factor", 2) or 0))
+    persistent_workers = bool(trainer_config.get("persistent_workers", False))
     batch_size = int(trainer_config["batch_size"])
     learning_rate = float(trainer_config["learning_rate"])
     weight_decay = float(trainer_config["weight_decay"])
@@ -298,12 +536,18 @@ def train_torch_model(
         train_rows = max(batch_size, int(round(len(X_train) * train_fraction)))
         train_rows = min(train_rows, len(X_train))
         train_loader = create_loader(
-            X=X_train[:train_rows],
+            X=X_train,
             y=y_train[:train_rows],
             w=w_train[:train_rows],
             batch_size=batch_size,
             shuffle=True,
             pin_memory=pin_memory,
+            device=device,
+            preload_to_device=preload_to_device,
+            num_workers=train_num_workers,
+            prefetch_factor=prefetch_factor,
+            persistent_workers=persistent_workers,
+            max_rows=train_rows,
         )
 
         for _ in range(phase_epochs):
@@ -368,6 +612,10 @@ def train_torch_model(
                     batch_size=batch_size,
                     device=device,
                     use_amp=use_amp,
+                    preload_to_device=preload_to_device,
+                    num_workers=eval_num_workers,
+                    prefetch_factor=prefetch_factor,
+                    persistent_workers=persistent_workers,
                 )
             except FloatingPointError:
                 stop_reason = "non_finite_eval_predictions"
@@ -438,6 +686,10 @@ def train_torch_model(
             batch_size=batch_size,
             device=device,
             use_amp=use_amp,
+            preload_to_device=preload_to_device,
+            num_workers=eval_num_workers,
+            prefetch_factor=prefetch_factor,
+            persistent_workers=persistent_workers,
         )
         best_epoch = global_epoch
 
@@ -491,10 +743,14 @@ def load_torch_model_from_checkpoint(
 
 def predict_torch_model(
     model: nn.Module,
-    X: np.ndarray,
+    X: Any,
     batch_size: int,
     device: Optional[torch.device] = None,
     use_amp: bool = False,
+    preload_to_device: bool = False,
+    num_workers: int = 0,
+    prefetch_factor: int = 2,
+    persistent_workers: bool = False,
 ) -> np.ndarray:
     if device is None:
         try:
@@ -503,16 +759,42 @@ def predict_torch_model(
             device = choose_device()
 
     model.eval()
-    pin_memory = device.type == "cuda"
-    features = torch.from_numpy(np.array(X, dtype=np.float32, copy=True, order="C"))
-    loader = DataLoader(
-        TensorDataset(features),
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=pin_memory,
-        drop_last=False,
+    actual_preload = should_preload_to_device(
+        requested=preload_to_device,
+        device=device,
+        arrays=(X,),
     )
+    pin_memory = device.type == "cuda" and not actual_preload
+    actual_num_workers = resolve_loader_workers(num_workers, preload_to_device=actual_preload)
+    sequence_source = _extract_sequence_source(X)
+    if sequence_source is not None:
+        dataset: Dataset = WindowedFeatureDataset(
+            source=X,
+            device=device if actual_preload else None,
+            preload_to_device=actual_preload,
+        )
+    else:
+        features = _array_to_tensor(
+            X,
+            dtype=np.float32,
+            device=device if actual_preload else None,
+            preload_to_device=actual_preload,
+        )
+        dataset = TensorDataset(features)
+
+    loader_kwargs: Dict[str, Any] = {
+        "dataset": dataset,
+        "batch_size": batch_size,
+        "shuffle": False,
+        "num_workers": int(actual_num_workers),
+        "pin_memory": pin_memory,
+        "drop_last": False,
+    }
+    if int(actual_num_workers) > 0:
+        loader_kwargs["persistent_workers"] = bool(persistent_workers)
+        if int(prefetch_factor) > 0:
+            loader_kwargs["prefetch_factor"] = int(prefetch_factor)
+    loader = DataLoader(**loader_kwargs)
 
     predictions: List[np.ndarray] = []
     disable_mkldnn = device.type == "cpu" and model_uses_lstm(model)

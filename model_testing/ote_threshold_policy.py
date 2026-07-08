@@ -12,6 +12,7 @@ from model_testing.ote_abstain_policy import (
     apply_abstain_policy,
     estimate_session_spread_pips,
 )
+from model_testing.ote_policy_metrics import add_unit_alias_columns, add_unit_aliases
 from model_testing.ote_regime_slices import (
     DEFAULT_THRESHOLD_GRID,
     event_metrics_by_position,
@@ -44,6 +45,8 @@ SHORT_THRESHOLD_HINTS = {
     "strong_down_high": 0.65,
 }
 
+SESSION_SPREAD_ONLY_INSTRUMENTS = frozenset({"es", "6e"})
+
 
 def _timestamps_to_period_count(
     timestamps: pd.Series,
@@ -60,6 +63,8 @@ def _timestamps_to_period_count(
 class ThresholdSearchConfig:
     probability_column: str
     global_threshold: float
+    instrument: str = "fx"
+    unit_label: str = "pips"
     composite_column: str = "composite_regime"
     session_column: str = "session_regime"
     target_column: str = "target"
@@ -118,7 +123,7 @@ def search_thresholds_by_composite_regime(
     config: ThresholdSearchConfig,
 ) -> Tuple[pd.DataFrame, Dict[str, object]]:
     prepared = prepare_policy_frame(frame, config)
-    global_result = search_global_threshold(prepared, config=config)
+    global_result = add_unit_aliases(search_global_threshold(prepared, config=config))
     hints = default_threshold_hints(direction)
 
     rows: List[Dict[str, object]] = []
@@ -174,7 +179,7 @@ def search_thresholds_by_composite_regime(
             }
         )
 
-    return pd.DataFrame(rows), global_result
+    return add_unit_alias_columns(pd.DataFrame(rows)), global_result
 
 
 def apply_threshold_policy(
@@ -312,7 +317,7 @@ def evaluate_policy_variants(
                 }
             )
 
-    return pd.DataFrame(rows)
+    return add_unit_alias_columns(pd.DataFrame(rows))
 
 
 def attach_forward_trade_outcomes(
@@ -386,31 +391,33 @@ def attach_forward_trade_outcomes(
         (exit_price - entry_price) / float(config.pip_size)
     )
 
-    if config.approx_spread_column in working.columns:
-        entry_spread_pips = pd.to_numeric(working[config.approx_spread_column], errors="coerce") / float(config.pip_size)
+    use_feature_spread = str(config.instrument).strip().lower() not in SESSION_SPREAD_ONLY_INSTRUMENTS
+
+    if use_feature_spread and config.approx_spread_column in working.columns:
+        entry_spread_units = pd.to_numeric(working[config.approx_spread_column], errors="coerce") / float(config.pip_size)
     else:
-        entry_spread_pips = pd.Series(np.nan, index=working.index, dtype=float)
-    if "policy_exit_approx_spread" in working.columns:
-        exit_spread_pips = pd.to_numeric(working["policy_exit_approx_spread"], errors="coerce") / float(config.pip_size)
+        entry_spread_units = pd.Series(np.nan, index=working.index, dtype=float)
+    if use_feature_spread and "policy_exit_approx_spread" in working.columns:
+        exit_spread_units = pd.to_numeric(working["policy_exit_approx_spread"], errors="coerce") / float(config.pip_size)
     else:
-        exit_spread_pips = pd.Series(np.nan, index=working.index, dtype=float)
+        exit_spread_units = pd.Series(np.nan, index=working.index, dtype=float)
 
     if config.session_column in working.columns:
-        session_spread_pips = working[config.session_column].map(
+        session_spread_units = working[config.session_column].map(
             lambda value: estimate_session_spread_pips(value, spread_table=config.session_spread_pips)
         )
-        entry_spread_pips = entry_spread_pips.where(entry_spread_pips > 0.0, session_spread_pips)
-        exit_spread_pips = exit_spread_pips.where(exit_spread_pips > 0.0, session_spread_pips)
+        entry_spread_units = entry_spread_units.where(entry_spread_units > 0.0, session_spread_units)
+        exit_spread_units = exit_spread_units.where(exit_spread_units > 0.0, session_spread_units)
     else:
         default_spread = float(config.session_spread_pips["off_hours"])
-        entry_spread_pips = entry_spread_pips.fillna(default_spread)
-        exit_spread_pips = exit_spread_pips.fillna(default_spread)
+        entry_spread_units = entry_spread_units.fillna(default_spread)
+        exit_spread_units = exit_spread_units.fillna(default_spread)
 
-    slippage_pips = float(config.slippage_spread_multiplier) * (entry_spread_pips + exit_spread_pips)
+    slippage_units = float(config.slippage_spread_multiplier) * (entry_spread_units + exit_spread_units)
     working[config.total_cost_column] = (
-        entry_spread_pips
-        + exit_spread_pips
-        + slippage_pips
+        entry_spread_units
+        + exit_spread_units
+        + slippage_units
         + float(config.fixed_slippage_pips_per_trade)
         + float(config.commission_pips_per_trade)
     )
@@ -418,7 +425,7 @@ def attach_forward_trade_outcomes(
         pd.to_numeric(working[config.gross_pnl_column], errors="coerce")
         - pd.to_numeric(working[config.total_cost_column], errors="coerce")
     )
-    return working
+    return add_unit_alias_columns(working)
 
 
 def event_metrics_for_emitted_positions(
@@ -537,22 +544,24 @@ def evaluate_threshold_candidate(
         emitted_positions=emitted_positions,
         config=config,
     )
-    return {
-        "threshold": float(threshold),
-        "event_precision": float(metrics["event_precision"]),
-        "event_recall": float(metrics["event_recall"]),
-        "event_f05": float(metrics["event_f05"]),
-        "predicted_events": int(metrics["predicted_events"]),
-        "true_events": int(metrics["true_events"]),
-        "matched_events": int(metrics["matched_events"]),
-        "avg_events_per_month": float(avg_events_per_month),
-        "trades_per_week": float(trade_metrics["trades_per_week"]),
-        "scored_trades": int(trade_metrics["scored_trades"]),
-        "gross_expectancy_pips": float(trade_metrics["gross_expectancy_pips"]),
-        "gross_pnl_pips": float(trade_metrics["gross_pnl_pips"]),
-        "post_cost_expectancy_pips": float(trade_metrics["post_cost_expectancy_pips"]),
-        "net_pnl_pips": float(trade_metrics["net_pnl_pips"]),
-    }
+    return add_unit_aliases(
+        {
+            "threshold": float(threshold),
+            "event_precision": float(metrics["event_precision"]),
+            "event_recall": float(metrics["event_recall"]),
+            "event_f05": float(metrics["event_f05"]),
+            "predicted_events": int(metrics["predicted_events"]),
+            "true_events": int(metrics["true_events"]),
+            "matched_events": int(metrics["matched_events"]),
+            "avg_events_per_month": float(avg_events_per_month),
+            "trades_per_week": float(trade_metrics["trades_per_week"]),
+            "scored_trades": int(trade_metrics["scored_trades"]),
+            "gross_expectancy_pips": float(trade_metrics["gross_expectancy_pips"]),
+            "gross_pnl_pips": float(trade_metrics["gross_pnl_pips"]),
+            "post_cost_expectancy_pips": float(trade_metrics["post_cost_expectancy_pips"]),
+            "net_pnl_pips": float(trade_metrics["net_pnl_pips"]),
+        }
+    )
 
 
 def _search_best_threshold(
@@ -700,6 +709,8 @@ def _resolve_frame_config(
             return ThresholdSearchConfig(
                 probability_column=candidate,
                 global_threshold=config.global_threshold,
+                instrument=config.instrument,
+                unit_label=config.unit_label,
                 composite_column=config.composite_column,
                 session_column=config.session_column,
                 target_column=config.target_column,
@@ -740,14 +751,16 @@ def trade_metrics_for_emitted_positions(
 ) -> Dict[str, float]:
     positions = _resolve_positions(frame, config.position_column)
     if len(emitted_positions) == 0:
-        return {
-            "scored_trades": 0.0,
-            "trades_per_week": 0.0,
-            "gross_expectancy_pips": 0.0,
-            "gross_pnl_pips": 0.0,
-            "post_cost_expectancy_pips": 0.0,
-            "net_pnl_pips": 0.0,
-        }
+        return add_unit_aliases(
+            {
+                "scored_trades": 0.0,
+                "trades_per_week": 0.0,
+                "gross_expectancy_pips": 0.0,
+                "gross_pnl_pips": 0.0,
+                "post_cost_expectancy_pips": 0.0,
+                "net_pnl_pips": 0.0,
+            }
+        )
 
     emitted_mask = np.isin(positions, emitted_positions)
     gross_pnl = (
@@ -762,33 +775,37 @@ def trade_metrics_for_emitted_positions(
     )
     scored_trades = int(net_pnl.shape[0] if not net_pnl.empty else gross_pnl.shape[0])
     if scored_trades <= 0:
-        return {
-            "scored_trades": 0.0,
-            "trades_per_week": _average_events_per_week(
-                frame,
-                predicted_events=int(len(emitted_positions)),
-                datetime_column=config.datetime_column,
-            ),
-            "gross_expectancy_pips": 0.0,
-            "gross_pnl_pips": 0.0,
-            "post_cost_expectancy_pips": 0.0,
-            "net_pnl_pips": 0.0,
-        }
+        return add_unit_aliases(
+            {
+                "scored_trades": 0.0,
+                "trades_per_week": _average_events_per_week(
+                    frame,
+                    predicted_events=int(len(emitted_positions)),
+                    datetime_column=config.datetime_column,
+                ),
+                "gross_expectancy_pips": 0.0,
+                "gross_pnl_pips": 0.0,
+                "post_cost_expectancy_pips": 0.0,
+                "net_pnl_pips": 0.0,
+            }
+        )
 
-    return {
-        "scored_trades": float(scored_trades),
-        "trades_per_week": float(
-            _average_events_per_week(
-                frame,
-                predicted_events=scored_trades,
-                datetime_column=config.datetime_column,
-            )
-        ),
-        "gross_expectancy_pips": float(gross_pnl.mean()) if not gross_pnl.empty else 0.0,
-        "gross_pnl_pips": float(gross_pnl.sum()) if not gross_pnl.empty else 0.0,
-        "post_cost_expectancy_pips": float(net_pnl.mean()) if not net_pnl.empty else 0.0,
-        "net_pnl_pips": float(net_pnl.sum()) if not net_pnl.empty else 0.0,
-    }
+    return add_unit_aliases(
+        {
+            "scored_trades": float(scored_trades),
+            "trades_per_week": float(
+                _average_events_per_week(
+                    frame,
+                    predicted_events=scored_trades,
+                    datetime_column=config.datetime_column,
+                )
+            ),
+            "gross_expectancy_pips": float(gross_pnl.mean()) if not gross_pnl.empty else 0.0,
+            "gross_pnl_pips": float(gross_pnl.sum()) if not gross_pnl.empty else 0.0,
+            "post_cost_expectancy_pips": float(net_pnl.mean()) if not net_pnl.empty else 0.0,
+            "net_pnl_pips": float(net_pnl.sum()) if not net_pnl.empty else 0.0,
+        }
+    )
 
 
 def _normalize_expectancy_scores(results: Sequence[Mapping[str, object]]) -> List[float]:

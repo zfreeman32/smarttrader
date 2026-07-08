@@ -194,6 +194,11 @@ If the feature sidecar metadata contains `feature_columns`, that list is used as
 - `source_row_idx`
 - base price columns by default (`open`, `high`, `low`, `close`, `volume`)
 
+When targets are discovered, preprocessing also appends target-specific carry-through
+context columns that are intentionally preserved from the labeled input even though
+they are not builder-generated features today. The current built-in carry-through
+set is the relevant `htf_confluence_*` columns for the selected targets.
+
 Base price columns can be reintroduced with `include_base_price_columns=True`.
 
 ### 4. Encoding candidate features
@@ -663,6 +668,10 @@ label_long_breakout
 label_short_breakout
 label_long_breakout_entry
 label_short_breakout_entry
+label_long_frvp_reversal
+label_short_frvp_reversal
+label_long_frvp_continuation
+label_short_frvp_continuation
 label_long_ote
 label_short_ote
 label_long_entry

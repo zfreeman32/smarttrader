@@ -24,6 +24,7 @@ SUPPORTED_BACKENDS: tuple[str, ...] = ("xgboost", "tcn", "lstm")
 RARE_TARGET_POSITIVE_RATE_THRESHOLD = 0.015
 RARE_TARGET_ATTRIBUTION_FLOOR_FRACTION = 0.05
 RARE_TARGET_ATTRIBUTION_CUMULATIVE_IMPORTANCE = 0.98
+FRVP_AUDIT_PREFIXES: tuple[str, ...] = ("frvp_", "htf_confluence_")
 
 
 @dataclass
@@ -272,6 +273,7 @@ def load_base_ranked_feature_list(
     prepared_dir: Path,
     *,
     max_features: int,
+    target_name: str | None = None,
 ) -> tuple[List[str], List[str], pd.DataFrame]:
     allowed_features = load_feature_allowlist(prepared_dir)
     ranking_path = prepared_dir / "feature_importance.csv"
@@ -300,10 +302,24 @@ def load_base_ranked_feature_list(
         if max_features > 0 and len(deduped) >= max_features:
             break
 
+    promoted_features: list[str] = []
+    if target_name and "_frvp_" in str(target_name):
+        for feature in allowed_features:
+            if feature in seen:
+                continue
+            if any(feature.startswith(prefix) for prefix in FRVP_AUDIT_PREFIXES):
+                seen.add(feature)
+                deduped.append(feature)
+                promoted_features.append(feature)
+
     if not deduped:
         raise ValueError(f"No usable ranked features were found in {prepared_dir}.")
 
-    return deduped, allowed_features, base_ranking.reset_index(drop=True)
+    base_ranking = base_ranking.reset_index(drop=True)
+    base_ranking.attrs["requested_feature_cap"] = int(max_features)
+    base_ranking.attrs["audit_promoted_features"] = promoted_features
+    base_ranking.attrs["resolved_candidate_count"] = int(len(deduped))
+    return deduped, allowed_features, base_ranking
 
 
 def read_prepared_split(
@@ -348,6 +364,7 @@ def load_prepared_dataset(
     feature_names, allowed_features, base_ranking = load_base_ranked_feature_list(
         prepared_dir,
         max_features=max_features,
+        target_name=target_name,
     )
 
     X_train, y_train, w_train = read_prepared_split(prepared_dir, "train", feature_names)
@@ -775,6 +792,8 @@ def analyze_xgboost_backend(
         "attribution_method": "tree_shap",
         "prepared_dir": str(dataset.prepared_dir),
         "candidate_feature_count": int(len(dataset.feature_names)),
+        "requested_feature_cap": int(dataset.base_ranking.attrs.get("requested_feature_cap", len(dataset.feature_names))),
+        "audit_promoted_features": list(dataset.base_ranking.attrs.get("audit_promoted_features", [])),
         "selected_feature_count": int(len(filtered_merged_frame)),
         "feature_count": int(len(filtered_merged_frame)),
         "merge_weights": {
@@ -848,6 +867,8 @@ def analyze_sequence_backend(
         "attribution_method": "integrated_gradients",
         "prepared_dir": str(dataset.prepared_dir),
         "candidate_feature_count": int(len(dataset.feature_names)),
+        "requested_feature_cap": int(dataset.base_ranking.attrs.get("requested_feature_cap", len(dataset.feature_names))),
+        "audit_promoted_features": list(dataset.base_ranking.attrs.get("audit_promoted_features", [])),
         "selected_feature_count": int(len(filtered_merged_frame)),
         "feature_count": int(len(filtered_merged_frame)),
         "window_size": int(config.window_size),
