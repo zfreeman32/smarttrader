@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import pandas as pd
 
+from model_testing.promotion_gates import accepted_for_paper_trading, drawdown_acceptance_passed
 from model_testing.ote_regime_slices import build_regime_winner_table
 
 LIVE_REGISTRY_SOURCE_PATH = REPO_ROOT / "models" / "ote_model_registry_live_multifamily.json"
@@ -331,15 +332,20 @@ def _assemble_backtest_root(
                     "fold_count": summary_payload["fold_count"],
                     "selected_test_trades": overall_test.get("trade_count"),
                     "selected_test_net_pnl_pips": overall_test.get("total_net_pnl_pips"),
+                    "selected_test_net_pnl_units": overall_test.get("total_net_pnl_units"),
                     "selected_test_expectancy_pips": overall_test.get("expectancy_pips"),
+                    "selected_test_expectancy_units": overall_test.get("expectancy_units"),
                     "selected_test_profit_factor": overall_test.get("profit_factor"),
                     "selected_test_sharpe": overall_test.get("monthly_sharpe"),
                     "selected_test_sortino": overall_test.get("monthly_sortino"),
+                    "selected_test_max_drawdown_pct": overall_test.get("max_drawdown_pct"),
+                    "selected_test_max_profit_retracement_pct": overall_test.get("max_profit_retracement_pct"),
                     "overall_wfe": walk_forward.get("overall_wfe"),
                     "profitable_quarter_share": overall_test.get("profitable_quarter_share"),
                     "positive_composite_expectancy_share": summary_payload.get("positive_composite_expectancy_share"),
-                    "accepted_for_paper_trading_gate": all(
-                        bool(value) for value in summary_payload.get("acceptance", {}).values()
+                    "drawdown_gate_passed": drawdown_acceptance_passed(summary_payload.get("acceptance", {})),
+                    "accepted_for_paper_trading_gate": accepted_for_paper_trading(
+                        summary_payload.get("acceptance", {})
                     ),
                     "output_dir": _repo_relative(target_output_dir),
                 }
@@ -367,11 +373,18 @@ def _assemble_backtest_root(
         "fixed_slippage_pips_per_trade": float(
             _first_field(source_entries, "fixed_slippage_pips_per_trade", default=0.3)
         ),
+        "fixed_slippage_units_per_trade": float(
+            _first_field(source_entries, "fixed_slippage_units_per_trade", default=0.3)
+        ),
         "commission_pips_per_trade": float(
             _first_field(source_entries, "commission_pips_per_trade", default=0.35)
         ),
+        "commission_units_per_trade": float(
+            _first_field(source_entries, "commission_units_per_trade", default=0.35)
+        ),
         "targeted_filter_preset": None,
         "session_spread_pips": _first_field(source_entries, "session_spread_pips", default={}),
+        "session_spread_units": _first_field(source_entries, "session_spread_units", default={}),
         "model_summary_path": _repo_relative(model_summary_path),
         "model_outputs": model_outputs,
     }

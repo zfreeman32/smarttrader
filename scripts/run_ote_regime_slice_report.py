@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from model_testing.ote_prediction_joiner import join_prediction_file, load_source_columns
+from model_testing.ote_breakout_event_metadata import enrich_prediction_frame_with_breakout_event_metadata
 from model_testing.ote_regime_labeler import RegimeLabelConfig, label_regimes
 from model_testing.ote_regime_slices import (
     DEFAULT_SLICE_FAMILIES,
@@ -44,6 +45,8 @@ DEFAULT_SOURCE_COLUMNS = (
     "in_london_session",
     "in_newyork_session",
     "in_london_ny_overlap",
+    "frvp_open_type",
+    "frvp_day_type",
 )
 
 
@@ -90,6 +93,12 @@ def run_regime_slice_report(
             joined = join_prediction_file(
                 prediction_path,
                 source_columns=source_columns_for_model,
+            )
+            joined = enrich_prediction_frame_with_breakout_event_metadata(
+                joined,
+                training_summary=training_summary,
+                direction=model.direction,
+                repo_root=REPO_ROOT,
             )
             labeled = label_regimes(joined, config=label_config)
             labeled_path = None
@@ -271,7 +280,12 @@ def _resolve_available_source_columns(
     for candidate_name in ("oof_predictions.csv", "test_predictions.csv"):
         prediction_path = artifact_dir / candidate_name
         if prediction_path.exists():
-            available = set(load_source_columns(prediction_path=prediction_path))
+            available = set(
+                load_source_columns(
+                    prediction_path=prediction_path,
+                    source_columns=requested_source_columns,
+                )
+            )
             return [column for column in requested_source_columns if column in available]
     return list(requested_source_columns)
 

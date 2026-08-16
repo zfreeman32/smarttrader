@@ -16,7 +16,7 @@ ALLOW_TF32="${ALLOW_TF32:-1}"
 CUDNN_BENCHMARK="${CUDNN_BENCHMARK:-1}"
 USE_AMP="${USE_AMP:-0}"
 TORCH_NUM_WORKERS="${TORCH_NUM_WORKERS:-8}"
-TORCH_EVAL_NUM_WORKERS="${TORCH_EVAL_NUM_WORKERS:-2}"
+TORCH_EVAL_NUM_WORKERS="${TORCH_EVAL_NUM_WORKERS:-4}"
 TORCH_PREFETCH_FACTOR="${TORCH_PREFETCH_FACTOR:-4}"
 TORCH_PERSISTENT_WORKERS="${TORCH_PERSISTENT_WORKERS:-1}"
 SKIP_APT="${SKIP_APT:-0}"
@@ -71,19 +71,18 @@ resolve_profile() {
 apply_profile_defaults() {
   case "$PROFILE" in
     reversal)
-      set_default N_TRIALS 8
-      set_default CV_INITIAL_TRAIN_ROWS 300000
-      set_default CV_VAL_ROWS 60000
-      set_default CV_STEP_ROWS 120000
-      set_default CV_MAX_TRAIN_ROWS 500000
+      set_default N_TRIALS 48
+      set_default CV_INITIAL_TRAIN_ROWS 400000
+      set_default CV_VAL_ROWS 100000
+      set_default CV_STEP_ROWS 100000
+      set_default CV_MAX_TRAIN_ROWS 700000
       set_default CV_MIN_FOLDS 3
-      set_default CV_MAX_FOLDS 4
       set_default MAX_LOADED_FEATURES 96
       set_default TOP_FEATURE_MIN 24
       set_default TOP_FEATURE_MAX 96
       set_default WINDOW_MIN 20
       set_default WINDOW_MAX 28
-      set_default EPOCHS 24
+      set_default EPOCHS 48
       set_default BATCH_SIZE 256
       set_default HIDDEN_SIZE 64
       set_default NUM_LAYERS 2
@@ -103,27 +102,26 @@ apply_profile_defaults() {
       set_default HARD_NEGATIVE_RADIUS_MAX 1
       set_default HARD_NEGATIVE_MULTIPLIER_MIN 1.90
       set_default HARD_NEGATIVE_MULTIPLIER_MAX 2.20
-      set_default TORCH_WARMUP_EPOCHS 4
-      set_default TORCH_MAIN_EPOCHS 10
-      set_default TORCH_FINE_EPOCHS 6
-      set_default TORCH_TAIL_EPOCHS 4
+      set_default TORCH_WARMUP_EPOCHS 6
+      set_default TORCH_MAIN_EPOCHS 22
+      set_default TORCH_FINE_EPOCHS 12
+      set_default TORCH_TAIL_EPOCHS 8
       set_default TORCH_FINE_LR_SCALE 0.20
       set_default TORCH_TAIL_LR_SCALE 0.07
       ;;
     breakout)
-      set_default N_TRIALS 8
-      set_default CV_INITIAL_TRAIN_ROWS 300000
-      set_default CV_VAL_ROWS 60000
-      set_default CV_STEP_ROWS 120000
-      set_default CV_MAX_TRAIN_ROWS 500000
+      set_default N_TRIALS 36
+      set_default CV_INITIAL_TRAIN_ROWS 320000
+      set_default CV_VAL_ROWS 100000
+      set_default CV_STEP_ROWS 100000
+      set_default CV_MAX_TRAIN_ROWS 600000
       set_default CV_MIN_FOLDS 3
-      set_default CV_MAX_FOLDS 4
       set_default MAX_LOADED_FEATURES 96
       set_default TOP_FEATURE_MIN 24
       set_default TOP_FEATURE_MAX 96
       set_default WINDOW_MIN 24
       set_default WINDOW_MAX 36
-      set_default EPOCHS 24
+      set_default EPOCHS 48
       set_default BATCH_SIZE 256
       set_default HIDDEN_SIZE 64
       set_default NUM_LAYERS 4
@@ -143,27 +141,26 @@ apply_profile_defaults() {
       set_default HARD_NEGATIVE_RADIUS_MAX 3
       set_default HARD_NEGATIVE_MULTIPLIER_MIN 1.00
       set_default HARD_NEGATIVE_MULTIPLIER_MAX 1.60
-      set_default TORCH_WARMUP_EPOCHS 4
-      set_default TORCH_MAIN_EPOCHS 10
-      set_default TORCH_FINE_EPOCHS 6
-      set_default TORCH_TAIL_EPOCHS 4
+      set_default TORCH_WARMUP_EPOCHS 6
+      set_default TORCH_MAIN_EPOCHS 22
+      set_default TORCH_FINE_EPOCHS 12
+      set_default TORCH_TAIL_EPOCHS 8
       set_default TORCH_FINE_LR_SCALE 0.20
       set_default TORCH_TAIL_LR_SCALE 0.07
       ;;
     continuation)
-      set_default N_TRIALS 6
-      set_default CV_INITIAL_TRAIN_ROWS 260000
-      set_default CV_VAL_ROWS 60000
-      set_default CV_STEP_ROWS 120000
-      set_default CV_MAX_TRAIN_ROWS 450000
+      set_default N_TRIALS 32
+      set_default CV_INITIAL_TRAIN_ROWS 300000
+      set_default CV_VAL_ROWS 100000
+      set_default CV_STEP_ROWS 100000
+      set_default CV_MAX_TRAIN_ROWS 500000
       set_default CV_MIN_FOLDS 3
-      set_default CV_MAX_FOLDS 4
       set_default MAX_LOADED_FEATURES 128
       set_default TOP_FEATURE_MIN 24
       set_default TOP_FEATURE_MAX 96
       set_default WINDOW_MIN 16
       set_default WINDOW_MAX 28
-      set_default EPOCHS 20
+      set_default EPOCHS 32
       set_default BATCH_SIZE 256
       set_default HIDDEN_SIZE 64
       set_default NUM_LAYERS 2
@@ -183,27 +180,26 @@ apply_profile_defaults() {
       set_default HARD_NEGATIVE_RADIUS_MAX 4
       set_default HARD_NEGATIVE_MULTIPLIER_MIN 1.20
       set_default HARD_NEGATIVE_MULTIPLIER_MAX 2.00
-      set_default TORCH_WARMUP_EPOCHS 3
-      set_default TORCH_MAIN_EPOCHS 9
-      set_default TORCH_FINE_EPOCHS 5
-      set_default TORCH_TAIL_EPOCHS 3
+      set_default TORCH_WARMUP_EPOCHS 4
+      set_default TORCH_MAIN_EPOCHS 16
+      set_default TORCH_FINE_EPOCHS 8
+      set_default TORCH_TAIL_EPOCHS 4
       set_default TORCH_FINE_LR_SCALE 0.25
       set_default TORCH_TAIL_LR_SCALE 0.10
       ;;
     ote)
-      set_default N_TRIALS 8
-      set_default CV_INITIAL_TRAIN_ROWS 320000
-      set_default CV_VAL_ROWS 80000
-      set_default CV_STEP_ROWS 140000
-      set_default CV_MAX_TRAIN_ROWS 500000
+      set_default N_TRIALS 40
+      set_default CV_INITIAL_TRAIN_ROWS 400000
+      set_default CV_VAL_ROWS 120000
+      set_default CV_STEP_ROWS 120000
+      set_default CV_MAX_TRAIN_ROWS 700000
       set_default CV_MIN_FOLDS 3
-      set_default CV_MAX_FOLDS 4
       set_default MAX_LOADED_FEATURES 128
       set_default TOP_FEATURE_MIN 24
       set_default TOP_FEATURE_MAX 96
       set_default WINDOW_MIN 16
       set_default WINDOW_MAX 32
-      set_default EPOCHS 24
+      set_default EPOCHS 40
       set_default BATCH_SIZE 256
       set_default HIDDEN_SIZE 64
       set_default NUM_LAYERS 3
@@ -224,26 +220,25 @@ apply_profile_defaults() {
       set_default HARD_NEGATIVE_MULTIPLIER_MIN 1.00
       set_default HARD_NEGATIVE_MULTIPLIER_MAX 2.50
       set_default TORCH_WARMUP_EPOCHS 4
-      set_default TORCH_MAIN_EPOCHS 10
-      set_default TORCH_FINE_EPOCHS 6
-      set_default TORCH_TAIL_EPOCHS 4
+      set_default TORCH_MAIN_EPOCHS 18
+      set_default TORCH_FINE_EPOCHS 10
+      set_default TORCH_TAIL_EPOCHS 8
       set_default TORCH_FINE_LR_SCALE 0.35
       set_default TORCH_TAIL_LR_SCALE 0.10
       ;;
     balanced)
-      set_default N_TRIALS 6
-      set_default CV_INITIAL_TRAIN_ROWS 280000
-      set_default CV_VAL_ROWS 60000
-      set_default CV_STEP_ROWS 120000
-      set_default CV_MAX_TRAIN_ROWS 450000
+      set_default N_TRIALS 32
+      set_default CV_INITIAL_TRAIN_ROWS 320000
+      set_default CV_VAL_ROWS 100000
+      set_default CV_STEP_ROWS 100000
+      set_default CV_MAX_TRAIN_ROWS 600000
       set_default CV_MIN_FOLDS 3
-      set_default CV_MAX_FOLDS 4
       set_default MAX_LOADED_FEATURES 96
       set_default TOP_FEATURE_MIN 24
       set_default TOP_FEATURE_MAX 96
       set_default WINDOW_MIN 16
       set_default WINDOW_MAX 32
-      set_default EPOCHS 20
+      set_default EPOCHS 32
       set_default BATCH_SIZE 256
       set_default HIDDEN_SIZE 64
       set_default NUM_LAYERS 2
@@ -263,10 +258,10 @@ apply_profile_defaults() {
       set_default HARD_NEGATIVE_RADIUS_MAX 4
       set_default HARD_NEGATIVE_MULTIPLIER_MIN 1.10
       set_default HARD_NEGATIVE_MULTIPLIER_MAX 2.20
-      set_default TORCH_WARMUP_EPOCHS 3
-      set_default TORCH_MAIN_EPOCHS 9
-      set_default TORCH_FINE_EPOCHS 5
-      set_default TORCH_TAIL_EPOCHS 3
+      set_default TORCH_WARMUP_EPOCHS 4
+      set_default TORCH_MAIN_EPOCHS 16
+      set_default TORCH_FINE_EPOCHS 8
+      set_default TORCH_TAIL_EPOCHS 4
       set_default TORCH_FINE_LR_SCALE 0.25
       set_default TORCH_TAIL_LR_SCALE 0.10
       ;;
@@ -358,7 +353,7 @@ print_runtime_summary() {
   echo "Torch AMP enabled: $USE_AMP"
   echo "Torch loader workers: train=$TORCH_NUM_WORKERS eval=$TORCH_EVAL_NUM_WORKERS prefetch=$TORCH_PREFETCH_FACTOR persistent=$TORCH_PERSISTENT_WORKERS"
   echo "Trials: $N_TRIALS"
-  echo "CV rows: train=$CV_INITIAL_TRAIN_ROWS val=$CV_VAL_ROWS step=$CV_STEP_ROWS cap=$CV_MAX_TRAIN_ROWS folds_max=$CV_MAX_FOLDS"
+  echo "CV rows: train=$CV_INITIAL_TRAIN_ROWS val=$CV_VAL_ROWS step=$CV_STEP_ROWS cap=$CV_MAX_TRAIN_ROWS"
   echo "Features: max=$MAX_LOADED_FEATURES top_min=$TOP_FEATURE_MIN top_max=$TOP_FEATURE_MAX"
   echo "Window search: min=$WINDOW_MIN max=$WINDOW_MAX"
   echo "Epoch schedule: total=$EPOCHS warmup=$TORCH_WARMUP_EPOCHS main=$TORCH_MAIN_EPOCHS fine=$TORCH_FINE_EPOCHS tail=$TORCH_TAIL_EPOCHS"
@@ -397,7 +392,6 @@ run_training() {
     --cv-step-rows "$CV_STEP_ROWS"
     --cv-max-train-rows "$CV_MAX_TRAIN_ROWS"
     --cv-min-folds "$CV_MIN_FOLDS"
-    --cv-max-folds "$CV_MAX_FOLDS"
     --max-loaded-features "$MAX_LOADED_FEATURES"
     --top-feature-min "$TOP_FEATURE_MIN"
     --top-feature-max "$TOP_FEATURE_MAX"

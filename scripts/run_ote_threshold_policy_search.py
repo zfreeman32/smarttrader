@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Sequence
@@ -13,7 +14,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from model_testing.evaluation_costs import (
+    DEFAULT_SPREAD_COST_MODE,
+    SUPPORTED_SPREAD_COST_MODES,
+    describe_evaluation_cost_config,
+    resolve_evaluation_cost_config,
+)
 from model_testing.ote_abstain_policy import HardAbstainConfig, apply_abstain_policy
+from model_testing.policy_selection import select_policy_variant
 from model_testing.ote_prediction_joiner import load_source_frame
 from model_testing.ote_regime_slices import resolve_probability_column
 from model_testing.ote_threshold_policy import (
@@ -23,6 +31,11 @@ from model_testing.ote_threshold_policy import (
     search_thresholds_by_composite_regime,
 )
 from models.ote_registry_loader import OTEModelRecord, load_ote_model_registry
+from scripts.evaluation_contracts import (
+    DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
+    PROMOTION_QUALITY_MODE,
+    build_evaluation_contract,
+)
 from scripts.ote_targeted_filter_presets import (
     TARGETED_FILTER_PRESETS,
     build_targeted_abstain_config,
@@ -42,13 +55,30 @@ def run_threshold_policy_search(
     min_positive_events: int = 50,
     min_events_per_month: float = 3.0,
     min_trades_per_week: float = 3.0,
+    instrument: str = "fx",
+    spread_cost_mode: str = DEFAULT_SPREAD_COST_MODE,
+    fixed_slippage_units_per_trade: float | None = None,
+    commission_units_per_trade: float | None = None,
     targeted_filter_preset: str | None = None,
     write_policy_decisions: bool = False,
     write_registry_policies: bool = False,
+    evaluation_contract_mode: str = PROMOTION_QUALITY_MODE,
+    promotion_min_trades_per_week_floor: float = DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
 ) -> Dict[str, object]:
     regime_report_root = Path(regime_report_root)
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
+    cost_config = resolve_evaluation_cost_config(
+        instrument,
+        spread_cost_mode=spread_cost_mode,
+        fixed_slippage_units_per_trade=fixed_slippage_units_per_trade,
+        commission_units_per_trade=commission_units_per_trade,
+    )
+    evaluation_contract = build_evaluation_contract(
+        evaluation_contract_mode=evaluation_contract_mode,
+        min_trades_per_week=min_trades_per_week,
+        promotion_min_trades_per_week_floor=promotion_min_trades_per_week_floor,
+    )
 
     registry = load_ote_model_registry(registry_path)
     models = _resolve_models(
@@ -76,12 +106,16 @@ def run_threshold_policy_search(
         test_frame = pd.read_csv(test_path)
         training_summary = _load_training_summary(model.resolve_artifact_path())
         probability_column = resolve_probability_column(oof_frame, dataset_split="oof")
+        default_threshold = _resolve_threshold(model, training_summary)
         config = ThresholdSearchConfig(
             probability_column=probability_column,
-            global_threshold=_resolve_threshold(model, training_summary),
+            global_threshold=default_threshold,
+            instrument=cost_config.instrument,
+            unit_label=cost_config.unit_label,
+            spread_cost_mode=cost_config.spread_cost_mode,
             threshold_grid=tuple(threshold_grid) if threshold_grid is not None else ThresholdSearchConfig(
                 probability_column=probability_column,
-                global_threshold=_resolve_threshold(model, training_summary),
+                global_threshold=default_threshold,
             ).threshold_grid,
             event_tolerance_bars=_resolve_label_assumption(training_summary, "event_tolerance_bars", default=2),
             event_cooldown_bars=_resolve_label_assumption(training_summary, "event_cooldown_bars", default=4),
@@ -92,6 +126,10 @@ def run_threshold_policy_search(
                 "label_max_holding_bars",
                 default=120,
             ),
+            pip_size=cost_config.price_increment,
+            fixed_slippage_pips_per_trade=cost_config.fixed_slippage_units_per_trade,
+            commission_pips_per_trade=cost_config.commission_units_per_trade,
+            session_spread_pips=cost_config.session_spread_units,
         )
         market_frame = _load_policy_market_frame(model.resolve_artifact_path())
         oof_frame = attach_forward_trade_outcomes(
@@ -115,6 +153,8 @@ def run_threshold_policy_search(
         policy_table.insert(0, "model_id", model.model_id)
         policy_table.insert(1, "direction", model.direction)
         policy_table.insert(2, "backend", model.backend)
+        policy_table.insert(3, "instrument", cost_config.instrument)
+        policy_table.insert(4, "unit_label", cost_config.unit_label)
 
         abstain_config = build_targeted_abstain_config(
             model,
@@ -131,9 +171,12 @@ def run_threshold_policy_search(
         evaluation.insert(0, "model_id", model.model_id)
         evaluation.insert(1, "direction", model.direction)
         evaluation.insert(2, "backend", model.backend)
+        evaluation.insert(3, "instrument", cost_config.instrument)
+        evaluation.insert(4, "unit_label", cost_config.unit_label)
         policy_selection = _select_qualified_policy(
             evaluation,
             min_trades_per_week=min_trades_per_week,
+            apply_to_base_policy_variants=abstain_config.apply_to_base_policy_variants,
         )
 
         model_output_dir = output_root / model.model_id
@@ -154,19 +197,9 @@ def run_threshold_policy_search(
             test_decisions = _build_policy_decisions_frame(
                 frame=test_frame,
                 policy_table=policy_table,
-                config=ThresholdSearchConfig(
+                config=replace(
+                    config,
                     probability_column=resolve_probability_column(test_frame, dataset_split="test"),
-                    global_threshold=config.global_threshold,
-                    composite_column=config.composite_column,
-                    target_column=config.target_column,
-                    year_column=config.year_column,
-                    datetime_column=config.datetime_column,
-                    position_column=config.position_column,
-                    threshold_grid=config.threshold_grid,
-                    event_tolerance_bars=config.event_tolerance_bars,
-                    event_cooldown_bars=config.event_cooldown_bars,
-                    min_positive_events=config.min_positive_events,
-                    min_events_per_month=config.min_events_per_month,
                 ),
                 abstain_config=abstain_config,
             )
@@ -186,15 +219,22 @@ def run_threshold_policy_search(
             for _, row in policy_table.iterrows()
             if pd.notna(row.get("threshold"))
         }
-        abstain_policy_metadata = _build_abstain_policy_metadata(
+        selected_policy_contract = _describe_selected_policy_contract(
             policy_selection=policy_selection,
             abstain_config=abstain_config,
         )
-        registry_updates[model.model_id] = {
-            "global_threshold": float(global_result["threshold"]),
-            "regime_thresholds": regime_threshold_map,
-            "abstain_policy": abstain_policy_metadata,
-        }
+        abstain_policy_metadata = _build_abstain_policy_metadata(
+            policy_selection=policy_selection,
+            abstain_config=abstain_config,
+            threshold_config=config,
+        )
+        registry_writeback_candidate = _build_registry_writeback_candidate(
+            policy_selection=policy_selection,
+            global_threshold=float(global_result["threshold"]),
+            regime_threshold_map=regime_threshold_map,
+            abstain_policy_metadata=abstain_policy_metadata,
+        )
+        registry_updates[model.model_id] = dict(registry_writeback_candidate)
         model_outputs.append(
             {
                 "model_id": model.model_id,
@@ -204,7 +244,10 @@ def run_threshold_policy_search(
                 "qualified_policy_names": list(policy_selection["qualified_policy_names"]),
                 "selected_policy_name": policy_selection["selected_policy_name"],
                 "selected_policy_metrics": policy_selection["selected_policy_metrics"],
+                "selected_policy_reason": policy_selection["selection_reason"],
+                "selected_policy_contract": selected_policy_contract,
                 "targeted_filters": describe_abstain_config(abstain_config),
+                "registry_writeback_candidate": registry_writeback_candidate,
                 "decision_outputs": decision_outputs,
             }
         )
@@ -227,6 +270,9 @@ def run_threshold_policy_search(
         "min_positive_events": int(min_positive_events),
         "min_events_per_month": float(min_events_per_month),
         "min_trades_per_week": float(min_trades_per_week),
+        "spread_cost_mode": cost_config.spread_cost_mode,
+        "evaluation_contract": dict(evaluation_contract),
+        "evaluation_costs": describe_evaluation_cost_config(cost_config),
         "targeted_filter_preset": targeted_filter_preset,
         "policy_table_path": str(policy_table_path),
         "policy_evaluation_path": str(evaluation_path),
@@ -293,6 +339,46 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-events-per-month", type=float, default=3.0)
     parser.add_argument("--min-trades-per-week", type=float, default=3.0)
     parser.add_argument(
+        "--evaluation-contract-mode",
+        choices=(PROMOTION_QUALITY_MODE, "research"),
+        default=PROMOTION_QUALITY_MODE,
+        help="Mark this run as promotion-quality or research-only for saved audit metadata.",
+    )
+    parser.add_argument(
+        "--promotion-min-trades-per-week-floor",
+        type=float,
+        default=DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
+        help="Minimum trades/week floor required for a run to remain promotion-quality eligible.",
+    )
+    parser.add_argument(
+        "--instrument",
+        type=str,
+        default="fx",
+        help="Evaluation economics profile: fx, es, or 6e.",
+    )
+    parser.add_argument(
+        "--spread-cost-mode",
+        choices=sorted(SUPPORTED_SPREAD_COST_MODES),
+        default=DEFAULT_SPREAD_COST_MODE,
+        help="How to price spread costs: auto, session_schedule, or feature_proxy.",
+    )
+    parser.add_argument(
+        "--fixed-slippage-units-per-trade",
+        "--fixed-slippage-pips-per-trade",
+        dest="fixed_slippage_units_per_trade",
+        type=float,
+        default=None,
+        help="Override fixed per-trade slippage in the evaluation unit for the chosen instrument.",
+    )
+    parser.add_argument(
+        "--commission-units-per-trade",
+        "--commission-pips-per-trade",
+        dest="commission_units_per_trade",
+        type=float,
+        default=None,
+        help="Override per-trade commission in the evaluation unit for the chosen instrument.",
+    )
+    parser.add_argument(
         "--targeted-filter-preset",
         choices=sorted(TARGETED_FILTER_PRESETS),
         default=None,
@@ -302,7 +388,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--write-registry-policies",
         action="store_true",
-        help="Write regime_thresholds and qualifying abstain-policy metadata back into the registry.",
+        help="Write selected-policy threshold metadata back into the registry. Research wrappers should usually leave this off.",
     )
     return parser
 
@@ -327,6 +413,12 @@ def main() -> None:
         min_positive_events=args.min_positive_events,
         min_events_per_month=args.min_events_per_month,
         min_trades_per_week=args.min_trades_per_week,
+        evaluation_contract_mode=args.evaluation_contract_mode,
+        promotion_min_trades_per_week_floor=args.promotion_min_trades_per_week_floor,
+        instrument=args.instrument,
+        spread_cost_mode=args.spread_cost_mode,
+        fixed_slippage_units_per_trade=args.fixed_slippage_units_per_trade,
+        commission_units_per_trade=args.commission_units_per_trade,
         targeted_filter_preset=args.targeted_filter_preset,
         write_policy_decisions=args.write_policy_decisions,
         write_registry_policies=args.write_registry_policies,
@@ -410,7 +502,7 @@ def _load_policy_market_frame(artifact_dir: Path) -> pd.DataFrame:
     prediction_path = _resolve_prediction_path_for_source_lookup(artifact_dir)
     return load_source_frame(
         prediction_path=prediction_path,
-        source_columns=("close", "approx_spread"),
+        source_columns=("datetime", "close", "approx_spread"),
     )
 
 
@@ -428,6 +520,7 @@ def _select_qualified_policy(
     evaluation: pd.DataFrame,
     *,
     min_trades_per_week: float,
+    apply_to_base_policy_variants: bool = False,
 ) -> Dict[str, object]:
     test_rows = evaluation.loc[evaluation["dataset_split"] == "test"].copy()
     if test_rows.empty:
@@ -435,50 +528,23 @@ def _select_qualified_policy(
             "qualified_policy_names": [],
             "selected_policy_name": None,
             "selected_policy_metrics": {},
+            "selection_reason": "missing_test_rows",
         }
 
-    baseline = test_rows.loc[test_rows["policy_name"] == "global_threshold"]
-    if baseline.empty:
-        raise ValueError("Policy evaluation is missing the global_threshold test row.")
-    baseline_row = baseline.iloc[0]
-
-    qualified_rows = test_rows.loc[
-        (test_rows["policy_name"] != "global_threshold")
-        & (test_rows["event_f05"] > float(baseline_row["event_f05"]))
-        & (
-            test_rows["post_cost_expectancy_pips"]
-            > float(baseline_row["post_cost_expectancy_pips"])
-        )
-        & (test_rows["trades_per_week"] >= float(min_trades_per_week))
-    ].copy()
-
-    selected_policy_name = None
-    selected_policy_metrics: Dict[str, object] = {}
-    if not qualified_rows.empty:
-        qualified_rows = qualified_rows.sort_values(
-            ["post_cost_expectancy_pips", "event_f05", "net_pnl_pips"],
-            ascending=[False, False, False],
-        ).reset_index(drop=True)
-        selected = qualified_rows.iloc[0]
-        selected_policy_name = str(selected["policy_name"])
-        selected_policy_metrics = {
-            "event_f05": float(selected["event_f05"]),
-            "post_cost_expectancy_pips": float(selected["post_cost_expectancy_pips"]),
-            "net_pnl_pips": float(selected["net_pnl_pips"]),
-            "trades_per_week": float(selected["trades_per_week"]),
-        }
-
-    return {
-        "qualified_policy_names": qualified_rows["policy_name"].astype(str).tolist(),
-        "selected_policy_name": selected_policy_name,
-        "selected_policy_metrics": selected_policy_metrics,
-    }
+    return select_policy_variant(
+        evaluation,
+        split_name="test",
+        reference_split_name="oof",
+        min_trades_per_week=min_trades_per_week,
+        apply_to_base_policy_variants=apply_to_base_policy_variants,
+    )
 
 
 def _build_abstain_policy_metadata(
     *,
     policy_selection: Dict[str, object],
     abstain_config: HardAbstainConfig,
+    threshold_config: ThresholdSearchConfig,
 ) -> Dict[str, object] | None:
     selected_policy_name = policy_selection.get("selected_policy_name")
     if selected_policy_name not in {
@@ -493,11 +559,18 @@ def _build_abstain_policy_metadata(
 
     return {
         "policy_name": str(selected_policy_name),
+        "instrument": str(threshold_config.instrument),
+        "unit_label": str(threshold_config.unit_label),
+        "price_increment": float(threshold_config.pip_size),
         "cooldown_bars": int(abstain_config.cooldown_bars),
         "abstain_high_stress": bool(abstain_config.abstain_high_stress),
         "abstain_off_hours": bool(abstain_config.abstain_off_hours),
         "minimum_expected_move_to_spread": float(abstain_config.minimum_expected_move_to_spread),
         "session_spread_pips": {
+            str(key): float(value)
+            for key, value in dict(abstain_config.session_spread_pips).items()
+        },
+        "session_spread_units": {
             str(key): float(value)
             for key, value in dict(abstain_config.session_spread_pips).items()
         },
@@ -519,10 +592,63 @@ def _build_abstain_policy_metadata(
             str(key): float(value)
             for key, value in dict(abstain_config.expected_move_by_regime).items()
         },
-        "selection_rule": "beats global_threshold on test event_f05 and post_cost_expectancy_pips while maintaining min_trades_per_week",
+        "selection_rule": (
+            "prefers policies that improve test post_cost_expectancy_pips, satisfy "
+            "min_trades_per_week, stay within event_f05 tolerance, remain robust on oof, "
+            "and otherwise retain the simpler hard-pruned/global base contract"
+        ),
         "test_metrics": dict(policy_selection.get("selected_policy_metrics", {})),
     }
 
+
+def _describe_selected_policy_contract(
+    *,
+    policy_selection: Dict[str, object],
+    abstain_config: HardAbstainConfig,
+) -> Dict[str, object]:
+    selected_policy_name = str(policy_selection.get("selected_policy_name") or "")
+    threshold_mode = "regime_threshold" if selected_policy_name.startswith("regime_threshold") else "global_threshold"
+    uses_named_abstain_variant = selected_policy_name.endswith("_plus_abstain")
+    base_policy_is_hard_pruned = (
+        selected_policy_name in {"global_threshold", "regime_threshold"}
+        and bool(abstain_config.apply_to_base_policy_variants)
+    )
+    uses_targeted_filters = (
+        uses_named_abstain_variant
+        or base_policy_is_hard_pruned
+        or bool(abstain_config.abstain_composite_regimes)
+        or bool(abstain_config.abstain_session_regimes)
+        or bool(abstain_config.abstain_composite_session_pairs)
+        or bool(abstain_config.abstain_composite_stress_pairs)
+        or abstain_config.minimum_probability_quantile is not None
+    )
+    return {
+        "policy_name": selected_policy_name,
+        "threshold_mode": threshold_mode,
+        "uses_named_abstain_variant": uses_named_abstain_variant,
+        "base_policy_is_hard_pruned": base_policy_is_hard_pruned,
+        "uses_targeted_filters": uses_targeted_filters,
+    }
+
+
+def _build_registry_writeback_candidate(
+    *,
+    policy_selection: Dict[str, object],
+    global_threshold: float,
+    regime_threshold_map: Dict[str, float],
+    abstain_policy_metadata: Dict[str, object] | None,
+) -> Dict[str, object]:
+    selected_policy_name = str(policy_selection.get("selected_policy_name") or "")
+    selected_regime_thresholds = (
+        dict(regime_threshold_map)
+        if selected_policy_name.startswith("regime_threshold")
+        else None
+    )
+    return {
+        "global_threshold": float(global_threshold),
+        "regime_thresholds": selected_regime_thresholds,
+        "abstain_policy": abstain_policy_metadata,
+    }
 
 def _write_registry_policy_updates(
     *,

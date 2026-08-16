@@ -15,6 +15,102 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
         },
         "short_ote_candidate_tcn_v2": {},
     },
+    "ict_es_primary_prune_v1": {
+        "ict_long_continuation_xgb_v1": {
+            "abstain_session_regimes": ("london", "new_york"),
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_down_medium",
+                "strong_up_medium",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_long_meta_xgb_v1": {
+            "abstain_composite_regimes": ("strong_down_high",),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "strong_down_low",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_continuation_xgb_v1": {
+            "abstain_session_regimes": ("asia", "off_hours"),
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "strong_down_high",
+                "strong_down_low",
+                "strong_down_medium",
+                "strong_up_medium",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_meta_xgb_v1": {
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "ranging_medium",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_es_primary_prune_v2": {
+        "ict_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": ("ranging_low",),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "ranging_medium",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_es_primary_prune_v3": {
+        "ict_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "strong_down_low",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "ranging_medium",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_es_primary_prune_v4_long_reversal_surgical": {
+        "ict_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "strong_down_low",
+                "strong_up_low",
+            ),
+            "abstain_composite_session_pairs": (("ranging_high", "new_york"),),
+            "apply_to_base_policy_variants": True,
+        },
+        "ict_short_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_low",
+                "ranging_medium",
+                "strong_up_low",
+            ),
+            "apply_to_base_policy_variants": True,
+        },
+    },
     "long_breakout_regime_prune_v1": {
         "long_breakout_tcn_champion": {
             "abstain_composite_regimes": (
@@ -140,6 +236,196 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
             "apply_to_base_policy_variants": True,
         }
     },
+    "frvp_long_continuation_xgb_london_drawdown_prune_v1": {
+        "frvp_long_continuation_xgb_v1": {
+            "abstain_composite_session_pairs": (
+                ("strong_up_medium", "london"),
+                ("strong_up_high", "london"),
+                ("strong_down_medium", "london"),
+                ("ranging_low", "london"),
+                ("ranging_medium", "london"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_continuation_xgb_overlap_composite_prune_v2": {
+        "frvp_long_continuation_xgb_v1": {
+            "abstain_session_regimes": ("overlap",),
+            "abstain_composite_regimes": (
+                "strong_down_medium",
+                "strong_up_high",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_medium", "london"),
+                ("strong_up_high", "london"),
+                ("strong_down_medium", "london"),
+                ("ranging_low", "london"),
+                ("ranging_medium", "london"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_continuation_xgb_overlap_composite_prune_v3": {
+        "frvp_long_continuation_xgb_v1": {
+            "abstain_session_regimes": ("overlap",),
+            "abstain_composite_regimes": (
+                "strong_down_medium",
+                "strong_up_high",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_medium", "london"),
+                ("strong_up_high", "london"),
+                ("strong_down_medium", "london"),
+                ("ranging_low", "london"),
+                ("ranging_medium", "london"),
+                ("ranging_medium", "new_york"),
+                ("strong_up_low", "asia"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_meta_xgb_composite_prune_v1": {
+        "frvp_long_meta_xgb_v1": {
+            "abstain_composite_regimes": (
+                "strong_down_medium",
+                "strong_up_medium",
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_meta_xgb_composite_prune_v2": {
+        "frvp_long_meta_xgb_v1": {
+            "abstain_composite_regimes": (
+                "strong_down_medium",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "overlap"),
+                ("strong_down_high", "new_york"),
+                ("ranging_high", "new_york"),
+                ("strong_up_low", "asia"),
+                ("strong_up_low", "london"),
+                ("ranging_low", "london"),
+                ("ranging_medium", "new_york"),
+                ("ranging_medium", "asia"),
+                ("strong_down_low", "london"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_meta_xgb_composite_prune_v3": {
+        "frvp_long_meta_xgb_v1": {
+            "abstain_composite_regimes": (
+                "strong_down_medium",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "overlap"),
+                ("strong_down_high", "new_york"),
+                ("ranging_high", "new_york"),
+                ("strong_up_low", "asia"),
+                ("strong_up_low", "london"),
+                ("ranging_low", "london"),
+                ("ranging_medium", "new_york"),
+                ("ranging_medium", "asia"),
+                ("strong_down_low", "london"),
+                ("ranging_medium", "london"),
+                ("strong_up_high", "london"),
+                ("strong_down_high", "overlap"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_reversal_xgb_composite_prune_v1": {
+        "frvp_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_reversal_xgb_composite_prune_v2": {
+        "frvp_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "new_york"),
+                ("strong_down_high", "new_york"),
+                ("ranging_low", "london"),
+                ("strong_down_low", "asia"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_reversal_xgb_composite_prune_v3": {
+        "frvp_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "new_york"),
+                ("strong_down_high", "new_york"),
+                ("ranging_low", "london"),
+                ("strong_down_low", "asia"),
+                ("ranging_medium", "asia"),
+                ("ranging_medium", "london"),
+                ("strong_down_low", "london"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_reversal_xgb_recent_regime_prune_v1": {
+        "frvp_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "new_york"),
+                ("strong_down_high", "new_york"),
+                ("ranging_low", "london"),
+                ("strong_down_low", "asia"),
+                ("ranging_medium", "asia"),
+                ("ranging_medium", "london"),
+                ("strong_down_low", "london"),
+                ("strong_down_medium", "asia"),
+                ("ranging_low", "asia"),
+                ("ranging_medium", "new_york"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_reversal_xgb_recent_regime_prune_v2": {
+        "frvp_long_reversal_xgb_v1": {
+            "abstain_composite_regimes": (
+                "ranging_high",
+                "strong_up_low",
+                "strong_up_medium",
+            ),
+            "abstain_composite_session_pairs": (
+                ("strong_up_high", "new_york"),
+                ("strong_down_high", "new_york"),
+                ("ranging_low", "london"),
+                ("strong_down_low", "asia"),
+                ("ranging_medium", "asia"),
+                ("ranging_medium", "london"),
+                ("strong_down_low", "london"),
+                ("strong_down_medium", "asia"),
+                ("ranging_low", "asia"),
+                ("ranging_medium", "new_york"),
+                ("strong_down_high", "overlap"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
 }
 
 
@@ -163,18 +449,14 @@ def build_targeted_abstain_config(
 ) -> HardAbstainConfig:
     metadata = model.abstain_policy or {}
     targeted_filters = resolve_targeted_filters(model.model_id, targeted_filter_preset)
-    session_spread_pips = metadata.get("session_spread_pips")
+    session_spread_pips = _resolve_session_spread_units(metadata, threshold_config)
     expected_move_by_regime = metadata.get("expected_move_by_regime")
     return HardAbstainConfig(
         abstain_high_stress=bool(metadata.get("abstain_high_stress", True)),
         abstain_off_hours=bool(metadata.get("abstain_off_hours", True)),
         cooldown_bars=int(metadata.get("cooldown_bars", threshold_config.event_cooldown_bars)),
         minimum_expected_move_to_spread=float(metadata.get("minimum_expected_move_to_spread", 2.0)),
-        session_spread_pips=(
-            {str(key): float(value) for key, value in dict(session_spread_pips).items()}
-            if isinstance(session_spread_pips, dict)
-            else threshold_config.session_spread_pips
-        ),
+        session_spread_pips=session_spread_pips,
         expected_move_by_regime=(
             {str(key): float(value) for key, value in dict(expected_move_by_regime).items()}
             if isinstance(expected_move_by_regime, dict)
@@ -260,3 +542,37 @@ def _coerce_pair_filters(values: object) -> tuple[tuple[str, str], ...]:
             continue
         normalized_pairs.append((str(value[0]), str(value[1])))
     return tuple(normalized_pairs)
+
+
+def _resolve_session_spread_units(
+    metadata: Dict[str, object],
+    threshold_config: ThresholdSearchConfig,
+) -> dict[str, float]:
+    session_spread_pips = metadata.get("session_spread_pips")
+    if not isinstance(session_spread_pips, dict):
+        return {
+            str(key): float(value)
+            for key, value in dict(threshold_config.session_spread_pips).items()
+        }
+
+    metadata_instrument = str(metadata.get("instrument", "")).strip().lower()
+    metadata_unit_label = str(metadata.get("unit_label", "")).strip().lower()
+    threshold_instrument = str(threshold_config.instrument).strip().lower()
+    threshold_unit_label = str(threshold_config.unit_label).strip().lower()
+
+    is_legacy_fx_metadata = not metadata_instrument and not metadata_unit_label and threshold_instrument == "fx"
+    is_matching_metadata = (
+        metadata_instrument == threshold_instrument
+        and metadata_unit_label == threshold_unit_label
+    )
+
+    if not is_legacy_fx_metadata and not is_matching_metadata:
+        return {
+            str(key): float(value)
+            for key, value in dict(threshold_config.session_spread_pips).items()
+        }
+
+    return {
+        str(key): float(value)
+        for key, value in dict(session_spread_pips).items()
+    }
