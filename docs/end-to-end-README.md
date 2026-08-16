@@ -393,7 +393,7 @@ Your existing champion-focused run used:
 - `min_positive_events = 50`
 - `min_events_per_month = 3.0`
 - `min_trades_per_week = 3.0`
-- `--write-registry-policies`
+- optional: `--write-registry-policies` only after manual review of the saved threshold/backtest artifacts
 
 Command in that style:
 
@@ -405,15 +405,14 @@ python scripts/run_ote_threshold_policy_search.py ^
   --include-role champion ^
   --min-positive-events 50 ^
   --min-events-per-month 3.0 ^
-  --min-trades-per-week 3.0 ^
-  --write-registry-policies
+  --min-trades-per-week 3.0
 ```
 
 What this does:
 
 - searches composite-regime thresholds
 - compares `global_threshold`, `regime_threshold`, and abstain-aware variants
-- can write `global_threshold`, `regime_thresholds`, and `abstain_policy` metadata back into the registry
+- writes reviewable threshold/backtest artifacts first; registry write-back is now a deliberate follow-up step rather than the default research flow
 
 Primary outputs:
 
@@ -436,6 +435,8 @@ Your existing `full_run_v2` backtest used:
 - `min_positive_events = 50`
 - `min_events_per_month = 3.0`
 - `min_trades_per_week = 3.0`
+- `maximum_drawdown_pct = 12.0`
+- `drawdown_starting_balance_units = 10000.0`
 - `fixed_slippage_pips_per_trade = 0.3`
 - `commission_pips_per_trade = 0.35`
 - `--targeted-filter-preset full_run_v2`
@@ -455,10 +456,14 @@ python scripts/run_ote_policy_backtest.py ^
   --min-positive-events 50 ^
   --min-events-per-month 3.0 ^
   --min-trades-per-week 3.0 ^
+  --maximum-drawdown-pct 12.0 ^
+  --drawdown-starting-balance-units 10000 ^
   --fixed-slippage-pips-per-trade 0.3 ^
   --commission-pips-per-trade 0.35 ^
   --targeted-filter-preset full_run_v2
 ```
+
+Walk-forward acceptance now uses account-equity `max_drawdown_pct_below_threshold`, computed from cumulative strategy performance plus `--drawdown-starting-balance-units`. The drawdown gate is advisory risk context rather than a hard promotion veto, so downstream registry/bundle decisions should preserve both the accepted flag and the explicit drawdown readout.
 
 Primary outputs:
 

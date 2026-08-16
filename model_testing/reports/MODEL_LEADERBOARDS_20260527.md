@@ -1,5 +1,7 @@
 # Model Leaderboards
 
+> Historical OTE snapshot. The current cross-family update is `MODEL_LEADERBOARDS_20260730.md`.
+
 Generated on `2026-05-27` from saved artifacts in `models/**/cv_fold_manifest.json` and `model_testing/reports/ote_policy_backtests/**/summary.json`.
 
 ## Ranking Method

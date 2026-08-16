@@ -663,7 +663,17 @@ A promotion gate of DSR > 0.5 (annualized) is reasonable for an intraday FX stra
 
 After training a FRVP meta-labeler, re-run training with **randomly shuffled meta-labels** (preserving the event timestamps and features). Compare OOF AUC-PR between the real model and the shuffled model. If the real model's AUC-PR is within 2 standard deviations of the shuffled model's AUC-PR across 10 shuffles, the features contain no detectable signal. This is a strict null-hypothesis test.
 
-Include this test in the regime-slice report runner as a flag: `--run-placebo-test`.
+Run this as a separate reviewed step against the saved artifact with `scripts/run_ote_placebo_readout.py`, then archive the summary JSON beside the promotion package.
+
+Saved ES-primary reference record on 2026-07-17:
+
+```
+ote_venv\Scripts\python.exe scripts/run_ote_placebo_readout.py --real-artifact-dir models\frvp_es_primary_xgb_refresh_20260701\long_frvp_continuation --output-root model_testing\reports\frvp_placebo_readouts\frvp_long_continuation_xgb_v1_20260717 --num-shuffles 10
+```
+
+Archived result: `model_testing\reports\frvp_placebo_readouts\frvp_long_continuation_xgb_v1_20260717\placebo_readout_summary.json` recorded real OOF AP `0.7371` versus shuffled mean OOF AP `0.5002` (std `0.0059`) across `10` shuffles, for a placebo gap of `0.2368`; this passed the `> 0.03` promotion rule by a wide margin.
+
+Saved ES-primary promotion-package record on 2026-07-17: `model_testing\reports\frvp_promotion_packages\frvp_long_continuation_xgb_v1_20260717\promotion_package_summary.json` finalized the threshold-vs-prune readout for the long-continuation baseline. The package conclusion is that the saved `v3` branch is a hard-pruned `global_threshold` contract rather than a new regime-threshold winner: relative to the unpruned refresh baseline it cut trade count `1609 -> 524`, lifted expectancy `7.75 -> 13.72`, improved Sharpe `0.604 -> 1.226`, improved DSR `0.585 -> 1.061`, and reduced max drawdown `10200.85 -> 1540.10`. The July 17, 2026 rerun after the passing roll-shadow validation now records `package_status = finalized_without_human_same_contract_signoff` and `promotion_decision = pending_human_same_contract_signoff`, with paper-trading gate, placebo, roll audit, and roll-shadow validation all passing.
 
 ### 8.6 FRVP-Specific Leakage Traps
 
@@ -854,9 +864,10 @@ python scripts/run_ote_threshold_policy_search.py \
   --registry-path models/ote_model_registry.json \
   --output-root model_testing/reports/frvp_threshold_policies/v1 \
   --min-positive-events 50 \
-  --min-events-per-month 3.0 \
-  --write-registry-policies
+  --min-events-per-month 3.0
 ```
+
+Registry write-back is now a separate reviewed step. The default research rerun path should inspect the saved threshold and walk-forward artifacts first, then opt into `--write-registry-policies` only if the selected policy contract is the one you actually want persisted.
 
 **Validation gate:** Verify that reversal models have higher precision in `ranging` regimes than `trending` regimes. Verify that continuation models have higher precision in `trending` regimes. If this directional relationship does not hold, the FRVP setup definitions or the regime labeler may have a calibration problem.
 
@@ -876,17 +887,24 @@ python scripts/run_ote_policy_backtest.py \
   --test-window-months 3 \
   --rolling-step-months 3 \
   --min-folds 8 \
+  --maximum-drawdown-pct 12.0 \
+  --drawdown-starting-balance-units 10000 \
   --fixed-slippage-pips-per-trade 0.3 \
   --commission-pips-per-trade 0.35
 ```
 
-**Promotion gates (all 6 must pass before live deployment):**
+Walk-forward acceptance now uses account-equity `max_drawdown_pct_below_threshold`, computed from cumulative strategy performance plus `--drawdown-starting-balance-units`. Profit-giveback % remains diagnostic-only, and the drawdown gate is advisory rather than a hard promotion veto.
+
+**Promotion gates (all 7 must pass before live deployment):**
 1. OOF AUC-PR > 0.60 (substantially above base rate)
 2. Walk-forward Sharpe (after frictions) > 0.8 annualized
 3. Walk-forward max drawdown < 12%
 4. DSR > 0.3
 5. Regime-slice: reversal models win in ≥ 2 of the 3 range/low-vol regime buckets
 6. Placebo test: real model AUC-PR exceeds shuffled-label mean by > 3%
+7. Roll-aware embargo / roll audit clean: zero usable roll-span events, fold gaps satisfy the extra roll embargo, and continuity tests pass on the saved source history.
+
+Saved ES-primary reference record on 2026-07-17: `model_testing\reports\frvp_roll_audit_packages\frvp_long_continuation_xgb_v1_20260717\roll_audit_package_summary.json` passed gate 7 with `49` excluded roll-span events, `0` usable roll-span events, `11` roll-crossing fold boundaries that all still cleared the `576`-bar minimum, a minimum observed fold gap of `10238` bars (`1290.75` hours), and `39` focused pytest checks passing.
 
 ---
 
@@ -900,6 +918,8 @@ python scripts/run_ote_policy_backtest.py \
 3. Update `ote_live/features/incremental_engine.py` to compute FRVP features incrementally at each bar (the profile builder maintains state across bars; the setup detector runs at each new bar close).
 4. Update `ote_live/models/loaders.py` to load FRVP meta-labeler models.
 5. Shadow-mode paper trading for minimum 4 weeks before considering promotion to `status="active"`.
+
+Saved ES-primary live-runtime reference record on 2026-07-17: `model_testing\reports\frvp_roll_shadow_validation\frvp_es_shadow_roll_20260717\roll_shadow_validation_summary.json` replayed the actual `ESM6 -> ESU6` roll boundary at `2026-06-17T00:00:00+00:00` after an `8000`-bar warmup. The final rerun now passes cleanly with `validation_passed = true`, `feature_parity_passed = true`, `health_error_count = 0`, `missing_live_feature_names = []`, `dashboard_state_contract_switch_recorded = true`, and `15` persisted shadow decisions. This removes the historical Phase 8 runtime blocker; the remaining live-integration work is human same-contract sign-off plus the still-manual IBKR front-month handoff in production operations.
 
 ---
 

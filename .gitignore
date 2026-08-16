@@ -34,3 +34,15 @@ ote_venv/
 
 tmp/
 *.sql
+logs/
+data/prepared/eurusd_1min_ote_full/
+*.json
+*.tgz
+*.sqlite3
+
+# Immutable ICT paper-signal lifecycle decision (2026-08-13).
+!models/ict_es_paper_signal_registry_20260813.json
+!ote_live/policy_artifacts/ict_es_paper_signal_20260813/**/*.json
+!ote_live/runtime_manifests/ict_es_paper_signal_20260813/**/*.json
+!model_testing/reports/ict_paper_signal_bundles/ict_es_paper_signal_20260813/*.json
+!ote_live/storage/migrations/0004_ict_paper_signal_confirmation_ledger.sql

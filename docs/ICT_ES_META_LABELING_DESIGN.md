@@ -2,6 +2,8 @@
 
 ## Design Paper: ICT-Driven Meta-Labeling Pipeline for ES 5-Minute Futures
 
+**Implementation update:** 2026-07-19
+
 This document is a repo-audit-based design for a new ES-first ICT / Smart Money Concepts meta-labeling pipeline. It is intentionally implementation-guiding, but it does not change code, training scripts, registries, or existing production behavior.
 
 Audit basis for this design included the current FRVP ES stack, the older EURUSD OTE stack, the generic feature/preprocessing/training/testing layers, and the current prototype ICT artifacts. Representative files reviewed include:
@@ -803,6 +805,12 @@ session_phase
 
 Recommended label design:
 
+- Taxonomy contract:
+  - `setup_type` = one concrete ICT setup pattern such as `sweep_reclaim` or `session_open_manipulation_post_ib`
+  - `setup_family` = the structural setup bucket, currently only `reversal` or `continuation`
+  - `trade_type` = the trainable branch / shadow-bundle branch, currently `reversal`, `continuation`, or pooled `meta`
+  - `label_family` = the on-disk label namespace, currently `ict_reversal`, `ict_continuation`, or `ict_meta`
+  - do not use bare `family` in new code or docs without prefixing whether it means `setup_family` or `trade_type`
 - Produce separate long/short and reversal/continuation labels.
 - Also produce pooled meta labels by direction.
 - Match FRVP helper-column conventions exactly so existing preprocessing can discover them.
@@ -1372,6 +1380,10 @@ Completed so far:
 - trained the first six ICT ES baseline XGBoost candidates and registered them in `models/ict_es_primary_model_registry_current.json`
 - produced training artifacts under `models/ict_es_primary_xgb_baseline_20260712_v2/<target>/`
 - generated threshold-policy outputs under `model_testing/reports/ict_threshold_policies/ict_es_primary_20260713T000016Z/`
+- reran the ICT threshold stack on 2026-07-18 under the explicit promotion-quality contract at `min_trades_per_week = 3.0`, with the refreshed report families saved under `model_testing/reports/ict_threshold_policies/ict_es_primary_20260718T002437Z/` plus the focused `...best_baseline`, `...best_prune_v1`, and `...best_prune_v2` subsets
+- tightened the threshold selector so alternate variants must now beat the baseline on post-cost expectancy, frequency, and split robustness; when no non-global variant clears that bar, the saved selection falls back cleanly to `selected_policy_name = global_threshold`
+- current July 18 selector result: every saved ICT threshold rerun still records `qualified_policy_names = []`, so the live lift is currently coming from the base model and/or the hard-pruned base policy rather than from a promoted alternate threshold contract
+- reran the same ICT threshold stack on 2026-07-19 with `min_trades_per_week = 2.0` and `min_trades_per_week = 0.0` using the saved regime slices. Both reruns still recorded `qualified_policy_names = []` and `selected_policy_name = global_threshold` for all six candidates, so relaxing the cadence floor did not create a better saved threshold contract.
 
 ### Phase 8: Walk-forward backtest (`complete` for the first policy-evaluation pass)
 
@@ -1384,6 +1396,13 @@ Completed so far:
 - ran the first July 13 ICT ES walk-forward report family under `model_testing/reports/ict_backtests/ict_es_primary_20260713T000016Z*/`
 - scored candidates on cost-aware post-threshold metrics including Sharpe, WFE, expectancy, and composite/session slices
 - preserved the acceptance-gate outputs needed for shadow-bundle selection
+- reran the ICT walk-forward stack on 2026-07-18 under the explicit promotion-quality contract with `requested_min_folds = effective_min_folds = 7`, `min_trades_per_week = 3.0`, and no auto-relaxed fold fallback; the current full-family report root is `model_testing/reports/ict_backtests/ict_es_primary_20260718T002437Z/`
+- current strict-contract read: `ict_long_meta_xgb_v1`, `ict_long_reversal_xgb_v1`, and `ict_short_reversal_xgb_v1` still pass the current individual-model backtest gate; `ict_short_meta_xgb_v1` still fails concentration, and both continuation families remain below promotion quality on economics and/or robustness
+- reran the same ICT walk-forward stack on 2026-07-19 at `min_trades_per_week = 2.0` and `0.0`, with reports saved under `model_testing/reports/ict_backtests/ict_es_primary_20260719_min2/` and `..._min0/`. Five of six branches were unchanged versus the July 18 strict baseline.
+- cadence-audit read: `ict_long_reversal_xgb_v1` was the only branch that moved under the looser cadence contracts. At `3/week` it stayed all-`global_threshold` with `1286` selected test trades, `+7865.1` ticks, Sharpe `1.927`, WFE `2.414`, and positive composite expectancy share `0.889`. At `2/week` and `0/week` it mixed `global_threshold` plus `global_threshold_plus_abstain` (`1075 + 147` selected test trades), which reduced the total to `1222` trades and weakened the branch to `+7241.7` ticks, Sharpe `1.779`, WFE `2.222`, and positive composite expectancy share `0.778`. The looser cadence contracts did not improve the roster.
+- updated readiness read after the cadence audit: `ict_long_reversal_xgb_v1` remains the strongest non-meta family candidate, but it is not the only current individual-model pass. `ict_long_meta_xgb_v1` and `ict_short_reversal_xgb_v1` still pass the current gate, `ict_short_meta_xgb_v1` still fails concentration, and both continuation families still fail on economics and/or robustness.
+- important scope note: this July 18 wrapper hardening removed the old promotion-quality fallback path, but it did not yet turn realized selected-policy cadence into a model-level or bundle-level acceptance gate; that later risk/acceptance refinement should wait until the candidate roster and promotion rules stop moving
+- cadence caveat remains active after the July 19 audit: the current wrapper still does not treat realized selected-policy cadence as a model-level acceptance veto, so low-frequency branches can still pass the individual-model gate if their profitability / robustness metrics clear the other thresholds.
 
 ### Phase 9: TCN sequence models (`not started`)
 
@@ -1412,7 +1431,7 @@ Completed so far:
 
 Completed so far:
 
-- added `scripts/build_ict_shadow_live_bundle.py`, which packages the six July 13 ICT family leaders, writes `live_policy.json` artifacts, and exports the `ote_live/runtime_manifests/ict_es_shadow_20260713/` direction manifests used by the dashboard/runtime stack
+- added `scripts/build_ict_shadow_live_bundle.py`, which packages the six July 13 ICT direction-plus-trade-type leaders, writes `live_policy.json` artifacts, and exports the `ote_live/runtime_manifests/ict_es_shadow_20260713/` direction manifests used by the dashboard/runtime stack
 - extended `ote_live/dashboard/view_registry.py` and `ote_live/scripts/run_live_dashboard.py` with a first-class `ICT` tab beside OTE and FRVP, including default registry/runtime-manifest paths, model ordering, and a dedicated `runtime_state` scope key of `ICT`
 - wired `ote_live/dashboard/view_state.py` and `ote_live/dashboard/charts.py` to persist and render ICT levels, zones, context, and recent setup markers using `ict/setups/detector.py`
 - added `ote_live/scripts/run_es_live_collector.py` so FRVP and ICT shadow models can share one IBKR ES ingestion loop and one live store instead of running duplicate ES collectors
@@ -1421,21 +1440,25 @@ Completed so far:
 ### 14.1 Next phases after the first real ICT pipeline run
 
 - Harden the shadow bundle through live observation before any promotion decision. The July 13 package is a shadow-evaluation bundle, not a production sign-off.
+- Defer bundle-level risk/acceptance packaging until the individual ICT leaders and the shared promotion rules stabilize. Meta models are useful family summaries, but they do not replace cross-model position sizing, overlap control, or bundle-level acceptance work.
 - Add an ICT orchestration entry point if a single-command retraining flow becomes necessary; the repo still does not have a polished one-shot ICT pipeline runner analogous to the older FRVP phase scripts.
-- Compare TCN/LSTM sequence variants against the current XGBoost baseline only after the shadow XGBoost family leaders have been pressure-tested.
+- Compare TCN/LSTM sequence variants against the current XGBoost baseline only after the shadow XGBoost trade-type leaders have been pressure-tested.
 - Revisit optional 1-minute execution/refinement features and deeper policy pruning once the live dashboard reveals which setups and regimes are actually recurring.
 
 ### 14.2 Items skipped, simplified, or worth double-checking before running the pipeline
 
 - The current Phase 4 labeler uses fixed integer bar horizons as the v1 baseline (`reversal_max_bars`, `session_open_reversal_max_bars`, `continuation_max_bars`). The full vol/session-aware horizon logic described in Section 7.4 is not implemented yet.
 - Continuation exits are still simplified. The current engine uses family-specific stop/target geometry plus timeout handling, not a fully developed structure/trailing-exit continuation model.
-- ICT label exclusions are still narrower than the full paper. Warmup, missing-next-open, incomplete horizon, invalid ATR/geometry, ambiguous 5-minute bars without resolvable 1-minute ordering, and roll-spanning `contract_id` windows are handled. Macro windows, half-days, lunch-window handling, and thin-session exclusions still need to be added.
+- ICT label exclusions are no longer limited to the original v1 subset. Macro windows, half-days, lunch-window handling, and thin-session exclusions are now implemented in code. The first refreshed Phase 3 rerun on July 23, 2026 showed that the original `thin_session_window` rule was far too aggressive on ES: it excluded `14776` of `15331` sampled events and collapsed the usable set to `28` rows. A same-day refinement narrowed thin-session handling to an entry-anchored close-tail check instead of a blanket overnight veto, and the completed full refined rerun on July 23, 2026 confirmed the recovered contract with `14804` usable events and `527` remaining exclusions. Treat thin-session handling as calibrated enough to unblock downstream research rather than as an open design gap.
 - One-minute data is not optional in practice if you want to preserve ambiguous events. The current engine behaves correctly by excluding ambiguous 5-minute windows when aligned 1-minute data is missing, but that means event counts will shrink if the 1-minute coverage is incomplete.
-- The shared preprocessing defaults are not yet ICT-aware. `preprocessing/config.py`, synthetic target plumbing, and prepared-root orchestration still need explicit ICT target registration before the first full run.
+- The shared preprocessing path is now ICT-aware enough for the current tabular stack. `preprocessing/config.py`, synthetic target plumbing, and Phase 6 orchestration now register the ICT targets explicitly and can pass target-specific embargo geometry into the prepared-root split builder.
 - There is no full ICT pipeline script yet. Do not assume the presence of a single-command ICT analog to the FRVP training stack just because the detector and labeler components now exist.
-- Setup spacing and cooldowns are still heuristic constants. After the first full labeling pass on real data, revisit spacing using realized time-to-first-barrier and event-clustering diagnostics rather than keeping the initial guessed values.
-- The current label-quality and HTF-confluence logic is intentionally simple. Before training, inspect real event samples to confirm that `htf_context`, `stop_reference`, `target_reference`, and per-family barrier geometry are behaving sensibly across all setups.
-- Average-uniqueness weighting is present, but sequential bootstrap and explicit ICT fold-geometry/embargo validation still belong to the training integration phase. Do not treat Phase 4 alone as the full leakage-control story.
+- Setup spacing and cooldowns started as heuristic constants, but the first realized spacing refit is now substantially calibrated. A July 23, 2026 baseline spacing audit on the refined ES Phase 3 artifact set recommended widening `premium_discount_continuation` and `displacement_continuation_after_raid`; a validated July 24, 2026 sweep against the saved Phase 02 setup surface then narrowed the practical detector baseline to `premium_discount_continuation = 10` and `displacement_continuation_after_raid = 16`, while leaving the reversal and session-open families unchanged. A final confirmation rerun on July 24, 2026 matched the validated `10 / 16` sweep row (`14796` usable events, `33.75%` base rate, `2869` continuation events, premium overlap `24.79%`), so treat that spacing pair as the current confirmed detector baseline. One earlier post-refit rerun on July 23, 2026 should be treated as invalid for comparison because it pointed at a missing setup-surface path and silently fell back to raw 5-minute setup detection; the audit runner now fails fast on that condition.
+- The current label-quality and HTF-confluence logic is intentionally simple. Real event-sample audits now exist under `model_testing/reports/ict_event_sample_audits/`, and they already surfaced two concrete findings:
+  - on the saved pre-refresh Phase 3 sample, continuation `target_reference` anchors were normalized heavily (`64.87%` adjusted)
+  - on the first refreshed July 23, 2026 Phase 3 sample, `thin_session_window` exclusion dominated the contract and had to be narrowed before the sample was trustworthy
+  - after the same-day thin-session refinement and completed full rerun, the refreshed Phase 3 artifacts recovered `14804` usable events, continuation target activations reappeared (`285`, `9.50%` of usable continuation rows), and the next blocking issue shifted back to continuation target-anchor pressure rather than session gating
+- Average-uniqueness weighting is present, and as of July 26, 2026 the leakage-control contract now reaches both the Phase 6 prepared-root path and the actual ICT trainer. The confirmed `ict_es_primary_refresh_20260724_spacing_refit_final_confirm` rebuild resolves target-specific embargos directly from the realized event windows (`36 / 36 / 49 / 47 / 49 / 47`) and passes the follow-up six-target leakage audit with zero boundary failures. The trainer in `model_training/ote_training/ote_xgboost_pipeline.py` now loads those ICT event windows, upgrades fold purge spacing to the realized embargo contract, applies sequential bootstrap directly during fold fitting and final refit, and records the resulting diagnostics in `cv_fold_manifest` plus the saved training metadata. A first leakage-safe smoke retrain on July 26, 2026 under `models/ict_es_primary_xgb_bootstrap_20260726_smoke/long_ict_meta` completed successfully, and the follow-up economics stack under `model_testing/reports/ict_*_bootstrap_20260726_smoke/` also completed end to end for `ict_long_meta_xgb_v1`. The remaining open item is no longer trainer integration; it is the longer full six-target refresh and roster review under this new leakage-safe contract.
 - Setup 4 is implemented as IFVG reversal only, which is intentional. The classic breaker remains deferred until the order-block state machine produces a clean causal definition.
 
 ## 15. Open Questions and Research Risks

@@ -29,8 +29,9 @@ kaleido>=0.2.1
 # Backtesting (optional)
 backtrader>=1.9.76
 
-# Real-time trading (optional)
-ib_insync>=0.9.86
+# Real-time market data (optional)
+# Install the official IBKR ibapi client separately from the TWS API
+# source/pythonclient directory; it is intentionally not pinned from PyPI here.
 websocket-client>=1.6.0
 
 # Utilities

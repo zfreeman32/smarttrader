@@ -3,8 +3,8 @@
 
 **Author:** Quantitative Research & ML Systems
 **Date:** 2026-06-21
-**Status:** Phases 0-5 are complete on the full ES history window, and the current Phase 6/7 ES-aware reporting stack is also complete. The remaining work is no longer basic dataset construction; it is human Phase 0/1 sign-off plus finding a model and policy contract that survives honest ES costs.
-**Implementation update:** 2026-07-05
+**Status:** Phases 0-8 plus promotion packaging are now archived on the full ES history window for the long-continuation baseline. The historical roll-safe shadow replay now passes on the real `ESM6 -> ESU6` contract switch from 2026-06-17; the remaining open items are human Phase 0/1 same-contract sign-off and the still-manual IBKR front-month handoff in live ops.
+**Implementation update:** 2026-07-21
 **Repo target:** Slot into the existing OTE meta-labeling architecture
 **Companion paper:** Supersedes the EUR/USD spot FRVP blueprint (2026-06-15) on instrument grounds; reuses its ML scaffolding verbatim
 
@@ -670,7 +670,7 @@ Focused update as of `2026-07-03` for `frvp_long_meta_xgb_v1` on the refresh bra
 - `v2` then removed the largest surviving pair-level losers: `strong_up_high/overlap`, `strong_down_high/new_york`, `ranging_high/new_york`, `strong_up_low/asia`, `strong_up_low/london`, `ranging_low/london`, `ranging_medium/new_york`, `ranging_medium/asia`, and `strong_down_low/london`.
 - `v3` added only `ranging_medium/london`, `strong_up_high/london`, and `strong_down_high/overlap` on top of `v2`, which improved net PnL and cut drawdown again.
 - The saved `v3` static threshold study still falls back to a hard-pruned base `global_threshold` with `qualified_policy_names = []`, and the walk-forward `v3` result remains below the promotion bar despite turning clearly positive.
-- Treat long-meta `v3` as the best pooled-branch research checkpoint, not as a promotion candidate. Remaining misses are Sharpe `0.595 < 0.8`, the largest-single-trade-share gate, the legacy drawdown proxy, and renewed `2026` weakness.
+- Treat long-meta `v3` as the best pooled-branch research checkpoint, not as a promotion candidate. The refreshed `2026-07-15` account-drawdown rerun keeps the branch at Sharpe `0.595`, DSR `0.577`, WFE `1.897`, and account drawdown `25.93%`, so the remaining misses are Sharpe, concentration, and renewed `2026` weakness rather than a pending promotion-contract refresh.
 
 Focused update as of `2026-07-03` for `frvp_long_reversal_xgb_v1` on the refresh branch:
 
@@ -696,7 +696,7 @@ Focused update as of `2026-07-04` for the recency-weighted long-reversal branch:
 - Economics still improved materially once the recency-trained model was run through the targeted policy contract. The first recency backtest branch reached `167` trades, `+5188.45` ticks, Sharpe `0.883`, DSR `0.823`, WFE `-2.612`, and max drawdown `2072.15`.
 - A narrow `v3` policy tighten on that recency branch then removed the remaining drag pockets `ranging_medium/asia`, `ranging_medium/london`, and `strong_down_low/london`, producing the best saved reversal result so far: `140` trades, `+6027.00` ticks, Sharpe `1.061`, DSR `0.956`, WFE `-3.797`, max drawdown `1610.85`, and `positive_composite_expectancy_share = 1.0`.
 - The static threshold study still does not qualify an alternate threshold variant on this branch. It falls back to a hard-pruned base `global_threshold`, and the walk-forward improvement comes from the recency-trained model plus the pruned base policy rather than a selected `regime_threshold` contract.
-- This recency `v3` path is now the best saved reversal checkpoint overall, even though it still fails full-history WFE and the legacy drawdown-proxy gate.
+- This recency `v3` path is now the best saved full-span reversal checkpoint overall. The refreshed `2026-07-15` account-drawdown rerun records account drawdown `10.06%` and a passing advisory drawdown gate, so the remaining failure is full-history WFE rather than drawdown.
 
 Focused update as of `2026-07-04` for reversal train-side stability:
 
@@ -752,10 +752,10 @@ What works best right now:
 - `frvp_long_reversal_tcn_v1` is still the only TCN that looks worth a future targeted retrain if we stay in the FRVP family.
 
 What does not work:
-- A clean promotion pass still does not exist. Even the saved `v3` long-continuation pass remains `accepted_for_paper_trading_gate = False` because the legacy drawdown proxy is still red, despite the explicit Sharpe, DSR, WFE, quarter-share, positive-composite-share, and concentration checks all being green.
+- A clean all-family promotion pass still does not exist, but the long-continuation leader is now materially further along. The refreshed `2026-07-15` account-drawdown rerun plus shadow-bundle refresh moved `frvp_long_continuation_xgb_v1` `v3` onto the current promotion contract and it now clears the paper-trading gate under that contract.
 - Threshold-policy search still does not find a superior alternate variant for the long-continuation `v2` or `v3` passes; the improvement comes from a hard-pruned base policy, not from the regime-threshold branch.
-- Long meta baseline is still weak, and even the saved `v3` targeted prune remains sub-promotion because it misses Sharpe, concentration, and drawdown gates.
-- Long reversal is still sub-promotion even in the recency `v3` branch because full-history WFE stays negative and the legacy drawdown proxy remains red. The remaining issue is train-side instability, not broad residual drag pockets.
+- Long meta baseline is still weak, and even the saved `v3` targeted prune remains sub-promotion because it misses Sharpe and concentration gates; drawdown should now be treated as advisory risk context after the rerun refresh.
+- Long reversal is still sub-promotion even in the recency `v3` branch because full-history WFE stays negative. The refreshed `2026-07-15` account-drawdown rerun passed the advisory drawdown gate, so the remaining issue is train-side instability, not broad residual drag pockets.
 - Short reversal, short continuation, and most TCN branches remain economically weak after ES-aware costs.
 - Continuation is no longer the weakest family unconditionally; the weakness is now concentrated in short continuation and in the residual bad pockets of the long-continuation baseline policy.
 
@@ -805,7 +805,7 @@ This checklist is the current "what still has to be true before the ES-primary f
 
 - Completed: the four direct FRVP targets are trained, and the current shortlist is archived in `models/frvp_es_primary_model_registry_current.json`.
 - Completed: calibration choices and selected policy payloads are stored per shortlisted model in the registry.
-- Remaining promotion item: archive or rerun an explicit shuffled-label placebo readout before any candidate leaves research status.
+- Completed promotion hygiene on 2026-07-17: an explicit shuffled-label placebo readout is archived at `model_testing\reports\frvp_placebo_readouts\frvp_long_continuation_xgb_v1_20260717\placebo_readout_summary.json`; the long-continuation baseline recorded real OOF AP `0.7371` versus shuffled mean `0.5002` across `10` shuffles for a placebo gap of `0.2368`, comfortably passing the `> 0.03` rule.
 - If a follow-up training sweep becomes necessary, keep it narrow: the serious TCN challengers worth revisiting are long reversal first and short continuation only if upstream continuation economics improve.
 - The auxiliary magnitude head remains deferred until the core classification plus policy-economics stack is trustworthy on ES.
 
@@ -815,32 +815,43 @@ This checklist is the current "what still has to be true before the ES-primary f
 - Completed: open-type status, open-type label, and Dalton day-type label are now included in the current reporting outputs.
 - Completed: ES-aware unit/tick naming now flows through the threshold outputs.
 - Completed in code on 2026-07-03: the threshold-search selector now records a hard-pruned base `global_threshold` as the selected policy when no alternate variant qualifies, so base-policy abstain metadata can be written back into the registry cleanly.
+- Updated promotion flow on 2026-07-15: threshold search now saves `selected_policy_contract` plus a selected-policy-only `registry_writeback_candidate`, and the FRVP / ICT post-training wrappers no longer auto-write registry policies during research reruns.
 - Updated result: the saved `v3` threshold-search run now records `selected_policy_name = global_threshold`, baseline metrics, and `selected_policy_reason = no_non_global_policy_qualified_against_test_baseline`, which is the correct static-study representation for the winning pruned-base-policy contract.
 - Completed housekeeping on 2026-07-03: the refresh registry now carries the long-continuation `v3` base-policy prune directly, including the added `ranging_medium/new_york` and `strong_up_low/asia` abstain pairs and the updated static-study metrics.
 - Completed research checkpoint on 2026-07-03: the long-meta branch now has saved targeted policy passes through `v3`, with the best static-study contract still falling back to a hard-pruned `global_threshold` rather than a qualified alternate threshold variant.
 - Completed research checkpoint on 2026-07-04 UTC: the long-reversal branch now has saved current-environment policy passes through `v2` and recency-weighted policy passes through `v3`. The best saved reversal checkpoint is now recency `v3`, while the best static-study contract still falls back to a hard-pruned `global_threshold`.
 - Completed research checkpoint on 2026-07-05 UTC: the matching long-meta recency sentinel is now saved both raw and with the refresh `v3` prune contract applied. It confirmed that pooled long meta is time-sensitive, but it did not beat the refresh `v3` checkpoint once the same policy contract was held fixed.
-- Follow-up question after the economics fix: does the regime/day-type split truly separate reversal from continuation, or are we still carrying more target families than the data justifies?
+- Completed friction A/B on 2026-07-19: the saved FRVP branches were rerun under `session_schedule` versus explicit `feature_proxy` spread costs with the model artifacts and regime-labeled prediction roots held fixed. `session_schedule` remained the better contract for the long-continuation `v3` baseline (`+7001.20` ticks, Sharpe `1.187` vs. `+1598.40`, `0.441`) and the full-span long-reversal control (`+6027.00`, `1.061` vs. `+5764.00`, `1.023`). `feature_proxy` only improved the recent-2y long-reversal lane (`+4488.55`, Sharpe `1.564` vs. `+4193.90`, `1.429`) and the weak short-meta sentinel.
+- Updated next question after the friction A/B: can regime-gated deployment and concentration control turn the saved reversal checkpoints into a selective deployment contract, or do the remaining misses still require a different train-side stability lever?
 
 #### Phase 7 gate checklist: walk-forward backtest + DSR
 
 - Completed technically: walk-forward policy backtest now runs for all six shortlisted models.
 - Completed: the saved backtest contract now uses ES tick-based spreads, slippage, commission, and tick value rather than FX-style pips.
-- Updated status: the saved `frvp_long_continuation_xgb_v1` `v3` targeted prune clears the Sharpe and DSR gates after costs with Sharpe `1.226`, DSR `1.061`, WFE `2.459`, max drawdown `1540.10`, and `positive_composite_expectancy_share = 1.0`, but still fails the overall acceptance bit because `max_drawdown_less_than_two_times_average_monthly_profit = False`.
-- Updated research status: the saved `frvp_long_meta_xgb_v1` `v3` targeted prune is the best pooled-branch walk-forward result at `+9216.05` ticks, Sharpe `0.595`, DSR `0.577`, WFE `1.897`, and max drawdown `3754.55`, but it still fails promotion on Sharpe, largest-single-trade-share, and the legacy drawdown proxy.
+- Updated status: the refreshed `2026-07-15` account-drawdown rerun keeps `frvp_long_continuation_xgb_v1` `v3` at Sharpe `1.226`, DSR `1.061`, WFE `2.459`, max drawdown `1540.10`, and `positive_composite_expectancy_share = 1.0`, and now records `max_drawdown_pct = 9.90%` with `accepted_for_paper_trading_gate = True` under the current advisory account-equity drawdown contract.
+- Updated research status: the refreshed `frvp_long_meta_xgb_v1` `v3` account-drawdown rerun in `frvp_long_meta_gatefix_v3_20260715_accountdd` keeps the pooled-branch result at `+9216.05` ticks, Sharpe `0.595`, DSR `0.577`, WFE `1.897`, and account drawdown `25.93%`. It still fails promotion on Sharpe and largest-single-trade-share, but the promotion-contract refresh itself is now complete.
 - Updated research status: the saved long-meta recency sentinel improved only after the same `v3` prune contract was re-applied, reaching `+6938.65` ticks, Sharpe `0.478`, DSR `0.469`, WFE `1.974`, and max drawdown `3556.85`. That makes it a useful Q11 control, not the new pooled-model checkpoint.
-- Updated research status: the saved `frvp_long_reversal_xgb_v1` recency `v3` targeted prune is the best reversal policy result at `+6027.00` ticks, Sharpe `1.061`, DSR `0.956`, WFE `-3.797`, max drawdown `1610.85`, and `positive_composite_expectancy_share = 1.0`, but it still fails promotion on full-history WFE and the legacy drawdown proxy.
+- Updated research status: the refreshed `frvp_long_reversal_xgb_v1` recency `v3` account-drawdown rerun in `frvp_long_reversal_recency_trial1_v3_20260715_accountdd` remains the best full-span reversal policy result at `+6027.00` ticks, Sharpe `1.061`, DSR `0.956`, WFE `-3.797`, account drawdown `10.06%`, and `positive_composite_expectancy_share = 1.0`. It still fails promotion on full-history WFE, but the drawdown read is now current and passing.
 - Completed diagnostic tooling on 2026-07-04 UTC: walk-forward backtest now supports a bounded recent-history train window via `--max-train-years`, which was used to verify that reversal WFE turns positive (`0.973`) once the same recency branch is evaluated only on post-2024 folds with a 2-year rolling train window.
-- Remaining blocker before promotion: align the promotion contract with the intended gate definition, rerun the registry write-back, and run the focused threshold/backtest mismatch study so the saved static-policy outputs and walk-forward fold selections are documented side by side.
-- Remaining promotion item: enforce and archive the roll-aware embargo / roll audit in the promotion stack, not just in the offline labeler.
-- Remaining promotion item: validate all seven promotion gates from Section 10, including placebo gap and clean roll audit, not just AP and raw threshold behavior.
+- Completed promotion hygiene on 2026-07-17: the strongest FRVP branches, family leaders, and shadow bundle remain refreshed under the current promotion contract, and the saved long-continuation baseline now also carries the explicit placebo record.
+- Completed promotion hygiene on 2026-07-17: the roll-aware embargo / roll-audit package is archived at `model_testing\reports\frvp_roll_audit_packages\frvp_long_continuation_xgb_v1_20260717\roll_audit_package_summary.json`, passes gate 7, records `49` excluded roll-span events with `0` usable roll-span events, and shows `11` roll-crossing fold gaps that all still clear the `576`-bar minimum with a minimum observed gap of `10238` bars (`1290.75` hours).
+- Completed promotion packaging on 2026-07-17: `model_testing\reports\frvp_promotion_packages\frvp_long_continuation_xgb_v1_20260717\promotion_package_summary.json` archives the focused threshold-vs-prune study for the long-continuation baseline. The saved `v3` contract is explicitly documented as a hard-pruned `global_threshold` policy rather than a new regime-threshold winner; versus the unpruned refresh baseline it cut trade count `1609 -> 524`, lifted expectancy `7.75 -> 13.72`, improved Sharpe `0.604 -> 1.226`, improved DSR `0.585 -> 1.061`, and reduced max drawdown `10200.85 -> 1540.10`.
+- Completed promotion rerun on 2026-07-17: after the roll-safe runtime fixes and passing historical roll replay, `model_testing\reports\frvp_promotion_packages\frvp_long_continuation_xgb_v1_20260717\promotion_package_summary.json` now records `package_status = finalized_without_human_same_contract_signoff` and `promotion_decision = pending_human_same_contract_signoff`, with paper-trading gate, placebo, roll audit, and roll-shadow validation all passing.
+- Completed friction A/B readout on 2026-07-19: the economics-layer rerun in `model_testing\reports\frvp_friction_studies\frvp_friction_ab_20260719` closed the main cost-contract uncertainty for the saved branches. The result was not "feature proxy everywhere" or "session schedule everywhere." It was branch-specific: keep `session_schedule` as the default FRVP contract, retain the `feature_proxy` result as a sensitivity read for the recent-2y reversal lane and short-meta sentinel, and move the next work to concentration / selective-deployment policy design rather than another generic friction debate.
+- Completed regime-gated deployment / concentration pass on 2026-07-21 in `model_testing\reports\frvp_regime_gated_deployment\frvp_regime_gated_deployment_20260721`. The continuation control stayed the clean frozen reference branch. The full-span reversal candidates did not solve `WFE`: adding `strong_down_medium/asia` lifted net PnL to `+6245.15` ticks and Sharpe to `1.138`, but worsened `WFE` to `-4.334`, which reinforces the train-side-instability read. The recent-2y reversal lane did produce a new selective-deployment checkpoint: blocking `strong_down_high/overlap` yielded `63` trades, `+3677.05` ticks, Sharpe `1.480`, DSR `1.179`, `WFE = 2.162`, profitable-quarter share `0.60`, largest-single-trade share `0.0942`, and `accepted_for_paper_trading_gate = True`.
+- Canonical experiment write-ups now live in `docs/FRVP_experiment_journal.md`, using the field contract in `docs/FRVP_experiment_record_template.md`. This design paper keeps the strategic interpretation, while the journal records the full `question / control / change / method / artifacts / result / what worked / what did not / observations / decision / repo change` history for each major FRVP experiment.
+- Documentation rule from this point forward: if an FRVP experiment changes a checkpoint, a shadow/live contract, a frozen research control, or the backlog order, log it in the journal immediately rather than leaving the explanation only in notes or artifact paths.
+- Updated remaining promotion work: placebo evidence, clean roll-audit evidence, the threshold-vs-prune package, and the passing historical roll-shadow validation are now archived; the remaining sign-off work is the human same-contract review plus live-ops discipline around the still-manual IBKR front-month handoff.
 - Treat the long-continuation `v3` pass as the new targeted-policy baseline for promotion work, and treat the old all-red readout as superseded for that one branch only.
 - Treat the long-meta `v3` pass as the saved pooled-model checkpoint. The matching recency sentinel is complete and came in weaker once the same prune contract was held fixed, so there is still no reason to cut the whole family over to recency weighting.
-- Treat the long-reversal recency `v3` pass as the saved full-span reversal checkpoint, and treat `frvp_long_reversal_recent_regime_prune_v1_20260705` as the saved recent-regime checkpoint. The next branch should stay on reversal train-side stability and selective recent-regime deployment rather than on broad policy micro-pruning or a hard post-2022 cutover.
+- Treat the long-reversal recency `v3` pass as the saved full-span reversal checkpoint, and treat `frvp_long_reversal_xgb_recent_regime_prune_v2` as the new selective-deployment checkpoint for the recent-regime lane. The next branch should only escalate to a different train-side stability lever if the repo needs a better full-span reversal answer than the accepted recent-regime contract now provides.
 
 #### Phase 8 gate checklist: live integration
 
-- Extend the live incremental feature engine to maintain FRVP state in raw contract coordinates and to reset / re-seed correctly at rolls.
+- Completed validation on 2026-07-17: `model_testing\reports\frvp_roll_shadow_validation\frvp_es_shadow_roll_20260717\roll_shadow_validation_summary.json` replayed the real `ESM6 -> ESU6` contract switch at `2026-06-17T00:00:00+00:00` after an `8000`-bar warmup plus a tight live/shadow around-the-roll window.
+- Final validation result: `validation_passed = true`, `feature_parity_passed = true`, `health_error_count = 0`, `missing_live_feature_names = []`, and `dashboard_state_contract_switch_recorded = true`, with `15` persisted shadow decisions and sampled audit replays matching exactly.
+- Same-day runtime hardening resolved the original blocker by preserving target-specific carry-through context in replay/runtime, preserving FRVP roll-boundary numeric `NaN` values for FRVP XGBoost snapshots, and expanding the inferred history budget for prior-RTH FRVP history features so the short-bundle parity replay matches the saved artifact.
+- Remaining live-ops task: keep the active IBKR front-month switch as an explicit operator runbook step until collector-level roll automation exists; the historical roll-safe runtime gate itself is no longer a promotion blocker.
 - Extend runtime ingestion to surface contract-roll events, calendar anomalies, and any upstream macro-event flags needed by the offline labeler.
 - Register FRVP candidates in the model registry and keep them in `candidate` / shadow mode until the full promotion stack passes.
 - Shadow trade for at least four weeks and explicitly verify no live profile carries across a roll untranslated and no open position mapping breaks at the lead-contract switch.
@@ -852,15 +863,16 @@ This checklist is the current "what still has to be true before the ES-primary f
 - The final Phase 4 full-width prepare verdict comes from the gzip full-history dataset rather than an audit subset.
 - Freeze the primary historical train / holdout window before any follow-up training, policy re-evaluation, or promotion rerun.
 - `Setup 6b`, optional gamma-context features, and the 6E A/B validation remain deferred research items rather than Phase 0-4 blockers.
-- The remaining promotion blockers are now human same-contract sign-off, an explicit placebo / roll-audit package, and downstream ES-specific model plus policy economics.
+- The remaining promotion blockers are now human same-contract sign-off and the live-ops fact that the IBKR front-month handoff is still an explicit operator action. The threshold/backtest mismatch study and the passing historical roll-shadow validation are now archived in the saved promotion package.
 
 ## 13. Open Questions and Risks
 
 Status triage after the 2026-07-01 cleanup pass:
 
-- Promotion blockers before paper trading: human same-contract profile sign-off, an explicit shuffled-label placebo plus roll-audit package, and a model plus policy contract that is actually positive under ES-aware costs.
+- Promotion blockers before paper trading: human same-contract profile sign-off and live-ops sign-off on the still-manual IBKR front-month handoff. The historical FRVP roll-safe shadow replay itself now passes cleanly on the strong long-continuation baseline.
 - Not current blockers: Setup 4's lower fire rate, continuation quality missing 0.65, and `frvp_open_type` / `frvp_day_type` failing to reach top-10 as direct model features.
-- Highest-value near-term research: Q6, Q7, reversal train-side stability under Q11, selective recent-regime deployment for reversal, and promotion-contract cleanup on the strong long-continuation branch. Open-type conditioning and broader feature expansion are lower priority until the economics layer improves.
+- Highest-value near-term research after the completed 2026-07-19 friction A/B: regime-gated deployment / concentration work for the reversal family, selective recent-regime deployment controls, and any train-side stability lever that still matters after those policy-layer checks. The focused threshold/backtest mismatch study on the strong long-continuation branch is now archival context rather than the main active question. Open-type conditioning and broader feature expansion remain lower priority.
+- Highest-value near-term research after the executed 2026-07-21 concentration pass: decide whether the accepted recent-regime reversal checkpoint is the right operational contract, and separately decide whether the full-span branch deserves more train-side stability work now that the policy-layer pass failed to repair `WFE`.
 
 **Q1 — Roll method sensitivity.** Does reset-at-roll vs. translate-by-spread for cross-roll levels change meta-label base rates or backtest Sharpe? Test both in Phase 0/3.
 
@@ -874,7 +886,7 @@ Status triage after the 2026-07-01 cleanup pass:
 
 **Q6 — Day-type vs. setup-family interaction.** Confirm reversal-on-balance / continuation-on-trend. If absent, collapse families and reduce model count from 4 to 2.
 
-**Q7 — Mean-reversion family vs. friction floor.** Given small ES mean-reversion targets relative to tick-based friction and open/close slippage, does the reversal family survive realistic costs? This is the most likely family to fail promotion gate 2; monitor early.
+**Q7 - Mean-reversion family vs. friction floor.** Partially closed on 2026-07-19. The friction A/B showed that the reversal family is not simply being crushed by one obviously wrong cost contract. On the saved full-span control, `session_schedule` still led (`+6027.00` ticks, Sharpe `1.061`) over explicit `feature_proxy` (`+5764.00`, `1.023`). On the saved recent-2y reversal lane, `feature_proxy` improved the readout slightly (`+4488.55`, Sharpe `1.564` vs. `+4193.90`, `1.429`), but that branch still missed promotion on quarter share and concentration rather than raw post-cost edge. So Q7 is now narrower: the remaining question is selective deployment quality and concentration, not whether the current saved reversal checkpoint is being invalidated by a generic friction bug.
 
 **Q8 — RTH vs. ETH anchor dominance.** At a given RTH bar, which anchor's levels carry more SHAP weight — prior RTH or overnight ETH? Slice top-SHAP features by source profile in Phase 6.
 
@@ -883,6 +895,91 @@ Status triage after the 2026-07-01 cleanup pass:
 **Q10 — Live roll robustness.** Verify the incremental engine rolls cleanly mid-strategy: no profile carries across the roll untranslated, no level is compared across coordinate systems, and open positions are mapped correctly when the lead contract changes.
 
 **Q11 — 0DTE regime non-stationarity.** Does pre-2022 ES behave differently enough that training on it harms post-2022 performance? Saved evidence now says "yes, especially for reversal," and the branch history is now clearer. The hard post-2022-only retrain hurt `frvp_long_reversal_xgb_v1` materially and only partially helped `frvp_long_meta_xgb_v1`, so simple truncation is not the right default answer. The full-history recency-weighted reversal branch improved net PnL, Sharpe, DSR, drawdown, and composite cleanliness enough to become the best saved reversal checkpoint, but full-history WFE stayed negative. A bounded 2-year rolling-train diagnostic then turned WFE positive on post-2024 folds, which points to older-regime train-side instability as the remaining issue. The matching long-meta recency sentinel is now complete: raw recency economics were poor, and even after reapplying the saved `v3` prune contract the branch still underperformed the refresh `v3` pooled checkpoint. The current read is therefore more selective than before: Q11 is real beyond reversal, but the economically useful recency-weighting response is still mostly reversal-specific. The next Q11 work should stay on reversal train-side stability controls and selective recent-regime deployment, not on a blanket family-wide recency rollout or another broad same-environment prune.
+
+**Q11 execution plan (2026-07-19).**
+
+1. Freeze the current controls and stop broad same-environment pruning.
+   - Keep `frvp_long_reversal_recency_trial1_v3_20260715_accountdd` as the full-span control checkpoint.
+   - Keep `frvp_long_reversal_recent_regime_prune_v1_20260715_accountdd` as the recent-regime deployment control.
+   - Do not add another new reversal prune branch unless a train-side branch first improves on one of those controls.
+2. Reproduce the current full-span recency control under a clean single-model evaluation root.
+
+```powershell
+powershell -File scripts/run_frvp_post_training_eval.ps1 `
+  -RegistryPath models\frvp_es_primary_model_registry_long_reversal_recency_trial1_v3_20260704.json `
+  -RegimeOutputRoot model_testing\reports\frvp_regime_slices\frvp_long_reversal_q11_control_20260719 `
+  -ThresholdOutputRoot model_testing\reports\frvp_threshold_policies\frvp_long_reversal_q11_control_20260719 `
+  -BacktestOutputRoot model_testing\reports\frvp_backtests\frvp_long_reversal_q11_control_20260719 `
+  -ModelIds frvp_long_reversal_xgb_v1 `
+  -TargetedFilterPreset frvp_long_reversal_xgb_composite_prune_v3
+```
+
+3. Reproduce the bounded-window recent-regime deployment lane with the saved recent-regime prune contract.
+
+```powershell
+powershell -File scripts/run_frvp_post_training_eval.ps1 `
+  -RegistryPath models\frvp_es_primary_model_registry_long_reversal_recency_trial1_v3_20260704.json `
+  -RegimeOutputRoot model_testing\reports\frvp_regime_slices\frvp_long_reversal_q11_recent2y_20260719 `
+  -ThresholdOutputRoot model_testing\reports\frvp_threshold_policies\frvp_long_reversal_q11_recent2y_20260719 `
+  -BacktestOutputRoot model_testing\reports\frvp_backtests\frvp_long_reversal_q11_recent2y_20260719 `
+  -ModelIds frvp_long_reversal_xgb_v1 `
+  -TargetedFilterPreset frvp_long_reversal_xgb_recent_regime_prune_v1 `
+  -BacktestMaxTrainYears 2 `
+  -BacktestMinScheduledTestStart 2024-01-01
+```
+
+4. Run one more bounded-window full-span diagnostic before retraining anything.
+
+```powershell
+powershell -File scripts/run_frvp_post_training_eval.ps1 `
+  -RegistryPath models\frvp_es_primary_model_registry_long_reversal_recency_trial1_v3_20260704.json `
+  -RegimeOutputRoot model_testing\reports\frvp_regime_slices\frvp_long_reversal_q11_roll3y_20260719 `
+  -ThresholdOutputRoot model_testing\reports\frvp_threshold_policies\frvp_long_reversal_q11_roll3y_20260719 `
+  -BacktestOutputRoot model_testing\reports\frvp_backtests\frvp_long_reversal_q11_roll3y_20260719 `
+  -ModelIds frvp_long_reversal_xgb_v1 `
+  -TargetedFilterPreset frvp_long_reversal_xgb_composite_prune_v3 `
+  -BacktestMaxTrainYears 3
+```
+
+5. Only if steps 2-4 still show the same train-side failure pattern, open two new retrain branches using the saved recency contract as the template and changing only the half-life.
+   - Branch A: `548`-day half-life, `0.20` floor.
+   - Branch B: `365`-day half-life, `0.20` floor.
+   - Keep the same full-history chronology, features, target definition, calibration method, and prune contracts.
+   - Materialize prepared roots that mirror `artifacts/frvp_long_reversal_recency_trial1_20260703/phase04/prepared/`, then train only the reversal XGBoost target with `scripts/run_frvp_training_stack.ps1` and rebuild a dedicated registry from the new model root.
+
+```powershell
+powershell -File scripts/run_frvp_training_stack.ps1 `
+  -PreparedRoot artifacts\frvp_long_reversal_recency_trial2_548d_20260719\phase04\prepared `
+  -XgbOutputRoot models\frvp_long_reversal_xgb_recency_trial2_548d_20260719 `
+  -SkipTcnAttribution `
+  -SkipTcnTraining
+
+ote_venv\Scripts\python.exe scripts/build_frvp_candidate_registry.py `
+  --model-root models\frvp_long_reversal_xgb_recency_trial2_548d_20260719 `
+  --source-registry-path models\frvp_es_primary_model_registry_long_reversal_recency_trial1_v3_20260704.json `
+  --output-path models\frvp_es_primary_model_registry_long_reversal_recency_trial2_548d_20260719.json
+```
+
+6. Evaluate each new retrain branch twice, once with the full-span `v3` prune contract and once with the recent-regime deployment contract from step 3.
+   - A new full-span winner must improve materially on `WFE = -3.797` while keeping Sharpe, DSR, and drawdown in the same neighborhood as the saved recency `v3` control.
+   - If no full-span retrain clears that bar, stop retraining and treat the recent-regime deployment lane as the mainline output of Q11 rather than forcing another prune loop.
+
+**Q11 execution update (2026-07-19, completed).**
+
+- Steps 2-4 reproduced the saved failure pattern before retraining: the full-span control in `frvp_long_reversal_q11_control_20260719` stayed economically strong at `+6027.00` ticks, Sharpe `1.061`, DSR `0.956`, and account drawdown `10.06%`, but still failed on `WFE = -3.797`. The bounded recent-regime control in `frvp_long_reversal_q11_recent2y_20260719` kept `WFE = 2.413` and account drawdown `6.95%`, but still failed profitable-quarter share (`0.50`) and single-trade concentration (`0.1279`).
+- Added `scripts/materialize_frvp_recency_prepared_root.py` so shorter-half-life reversal branches can be rebuilt from the clean `frvp_es_primary_refresh_20260701` prepared root without changing chronology, features, or the untouched test split.
+- The `548`-day retrain branch confirmed that a milder half-life is not the answer. Full-span `frvp_long_reversal_q11_548d_control_20260719` finished at `+4572.50` ticks, Sharpe `0.778`, DSR `0.738`, `WFE = -3.429`, account drawdown `14.41%`, and largest-single-trade share `0.1236`, so it degraded the full-span control on both stability and risk. Its bounded recent-regime lane (`frvp_long_reversal_q11_548d_recent2y_20260719`) stayed viable at `+2939.25` ticks, Sharpe `0.930`, `WFE = 1.450`, and drawdown `11.29%`, but still failed profitable-quarter share (`0.50`) and concentration (`0.1825`).
+- The `365`-day retrain branch was the stronger of the two, but it still did not fix full-span promotion quality. Full-span `frvp_long_reversal_q11_365d_control_20260719` improved drawdown and Sharpe enough to clear those gates at `+4071.50` ticks, Sharpe `0.823`, DSR `0.775`, and account drawdown `11.00%`, but `WFE` only improved to `-2.348` and single-trade concentration still failed at `0.1389`.
+- The best new output is the bounded recent-regime `365`-day lane in `frvp_long_reversal_q11_365d_recent2y_20260719`: `+4451.85` ticks, Sharpe `1.446`, DSR `1.167`, `WFE = 2.355`, account drawdown `6.27%`, profitable-quarter share `0.60`, and positive composite expectancy share `1.0`. It still misses promotion quality because the largest-single-trade share is `0.1205`, but it is now the strongest saved selective-deployment checkpoint produced by the half-life retrain pass.
+- Decision: the half-life-only retrain branch is now closed. No new full-span winner cleared the saved control bar, so the repo should stop recency half-life tuning here, keep the full-span recency `v3` branch as the saved full-span control, and treat the `365`-day recent-regime lane as the main Q11 selective-deployment checkpoint if reversal remains on a post-2024 deployment path. Any follow-up FRVP reversal work should now move to a different stability lever or to concentration/risk acceptance, not to another same-environment prune loop.
+
+**Next FRVP roadmap (2026-07-21).**
+
+The next concrete work is documented in `docs/FRVP_regime_gated_deployment_roadmap_20260721.md`, and the first execution pass is now complete. In plain English, the result is: keep the continuation control unchanged; keep the full-span reversal control unchanged because one more policy prune did not fix `WFE`; and use `frvp_long_reversal_xgb_recent_regime_prune_v2` as the current selective-deployment checkpoint while the repo decides whether that narrower contract is sufficient or whether a new train-side lever is still worth pursuing.
+
+**Deferred-research audit update (2026-07-28).**
+
+The saved repo-state read for the deferred FRVP cluster now lives in `model_testing/reports/frvp_deferred_research_audit/frvp_deferred_research_audit_20260728/DEFERRED_RESEARCH_SUMMARY.md`. It closes one ambiguity without pretending the experiments are already run: `Setup 6b` is still not implemented in saved Phase 3 artifacts, gamma-context columns are still absent from the Phase 2 feature contract, Setup 4 is thin but real enough to justify a standalone retest, and the higher-EV next lane is per-setup-family analysis/training rather than another pooled-direction-family optimization pass. The current execution order is therefore: split-first, then Setup 4 standalone, then roll-translation A/B on the branches that still show roll-bracket drag, then Setup 6b only after naked-VPOC context is promoted into event logic, and gamma-context only after a real options-data contract exists.
 
 **Q12 — Does real volume actually beat tick volume? (the foundational question)** Run the Section 11.2 three-way A/B (EUR/USD spot vs. 6E vs. ES). If the real-volume variants do not show a larger placebo gap than the tick-volume original, the entire premise of re-homing is empirically unsupported and the instrument choice should be revisited on other grounds (frictions, exposure, data cost).
 
@@ -934,6 +1031,7 @@ Supporting or later-phase additions/modifications:
 | `models/frvp_es_primary_model_registry_current.json` | Current FRVP shortlist registry and saved policy payloads |
 | `scripts/run_frvp_training_stack.ps1` | One-shot FRVP training wrapper for XGBoost plus TCN attribution/training |
 | `scripts/run_frvp_post_training_eval.ps1` | One-shot FRVP regime-slice, threshold-policy, and walk-forward backtest wrapper |
+| `scripts/materialize_frvp_recency_prepared_root.py` | Rebuilds a single-target FRVP prepared root with a chosen recency half-life/floor while leaving the test split untouched for apples-to-apples Q11 evaluation |
 | `model_testing/ote_regime_labeler.py` | FRVP open-type status labeling (`classified`, `not_yet_known`, `missing_after_open`) |
 | `model_testing/ote_regime_slices.py` | FRVP open-type and day-type slice-family reporting |
 | `model_testing/ote_policy_metrics.py` | ES-aware `*_units` aliases alongside legacy `*_pips` fields |

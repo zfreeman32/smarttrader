@@ -23,14 +23,15 @@ In plain English, the stack is trying to answer:
 
 In this repo, "OTE workflow" is best understood as the decision process around a trade, not just one narrow pattern.
 
-The important strategy families used in that workflow are:
+The important executable trade types used in that workflow are:
 
-| Strategy family | Plain-English meaning | Typical job |
+| Trade type | Plain-English meaning | Typical job |
 | --- | --- | --- |
 | Reversal | Price overextends into a key level and rejects | Fade the move back into balance or back toward the opposite side |
 | Continuation pullback | Price shows strength, pulls back into a good area, then resumes | Join the trend after the pullback |
 | Breakout | Price leaves a balance area with commitment | Go with the expansion if acceptance is real |
-| Confirmation / confluence | Extra reasons to trust the setup | Keeps us out of weak, late, or messy trades |
+
+`Confirmation / confluence` is still important, but it is a filter layer rather than a fourth trade type. It helps decide whether a reversal, continuation, or breakout idea is worth taking.
 
 So the workflow is not "buy because a model said so."
 
@@ -217,5 +218,5 @@ If it cannot say one of those clearly, the best trade is often no trade.
 - OTE is the overall trade-selection workflow.
 - FRVP is the volume-profile lens: value, rejection, acceptance, node-to-node movement.
 - ICT is the liquidity-and-structure lens: sweeps, displacement, gaps, order blocks, and session traps.
-- The important strategy buckets are reversal, continuation pullback, breakout, and confirmation through confluence.
+- The important executable trade types are reversal, continuation pullback, and breakout; confirmation through confluence is a filter, not a fourth trade type.
 - The goal is not to predict every bar. The goal is to wait for a meaningful area, read the reaction, and act only when the story is clean.
