@@ -14,6 +14,27 @@ from ote_live.features.incremental_engine import IncrementalFeatureEngine
 from ote_live.features.manifest import LiveRuntimeManifest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+_BASE_MARKET_ROW_FIELDS = frozenset(
+    {
+        "asset",
+        "timeframe",
+        "datetime",
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "bid",
+        "ask",
+        "spread",
+        "source",
+        "symbol",
+        "contract_symbol",
+        "instrument_id",
+        "index",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -346,6 +367,10 @@ def _market_bar_from_row(row, *, asset: str, timeframe: str) -> MarketBar:
         ask=_optional_float(getattr(row, "ask", None)),
         spread=_optional_float(getattr(row, "spread", None)),
         source=getattr(row, "source", None),
+        symbol=getattr(row, "symbol", None),
+        contract_symbol=getattr(row, "contract_symbol", None),
+        instrument_id=_optional_int(getattr(row, "instrument_id", None)),
+        feature_context=_extract_feature_context_from_row(row),
     )
 
 
@@ -419,6 +444,21 @@ def _optional_float(value: object) -> float | None:
     if value is None or pd.isna(value):
         return None
     return float(value)
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None or pd.isna(value):
+        return None
+    return int(value)
+
+
+def _extract_feature_context_from_row(row) -> dict[str, object]:
+    payload: dict[str, object] = {}
+    for field_name in getattr(row, "_fields", ()):
+        if field_name in _BASE_MARKET_ROW_FIELDS or field_name.startswith("_"):
+            continue
+        payload[field_name] = _to_python_scalar(getattr(row, field_name))
+    return payload
 
 
 def _to_python_scalar(value: object) -> object:

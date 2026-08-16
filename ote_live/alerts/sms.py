@@ -322,6 +322,7 @@ def render_signal_sms_message(
     signal = audit_trail.signal
     body_text = (
         f"OTE {signal.direction.upper()} {signal.decision.upper()} "
+        f"model={signal.model_id} "
         f"p={signal.probability:.3f} thr={_format_optional_float(signal.threshold)} "
         f"regime={signal.regime or 'unknown'} "
         f"id={audit_trail.signal_decision_id}"

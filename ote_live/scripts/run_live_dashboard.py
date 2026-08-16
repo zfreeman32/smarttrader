@@ -6,9 +6,15 @@ from pathlib import Path
 from ote_live.env import env_bool, env_int, env_path, env_str, load_repo_env
 from ote_live.dashboard.app import create_dashboard_app
 from ote_live.dashboard.view_registry import (
+    DEFAULT_FRVP_ACTIVE_WEIGHT_MODEL_IDS,
     DEFAULT_FRVP_LONG_RUNTIME_MANIFEST_PATH,
     DEFAULT_FRVP_REGISTRY_PATH,
     DEFAULT_FRVP_SHORT_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_ACTIVE_WEIGHT_MODEL_IDS,
+    DEFAULT_ICT_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_MODEL_ORDER,
+    DEFAULT_ICT_REGISTRY_PATH,
+    DEFAULT_ICT_SHORT_RUNTIME_MANIFEST_PATH,
     DashboardViewConfig,
 )
 from ote_live.ingestion.runtime import DEFAULT_DB_PATH, DEFAULT_LONG_RUNTIME_MANIFEST_PATH, DEFAULT_SHORT_RUNTIME_MANIFEST_PATH
@@ -38,6 +44,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--frvp-timeframe",
         default=env_str("FRVP_LIVE_DASHBOARD_TIMEFRAME", env_str("FRVP_LIVE_TIMEFRAME", "5m")),
     )
+    parser.add_argument("--ict-asset", default=env_str("ICT_LIVE_ASSET", "ES"))
+    parser.add_argument(
+        "--ict-timeframe",
+        default=env_str("ICT_LIVE_DASHBOARD_TIMEFRAME", env_str("ICT_LIVE_TIMEFRAME", "5m")),
+    )
     parser.add_argument(
         "--frvp-long-runtime-manifest-path",
         default=str(env_path("FRVP_LIVE_LONG_RUNTIME_MANIFEST_PATH", DEFAULT_FRVP_LONG_RUNTIME_MANIFEST_PATH)),
@@ -50,7 +61,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--frvp-registry-path",
         default=str(env_path("FRVP_LIVE_REGISTRY_PATH", DEFAULT_FRVP_REGISTRY_PATH)),
     )
+    parser.add_argument(
+        "--ict-long-runtime-manifest-path",
+        default=str(env_path("ICT_LIVE_LONG_RUNTIME_MANIFEST_PATH", DEFAULT_ICT_LONG_RUNTIME_MANIFEST_PATH)),
+    )
+    parser.add_argument(
+        "--ict-short-runtime-manifest-path",
+        default=str(env_path("ICT_LIVE_SHORT_RUNTIME_MANIFEST_PATH", DEFAULT_ICT_SHORT_RUNTIME_MANIFEST_PATH)),
+    )
+    parser.add_argument(
+        "--ict-registry-path",
+        default=str(env_path("ICT_LIVE_REGISTRY_PATH", DEFAULT_ICT_REGISTRY_PATH)),
+    )
     parser.add_argument("--frvp-data-supplier", default=env_str("FRVP_LIVE_DATA_SUPPLIER", "IBKR"))
+    parser.add_argument("--ict-data-supplier", default=env_str("ICT_LIVE_DATA_SUPPLIER", "IBKR"))
     parser.add_argument("--host", default=env_str("OTE_LIVE_DASHBOARD_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=env_int("OTE_LIVE_DASHBOARD_PORT", 8050))
     parser.add_argument(
@@ -98,10 +122,27 @@ def main() -> int:
                 "frvp_long_reversal_xgb_v1",
                 "frvp_short_meta_xgb_v1",
             ),
+            active_weight_model_ids=DEFAULT_FRVP_ACTIVE_WEIGHT_MODEL_IDS,
             description=f"{args.frvp_asset} {args.frvp_timeframe} FRVP shadow operator view",
             recent_activity_title="Recent FRVP Setups",
             enable_frvp_overlays=True,
             runtime_state_key="FRVP",
+        ),
+        DashboardViewConfig(
+            view_id="ICT",
+            label="ICT",
+            asset=args.ict_asset,
+            timeframe=args.ict_timeframe,
+            data_supplier=args.ict_data_supplier,
+            long_runtime_manifest_path=Path(args.ict_long_runtime_manifest_path),
+            short_runtime_manifest_path=Path(args.ict_short_runtime_manifest_path),
+            registry_path=Path(args.ict_registry_path),
+            preferred_model_order=DEFAULT_ICT_MODEL_ORDER,
+            active_weight_model_ids=DEFAULT_ICT_ACTIVE_WEIGHT_MODEL_IDS,
+            description=f"{args.ict_asset} {args.ict_timeframe} ICT controlled paper-signal view",
+            recent_activity_title="Recent ICT Setups",
+            enable_ict_overlays=True,
+            runtime_state_key="ICT",
         ),
     )
     app = create_dashboard_app(

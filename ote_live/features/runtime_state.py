@@ -67,23 +67,7 @@ class FeatureRuntimeState:
             )
 
         rows = [
-            {
-                "asset": bar.asset,
-                "timeframe": bar.timeframe,
-                "timestamp": bar.timestamp,
-                "open": bar.open,
-                "high": bar.high,
-                "low": bar.low,
-                "close": bar.close,
-                "volume": bar.volume,
-                "bid": bar.bid,
-                "ask": bar.ask,
-                "spread": bar.spread,
-                "source": bar.source,
-                "symbol": bar.symbol,
-                "contract_symbol": bar.contract_symbol,
-                "instrument_id": bar.instrument_id,
-            }
+            _row_from_bar(bar)
             for bar in self._bars
         ]
         return pd.DataFrame.from_records(rows)
@@ -92,3 +76,28 @@ class FeatureRuntimeState:
         overflow = len(self._bars) - self.max_history_bars
         if overflow > 0:
             del self._bars[:overflow]
+
+
+def _row_from_bar(bar: MarketBar) -> dict[str, object]:
+    row: dict[str, object] = {
+        "asset": bar.asset,
+        "timeframe": bar.timeframe,
+        "timestamp": bar.timestamp,
+        "open": bar.open,
+        "high": bar.high,
+        "low": bar.low,
+        "close": bar.close,
+        "volume": bar.volume,
+        "bid": bar.bid,
+        "ask": bar.ask,
+        "spread": bar.spread,
+        "source": bar.source,
+        "symbol": bar.symbol,
+        "contract_symbol": bar.contract_symbol,
+        "instrument_id": bar.instrument_id,
+    }
+    for key, value in dict(bar.feature_context or {}).items():
+        if key in row:
+            continue
+        row[key] = value
+    return row

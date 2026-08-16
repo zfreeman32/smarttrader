@@ -81,9 +81,9 @@ class SQLiteLiveDataStore:
             """
             INSERT INTO canonical_bars (
                 asset, timeframe, timestamp_utc, open, high, low, close, volume,
-                bid, ask, spread, source, symbol, contract_symbol, instrument_id,
+                bid, ask, spread, source, symbol, contract_symbol, instrument_id, feature_context_json,
                 inserted_at_utc, updated_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(asset, timeframe, timestamp_utc) DO UPDATE SET
                 open = excluded.open,
                 high = excluded.high,
@@ -97,6 +97,7 @@ class SQLiteLiveDataStore:
                 symbol = excluded.symbol,
                 contract_symbol = excluded.contract_symbol,
                 instrument_id = excluded.instrument_id,
+                feature_context_json = excluded.feature_context_json,
                 updated_at_utc = excluded.updated_at_utc
             """,
             (
@@ -115,6 +116,7 @@ class SQLiteLiveDataStore:
                 bar.symbol,
                 bar.contract_symbol,
                 bar.instrument_id,
+                _json_dumps(bar.feature_context),
                 now,
                 now,
             ),
@@ -321,7 +323,8 @@ class SQLiteLiveDataStore:
                 source,
                 symbol,
                 contract_symbol,
-                instrument_id
+                instrument_id,
+                feature_context_json
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
         """
@@ -352,6 +355,7 @@ class SQLiteLiveDataStore:
                 symbol=row["symbol"],
                 contract_symbol=row["contract_symbol"],
                 instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
+                feature_context=_json_loads(row["feature_context_json"]),
             )
             for row in rows
         ]
@@ -424,3 +428,14 @@ def _gap_row_to_record(row) -> StoredIngestionGap:
             else None
         ),
     )
+
+
+def _json_dumps(payload: Any) -> str:
+    return json.dumps(payload or {}, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _json_loads(payload: str | None) -> dict[str, Any]:
+    if not payload:
+        return {}
+    loaded = json.loads(payload)
+    return loaded if isinstance(loaded, dict) else {}

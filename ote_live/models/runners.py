@@ -154,7 +154,7 @@ class RuntimeModelRunner:
 
         ordered = feature_frame.loc[:, feature_names].copy()
         ordered = ordered.apply(pd.to_numeric, errors="coerce")
-        if ordered.isna().any().any():
+        if ordered.isna().any().any() and not self.loaded_model.allows_nan_feature_values:
             raise ValueError(f"Feature frame for {self.loaded_model.model_id} contains NaN values after coercion.")
 
         minimum_rows = self.loaded_model.context_rows + 1
@@ -252,6 +252,8 @@ def _sigmoid(values: np.ndarray) -> np.ndarray:
 
 
 def _to_python_scalar(value):
+    if pd.isna(value):
+        return None
     if hasattr(value, "item"):
         try:
             return value.item()

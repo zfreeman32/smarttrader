@@ -28,6 +28,7 @@ DEFAULT_WEEKLY_CONTEXT_HISTORY_BARS = 8000
 DEFAULT_DAILY_CONTEXT_HISTORY_BARS = 2000
 DEFAULT_HTF_30M_CONTEXT_HISTORY_BARS = 1000
 DEFAULT_HTF_1H_CONTEXT_HISTORY_BARS = 2000
+DEFAULT_FRVP_PRIOR_RTH_HISTORY_BARS = 8000
 ADDITIVE_SEED_PREFIX_BARS = 1
 ADDITIVE_CUMULATIVE_FEATURE_NAMES = frozenset(
     {
@@ -47,6 +48,37 @@ _LOWVOL_INTERACTIONS = {
     "interaction_lowvol_bull_reversion",
     "interaction_lowvol_bear_reversion",
 }
+_RUNTIME_CONTEXT_TRANSFORM_BASE_FEATURE_NAMES = (
+    "ict_total_confluence_1atr",
+    "ict_zone_balance_1atr",
+)
+_LIVE_ZERO_DEFAULT_FEATURE_PREFIXES = (
+    "htf_confluence_",
+)
+_ICT_INTERACTION_FEATURE_NAMES = frozenset(
+    {
+        "ict_bull_sweep_plus_fvg",
+        "ict_bear_sweep_plus_fvg",
+        "ict_bull_sweep_plus_ob",
+        "ict_bear_sweep_plus_ob",
+        "ict_bull_choch_after_sweep",
+        "ict_bear_choch_after_sweep",
+        "ict_sweep_plus_choch",
+        "ict_displacement_after_sweep",
+        "ict_fvg_retrace_after_displacement",
+        "ict_bull_zone_in_discount",
+        "ict_bear_zone_in_premium",
+    }
+)
+_FRVP_PRIOR_RTH_HISTORY_FEATURE_NAMES = frozenset(
+    {
+        "frvp_day_type",
+        "frvp_poc_migration_vel",
+        "frvp_va_expansion",
+        "frvp_va_migration_vel",
+        "frvp_va_width_zscore_20",
+    }
+)
 POLICY_CONTEXT_FEATURE_NAMES = (
     "ema_alignment",
     "atr_14",
@@ -87,6 +119,94 @@ FRVP_DASHBOARD_EXTRA_FEATURE_NAMES = (
     "frvp_dist_nearest_lvn_atr",
     "frvp_hvn_above_close",
     "frvp_hvn_below_close",
+)
+ICT_DASHBOARD_EXTRA_FEATURE_NAMES = (
+    "atr_14",
+    "htf_30m_ema_alignment",
+    "htf_1h_ema_alignment",
+    "dist_to_bull_fvg_atr",
+    "dist_to_bear_fvg_atr",
+    "dist_to_bull_order_block_atr",
+    "dist_to_bear_order_block_atr",
+    "ict_buy_side_sweep",
+    "ict_sell_side_sweep",
+    "ict_sweep_direction",
+    "ict_sweep_level_code",
+    "ict_sweep_level_value",
+    "ict_sweep_penetration_atr",
+    "ict_structure_state",
+    "ict_impulse_direction",
+    "ict_displacement_score",
+    "ict_displacement_volume_zscore",
+    "ict_ib_complete",
+    "ict_is_rth",
+    "ict_lunch_lull_flag",
+    "ict_close_ramp_flag",
+    "ict_in_ote_band",
+    "ict_premium_zone",
+    "ict_discount_zone",
+    "ict_session_phase_code",
+    "ict_session_vwap",
+    "ict_bars_since_buy_side_sweep",
+    "ict_bars_since_sell_side_sweep",
+    "ict_bars_since_displacement_bull",
+    "ict_bars_since_displacement_bear",
+    "ict_bars_since_choch_bull",
+    "ict_bars_since_choch_bear",
+    "ict_bars_since_mss_bull",
+    "ict_bars_since_mss_bear",
+    "ict_latest_bull_displacement_id",
+    "ict_latest_bull_displacement_index",
+    "ict_latest_bull_displacement_origin",
+    "ict_latest_bear_displacement_id",
+    "ict_latest_bear_displacement_index",
+    "ict_latest_bear_displacement_origin",
+    "ict_nearest_bull_fvg_id",
+    "ict_nearest_bull_fvg_lower",
+    "ict_nearest_bull_fvg_upper",
+    "ict_nearest_bull_fvg_ce",
+    "ict_nearest_bull_fvg_is_ifvg",
+    "ict_nearest_bull_fvg_created_by_displacement",
+    "ict_nearest_bull_fvg_inversion_index",
+    "ict_nearest_bear_fvg_id",
+    "ict_nearest_bear_fvg_lower",
+    "ict_nearest_bear_fvg_upper",
+    "ict_nearest_bear_fvg_ce",
+    "ict_nearest_bear_fvg_is_ifvg",
+    "ict_nearest_bear_fvg_created_by_displacement",
+    "ict_nearest_bear_fvg_inversion_index",
+    "ict_nearest_bull_order_block_id",
+    "ict_nearest_bull_order_block_lower",
+    "ict_nearest_bull_order_block_upper",
+    "ict_nearest_bear_order_block_id",
+    "ict_nearest_bear_order_block_lower",
+    "ict_nearest_bear_order_block_upper",
+    "ict_bull_order_block_retest_event",
+    "ict_bear_order_block_retest_event",
+    "ict_prior_rth_high",
+    "ict_prior_rth_low",
+    "ict_prior_rth_close",
+    "ict_rth_open",
+    "ict_overnight_high",
+    "ict_overnight_low",
+    "ict_prior_week_high",
+    "ict_prior_week_low",
+    "ict_ib_high",
+    "ict_ib_low",
+    "ict_midnight_open",
+    "ict_open_0830",
+    "ict_dol_level_up",
+    "ict_dol_level_down",
+    "ict_latest_swing_high",
+    "ict_latest_swing_low",
+)
+ICT_CONTEXT_NONPREFIX_FEATURE_NAMES = frozenset(
+    {
+        "dist_to_bull_fvg_atr",
+        "dist_to_bear_fvg_atr",
+        "dist_to_bull_order_block_atr",
+        "dist_to_bear_order_block_atr",
+    }
 )
 _ASSET_TO_FEATURE_INSTRUMENT = {
     "ES": "es",
@@ -201,9 +321,10 @@ def build_runtime_feature_config(
     if strategy_timeout_seconds is not None:
         config.strategy_timeout_seconds = None if strategy_timeout_seconds <= 0 else float(strategy_timeout_seconds)
 
+    _prune_feature_sets(config, plan.built_feature_names)
     _prune_transform_settings(config, plan.built_feature_names)
     plan.strategy_adapter.apply_to_config(config)
-    if any(feature_name.startswith("frvp_") for feature_name in plan.built_feature_names):
+    if any(feature_name.startswith(("frvp_", "ict_")) for feature_name in plan.built_feature_names):
         config.instrument = _ASSET_TO_FEATURE_INSTRUMENT.get(plan.asset.upper(), config.instrument)
     return config
 
@@ -232,6 +353,8 @@ class IncrementalFeatureEngine:
             transform_workers=transform_workers,
             strategy_timeout_seconds=strategy_timeout_seconds,
         )
+        if _manifests_preserve_numeric_nans(self.manifests):
+            self.config.fillna_numeric = False
         self.builder = FeatureDatasetBuilder(self.config)
         self.state = FeatureRuntimeState(
             max_history_bars=self.plan.runtime_history_bars + self.plan.additive_seed_prefix_bars
@@ -284,6 +407,10 @@ class IncrementalFeatureEngine:
         bounded = self._slice_runtime_window(source_frame)
         built_frame, _ = self.builder.build(bounded)
         built_frame = self._apply_feature_seed_offsets(built_frame)
+        built_frame = _materialize_live_default_features(
+            built_frame,
+            requested_feature_names=self.plan.built_feature_names,
+        )
         missing_feature_names = [
             feature_name for feature_name in self.plan.built_feature_names if feature_name not in built_frame.columns
         ]
@@ -315,6 +442,7 @@ class IncrementalFeatureEngine:
                 feature_frame,
                 self.plan.selected_feature_names,
                 minimum_history_bars=self.plan.minimum_history_bars,
+                allow_nan_values=all(_manifest_allows_nan_feature_values(manifest) for manifest in self.manifests),
             )
 
         manifest = self._manifest_by_id(model_id)
@@ -322,6 +450,7 @@ class IncrementalFeatureEngine:
             feature_frame,
             manifest.feature_manifest.selected_feature_names,
             minimum_history_bars=manifest.context_requirements.minimum_runtime_history_bars,
+            allow_nan_values=_manifest_allows_nan_feature_values(manifest),
         )
 
     def compute_latest_snapshots(
@@ -505,6 +634,19 @@ class IncrementalFeatureEngine:
 def _prune_transform_settings(config: FeatureBuilderConfig, selected_feature_names: Sequence[str]) -> None:
     selected_feature_names = tuple(dict.fromkeys(selected_feature_names))
 
+    # The ICT confluence bases are emitted by the ict_context feature set rather
+    # than the base OTE recipe. Add them to the transform allowlists before
+    # pruning so manifest-selected lag/rolling/z-score derivatives are built.
+    config.lag_columns = list(
+        dict.fromkeys((*config.lag_columns, *_RUNTIME_CONTEXT_TRANSFORM_BASE_FEATURE_NAMES))
+    )
+    config.rolling_stat_columns = list(
+        dict.fromkeys((*config.rolling_stat_columns, *_RUNTIME_CONTEXT_TRANSFORM_BASE_FEATURE_NAMES))
+    )
+    config.zscore_columns = list(
+        dict.fromkeys((*config.zscore_columns, *_RUNTIME_CONTEXT_TRANSFORM_BASE_FEATURE_NAMES))
+    )
+
     lag_bases, lag_periods = _collect_columns_and_periods(
         selected_feature_names,
         _LAG_PATTERN,
@@ -595,10 +737,70 @@ def _prune_transform_settings(config: FeatureBuilderConfig, selected_feature_nam
     config.enable_interactions = any(name.startswith("interaction_") for name in selected_feature_names)
 
 
+def _prune_feature_sets(config: FeatureBuilderConfig, selected_feature_names: Sequence[str]) -> None:
+    selected_feature_names = tuple(dict.fromkeys(str(name) for name in selected_feature_names if str(name)))
+    requires_interaction_context = any(name.startswith("interaction_") for name in selected_feature_names)
+    requires_ict_interactions = any(
+        name in _ICT_INTERACTION_FEATURE_NAMES
+        for name in selected_feature_names
+    )
+    requires_frvp_context = any(
+        name.startswith("frvp_") or "_frvp_" in name
+        for name in selected_feature_names
+    )
+    requires_ict_context = any(
+        name.startswith("ict_")
+        or "_ict_" in name
+        or name in ICT_CONTEXT_NONPREFIX_FEATURE_NAMES
+        for name in selected_feature_names
+    ) or requires_interaction_context
+
+    pruned_feature_sets: list[str] = []
+    for feature_set_name in config.feature_sets:
+        if feature_set_name == "frvp_context" and not requires_frvp_context:
+            continue
+        if feature_set_name == "ict_context" and not requires_ict_context:
+            continue
+        pruned_feature_sets.append(feature_set_name)
+    if requires_ict_interactions and "ict_interactions" not in pruned_feature_sets:
+        pruned_feature_sets.append("ict_interactions")
+    config.feature_sets = pruned_feature_sets
+
+
+def _materialize_live_default_features(
+    built_frame: pd.DataFrame,
+    *,
+    requested_feature_names: Sequence[str],
+) -> pd.DataFrame:
+    """Materialize causal defaults for offline helper columns absent from raw bars.
+
+    HTF confluence helpers are sparse event-time flags in the training datasets:
+    every non-event row is zero. Live IBKR bars do not carry the offline label
+    helper columns, so zero is the only causal value until a live event-specific
+    confluence producer is available.
+    """
+
+    missing_default_names = [
+        feature_name
+        for feature_name in requested_feature_names
+        if feature_name not in built_frame.columns
+        and feature_name.startswith(_LIVE_ZERO_DEFAULT_FEATURE_PREFIXES)
+    ]
+    if not missing_default_names:
+        return built_frame
+
+    materialized = built_frame.copy()
+    for feature_name in missing_default_names:
+        materialized[feature_name] = np.zeros(len(materialized), dtype=np.int8)
+    return materialized
+
+
 def infer_required_history_bars(selected_feature_names: Sequence[str]) -> int:
     selected_feature_names = tuple(dict.fromkeys(selected_feature_names))
     required_bars = 0
 
+    if any(feature_name in _FRVP_PRIOR_RTH_HISTORY_FEATURE_NAMES for feature_name in selected_feature_names):
+        required_bars = max(required_bars, DEFAULT_FRVP_PRIOR_RTH_HISTORY_BARS)
     if any("rolling_weekly" in feature_name for feature_name in selected_feature_names):
         required_bars = max(required_bars, DEFAULT_WEEKLY_CONTEXT_HISTORY_BARS)
     if any("rolling_daily" in feature_name for feature_name in selected_feature_names):
@@ -651,6 +853,15 @@ def _collect_columns_and_periods(
         columns.add(base)
         values.add(int(match.group(value_group)))
     return columns, values
+
+
+def _manifest_allows_nan_feature_values(manifest: LiveRuntimeManifest) -> bool:
+    model_id = str(manifest.model_id).lower()
+    return manifest.backend == "xgboost" and model_id.startswith(("frvp_", "ict_"))
+
+
+def _manifests_preserve_numeric_nans(manifests: Sequence[LiveRuntimeManifest]) -> bool:
+    return bool(manifests) and all(_manifest_allows_nan_feature_values(manifest) for manifest in manifests)
 
 
 def _ordered_strings(existing_values: Sequence[str], selected_values: set[str]) -> list[str]:

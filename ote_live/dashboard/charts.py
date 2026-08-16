@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 
 from ote_live.storage import SignalAuditTrail
@@ -32,6 +34,7 @@ def build_price_signal_figure(
                 name="Price",
             )
         )
+        _add_contract_roll_markers(fig, bars)
 
     emitted_signals = _aggregate_emitted_signals(signals)
     if not emitted_signals.empty:
@@ -71,6 +74,7 @@ def build_price_signal_figure(
         hovermode="x unified",
         xaxis_rangeslider_visible=False,
         showlegend=False,
+        uirevision="ote-live-price",
     )
     _apply_dark_chart_theme(fig)
     return fig
@@ -97,6 +101,7 @@ def build_frvp_price_figure(
                 name="Price",
             )
         )
+        _add_contract_roll_markers(fig, bars)
 
     _add_frvp_overlay_traces(fig, bars=bars, runtime_state=runtime_state)
     _add_emitted_signal_traces(fig, signals)
@@ -110,10 +115,99 @@ def build_frvp_price_figure(
         hovermode="x unified",
         xaxis_rangeslider_visible=False,
         showlegend=True,
+        uirevision="frvp-live-price",
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
     )
     _apply_dark_chart_theme(fig)
     return fig
+
+
+def build_ict_price_figure(
+    bars: pd.DataFrame,
+    signals: pd.DataFrame,
+    *,
+    runtime_state: dict | None,
+    title: str = "ICT Price And Live State",
+):
+    go = _plotly_go()
+
+    fig = go.Figure()
+    if not bars.empty:
+        fig.add_trace(
+            go.Candlestick(
+                x=bars["timestamp"],
+                open=bars["open"],
+                high=bars["high"],
+                low=bars["low"],
+                close=bars["close"],
+                name="Price",
+            )
+        )
+        _add_contract_roll_markers(fig, bars)
+
+    _add_ict_overlay_traces(fig, bars=bars, runtime_state=runtime_state)
+    _add_emitted_signal_traces(fig, signals)
+    _add_ict_setup_traces(fig, bars=bars, runtime_state=runtime_state)
+
+    fig.update_layout(
+        template="plotly_dark",
+        title=title,
+        height=660,
+        margin=dict(l=30, r=20, t=60, b=30),
+        hovermode="x unified",
+        xaxis_rangeslider_visible=False,
+        showlegend=True,
+        uirevision="ict-live-price",
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
+    )
+    _apply_dark_chart_theme(fig)
+    return fig
+
+
+def _add_contract_roll_markers(fig, bars: pd.DataFrame) -> None:
+    if bars.empty:
+        return
+    identity_column = None
+    for candidate in ("instrument_id", "contract_symbol"):
+        if candidate in bars.columns and bars[candidate].notna().any():
+            identity_column = candidate
+            break
+    if identity_column is None:
+        return
+    identity = bars[identity_column].astype("string")
+    changed = identity.notna() & identity.shift().notna() & identity.ne(identity.shift())
+    if not changed.any():
+        return
+    shapes = []
+    annotations = []
+    for index in bars.index[changed]:
+        timestamp = bars.loc[index, "timestamp"]
+        contract = bars.loc[index, identity_column]
+        shapes.append(
+            {
+                "type": "line",
+                "xref": "x",
+                "yref": "paper",
+                "x0": timestamp,
+                "x1": timestamp,
+                "y0": 0,
+                "y1": 1,
+                "line": {"color": "#f59e0b", "width": 1.5, "dash": "dash"},
+            }
+        )
+        annotations.append(
+            {
+                "x": timestamp,
+                "y": 1,
+                "xref": "x",
+                "yref": "paper",
+                "text": f"Roll → {contract}",
+                "showarrow": False,
+                "yanchor": "bottom",
+                "font": {"color": "#f59e0b", "size": 10},
+            }
+        )
+    fig.update_layout(shapes=shapes, annotations=annotations)
 
 
 def build_confidence_figure(
@@ -123,10 +217,12 @@ def build_confidence_figure(
     line_color: str = "#0d6efd",
     threshold_color: str = "#fd7e14",
     xaxis_range: tuple[object, object] | None = None,
+    fallback_threshold: float | None = None,
 ):
     go = _plotly_go()
 
     fig = go.Figure()
+    threshold_plotted = False
     if not confidence.empty:
         threshold_series = confidence["display_threshold"] if "display_threshold" in confidence.columns else confidence["threshold_applied"]
         fig.add_trace(
@@ -145,6 +241,7 @@ def build_confidence_figure(
             )
         )
         if threshold_series.notna().any():
+            threshold_plotted = True
             fig.add_trace(
                 go.Scatter(
                     x=confidence["timestamp"],
@@ -183,6 +280,39 @@ def build_confidence_figure(
     )
     if xaxis_range is not None:
         layout_kwargs["xaxis"] = {"range": list(xaxis_range)}
+    if not threshold_plotted and fallback_threshold is not None:
+        resolved_threshold = float(fallback_threshold)
+        if not pd.isna(resolved_threshold):
+            layout_kwargs["shapes"] = [
+                {
+                    "type": "line",
+                    "xref": "paper",
+                    "x0": 0,
+                    "x1": 1,
+                    "y0": resolved_threshold,
+                    "y1": resolved_threshold,
+                    "line": {
+                        "color": threshold_color,
+                        "width": 1.5,
+                        "dash": "dash",
+                    },
+                }
+            ]
+            layout_kwargs["annotations"] = [
+                {
+                    "xref": "paper",
+                    "x": 1,
+                    "xanchor": "right",
+                    "y": resolved_threshold,
+                    "yanchor": "bottom",
+                    "text": (
+                        f"Configured threshold: {resolved_threshold:.4f}"
+                        "<br>Awaiting first persisted probability"
+                    ),
+                    "showarrow": False,
+                    "font": {"color": threshold_color, "size": 11},
+                }
+            ]
     fig.update_layout(**layout_kwargs)
     _apply_dark_chart_theme(fig)
     return fig
@@ -367,13 +497,33 @@ def _signal_hover_text(row) -> str:
 
 def _setup_hover_text(row) -> str:
     confidence = _format_probability(getattr(row, "confidence", None))
-    return "<br>".join(
-        [
-            f"{getattr(row, 'label', 'FRVP setup')}",
-            f"Confidence: {confidence}",
-            f"Timestamp: {getattr(row, 'timestamp_utc', 'unknown')}",
-        ]
-    )
+    lines = [
+        f"{getattr(row, 'label', 'setup')}",
+        f"Confidence: {confidence}",
+        f"Timestamp: {getattr(row, 'timestamp_utc', 'unknown')}",
+    ]
+    for label, field_name in (
+        ("Anchor", "anchor_level"),
+        ("Entry", "entry_price"),
+        ("Stop", "stop_reference"),
+        ("Target", "target_reference"),
+        ("Reference", "reference_level"),
+        ("CE", "ce_price"),
+    ):
+        value = getattr(row, field_name, None)
+        if value is None or pd.isna(value):
+            continue
+        lines.append(f"{label}: {_format_probability(float(value))}")
+    for label, field_name in (
+        ("Reference Type", "reference_level_type"),
+        ("Sweep", "sweep_type"),
+        ("HTF Context", "htf_context"),
+    ):
+        value = getattr(row, field_name, None)
+        if value in {None, ""}:
+            continue
+        lines.append(f"{label}: {value}")
+    return "<br>".join(lines)
 
 
 def _aggregated_signal_hover_text(row) -> str:
@@ -597,6 +747,149 @@ def _add_frvp_setup_traces(fig, *, bars: pd.DataFrame, runtime_state: dict | Non
                 text=list(group["label"]),
                 textposition="top center" if is_long else "bottom center",
                 name="FRVP long setup" if is_long else "FRVP short setup",
+                textfont=dict(size=10, color=CHART_TEXT_COLOR),
+                hoverinfo="text",
+                hovertext=[
+                    _setup_hover_text(row)
+                    for row in group.itertuples(index=False)
+                ],
+            )
+        )
+
+
+def _add_ict_overlay_traces(fig, *, bars: pd.DataFrame, runtime_state: dict | None) -> None:
+    if runtime_state is None or bars.empty:
+        return
+    go = _plotly_go()
+    x_values = [bars["timestamp"].iloc[0], bars["timestamp"].iloc[-1]]
+    levels = dict(runtime_state.get("levels") or {})
+    for name, label, color, dash in (
+        ("prior_rth_high", "PDH", "#38bdf8", "dash"),
+        ("prior_rth_low", "PDL", "#38bdf8", "dash"),
+        ("overnight_high", "ONH", "#f59e0b", "dot"),
+        ("overnight_low", "ONL", "#f59e0b", "dot"),
+        ("ib_high", "IB High", "#34d399", "dashdot"),
+        ("ib_low", "IB Low", "#f87171", "dashdot"),
+        ("prior_week_high", "PWH", "#8b5cf6", "dot"),
+        ("prior_week_low", "PWL", "#8b5cf6", "dot"),
+        ("midnight_open", "Midnight Open", "#94a3b8", "dot"),
+        ("open_0830", "08:30 Open", "#c084fc", "dash"),
+        ("session_vwap", "Session VWAP", "#fbbf24", "solid"),
+        ("dol_up", "DOL Up", "#22c55e", "dash"),
+        ("dol_down", "DOL Down", "#ef4444", "dash"),
+    ):
+        level_value = _coerce_price_overlay(levels.get(name))
+        if level_value is None:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=[level_value, level_value],
+                mode="lines",
+                line=dict(color=color, width=1.3, dash=dash),
+                name=label,
+                hovertemplate=f"{label}: %{{y:.2f}}<extra></extra>",
+            )
+        )
+
+    zones = dict(runtime_state.get("zones") or {})
+    for name, label, line_color, fill_color in (
+        ("bull_fvg", "Bull FVG", "#22c55e", "rgba(34, 197, 94, 0.12)"),
+        ("bear_fvg", "Bear FVG", "#ef4444", "rgba(239, 68, 68, 0.12)"),
+        ("bull_order_block", "Bull OB", "#14b8a6", "rgba(20, 184, 166, 0.12)"),
+        ("bear_order_block", "Bear OB", "#f97316", "rgba(249, 115, 22, 0.12)"),
+    ):
+        zone = zones.get(name)
+        if not isinstance(zone, dict):
+            continue
+        lower = _coerce_price_overlay(zone.get("lower"))
+        upper = _coerce_price_overlay(zone.get("upper"))
+        if lower is None or upper is None or lower > upper:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=[lower, lower],
+                mode="lines",
+                line=dict(color=line_color, width=1, dash="dot"),
+                name=f"{label} lower",
+                showlegend=False,
+                hovertemplate=f"{label} lower: %{{y:.2f}}<extra></extra>",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=[upper, upper],
+                mode="lines",
+                line=dict(color=line_color, width=1, dash="dot"),
+                name=label,
+                fill="tonexty",
+                fillcolor=fill_color,
+                hovertemplate=f"{label} upper: %{{y:.2f}}<extra></extra>",
+            )
+        )
+        ce_price = _coerce_price_overlay(zone.get("ce_price"))
+        if ce_price is not None and lower <= ce_price <= upper:
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=[ce_price, ce_price],
+                    mode="lines",
+                    line=dict(color=line_color, width=1.2, dash="dashdot"),
+                    name=f"{label} CE",
+                    hovertemplate=f"{label} CE: %{{y:.2f}}<extra></extra>",
+                )
+            )
+
+
+def _coerce_price_overlay(value) -> float | None:
+    try:
+        resolved = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(resolved) or resolved <= 0.0:
+        return None
+    return resolved
+
+
+def _add_ict_setup_traces(fig, *, bars: pd.DataFrame, runtime_state: dict | None) -> None:
+    if runtime_state is None:
+        return
+    setups = list(runtime_state.get("recent_setups") or [])
+    if not setups or bars.empty:
+        return
+    go = _plotly_go()
+    frame = pd.DataFrame(setups)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp_utc"], errors="coerce", utc=True)
+    frame = frame.dropna(subset=["timestamp"])
+    if frame.empty:
+        return
+    latest_bars = bars.loc[:, ["timestamp", "low", "high", "close"]].copy()
+    merged = frame.merge(latest_bars, on="timestamp", how="left")
+    for side_value, group in merged.groupby("setup_side", dropna=False):
+        resolved_side = int(side_value or 0)
+        if resolved_side == 0:
+            continue
+        is_long = resolved_side > 0
+        price_column = "low" if is_long else "high"
+        fallback_column = "anchor_level" if "anchor_level" in group.columns else "close"
+        fallback_values = group[price_column].fillna(group[fallback_column]).fillna(group["close"])
+        y_values = fallback_values * (0.9994 if is_long else 1.0006)
+        fig.add_trace(
+            go.Scatter(
+                x=group["timestamp"],
+                y=y_values,
+                mode="markers+text",
+                marker=dict(
+                    size=12,
+                    symbol="triangle-up" if is_long else "triangle-down",
+                    color="#22c55e" if is_long else "#ef4444",
+                    line=dict(width=1),
+                ),
+                text=list(group["label"]),
+                textposition="top center" if is_long else "bottom center",
+                name="ICT long setup" if is_long else "ICT short setup",
                 textfont=dict(size=10, color=CHART_TEXT_COLOR),
                 hoverinfo="text",
                 hovertext=[

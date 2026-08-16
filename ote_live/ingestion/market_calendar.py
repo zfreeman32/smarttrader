@@ -36,9 +36,29 @@ def is_expected_market_bar_timestamp(
     *,
     asset: str,
 ) -> bool:
+    if canonical_asset_symbol(asset) == "ES":
+        return is_es_futures_market_open(timestamp)
     if is_forex_asset(asset):
         return is_forex_market_open(timestamp)
     return True
+
+
+def is_es_futures_market_open(timestamp: datetime) -> bool:
+    """Return whether an ES bar may open at this timestamp."""
+
+    local = ensure_utc(timestamp).astimezone(_NEW_YORK_TZ)
+    weekday = local.weekday()
+    minutes = (local.hour * 60) + local.minute
+    maintenance_start = 17 * 60
+    session_reopen = 18 * 60
+
+    if weekday == 5:
+        return False
+    if weekday == 6:
+        return minutes >= session_reopen
+    if weekday == 4 and minutes >= maintenance_start:
+        return False
+    return not (maintenance_start <= minutes < session_reopen)
 
 
 def is_forex_market_open(timestamp: datetime) -> bool:

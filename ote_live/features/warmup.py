@@ -50,6 +50,7 @@ def evaluate_feature_warmup(
     required_feature_names: Sequence[str],
     *,
     minimum_history_bars: int,
+    allow_nan_values: bool = False,
 ) -> WarmupStatus:
     required_feature_names = tuple(dict.fromkeys(required_feature_names))
     bars_available = int(len(feature_frame))
@@ -69,15 +70,18 @@ def evaluate_feature_warmup(
 
     latest = feature_frame.iloc[-1]
     missing_feature_names: list[str] = []
+    valid_feature_count = 0
     for feature_name in required_feature_names:
         if feature_name not in feature_frame.columns:
             missing_feature_names.append(feature_name)
             continue
-        if pd.isna(latest[feature_name]):
+        if pd.notna(latest[feature_name]):
+            valid_feature_count += 1
+            continue
+        if not allow_nan_values:
             missing_feature_names.append(feature_name)
 
-    valid_feature_count = len(required_feature_names) - len(missing_feature_names)
-    features_ready = not missing_feature_names
+    features_ready = not missing_feature_names and (valid_feature_count > 0 or not required_feature_names)
     return WarmupStatus(
         ready=history_ready and features_ready,
         history_ready=history_ready,

@@ -11,7 +11,7 @@ from ote_live.contracts.signal import SignalDecision
 from ote_live.features.manifest import LivePolicy, LiveRuntimeManifest
 from ote_live.models.runners import RuntimeModelRunner
 from ote_live.policies.abstain import LiveAbstainState, evaluate_live_abstain
-from ote_live.policies.regime import resolve_latest_regime
+from ote_live.policies.regime import resolve_latest_regime, resolve_policy_context
 from ote_live.policies.threshold import clears_threshold, resolve_live_threshold
 from ote_live.storage.repositories import LiveAuditRepository
 
@@ -54,8 +54,13 @@ class LiveDecisionEngine:
         feature_snapshot: FeatureSnapshot | None = None,
         runtime_manifest: LiveRuntimeManifest | None = None,
     ) -> ModelDecisionPath:
-        latest_regime = resolve_latest_regime(
+        resolved_policy_context = resolve_policy_context(
             policy_context,
+            timezone_contract=timezone_contract,
+            strict=False,
+        )
+        latest_regime = resolve_latest_regime(
+            resolved_policy_context,
             timezone_contract=timezone_contract,
             strict=False,
         )
@@ -138,7 +143,7 @@ class LiveDecisionEngine:
             live_policy,
             probability=enriched_prediction.calibrated_probability,
             source_row_idx=enriched_prediction.source_row_idx,
-            policy_context=policy_context,
+            policy_context=resolved_policy_context,
             state=state,
         )
         state.remember_candidate(enriched_prediction.calibrated_probability)

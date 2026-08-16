@@ -226,6 +226,7 @@ class LiveCollectorRuntime:
                 ibkr_config,
                 asset=config.asset,
                 timeframe=config.source_timeframe,
+                snapshot_db_path=config.db_path,
             )
             stream = IBKRPollingBarStream(
                 client,
@@ -777,6 +778,15 @@ class LiveCollectorRuntime:
             warmed_bars = self.signal_processor.warm_from_store()
             if warmed_bars:
                 LOGGER.info("Warmed live signal processor with %s stored %s bars.", warmed_bars, self.config.signal_timeframe)
+            seed_latest = getattr(self.signal_processor, "seed_latest_predictions_from_store", None)
+            if callable(seed_latest):
+                seeded_results = tuple(seed_latest())
+                if seeded_results:
+                    LOGGER.info(
+                        "Seeded %s live model predictions from the latest completed %s bar.",
+                        len(seeded_results),
+                        self.config.signal_timeframe,
+                    )
         except Exception as exc:
             self._record_health_event(
                 component="collector.signal_runtime",

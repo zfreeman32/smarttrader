@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_repo_env
 from ote_live.ingestion.connector_ibkr import IBKRRuntimeConfig
+from ote_live.ingestion.ibkr.errors import IBKRError
 from ote_live.ingestion.runtime import (
     DEFAULT_COLLECTOR_POLL_INTERVAL_SECONDS,
     DEFAULT_DB_PATH,
@@ -108,22 +109,84 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timezone", default=env_str("OTE_LIVE_TIMEZONE", "UTC"))
     parser.add_argument("--api-key", default=env_str("FMP_API_KEY") or env_str("TWELVEDATA_API_KEY"))
     parser.add_argument("--ibkr-host", default=env_str("IBKR_HOST", "127.0.0.1"))
-    parser.add_argument("--ibkr-port", type=int, default=env_int("IBKR_PORT", 7497))
-    parser.add_argument("--ibkr-client-id", type=int, default=env_int("IBKR_CLIENT_ID", 17))
-    parser.add_argument("--ibkr-market-data-type", type=int, default=env_int("IBKR_MARKET_DATA_TYPE", 1))
+    parser.add_argument("--ibkr-port", type=int, default=env_int("IBKR_PORT", 4001))
+    parser.add_argument("--ibkr-client-id", type=int, default=env_int("IBKR_CLIENT_ID", 21))
+    parser.add_argument("--ibkr-market-data-type", default=env_str("IBKR_MARKET_DATA_TYPE", "live"))
+    ibkr_enabled_group = parser.add_mutually_exclusive_group()
+    ibkr_enabled_group.add_argument("--ibkr-enabled", dest="ibkr_enabled", action="store_true")
+    ibkr_enabled_group.add_argument("--ibkr-disabled", dest="ibkr_enabled", action="store_false")
+    parser.set_defaults(ibkr_enabled=env_bool("IBKR_ENABLED", False))
+    parser.add_argument("--ibkr-account-mode", default=env_str("IBKR_ACCOUNT_MODE", "paper"))
+    delayed_group = parser.add_mutually_exclusive_group()
+    delayed_group.add_argument(
+        "--ibkr-allow-delayed-fallback",
+        dest="ibkr_allow_delayed_fallback",
+        action="store_true",
+    )
+    delayed_group.add_argument(
+        "--ibkr-no-delayed-fallback",
+        dest="ibkr_allow_delayed_fallback",
+        action="store_false",
+    )
+    parser.set_defaults(
+        ibkr_allow_delayed_fallback=env_bool("IBKR_ALLOW_DELAYED_FALLBACK", False)
+    )
     parser.add_argument("--ibkr-symbol", default=env_str("IBKR_ES_SYMBOL", "ES"))
+    parser.add_argument("--ibkr-security-type", default=env_str("IBKR_ES_SECURITY_TYPE", "FUT"))
     parser.add_argument("--ibkr-exchange", default=env_str("IBKR_ES_EXCHANGE", "CME"))
     parser.add_argument("--ibkr-currency", default=env_str("IBKR_ES_CURRENCY", "USD"))
-    parser.add_argument("--ibkr-local-symbol", default=env_str("IBKR_ES_LOCAL_SYMBOL"))
-    parser.add_argument("--ibkr-contract-month", default=env_str("IBKR_ES_CONTRACT_MONTH"))
-    parser.add_argument("--ibkr-con-id", type=int, default=env_int("IBKR_ES_CON_ID"))
-    parser.add_argument("--ibkr-bar-size", default=env_str("IBKR_BAR_SIZE"))
+    parser.add_argument("--ibkr-multiplier", default=env_str("IBKR_ES_MULTIPLIER", "50"))
+    parser.add_argument("--ibkr-trading-class", default=env_str("IBKR_ES_TRADING_CLASS", "ES"))
+    parser.add_argument("--ibkr-local-symbol", default=None)
+    parser.add_argument(
+        "--ibkr-contract-month",
+        default=env_str("IBKR_ES_MANUAL_CONTRACT_MONTH"),
+    )
+    parser.add_argument(
+        "--ibkr-con-id",
+        type=int,
+        default=env_int("IBKR_ES_MANUAL_CONID"),
+    )
+    parser.add_argument(
+        "--ibkr-bar-size",
+        default=env_str("IBKR_ES_BAR_SIZE", "5 mins"),
+    )
     parser.add_argument("--ibkr-what-to-show", default=env_str("IBKR_WHAT_TO_SHOW", "TRADES"))
-    parser.add_argument("--ibkr-backfill-duration", default=env_str("IBKR_BACKFILL_DURATION", "2 D"))
+    parser.add_argument(
+        "--ibkr-backfill-duration",
+        default=env_str("IBKR_ES_HISTORY_DURATION", "2 D"),
+    )
+    parser.add_argument("--ibkr-roll-policy", default=env_str("IBKR_ES_ROLL_POLICY", "cme_calendar"))
+    parser.add_argument("--ibkr-roll-time-et", default=env_str("IBKR_ES_ROLL_TIME_ET", "09:30"))
+    parser.add_argument(
+        "--ibkr-stale-quote-seconds",
+        type=float,
+        default=env_float("IBKR_STALE_QUOTE_SECONDS", 15.0),
+    )
+    parser.add_argument(
+        "--ibkr-stale-bar-seconds",
+        type=float,
+        default=env_float("IBKR_STALE_BAR_SECONDS", 420.0),
+    )
+    parser.add_argument(
+        "--ibkr-delayed-history-refresh-seconds",
+        type=float,
+        default=env_float("IBKR_DELAYED_HISTORY_REFRESH_SECONDS", 240.0),
+    )
+    parser.add_argument(
+        "--ibkr-reconnect-initial-seconds",
+        type=float,
+        default=env_float("IBKR_RECONNECT_INITIAL_SECONDS", 2.0),
+    )
+    parser.add_argument(
+        "--ibkr-reconnect-max-seconds",
+        type=float,
+        default=env_float("IBKR_RECONNECT_MAX_SECONDS", 60.0),
+    )
     ibkr_rth_group = parser.add_mutually_exclusive_group()
     ibkr_rth_group.add_argument("--ibkr-use-rth", dest="ibkr_use_rth", action="store_true")
     ibkr_rth_group.add_argument("--ibkr-no-use-rth", dest="ibkr_use_rth", action="store_false")
-    parser.set_defaults(ibkr_use_rth=env_bool("IBKR_USE_RTH", False))
+    parser.set_defaults(ibkr_use_rth=env_bool("IBKR_ES_USE_RTH", False))
     ibkr_keep_up_to_date_group = parser.add_mutually_exclusive_group()
     ibkr_keep_up_to_date_group.add_argument(
         "--ibkr-keep-up-to-date",
@@ -229,21 +292,34 @@ async def _run(args: argparse.Namespace) -> int:
         alert_sms_recipients=_parse_recipients(args.alert_sms_recipients),
         ibkr=(
             IBKRRuntimeConfig(
+                enabled=bool(args.ibkr_enabled),
                 host=args.ibkr_host,
                 port=int(args.ibkr_port),
                 client_id=int(args.ibkr_client_id),
-                market_data_type=int(args.ibkr_market_data_type),
+                account_mode=args.ibkr_account_mode,
+                market_data_type=args.ibkr_market_data_type,
+                allow_delayed_fallback=bool(args.ibkr_allow_delayed_fallback),
                 symbol=args.ibkr_symbol,
+                security_type=args.ibkr_security_type,
                 exchange=args.ibkr_exchange,
                 currency=args.ibkr_currency,
+                multiplier=args.ibkr_multiplier,
+                trading_class=args.ibkr_trading_class,
                 local_symbol=args.ibkr_local_symbol,
-                contract_month=args.ibkr_contract_month,
-                con_id=args.ibkr_con_id,
+                manual_contract_month=args.ibkr_contract_month,
+                manual_conid=args.ibkr_con_id,
                 use_rth=bool(args.ibkr_use_rth),
                 bar_size=args.ibkr_bar_size,
                 what_to_show=args.ibkr_what_to_show,
                 keep_up_to_date=bool(args.ibkr_keep_up_to_date),
-                backfill_duration=args.ibkr_backfill_duration,
+                history_duration=args.ibkr_backfill_duration,
+                roll_policy=args.ibkr_roll_policy,
+                roll_time_et=args.ibkr_roll_time_et,
+                stale_quote_seconds=args.ibkr_stale_quote_seconds,
+                stale_bar_seconds=args.ibkr_stale_bar_seconds,
+                delayed_history_refresh_seconds=args.ibkr_delayed_history_refresh_seconds,
+                reconnect_initial_seconds=args.ibkr_reconnect_initial_seconds,
+                reconnect_max_seconds=args.ibkr_reconnect_max_seconds,
             )
             if str(args.data_supplier).upper() == "IBKR"
             else None
@@ -362,6 +438,9 @@ def main() -> int:
     except KeyboardInterrupt:
         logging.getLogger(__name__).warning("Collector interrupted by operator shutdown request.")
         return 130
+    except IBKRError as exc:
+        logging.getLogger(__name__).error("%s", exc)
+        return 2
 
 
 def _parse_recipients(value: str) -> tuple[str, ...]:

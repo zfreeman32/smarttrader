@@ -1,4 +1,5 @@
-from .app import create_dashboard_app
+from __future__ import annotations
+
 from .queries import (
     DashboardHealthSummary,
     DashboardPerformanceSummary,
@@ -23,3 +24,11 @@ __all__ = [
     "fetch_recent_signals",
     "summarize_signal_markouts",
 ]
+
+
+def __getattr__(name: str):
+    if name == "create_dashboard_app":
+        from .app import create_dashboard_app
+
+        return create_dashboard_app
+    raise AttributeError(name)

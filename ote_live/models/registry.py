@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from models.ote_registry_loader import OTEModelRecord, load_ote_model_registry
+from model_testing.promotion_gates import accepted_for_paper_trading, drawdown_acceptance_passed
 from ote_live.features.manifest import (
     AbstainPolicy,
     ArtifactReferences,
@@ -582,15 +583,61 @@ def _resolve_source_lineage_payload(
     resolved_payload = dict(source_lineage_payload)
     if resolved_payload.get("upstream_metadata_file") is None:
         resolved_payload["upstream_metadata_file"] = ""
-    upstream_timezone_contract = resolved_payload.get("upstream_timezone_contract")
-    if upstream_timezone_contract is not None:
-        return resolved_payload, False
+    upstream_source_path = str(resolved_payload.get("upstream_source_path") or "")
+    if resolved_payload.get("upstream_bar_timestamp_semantics") is None:
+        resolved_payload["upstream_bar_timestamp_semantics"] = _infer_upstream_bar_timestamp_semantics(
+            upstream_source_path
+        )
 
-    resolved_payload["upstream_timezone_contract"] = _synthesize_upstream_timezone_contract(
-        upstream_source_path=str(resolved_payload.get("upstream_source_path") or ""),
+    upstream_timezone_contract = resolved_payload.get("upstream_timezone_contract")
+    normalized_contract, used_synthesized_contract = _normalize_upstream_timezone_contract(
+        upstream_timezone_contract=upstream_timezone_contract,
+        upstream_source_path=upstream_source_path,
         timezone_payload=timezone_payload,
     )
-    return resolved_payload, True
+    resolved_payload["upstream_timezone_contract"] = normalized_contract
+    return resolved_payload, used_synthesized_contract
+
+
+def _normalize_upstream_timezone_contract(
+    *,
+    upstream_timezone_contract: Any,
+    upstream_source_path: str,
+    timezone_payload: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    synthesized_contract = _synthesize_upstream_timezone_contract(
+        upstream_source_path=upstream_source_path,
+        timezone_payload=timezone_payload,
+    )
+    if not isinstance(upstream_timezone_contract, dict):
+        return synthesized_contract, True
+
+    if {
+        "source_timezone",
+        "canonical_timezone",
+        "csv_timezone",
+        "csv_timestamps_are_timezone_aware",
+        "timestamp_column",
+    }.issubset(upstream_timezone_contract.keys()):
+        return dict(upstream_timezone_contract), False
+
+    normalized_contract = dict(synthesized_contract)
+    for key in ("source_timezone", "canonical_timezone", "csv_timezone", "timestamp_column"):
+        value = upstream_timezone_contract.get(key)
+        if value not in {None, ""}:
+            normalized_contract[key] = value
+    if "csv_timestamps_are_timezone_aware" in upstream_timezone_contract:
+        normalized_contract["csv_timestamps_are_timezone_aware"] = bool(
+            upstream_timezone_contract["csv_timestamps_are_timezone_aware"]
+        )
+    return normalized_contract, True
+
+
+def _infer_upstream_bar_timestamp_semantics(upstream_source_path: str) -> str:
+    normalized_path = upstream_source_path.replace("\\", "/").lower()
+    if normalized_path.endswith(".csv") or "futures_data/" in normalized_path:
+        return "bar_open"
+    return "timestamp"
 
 
 def _synthesize_upstream_timezone_contract(
@@ -683,12 +730,9 @@ def _load_policy_sources(
             profitable_quarter_share=float(overall_metrics.get("profitable_quarter_share", 0.0)),
             positive_composite_expectancy_share=float(model_output.get("positive_composite_expectancy_share", 0.0)),
             accepted_for_paper_trading_gate=bool(
-                model_output.get("acceptance", {}).get("policy_profitable_after_costs", False)
-                and model_output.get("acceptance", {}).get("wfe_above_threshold", False)
-                and model_output.get("acceptance", {}).get("profitable_quarter_share_above_threshold", False)
-                and model_output.get("acceptance", {}).get("positive_composite_expectancy_share_above_threshold", False)
-                and model_output.get("acceptance", {}).get("largest_single_trade_share_below_limit", False)
-                and model_output.get("acceptance", {}).get("max_drawdown_less_than_two_times_average_monthly_profit", False)
+                model_output.get("paper_trading_gate", {}).get("accepted")
+                if isinstance(model_output.get("paper_trading_gate"), dict)
+                else accepted_for_paper_trading(model_output.get("acceptance", {}))
             ),
             overall_wfe=float(walk_forward.get("overall_wfe", 0.0)),
             max_drawdown_pips=float(overall_metrics.get("max_drawdown_pips", float("inf"))),
@@ -810,6 +854,10 @@ def _policy_source_sort_key(source_record: PolicySourceRecord) -> tuple[float, .
         max_drawdown_score,
         source_record.overall_wfe,
     )
+
+
+def _drawdown_acceptance_passed(acceptance: dict[str, Any]) -> bool:
+    return drawdown_acceptance_passed(acceptance)
 
 
 def _extract_version(model_id: str) -> int | None:

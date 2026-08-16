@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime
 import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 from urllib.parse import parse_qs
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from ote_live.dashboard.charts import (
     build_confidence_figure,
     build_frvp_price_figure,
+    build_ict_price_figure,
     build_price_signal_figure,
 )
 from ote_live.dashboard.queries import (
@@ -24,8 +27,13 @@ from ote_live.dashboard.queries import (
     summarize_signal_markouts,
 )
 from ote_live.dashboard.view_registry import DashboardViewConfig
-from ote_live.dashboard.view_state import DASHBOARD_VIEW_STATE_SCOPE, build_frvp_setup_lines
+from ote_live.dashboard.view_state import (
+    DASHBOARD_VIEW_STATE_SCOPE,
+    build_frvp_setup_lines,
+    build_ict_setup_lines,
+)
 from ote_live.models.loaders import load_direction_runtime_manifest
+from ote_live.ingestion.ibkr.service import IBKR_RUNTIME_STATE_SCOPE
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -149,6 +157,7 @@ def create_dashboard_app(
                             _summary_card(html, "Latest Signal", "latest-signal"),
                             _summary_card(html, "Heartbeat", "heartbeat"),
                             _summary_card(html, "Paper Markout", "paper-markout"),
+                            _summary_card(html, "IBKR ES Feed", "ibkr-feed"),
                         ],
                     ),
                     html.Div(
@@ -197,6 +206,7 @@ def create_dashboard_app(
         Output("latest-signal", "children"),
         Output("heartbeat", "children"),
         Output("paper-markout", "children"),
+        Output("ibkr-feed", "children"),
         Output("dashboard-subtitle", "children"),
         Output("price-figure", "figure"),
         Output("health-events", "children"),
@@ -225,6 +235,15 @@ def create_dashboard_app(
             timeframe=view.timeframe,
             limit=max(signal_limit, 240),
         )
+        ibkr_state = (
+            store.get_runtime_state(
+                scope=IBKR_RUNTIME_STATE_SCOPE,
+                state_key=view.asset.upper(),
+            )
+            if str(view.data_supplier).upper() == "IBKR"
+            else None
+        )
+        bars = _merge_ibkr_live_bars(bars, ibkr_state)
         signals = fetch_recent_signals(
             audit_repository,
             model_ids=manifest_model_ids or None,
@@ -287,6 +306,10 @@ def create_dashboard_app(
                 f"cum {performance.cumulative_markout_pips:.2f} pips | "
                 f"win {performance.win_rate:.1%}"
             )
+        ibkr_feed_text = _format_ibkr_feed_status(
+            ibkr_state,
+            expected=bool(str(view.data_supplier).upper() == "IBKR"),
+        )
 
         recent_health_lines = [
             (
@@ -301,13 +324,14 @@ def create_dashboard_app(
                 scope=DASHBOARD_VIEW_STATE_SCOPE,
                 state_key=view.resolved_runtime_state_key,
             )
-            if view.enable_frvp_overlays
+            if view.has_runtime_state_overlays
             else None
         )
         recent_activity_lines = _build_recent_activity_lines(
             signals,
             runtime_state=runtime_state,
             enable_frvp_overlays=view.enable_frvp_overlays,
+            enable_ict_overlays=view.enable_ict_overlays,
         )
 
         return (
@@ -315,6 +339,7 @@ def create_dashboard_app(
             latest_signal_text,
             heartbeat_text,
             paper_markout_text,
+            ibkr_feed_text,
             view.description or f"{view.asset} {view.timeframe} live operator view",
             _build_view_price_figure(
                 bars=bars,
@@ -334,6 +359,7 @@ def create_dashboard_app(
                 lookback_hours=model_chart_lookback_hours,
                 focus_model_id=long_focus_model_id,
                 preferred_model_order=view.preferred_model_order,
+                active_weight_model_ids=view.active_weight_model_ids,
             ),
             _build_model_confidence_panels(
                 dcc,
@@ -345,6 +371,7 @@ def create_dashboard_app(
                 lookback_hours=model_chart_lookback_hours,
                 focus_model_id=short_focus_model_id,
                 preferred_model_order=view.preferred_model_order,
+                active_weight_model_ids=view.active_weight_model_ids,
             ),
         )
 
@@ -451,6 +478,7 @@ def _build_model_confidence_panels(
     lookback_hours: float | None = 24,
     focus_model_id: str | None = None,
     preferred_model_order: Sequence[str] = (),
+    active_weight_model_ids: Sequence[str] = (),
 ) -> list[object]:
     if not models:
         return [
@@ -507,7 +535,11 @@ def _build_model_confidence_panels(
         probability = None
         decision = "no signals yet"
         regime = None
-        threshold = None
+        threshold = _resolve_active_threshold(
+            model_manifest,
+            regime=None,
+            persisted_threshold=None,
+        )
         last_timestamp = None
         notification_count = 0
         media_artifact_count = 0
@@ -515,15 +547,20 @@ def _build_model_confidence_panels(
             probability = latest_confidence_row["calibrated_probability"]
             decision = str(latest_confidence_row["decision"] or "prediction only")
             regime = latest_confidence_row["regime"]
-            threshold = latest_confidence_row.get("display_threshold")
+            latest_threshold = _coerce_optional_float(
+                latest_confidence_row.get("display_threshold")
+            )
+            if latest_threshold is not None:
+                threshold = latest_threshold
             last_timestamp = latest_confidence_row["timestamp"]
         if latest_signal_row is not None:
             notification_count = int(latest_signal_row["notification_count"])
             media_artifact_count = int(latest_signal_row["media_artifact_count"])
             if probability is None:
                 probability = latest_signal_row["probability"]
-            if threshold is None:
-                threshold = latest_signal_row["threshold"]
+            signal_threshold = _coerce_optional_float(latest_signal_row["threshold"])
+            if signal_threshold is not None and latest_confidence_row is None:
+                threshold = signal_threshold
             if regime is None:
                 regime = latest_signal_row["regime"]
             if last_timestamp is None:
@@ -544,9 +581,10 @@ def _build_model_confidence_panels(
         latest_line = (
             f"{last_timestamp.isoformat()} | notifications={notification_count} | media={media_artifact_count}"
             if last_timestamp is not None
-            else "No persisted confidence history yet."
+            else "No persisted confidence history yet; configured threshold shown."
         )
         is_focused = bool(focus_model_id) and model_manifest.model_id == focus_model_id
+        has_active_weight = model_manifest.model_id in active_weight_model_ids
 
         cards.append(
             html.Div(
@@ -567,9 +605,10 @@ def _build_model_confidence_panels(
                                     ),
                                 ]
                             ),
-                            html.Span(
-                                model_manifest.status.upper(),
-                                style=_status_badge_style(model_manifest.status),
+                            _build_model_status_badges(
+                                html,
+                                status=model_manifest.status,
+                                has_active_weight=has_active_weight,
                             ),
                         ],
                     ),
@@ -596,6 +635,7 @@ def _build_model_confidence_panels(
                             latest_confidence,
                             title=_confidence_title("Probability vs threshold", selection),
                             xaxis_range=confidence_xaxis_range,
+                            fallback_threshold=threshold,
                         ),
                         config={"displayModeBar": False, "responsive": True},
                         style={"height": "320px"},
@@ -632,9 +672,45 @@ def _model_panel_style(*, focused: bool = False) -> dict[str, str]:
     return style
 
 
+def _build_model_status_badges(
+    html,
+    *,
+    status: str,
+    has_active_weight: bool,
+):
+    badges = []
+    if has_active_weight:
+        badges.append(
+            html.Span(
+                "ACTIVE WEIGHT",
+                style=_status_badge_style("active_weight"),
+            )
+        )
+    badges.append(
+        html.Span(
+            "SHADOW" if has_active_weight and status == "candidate" else status.upper(),
+            style=_status_badge_style(status),
+        )
+    )
+    return html.Div(
+        badges,
+        style={
+            "display": "flex",
+            "flexWrap": "wrap",
+            "justifyContent": "flex-end",
+            "gap": "6px",
+        },
+    )
+
+
 def _status_badge_style(status: str) -> dict[str, str]:
     palette = {
         "active": {"backgroundColor": "#16351f", "color": "#8ff0a4", "border": "1px solid #266c37"},
+        "active_weight": {
+            "backgroundColor": "#162d4d",
+            "color": "#8fc7ff",
+            "border": "1px solid #2f78c4",
+        },
         "candidate": {"backgroundColor": "#2c2414", "color": "#f6d365", "border": "1px solid #8d6c1a"},
         "deprecated": {"backgroundColor": "#31161a", "color": "#ff9ca7", "border": "1px solid #7c2630"},
     }.get(status, {"backgroundColor": "#1f2937", "color": APP_TEXT_COLOR, "border": f"1px solid {PANEL_BORDER_COLOR}"})
@@ -989,8 +1065,9 @@ def _build_recent_activity_lines(
     *,
     runtime_state: dict | None,
     enable_frvp_overlays: bool,
+    enable_ict_overlays: bool = False,
 ) -> list[str]:
-    if not enable_frvp_overlays:
+    if not enable_frvp_overlays and not enable_ict_overlays:
         if signals.empty:
             return ["No signals recorded."]
         return [
@@ -1004,7 +1081,10 @@ def _build_recent_activity_lines(
             for row in signals.tail(12).itertuples(index=False)
         ]
 
-    setup_lines = build_frvp_setup_lines(runtime_state, limit=8)
+    if enable_frvp_overlays:
+        setup_lines = build_frvp_setup_lines(runtime_state, limit=8)
+    else:
+        setup_lines = build_ict_setup_lines(runtime_state, limit=8)
     if signals.empty:
         return setup_lines
     signal_lines = [
@@ -1017,6 +1097,190 @@ def _build_recent_activity_lines(
         for row in signals.tail(6).itertuples(index=False)
     ]
     return [*setup_lines, "", "Latest model decisions:", *signal_lines]
+
+
+def _merge_ibkr_live_bars(
+    persisted_bars: pd.DataFrame,
+    ibkr_state: dict | None,
+) -> pd.DataFrame:
+    payload = list((ibkr_state or {}).get("bars") or [])
+    if not payload:
+        return persisted_bars
+    live = pd.DataFrame(payload)
+    required = {"timestamp_utc", "open", "high", "low", "close", "conid"}
+    if live.empty or not required.issubset(live.columns):
+        return persisted_bars
+    live["timestamp"] = pd.to_datetime(
+        live["timestamp_utc"],
+        errors="coerce",
+        utc=True,
+    )
+    live = live.dropna(subset=["timestamp", "open", "high", "low", "close"])
+    status = dict((ibkr_state or {}).get("status") or {})
+    if (
+        status.get("connection_state") == "rolling"
+        and status.get("active_conId") is not None
+    ):
+        live_conids = pd.to_numeric(live["conid"], errors="coerce")
+        live = live.loc[
+            live_conids == int(status["active_conId"])
+        ].copy()
+    live = _filter_live_frame_to_roll_segments(
+        live,
+        list((ibkr_state or {}).get("roll_events") or []),
+    )
+    if live.empty:
+        return persisted_bars
+    live = live.rename(
+        columns={
+            "conid": "instrument_id",
+            "local_symbol": "contract_symbol",
+        }
+    )
+    live["asset"] = "ES"
+    live["timeframe"] = "5m"
+    live["symbol"] = "ES"
+    live["bid"] = None
+    live["ask"] = None
+    live["spread"] = None
+    columns = list(
+        dict.fromkeys(
+            [
+                *persisted_bars.columns.tolist(),
+                "asset",
+                "timeframe",
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "bid",
+                "ask",
+                "spread",
+                "source",
+                "symbol",
+                "contract_symbol",
+                "instrument_id",
+                "is_complete",
+            ]
+        )
+    )
+    combined = pd.concat(
+        [
+            persisted_bars.reindex(columns=columns),
+            live.reindex(columns=columns),
+        ],
+        ignore_index=True,
+        sort=False,
+    )
+    combined["_contract_key"] = combined["instrument_id"].fillna(-1).astype(str)
+    combined = combined.drop_duplicates(
+        subset=["_contract_key", "timestamp"],
+        keep="last",
+    )
+    return (
+        combined.drop(columns=["_contract_key"])
+        .sort_values(["timestamp", "instrument_id"], kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def _filter_live_frame_to_roll_segments(
+    live: pd.DataFrame,
+    roll_events: list[dict],
+) -> pd.DataFrame:
+    filtered = live
+    for event in roll_events:
+        try:
+            effective_at = pd.to_datetime(
+                event["effective_at_utc"],
+                errors="raise",
+                utc=True,
+            )
+            from_conid = int(event["from_conId"])
+            to_conid = int(event["to_conId"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        conids = pd.to_numeric(filtered["conid"], errors="coerce")
+        keep = ~(
+            ((conids == to_conid) & (filtered["timestamp"] < effective_at))
+            | ((conids == from_conid) & (filtered["timestamp"] >= effective_at))
+        )
+        filtered = filtered.loc[keep].copy()
+    return filtered
+
+
+def _format_ibkr_feed_status(
+    ibkr_state: dict | None,
+    *,
+    expected: bool,
+) -> str:
+    if not expected:
+        return "Not used by this view"
+    if not ibkr_state:
+        return "Disabled or collector not started"
+    status = dict(ibkr_state.get("status") or {})
+    quote = dict(ibkr_state.get("quote") or {})
+    state = str(status.get("connection_state") or "unknown")
+    contract = str(status.get("active_local_symbol") or "no contract")
+    expiration = str(status.get("active_expiration") or "unknown expiry")
+    mode = str(
+        status.get("live_or_delayed")
+        or status.get("market_data_type_requested")
+        or "unknown"
+    )
+    bid = _format_optional_market_value(quote.get("bid"))
+    ask = _format_optional_market_value(quote.get("ask"))
+    last = _format_optional_market_value(quote.get("last"))
+    spread_value = None
+    try:
+        if quote.get("bid") is not None and quote.get("ask") is not None:
+            spread_value = float(quote["ask"]) - float(quote["bid"])
+    except (TypeError, ValueError):
+        spread_value = None
+    spread = _format_optional_market_value(spread_value)
+    last_update = _format_new_york_timestamp(
+        quote.get("last_update_timestamp_utc")
+        or status.get("last_bar_at")
+    )
+    next_roll = _format_new_york_timestamp(status.get("next_roll_at"))
+    warnings: list[str] = []
+    if status.get("stale_quote") or status.get("stale_bar"):
+        warnings.append("STALE")
+    if state == "rolling":
+        warnings.append("ROLLING")
+    if status.get("last_error_message"):
+        warnings.append(str(status["last_error_message"]))
+    suffix = f" | {'; '.join(warnings)}" if warnings else ""
+    return (
+        f"{state} / {mode} | {contract} exp {expiration} | "
+        f"bid {bid} ask {ask} last {last} spread {spread} | "
+        f"updated {last_update} | next roll {next_roll}{suffix}"
+    )
+
+
+def _format_optional_market_value(value: object) -> str:
+    if value is None:
+        return "—"
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _format_new_york_timestamp(value: object) -> str:
+    if value in {None, ""}:
+        return "—"
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=ZoneInfo("UTC"))
+        return parsed.astimezone(ZoneInfo("America/New_York")).strftime(
+            "%Y-%m-%d %H:%M:%S %Z"
+        )
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _build_view_price_figure(
@@ -1032,6 +1296,13 @@ def _build_view_price_figure(
             signals,
             runtime_state=runtime_state,
             title=f"{view.asset} {view.timeframe} price with FRVP live overlays",
+        )
+    if view.enable_ict_overlays:
+        return build_ict_price_figure(
+            bars,
+            signals,
+            runtime_state=runtime_state,
+            title=f"{view.asset} {view.timeframe} price with ICT live overlays",
         )
     return build_price_signal_figure(
         bars,

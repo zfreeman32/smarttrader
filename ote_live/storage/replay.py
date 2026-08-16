@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isclose
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.prediction import ModelPrediction
@@ -206,7 +206,9 @@ def _rebuild_prediction_and_signal(
         audit_trail.prediction_metadata.get("policy_context")
         or audit_trail.signal_metadata.get("policy_context")
     )
-    if policy_context is None and audit_trail.prediction.regime is not None:
+    if audit_trail.prediction.regime is not None and (
+        policy_context is None or not _policy_context_includes_regime(policy_context)
+    ):
         replayed_prediction = replayed_prediction.model_copy(update={"regime": audit_trail.prediction.regime})
 
     shadow_mode = bool(
@@ -224,6 +226,21 @@ def _rebuild_prediction_and_signal(
         runtime_manifest=manifest,
     )
     return replayed_feature_snapshot, replayed_path
+
+
+def _policy_context_includes_regime(policy_context: object) -> bool:
+    if not isinstance(policy_context, Mapping):
+        return False
+    return any(
+        key in policy_context
+        for key in (
+            "composite_regime",
+            "trend_regime",
+            "vol_regime",
+            "session_regime",
+            "stress_regime",
+        )
+    )
 
 
 def _compare_feature_snapshots(

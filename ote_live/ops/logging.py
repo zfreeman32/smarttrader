@@ -41,6 +41,9 @@ def configure_live_logging(
 ) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, str(level).upper(), logging.INFO))
+    # The official IB API logs every decoded protocol payload at INFO,
+    # including complete contract chains and historical-bar batches.
+    logging.getLogger("ibapi").setLevel(logging.WARNING)
 
     for handler in tuple(root_logger.handlers):
         root_logger.removeHandler(handler)

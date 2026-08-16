@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -12,9 +13,10 @@ from ote_live.alerts.sms import LiveSignalSmsSender, SmsDispatchResult
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
 from ote_live.contracts.signal import SignalDecision
-from ote_live.dashboard.view_state import persist_frvp_dashboard_state
+from ote_live.dashboard.view_state import persist_frvp_dashboard_state, persist_ict_dashboard_state
 from ote_live.features.incremental_engine import (
     FRVP_DASHBOARD_EXTRA_FEATURE_NAMES,
+    ICT_DASHBOARD_EXTRA_FEATURE_NAMES,
     IncrementalFeatureEngine,
 )
 from ote_live.media.chart_capture import CapturedChartArtifact, SignalChartCaptureService
@@ -23,6 +25,10 @@ from ote_live.models.loaders import LoadedRuntimeModel
 from ote_live.models.runners import RuntimeModelRunner
 from ote_live.policies.decision_engine import LiveDecisionEngine
 from ote_live.storage.repositories import LiveAuditRepository
+from ote_live.storage.ict_paper_signal import (
+    IctPaperSignalLedgerRepository,
+    supports_ict_paper_signal_manifest,
+)
 
 
 @dataclass(frozen=True)
@@ -69,13 +75,13 @@ class LiveSignalProcessor:
         self.group_name = str(group_name).strip().upper() or "OTE"
         self.data_supplier = str(data_supplier).strip().upper() or "FMP"
         self._frvp_dashboard_state_enabled = _contains_frvp_models(manifests)
+        self._ict_dashboard_state_enabled = _contains_ict_models(manifests)
         self.feature_engine = feature_engine or IncrementalFeatureEngine(
             manifests,
             rolling_window_bars=rolling_window_bars,
-            extra_feature_names=(
-                FRVP_DASHBOARD_EXTRA_FEATURE_NAMES
-                if self._frvp_dashboard_state_enabled
-                else ()
+            extra_feature_names=_resolve_dashboard_extra_feature_names(
+                enable_frvp_dashboard_state=self._frvp_dashboard_state_enabled,
+                enable_ict_dashboard_state=self._ict_dashboard_state_enabled,
             ),
         )
         self.decision_engine = decision_engine or LiveDecisionEngine(
@@ -94,6 +100,11 @@ class LiveSignalProcessor:
         self.asset = first_manifest.asset
         self.timeframe = first_manifest.timeframe
         self.last_processed_timestamp: datetime | None = None
+        self.ict_paper_signal_ledger = (
+            IctPaperSignalLedgerRepository(audit_repository)
+            if any(supports_ict_paper_signal_manifest(manifest) for manifest in manifests)
+            else None
+        )
 
     @classmethod
     def from_direction_manifest_paths(
@@ -207,6 +218,37 @@ class LiveSignalProcessor:
             emit_operator_artifacts=emit_operator_artifacts,
         )
 
+    def seed_latest_predictions_from_store(self) -> tuple[RuntimeSignalResult, ...]:
+        """Evaluate the latest warmed bar once for models without a persisted prediction."""
+
+        if self.feature_engine.state.latest_timestamp is None:
+            self.warm_from_store()
+        latest_timestamp = self.feature_engine.state.latest_timestamp
+        if latest_timestamp is None:
+            return ()
+
+        latest_bars = self._fetch_recent_signal_bars(limit=1)
+        if not latest_bars or latest_bars[-1].timestamp != latest_timestamp:
+            return ()
+
+        existing_model_ids = self._existing_prediction_model_ids(latest_timestamp)
+        missing_bindings = tuple(
+            binding
+            for binding in self.bindings
+            if binding.loaded_model.model_id not in existing_model_ids
+        )
+        if not missing_bindings:
+            return ()
+
+        self.last_processed_timestamp = latest_timestamp
+        return self._evaluate_ingested_bar(
+            latest_bars[-1],
+            emit_operator_artifacts=False,
+            emit_notifications=False,
+            record_paper_signal_events=False,
+            bindings=missing_bindings,
+        )
+
     def process_bars(
         self,
         bars: Iterable[MarketBar],
@@ -220,18 +262,118 @@ class LiveSignalProcessor:
 
             self.feature_engine.ingest_bar(bar)
             self.last_processed_timestamp = bar.timestamp
+            ict_paper_signal_ledger = getattr(self, "ict_paper_signal_ledger", None)
+            if ict_paper_signal_ledger is not None:
+                try:
+                    ict_paper_signal_ledger.settle_completed_events(bar)
+                except Exception as exc:
+                    self._record_health_event(
+                        component="signal_runtime.ict_paper_signal_ledger",
+                        event_type="paper_signal_settlement_failed",
+                        severity="error",
+                        message="Settling completed ICT paper-signal markouts failed.",
+                        payload={
+                            "timestamp_utc": bar.timestamp.isoformat(),
+                            "error_type": type(exc).__name__,
+                            "error_message": str(exc),
+                        },
+                    )
+            results.extend(
+                self._evaluate_ingested_bar(
+                    bar,
+                    emit_operator_artifacts=emit_operator_artifacts,
+                    emit_notifications=True,
+                    record_paper_signal_events=True,
+                )
+            )
+
+        return tuple(results)
+
+    def _evaluate_ingested_bar(
+        self,
+        bar: MarketBar,
+        *,
+        emit_operator_artifacts: bool,
+        emit_notifications: bool,
+        record_paper_signal_events: bool = False,
+        bindings: Sequence[SignalRuntimeModelBinding] | None = None,
+    ) -> tuple[RuntimeSignalResult, ...]:
+        try:
+            feature_frame = self.feature_engine.build_feature_frame(include_policy_features=True)
+        except Exception as exc:
+            self._record_health_event(
+                component="signal_runtime.features",
+                event_type="feature_build_failed",
+                severity="error",
+                message="Live signal feature build failed.",
+                payload={
+                    "asset": bar.asset,
+                    "timeframe": bar.timeframe,
+                    "timestamp_utc": bar.timestamp.isoformat(),
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                },
+            )
+            return ()
+
+        if feature_frame.empty:
+            return ()
+
+        policy_frame = self._build_policy_frame(feature_frame)
+        source_row_idx = self._resolve_source_row_idx(bar)
+        self._persist_dashboard_state(bar=bar, policy_frame=policy_frame)
+        results: list[RuntimeSignalResult] = []
+
+        for binding in bindings or self.bindings:
+            loaded_model = binding.loaded_model
+            warmup = self.feature_engine.warmup_status(
+                model_id=loaded_model.model_id,
+                feature_frame=feature_frame,
+            )
+            if not warmup.ready:
+                continue
+
+            ordered_features = feature_frame.loc[:, list(loaded_model.selected_feature_names)].copy()
+            latest_values = ordered_features.iloc[-1]
+            snapshot = FeatureSnapshot(
+                asset=loaded_model.manifest.asset,
+                timeframe=loaded_model.manifest.timeframe,
+                direction=loaded_model.manifest.direction,
+                timestamp=bar.timestamp,
+                source_row_idx=source_row_idx,
+                feature_values={
+                    feature_name: _to_python_scalar(value)
+                    for feature_name, value in latest_values.items()
+                },
+                valid_feature_count=warmup.valid_feature_count,
+            )
 
             try:
-                feature_frame = self.feature_engine.build_feature_frame(include_policy_features=True)
+                runner = self._runner_by_model_id[loaded_model.model_id]
+                prediction = runner.predict_latest(
+                    ordered_features,
+                    timestamp=bar.timestamp,
+                    source_row_idx=source_row_idx,
+                )
+                decision_path = self.decision_engine.evaluate_prediction(
+                    prediction,
+                    live_policy=loaded_model.manifest.live_policy,
+                    policy_context=policy_frame,
+                    timezone_contract=loaded_model.manifest.timezone_contract,
+                    shadow_mode=binding.shadow_mode,
+                    feature_snapshot=snapshot,
+                    runtime_manifest=loaded_model.manifest,
+                )
             except Exception as exc:
                 self._record_health_event(
-                    component="signal_runtime.features",
-                    event_type="feature_build_failed",
+                    component="signal_runtime.models",
+                    event_type="signal_decision_failed",
                     severity="error",
-                    message="Live signal feature build failed.",
+                    message="Live signal evaluation failed.",
                     payload={
-                        "asset": bar.asset,
-                        "timeframe": bar.timeframe,
+                        "model_id": loaded_model.model_id,
+                        "direction": loaded_model.manifest.direction,
+                        "shadow_mode": bool(binding.shadow_mode),
                         "timestamp_utc": bar.timestamp.isoformat(),
                         "error_type": type(exc).__name__,
                         "error_message": str(exc),
@@ -239,111 +381,89 @@ class LiveSignalProcessor:
                 )
                 continue
 
-            if feature_frame.empty:
-                continue
-
-            policy_frame = self._build_policy_frame(feature_frame)
-            source_row_idx = self._resolve_source_row_idx(bar)
-            self._persist_dashboard_state(bar=bar, policy_frame=policy_frame)
-
-            for binding in self.bindings:
-                loaded_model = binding.loaded_model
-                warmup = self.feature_engine.warmup_status(
-                    model_id=loaded_model.model_id,
-                    feature_frame=feature_frame,
-                )
-                if not warmup.ready:
-                    continue
-
-                ordered_features = feature_frame.loc[:, list(loaded_model.selected_feature_names)].copy()
-                latest_values = ordered_features.iloc[-1]
-                snapshot = FeatureSnapshot(
-                    asset=loaded_model.manifest.asset,
-                    timeframe=loaded_model.manifest.timeframe,
-                    direction=loaded_model.manifest.direction,
-                    timestamp=bar.timestamp,
-                    source_row_idx=source_row_idx,
-                    feature_values={
-                        feature_name: _to_python_scalar(value)
-                        for feature_name, value in latest_values.items()
-                    },
-                    valid_feature_count=warmup.valid_feature_count,
-                )
-
+            signal_decision_id = (
+                decision_path.audit_record.signal_decision_id
+                if decision_path.audit_record is not None
+                else None
+            )
+            if (
+                record_paper_signal_events
+                and getattr(self, "ict_paper_signal_ledger", None) is not None
+                and decision_path.audit_record is not None
+                and decision_path.signal.decision == "emit"
+                and supports_ict_paper_signal_manifest(loaded_model.manifest)
+            ):
                 try:
-                    runner = self._runner_by_model_id[loaded_model.model_id]
-                    prediction = runner.predict_latest(
-                        ordered_features,
-                        timestamp=bar.timestamp,
-                        source_row_idx=source_row_idx,
-                    )
-                    decision_path = self.decision_engine.evaluate_prediction(
-                        prediction,
-                        live_policy=loaded_model.manifest.live_policy,
-                        policy_context=policy_frame,
-                        timezone_contract=loaded_model.manifest.timezone_contract,
-                        shadow_mode=binding.shadow_mode,
-                        feature_snapshot=snapshot,
-                        runtime_manifest=loaded_model.manifest,
+                    session_regime = _to_python_scalar(policy_frame.iloc[-1].get("session_regime"))
+                    self.ict_paper_signal_ledger.open_event(
+                        manifest=loaded_model.manifest,
+                        audit_record=decision_path.audit_record,
+                        signal=decision_path.signal,
+                        bar=bar,
+                        session_regime=(str(session_regime) if session_regime is not None else None),
                     )
                 except Exception as exc:
                     self._record_health_event(
-                        component="signal_runtime.models",
-                        event_type="signal_decision_failed",
+                        component="signal_runtime.ict_paper_signal_ledger",
+                        event_type="paper_signal_open_failed",
                         severity="error",
-                        message="Live signal evaluation failed.",
+                        message="Persisting an emitted ICT paper-signal markout failed.",
                         payload={
                             "model_id": loaded_model.model_id,
-                            "direction": loaded_model.manifest.direction,
-                            "shadow_mode": bool(binding.shadow_mode),
+                            "signal_decision_id": signal_decision_id,
                             "timestamp_utc": bar.timestamp.isoformat(),
                             "error_type": type(exc).__name__,
                             "error_message": str(exc),
                         },
                     )
-                    continue
-
-                signal_decision_id = (
-                    decision_path.audit_record.signal_decision_id
-                    if decision_path.audit_record is not None
-                    else None
+            media_artifact = None
+            notification = None
+            sms_notification = None
+            if (
+                emit_operator_artifacts
+                and _should_capture_operator_artifacts(decision_path.signal)
+                and signal_decision_id is not None
+            ):
+                media_artifact = self._capture_chart(signal_decision_id)
+            if (
+                emit_notifications
+                and _should_send_notifications(decision_path.signal)
+                and signal_decision_id is not None
+            ):
+                notification = self._send_email_alert(
+                    signal_decision_id,
+                    screenshot_path=media_artifact.file_path if media_artifact is not None else None,
                 )
-                media_artifact = None
-                notification = None
-                sms_notification = None
-                if (
-                    emit_operator_artifacts
-                    and _should_capture_operator_artifacts(decision_path.signal)
-                    and signal_decision_id is not None
-                ):
-                    media_artifact = self._capture_chart(signal_decision_id)
-                if (
-                    _should_send_notifications(decision_path.signal)
-                    and signal_decision_id is not None
-                ):
-                    notification = self._send_email_alert(
-                        signal_decision_id,
-                        screenshot_path=media_artifact.file_path if media_artifact is not None else None,
-                    )
-                    sms_notification = self._send_sms_alert(signal_decision_id)
+                sms_notification = self._send_sms_alert(signal_decision_id)
 
-                results.append(
-                    RuntimeSignalResult(
-                        model_id=loaded_model.model_id,
-                        direction=loaded_model.manifest.direction,
-                        decision=decision_path.signal.decision,
-                        shadow_mode=binding.shadow_mode,
-                        timestamp=bar.timestamp,
-                        signal_decision_id=signal_decision_id,
-                        notification_status=notification.status if notification is not None else None,
-                        sms_notification_status=(
-                            sms_notification.status if sms_notification is not None else None
-                        ),
-                        media_artifact_id=media_artifact.artifact_id if media_artifact is not None else None,
-                    )
+            results.append(
+                RuntimeSignalResult(
+                    model_id=loaded_model.model_id,
+                    direction=loaded_model.manifest.direction,
+                    decision=decision_path.signal.decision,
+                    shadow_mode=binding.shadow_mode,
+                    timestamp=bar.timestamp,
+                    signal_decision_id=signal_decision_id,
+                    notification_status=notification.status if notification is not None else None,
+                    sms_notification_status=(
+                        sms_notification.status if sms_notification is not None else None
+                    ),
+                    media_artifact_id=media_artifact.artifact_id if media_artifact is not None else None,
                 )
+            )
 
         return tuple(results)
+
+    def _existing_prediction_model_ids(self, timestamp: datetime) -> set[str]:
+        rows = self.audit_repository.store.connection.execute(
+            """
+            SELECT DISTINCT model_id
+            FROM model_predictions
+            WHERE timestamp_utc = ?
+            """,
+            (timestamp.isoformat(),),
+        ).fetchall()
+        return {str(row["model_id"]) for row in rows}
 
     def _build_policy_frame(self, feature_frame: pd.DataFrame) -> pd.DataFrame:
         market_frame = self.feature_engine.state.to_frame()
@@ -408,7 +528,8 @@ class LiveSignalProcessor:
                 source,
                 symbol,
                 contract_symbol,
-                instrument_id
+                instrument_id,
+                feature_context_json
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
             ORDER BY timestamp_utc DESC
@@ -443,7 +564,8 @@ class LiveSignalProcessor:
                 source,
                 symbol,
                 contract_symbol,
-                instrument_id
+                instrument_id,
+                feature_context_json
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ? AND timestamp_utc > ?
         """
@@ -547,10 +669,33 @@ class LiveSignalProcessor:
         )
 
     def _persist_dashboard_state(self, *, bar: MarketBar, policy_frame: pd.DataFrame) -> None:
-        if not self._frvp_dashboard_state_enabled:
+        if not self._frvp_dashboard_state_enabled and not self._ict_dashboard_state_enabled:
             return
+        if self._frvp_dashboard_state_enabled:
+            self._persist_dashboard_state_for_family(
+                persist_fn=persist_frvp_dashboard_state,
+                family_name="FRVP",
+                bar=bar,
+                policy_frame=policy_frame,
+            )
+        if self._ict_dashboard_state_enabled:
+            self._persist_dashboard_state_for_family(
+                persist_fn=persist_ict_dashboard_state,
+                family_name="ICT",
+                bar=bar,
+                policy_frame=policy_frame,
+            )
+
+    def _persist_dashboard_state_for_family(
+        self,
+        *,
+        persist_fn,
+        family_name: str,
+        bar: MarketBar,
+        policy_frame: pd.DataFrame,
+    ) -> None:
         try:
-            persist_frvp_dashboard_state(
+            persist_fn(
                 self.audit_repository.store,
                 group_name=self.group_name,
                 asset=self.asset,
@@ -564,9 +709,10 @@ class LiveSignalProcessor:
                 component="signal_runtime.dashboard_state",
                 event_type="dashboard_state_persist_failed",
                 severity="error",
-                message="Persisting FRVP dashboard state failed.",
+                message=f"Persisting {family_name} dashboard state failed.",
                 payload={
                     "group_name": self.group_name,
+                    "family": family_name,
                     "asset": bar.asset,
                     "timeframe": bar.timeframe,
                     "timestamp_utc": bar.timestamp.isoformat(),
@@ -593,10 +739,13 @@ def _bar_from_row(row) -> MarketBar:
         symbol=row["symbol"],
         contract_symbol=row["contract_symbol"],
         instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
+        feature_context=_json_loads(row["feature_context_json"]),
     )
 
 
 def _to_python_scalar(value):
+    if pd.isna(value):
+        return None
     if hasattr(value, "item"):
         try:
             return value.item()
@@ -605,19 +754,25 @@ def _to_python_scalar(value):
     return value
 
 
+def _json_loads(payload: str | None) -> dict[str, Any]:
+    if not payload:
+        return {}
+    loaded = json.loads(payload)
+    return loaded if isinstance(loaded, dict) else {}
+
+
 def _should_send_notifications(signal: SignalDecision) -> bool:
+    # Operator notifications represent actionable signals, not model scores.
+    # Shadow/candidate decisions remain available in the audit trail and may
+    # capture artifacts, but must not alert merely for clearing a threshold.
     return str(signal.decision) == "emit"
 
 
 def _should_capture_operator_artifacts(signal: SignalDecision) -> bool:
-    decision = str(signal.decision)
-    if decision == "emit":
-        return True
-    if decision != "shadow":
-        return False
-    if signal.threshold is None:
-        return False
-    return float(signal.probability) >= float(signal.threshold)
+    # Automatic chart-image persistence is temporarily disabled. Keep the
+    # capture plumbing in place so it can be re-enabled without changing the
+    # signal, notification, or audit paths.
+    return False
 
 
 def _contains_frvp_models(manifests: Sequence[object]) -> bool:
@@ -626,3 +781,24 @@ def _contains_frvp_models(manifests: Sequence[object]) -> bool:
         if model_id.startswith("frvp_"):
             return True
     return False
+
+
+def _contains_ict_models(manifests: Sequence[object]) -> bool:
+    for manifest in manifests:
+        model_id = str(getattr(manifest, "model_id", "") or "").lower()
+        if model_id.startswith("ict_"):
+            return True
+    return False
+
+
+def _resolve_dashboard_extra_feature_names(
+    *,
+    enable_frvp_dashboard_state: bool,
+    enable_ict_dashboard_state: bool,
+) -> tuple[str, ...]:
+    extra_feature_names: list[str] = []
+    if enable_frvp_dashboard_state:
+        extra_feature_names.extend(FRVP_DASHBOARD_EXTRA_FEATURE_NAMES)
+    if enable_ict_dashboard_state:
+        extra_feature_names.extend(ICT_DASHBOARD_EXTRA_FEATURE_NAMES)
+    return tuple(dict.fromkeys(extra_feature_names))

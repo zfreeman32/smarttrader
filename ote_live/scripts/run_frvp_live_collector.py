@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
 
 from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_repo_env
 from ote_live.ingestion.runtime import DEFAULT_DB_PATH
+from ote_live.ingestion.ibkr.errors import IBKRError
 from ote_live.ops import configure_live_logging
 from ote_live.scripts.run_live_collector import _run as _run_live_collector
 from ote_live.scripts.run_live_collector import build_parser as build_base_parser
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FRVP_DEFAULT_LONG_RUNTIME_MANIFEST_PATH = (
-    REPO_ROOT / "ote_live" / "runtime_manifests" / "frvp_es_shadow_20260705" / "live_runtime_manifest_long.json"
+    REPO_ROOT / "ote_live" / "runtime_manifests" / "frvp_es_shadow_20260721" / "live_runtime_manifest_long.json"
 )
 FRVP_DEFAULT_SHORT_RUNTIME_MANIFEST_PATH = (
-    REPO_ROOT / "ote_live" / "runtime_manifests" / "frvp_es_shadow_20260705" / "live_runtime_manifest_short.json"
+    REPO_ROOT / "ote_live" / "runtime_manifests" / "frvp_es_shadow_20260721" / "live_runtime_manifest_short.json"
 )
 FRVP_DEFAULT_SERVICE_NAME = "frvp-live-signal-service"
 FRVP_DEFAULT_LOG_PATH = REPO_ROOT / "ote_live" / "runtime_data" / "logs" / "frvp_live_signal_service.log"
@@ -70,23 +72,41 @@ def build_parser():
         ),
         signal_chart_lookback_bars=env_int("FRVP_LIVE_SIGNAL_CHART_LOOKBACK_BARS", 120),
         dashboard_url=env_str("FRVP_LIVE_DASHBOARD_URL", env_str("OTE_LIVE_DASHBOARD_URL")),
-        alert_email_recipients=env_str("FRVP_LIVE_ALERT_EMAIL_RECIPIENTS", ""),
-        alert_sms_recipients=env_str("FRVP_LIVE_ALERT_SMS_RECIPIENTS", ""),
+        alert_email_recipients=env_str(
+            "FRVP_LIVE_ALERT_EMAIL_RECIPIENTS",
+            env_str("OTE_LIVE_ALERT_EMAIL_RECIPIENTS", ""),
+        ),
+        alert_sms_recipients=env_str(
+            "FRVP_LIVE_ALERT_SMS_RECIPIENTS",
+            env_str("OTE_LIVE_ALERT_SMS_RECIPIENTS", ""),
+        ),
+        ibkr_enabled=env_bool("IBKR_ENABLED", False),
         ibkr_host=env_str("IBKR_HOST", "127.0.0.1"),
-        ibkr_port=env_int("IBKR_PORT", 7497),
-        ibkr_client_id=env_int("IBKR_CLIENT_ID", 17),
-        ibkr_market_data_type=env_int("IBKR_MARKET_DATA_TYPE", 1),
+        ibkr_port=env_int("IBKR_PORT", 4001),
+        ibkr_client_id=env_int("IBKR_CLIENT_ID", 21),
+        ibkr_account_mode=env_str("IBKR_ACCOUNT_MODE", "paper"),
+        ibkr_market_data_type=env_str("IBKR_MARKET_DATA_TYPE", "live"),
+        ibkr_allow_delayed_fallback=env_bool("IBKR_ALLOW_DELAYED_FALLBACK", False),
         ibkr_symbol=env_str("IBKR_ES_SYMBOL", "ES"),
+        ibkr_security_type=env_str("IBKR_ES_SECURITY_TYPE", "FUT"),
         ibkr_exchange=env_str("IBKR_ES_EXCHANGE", "CME"),
         ibkr_currency=env_str("IBKR_ES_CURRENCY", "USD"),
-        ibkr_local_symbol=env_str("IBKR_ES_LOCAL_SYMBOL"),
-        ibkr_contract_month=env_str("IBKR_ES_CONTRACT_MONTH"),
-        ibkr_con_id=env_int("IBKR_ES_CON_ID"),
-        ibkr_bar_size=env_str("IBKR_BAR_SIZE", "5 mins"),
+        ibkr_multiplier=env_str("IBKR_ES_MULTIPLIER", "50"),
+        ibkr_trading_class=env_str("IBKR_ES_TRADING_CLASS", "ES"),
+        ibkr_local_symbol=None,
+        ibkr_contract_month=env_str("IBKR_ES_MANUAL_CONTRACT_MONTH"),
+        ibkr_con_id=env_int("IBKR_ES_MANUAL_CONID"),
+        ibkr_bar_size=env_str("IBKR_ES_BAR_SIZE", "5 mins"),
         ibkr_what_to_show=env_str("IBKR_WHAT_TO_SHOW", "TRADES"),
-        ibkr_backfill_duration=env_str("IBKR_BACKFILL_DURATION", "2 D"),
-        ibkr_use_rth=env_bool("IBKR_USE_RTH", False),
+        ibkr_backfill_duration=env_str("IBKR_ES_HISTORY_DURATION", "2 D"),
+        ibkr_use_rth=env_bool("IBKR_ES_USE_RTH", False),
         ibkr_keep_up_to_date=env_bool("IBKR_KEEP_UP_TO_DATE", True),
+        ibkr_roll_policy=env_str("IBKR_ES_ROLL_POLICY", "cme_calendar"),
+        ibkr_roll_time_et=env_str("IBKR_ES_ROLL_TIME_ET", "09:30"),
+        ibkr_stale_quote_seconds=env_float("IBKR_STALE_QUOTE_SECONDS", 15.0),
+        ibkr_stale_bar_seconds=env_float("IBKR_STALE_BAR_SECONDS", 420.0),
+        ibkr_reconnect_initial_seconds=env_float("IBKR_RECONNECT_INITIAL_SECONDS", 2.0),
+        ibkr_reconnect_max_seconds=env_float("IBKR_RECONNECT_MAX_SECONDS", 60.0),
         debug=env_bool("FRVP_LIVE_DEBUG", False),
     )
     return parser
@@ -106,6 +126,9 @@ def main() -> int:
         return asyncio.run(_run_live_collector(args))
     except KeyboardInterrupt:
         return 130
+    except IBKRError as exc:
+        logging.getLogger(__name__).error("%s", exc)
+        return 2
 
 
 if __name__ == "__main__":

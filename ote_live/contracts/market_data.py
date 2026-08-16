@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -25,6 +26,7 @@ class MarketBar(BaseModel):
     symbol: str | None = None
     contract_symbol: str | None = None
     instrument_id: int | None = None
+    feature_context: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_ohlc(self) -> "MarketBar":

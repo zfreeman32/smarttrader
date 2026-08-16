@@ -18,6 +18,17 @@ class LatestRegime:
     composite_regime: str | None
 
 
+_REGIME_COLUMNS = frozenset(
+    {
+        "trend_regime",
+        "vol_regime",
+        "session_regime",
+        "stress_regime",
+        "composite_regime",
+    }
+)
+
+
 def label_policy_frame(
     policy_frame: pd.DataFrame,
     *,
@@ -27,27 +38,46 @@ def label_policy_frame(
     return label_regimes(policy_frame, config=config)
 
 
+def resolve_policy_context(
+    policy_context: pd.DataFrame | pd.Series | Mapping[str, Any] | None,
+    *,
+    timezone_contract: TimezoneContract | Mapping[str, Any] | None = None,
+    strict: bool = False,
+) -> pd.DataFrame | None:
+    if policy_context is None:
+        return None
+
+    frame = _coerce_policy_frame(policy_context)
+    if frame.empty or _REGIME_COLUMNS.issubset(frame.columns):
+        return frame
+
+    try:
+        labeled = label_policy_frame(frame, timezone_contract=timezone_contract)
+    except Exception:
+        if strict:
+            raise
+        return frame
+
+    for column in _REGIME_COLUMNS.intersection(frame.columns):
+        labeled[column] = frame[column].where(frame[column].notna(), labeled[column])
+    return labeled
+
+
 def resolve_latest_regime(
     policy_context: pd.DataFrame | pd.Series | Mapping[str, Any] | None,
     *,
     timezone_contract: TimezoneContract | Mapping[str, Any] | None = None,
     strict: bool = False,
 ) -> LatestRegime | None:
-    if policy_context is None:
+    working = resolve_policy_context(
+        policy_context,
+        timezone_contract=timezone_contract,
+        strict=strict,
+    )
+    if working is None or working.empty:
         return None
-
-    frame = _coerce_policy_frame(policy_context)
-    if frame.empty:
-        return None
-
-    working = frame
     if "composite_regime" not in working.columns:
-        try:
-            working = label_policy_frame(working, timezone_contract=timezone_contract)
-        except Exception:
-            if strict:
-                raise
-            return None
+        return None
 
     latest = working.iloc[-1]
     return LatestRegime(

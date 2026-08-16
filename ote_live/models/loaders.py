@@ -40,6 +40,10 @@ class LoadedRuntimeModel:
         return tuple(self.manifest.feature_manifest.selected_feature_names)
 
     @property
+    def allows_nan_feature_values(self) -> bool:
+        return self.backend == "xgboost" and self.model_id.lower().startswith(("frvp_", "ict_"))
+
+    @property
     def context_rows(self) -> int:
         return int(self.manifest.context_requirements.context_rows)
 
