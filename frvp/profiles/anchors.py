@@ -51,6 +51,53 @@ class NakedVPOCLevel:
     session_date: pd.Timestamp | None = None
 
 
+@dataclass(frozen=True)
+class AnchorDefinition:
+    """Operational contract for one FRVP anchor family."""
+
+    anchor_name: str
+    range_role: str
+    selection_rule: str
+    level_fields: tuple[str, ...]
+    context_only: bool = False
+
+
+FRVP_ANCHOR_DEFINITIONS: tuple[AnchorDefinition, ...] = (
+    AnchorDefinition(
+        anchor_name="prior_rth",
+        range_role="primary_decision_range",
+        selection_rule="most recent completed RTH session",
+        level_fields=("poc", "vah", "val", "hvn", "lvn"),
+    ),
+    AnchorDefinition(
+        anchor_name="overnight_eth",
+        range_role="secondary_inventory_range",
+        selection_rule="most recent completed overnight ETH segment",
+        level_fields=("poc", "vah", "val"),
+    ),
+    AnchorDefinition(
+        anchor_name="initial_balance",
+        range_role="intraday_confirmation_range",
+        selection_rule="current-session IB after the first 60 RTH minutes are complete",
+        level_fields=("poc", "vah", "val", "ib_high", "ib_low"),
+    ),
+    AnchorDefinition(
+        anchor_name="swing_to_swing",
+        range_role="reactive_context_range",
+        selection_rule="two most recent confirmed causal swings inside one contract",
+        level_fields=("poc", "vah", "val"),
+        context_only=True,
+    ),
+    AnchorDefinition(
+        anchor_name="rolling_composite",
+        range_role="higher_timeframe_context_range",
+        selection_rule="latest same-contract rolling RTH composite window",
+        level_fields=("poc", "vah", "val", "hvn", "lvn"),
+        context_only=True,
+    ),
+)
+
+
 class NakedVPOCTracker:
     """Backward-looking VPOC tracker with reset-at-roll behavior."""
 
@@ -156,6 +203,10 @@ class FRVPAnchorEngine:
     @property
     def overnight_sessions(self) -> pd.DataFrame:
         return self._overnight_sessions.copy()
+
+    @staticmethod
+    def definitions() -> tuple[AnchorDefinition, ...]:
+        return FRVP_ANCHOR_DEFINITIONS
 
     def prior_rth(self, timestamp) -> AnchorWindow | None:
         current_ts = self._normalize_timestamp(timestamp)
@@ -291,11 +342,8 @@ class FRVPAnchorEngine:
 
     def resolve_all(self, timestamp) -> dict[str, AnchorWindow | None]:
         return {
-            "prior_rth": self.prior_rth(timestamp),
-            "overnight_eth": self.overnight_eth(timestamp),
-            "initial_balance": self.initial_balance(timestamp),
-            "swing_to_swing": self.swing_to_swing(timestamp),
-            "rolling_composite": self.rolling_composite(timestamp),
+            definition.anchor_name: getattr(self, definition.anchor_name)(timestamp)
+            for definition in FRVP_ANCHOR_DEFINITIONS
         }
 
     def _summarize_segment(

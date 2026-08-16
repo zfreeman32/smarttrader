@@ -22,9 +22,12 @@ SETUP2_LOOKBACK_BARS = 15
 SETUP4_MAX_OUTSIDE_BARS = 3
 SETUP4_SWEEP_LOOKBACK_BARS = 3
 SETUP4_MAX_REENTRY_VOLUME_ZSCORE = 0.75
+SETUP4_MIN_REENTRY_DEPTH_ATR = 0.05
 SETUP_TOUCH_ATR = 0.65
 SETUP1_REENTRY_OVERSHOOT_ATR = 0.30
 SETUP3_VOLUME_ZSCORE = 1.25
+REAL_DISPLACEMENT_MIN_CLOSE_LOCATION = 0.75
+SETUP3_MIN_OVERSHOOT_ATR = 0.05
 SETUP5_LVN_DISTANCE_ATR = 0.3
 SETUP6_MIN_HVN_DISTANCE_ATR = 0.75
 SETUP6_MAX_HVN_DISTANCE_ATR = 2.5
@@ -32,6 +35,7 @@ SETUP6_MIN_HVN_SEPARATION_ATR = 0.30
 SETUP6_MIN_FAR_NEAR_RATIO = 1.35
 SETUP6_MAX_VOLUME_ZSCORE = 0.50
 RETEST_TOLERANCE_ATR = 0.30
+SETUP2_MAX_INSIDE_CLOSE_ATR = 0.05
 
 SETUP_PRIORITY = {
     SETUP_4: 0,
@@ -296,7 +300,7 @@ def _candidate_setup_1(row: pd.Series) -> _SetupCandidate | None:
     drive_bonus = 0.0 if open_drive == 1 else 1.0
 
     if np.isfinite(dist_vah) and (-SETUP1_REENTRY_OVERSHOOT_ATR) <= dist_vah <= SETUP_TOUCH_ATR:
-        if dist_vah < 0.0 and _as_bool(row.get("displacement_bullish")) and volume_zscore >= SETUP3_VOLUME_ZSCORE:
+        if dist_vah < 0.0 and _has_real_displacement(row, direction=1) and _outside_overshoot_atr(row, direction=1) >= SETUP3_MIN_OVERSHOOT_ATR:
             return None
         touch_score = _clamp01(1.0 - (max(dist_vah, 0.0) / SETUP_TOUCH_ATR))
         reentry_bonus = _clamp01((-dist_vah) / SETUP1_REENTRY_OVERSHOOT_ATR) if dist_vah < 0.0 else 0.0
@@ -308,7 +312,7 @@ def _candidate_setup_1(row: pd.Series) -> _SetupCandidate | None:
             ),
         )
     if np.isfinite(dist_val) and (-SETUP1_REENTRY_OVERSHOOT_ATR) <= dist_val <= SETUP_TOUCH_ATR:
-        if dist_val < 0.0 and _as_bool(row.get("displacement_bearish")) and volume_zscore >= SETUP3_VOLUME_ZSCORE:
+        if dist_val < 0.0 and _has_real_displacement(row, direction=-1) and _outside_overshoot_atr(row, direction=-1) >= SETUP3_MIN_OVERSHOOT_ATR:
             return None
         touch_score = _clamp01(1.0 - (max(dist_val, 0.0) / SETUP_TOUCH_ATR))
         reentry_bonus = _clamp01((-dist_val) / SETUP1_REENTRY_OVERSHOOT_ATR) if dist_val < 0.0 else 0.0
@@ -345,7 +349,7 @@ def _candidate_setup_2(
         if 1 <= age <= SETUP2_LOOKBACK_BARS and np.isfinite(dist_vah):
             vah = close_price + (dist_vah * atr)
             touched = low_price <= (vah + (RETEST_TOLERANCE_ATR * atr))
-            held = close_price >= (vah - (RETEST_TOLERANCE_ATR * atr))
+            held = close_price >= (vah - (SETUP2_MAX_INSIDE_CLOSE_ATR * atr))
             if touched and held:
                 retest_score = _clamp01(1.0 - min(abs(close_price - vah), abs(low_price - vah)) / (0.35 * atr))
                 freshness_score = _clamp01(1.0 - ((age - 1) / max(SETUP2_LOOKBACK_BARS - 1, 1)))
@@ -360,7 +364,7 @@ def _candidate_setup_2(
         if 1 <= age <= SETUP2_LOOKBACK_BARS and np.isfinite(dist_val):
             val = close_price - (dist_val * atr)
             touched = high_price >= (val - (RETEST_TOLERANCE_ATR * atr))
-            held = close_price <= (val + (RETEST_TOLERANCE_ATR * atr))
+            held = close_price <= (val + (SETUP2_MAX_INSIDE_CLOSE_ATR * atr))
             if touched and held:
                 retest_score = _clamp01(1.0 - min(abs(close_price - val), abs(high_price - val)) / (0.35 * atr))
                 freshness_score = _clamp01(1.0 - ((age - 1) / max(SETUP2_LOOKBACK_BARS - 1, 1)))
@@ -375,25 +379,37 @@ def _candidate_setup_2(
 
 def _candidate_setup_3(row: pd.Series) -> _SetupCandidate | None:
     volume_zscore = _to_float(row.get("volume_zscore_50"))
-    if not np.isfinite(volume_zscore) or volume_zscore <= SETUP3_VOLUME_ZSCORE:
+    if not np.isfinite(volume_zscore) or volume_zscore < SETUP3_VOLUME_ZSCORE:
         return None
     if _as_bool(row.get("frvp_above_vah")):
-        if not _as_bool(row.get("displacement_bullish")):
+        if not _has_real_displacement(row, direction=1):
+            return None
+        overshoot_atr = _outside_overshoot_atr(row, direction=1)
+        if not np.isfinite(overshoot_atr) or overshoot_atr < SETUP3_MIN_OVERSHOOT_ATR:
             return None
         expansion_score = _clamp01((volume_zscore - SETUP3_VOLUME_ZSCORE) / 2.0)
+        overshoot_score = _clamp01((overshoot_atr - SETUP3_MIN_OVERSHOOT_ATR) / 0.35)
         return _SetupCandidate(
             setup_type=SETUP_3,
             setup_side=1,
-            confidence=_bounded_confidence(0.6 + 0.25 * expansion_score + 0.05 * _as_int(row.get("frvp_open_drive_flag"))),
+            confidence=_bounded_confidence(
+                0.58 + 0.18 * expansion_score + 0.12 * overshoot_score + 0.05 * _as_int(row.get("frvp_open_drive_flag"))
+            ),
         )
     if _as_bool(row.get("frvp_below_val")):
-        if not _as_bool(row.get("displacement_bearish")):
+        if not _has_real_displacement(row, direction=-1):
+            return None
+        overshoot_atr = _outside_overshoot_atr(row, direction=-1)
+        if not np.isfinite(overshoot_atr) or overshoot_atr < SETUP3_MIN_OVERSHOOT_ATR:
             return None
         expansion_score = _clamp01((volume_zscore - SETUP3_VOLUME_ZSCORE) / 2.0)
+        overshoot_score = _clamp01((overshoot_atr - SETUP3_MIN_OVERSHOOT_ATR) / 0.35)
         return _SetupCandidate(
             setup_type=SETUP_3,
             setup_side=-1,
-            confidence=_bounded_confidence(0.6 + 0.25 * expansion_score + 0.05 * _as_int(row.get("frvp_open_drive_flag"))),
+            confidence=_bounded_confidence(
+                0.58 + 0.18 * expansion_score + 0.12 * overshoot_score + 0.05 * _as_int(row.get("frvp_open_drive_flag"))
+            ),
         )
     return None
 
@@ -417,9 +433,13 @@ def _candidate_setup_4(
 
     if outside_run_side < 0:
         same_side_sweep = _within_bars(row.get("bars_since_sweep_high"), SETUP4_SWEEP_LOOKBACK_BARS)
+        reentry_depth = _to_float(row.get("frvp_dist_vah_atr"))
     else:
         same_side_sweep = _within_bars(row.get("bars_since_sweep_low"), SETUP4_SWEEP_LOOKBACK_BARS)
+        reentry_depth = _to_float(row.get("frvp_dist_val_atr"))
     if not same_side_sweep:
+        return None
+    if not np.isfinite(reentry_depth) or reentry_depth <= SETUP4_MIN_REENTRY_DEPTH_ATR:
         return None
 
     duration_score = _clamp01(1.0 - ((outside_run_length - 1) / max(SETUP4_MAX_OUTSIDE_BARS - 1, 1)))
@@ -428,11 +448,12 @@ def _candidate_setup_4(
         if np.isfinite(volume_zscore)
         else 0.5
     )
+    reentry_score = _clamp01((reentry_depth - SETUP4_MIN_REENTRY_DEPTH_ATR) / 0.25)
     side = outside_run_side
     return _SetupCandidate(
         setup_type=SETUP_4,
         setup_side=side,
-        confidence=_bounded_confidence(0.72 + 0.14 * duration_score + 0.14 * quiet_reentry_bonus),
+        confidence=_bounded_confidence(0.66 + 0.10 * duration_score + 0.10 * quiet_reentry_bonus + 0.10 * reentry_score),
     )
 
 
@@ -619,3 +640,43 @@ def _clamp01(value: float) -> float:
 
 def _bounded_confidence(value: float) -> float:
     return _clamp01(value)
+
+
+def _has_real_displacement(row: pd.Series, *, direction: int) -> bool:
+    if direction > 0:
+        displacement_flag = _as_bool(row.get("displacement_bullish"))
+    else:
+        displacement_flag = _as_bool(row.get("displacement_bearish"))
+    if not displacement_flag:
+        return False
+
+    volume_zscore = _to_float(row.get("volume_zscore_50"))
+    if not np.isfinite(volume_zscore) or volume_zscore < SETUP3_VOLUME_ZSCORE:
+        return False
+
+    close_location = _close_location_fraction(row, direction=direction)
+    if not np.isfinite(close_location) or close_location < REAL_DISPLACEMENT_MIN_CLOSE_LOCATION:
+        return False
+    return True
+
+
+def _close_location_fraction(row: pd.Series, *, direction: int) -> float:
+    high_price = _to_float(row.get("high"))
+    low_price = _to_float(row.get("low"))
+    close_price = _to_float(row.get("close"))
+    candle_range = high_price - low_price
+    if not np.isfinite(candle_range) or candle_range <= 0.0:
+        return np.nan
+    if direction > 0:
+        return _clamp01((close_price - low_price) / candle_range)
+    return _clamp01((high_price - close_price) / candle_range)
+
+
+def _outside_overshoot_atr(row: pd.Series, *, direction: int) -> float:
+    if direction > 0:
+        distance = _to_float(row.get("frvp_dist_vah_atr"))
+    else:
+        distance = _to_float(row.get("frvp_dist_val_atr"))
+    if not np.isfinite(distance):
+        return np.nan
+    return max(-distance, 0.0)
