@@ -1,6 +1,7 @@
 # Python cache and environment
 __pycache__/
-.pyc
+*.pyc
+.pytest_cache/
 .env
 
 # Editor settings
@@ -33,16 +34,32 @@ ote_venv/
 *.csv
 
 tmp/
-*.sql
-logs/
+artifacts/
+data/.strategy_timeout_cache/
+data/prepared/eurusd_5min_breakout_sustained_expA_20260621/
 data/prepared/eurusd_1min_ote_full/
+logs/
+
+# Generated experiment reports stay local; canonical journals live under docs/.
+model_testing/reports/ict_event_sample_audits/
+model_testing/reports/ict_leakage_control_audits/
+model_testing/reports/ict_spacing_cooldown_diagnostics/
+model_testing/reports/ict_spacing_refit_sweeps/
+
+# Generated experiment output and live runtime state stay local.
+ote_live/policy_artifacts/
+ote_live/runtime_data/
+ote_live/runtime_manifests/
+
+# Generated configuration, archives, SQL, and databases.
 *.json
 *.tgz
+*.sql
+*.db
+*.db-*
+*.db3
+*.db3-*
+*.sqlite
+*.sqlite-*
 *.sqlite3
-
-# Immutable ICT paper-signal lifecycle decision (2026-08-13).
-!models/ict_es_paper_signal_registry_20260813.json
-!ote_live/policy_artifacts/ict_es_paper_signal_20260813/**/*.json
-!ote_live/runtime_manifests/ict_es_paper_signal_20260813/**/*.json
-!model_testing/reports/ict_paper_signal_bundles/ict_es_paper_signal_20260813/*.json
-!ote_live/storage/migrations/0004_ict_paper_signal_confirmation_ledger.sql
+*.sqlite3-*
