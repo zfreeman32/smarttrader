@@ -43,3 +43,6 @@ websockets
 tenacity
 twilio
 pyarrow
+
+# IBKR is intentionally not installed from this requirements file. Install the
+# official ibapi client from the TWS API source/pythonclient directory.

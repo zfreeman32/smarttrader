@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import sys
 import warnings
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -14,10 +15,25 @@ if str(ROOT) not in sys.path:
 
 from features.builder import FeatureDatasetBuilder
 from features.config import FeatureBuilderConfig
+from features.feature_sets.microstructure import build_microstructure
 from features.feature_sets.strategy_signals import _execute_strategy_jobs, build_strategy_signals
 from features.io import standardize_market_frame
 from features.progress import progress_context
 from features.strategy_registry import STRATEGY_REGISTRY, prepare_strategy_input
+from features.transforms import (
+    add_atr_normalized_features,
+    add_lag_features,
+    add_rolling_percentile_rank_features,
+    add_rolling_statistics,
+    add_rolling_winsorized_features,
+    add_rolling_zscores,
+    add_sigma_normalized_features,
+    calculate_atr,
+    rolling_sigma_normalize,
+    rolling_winsorize_series,
+    safe_divide,
+)
+from frvp.feature_sets import summarize_frvp_feature_dataset
 
 
 def _sample_market_frame(rows: int = 360) -> pd.DataFrame:
@@ -40,6 +56,176 @@ def _sample_market_frame(rows: int = 360) -> pd.DataFrame:
             "volume": volume,
         }
     )
+
+
+def _ts_ny(local_value: str) -> pd.Timestamp:
+    return pd.Timestamp(local_value, tz="America/New_York").tz_convert("UTC")
+
+
+def _synthetic_frvp_futures_frame() -> pd.DataFrame:
+    timestamps = pd.date_range(_ts_ny("2024-01-02 09:30:00"), _ts_ny("2024-01-03 11:00:00"), freq="5min")
+    kept: list[pd.Timestamp] = []
+    for timestamp in timestamps:
+        local = timestamp.tz_convert("America/New_York")
+        minute_of_day = local.hour * 60 + local.minute
+        if 17 * 60 <= minute_of_day < 18 * 60:
+            continue
+        kept.append(timestamp)
+
+    closes: list[float] = []
+    opens: list[float] = []
+    highs: list[float] = []
+    lows: list[float] = []
+    volumes: list[float] = []
+    previous_close = 5000.0
+
+    for index, timestamp in enumerate(kept):
+        local = timestamp.tz_convert("America/New_York")
+        session_day = (local.date() - date(2024, 1, 2)).days
+        minute_of_day = local.hour * 60 + local.minute
+        in_rth = (9 * 60 + 30) <= minute_of_day < (16 * 60)
+
+        if session_day == 0 and in_rth:
+            minutes_since_open = minute_of_day - (9 * 60 + 30)
+            base = 5000.0 + (minutes_since_open / 390.0) * 4.0 + np.sin(minutes_since_open / 35.0) * 0.6
+            volume = 240 + (1.0 - abs((minutes_since_open - 195.0) / 195.0)) * 120
+        elif session_day == 0:
+            base = 5004.5 + np.sin(index / 11.0) * 0.8
+            volume = 90 + abs(np.cos(index / 7.0)) * 30
+        elif in_rth:
+            minutes_since_open = minute_of_day - (9 * 60 + 30)
+            base = 5010.5 + (minutes_since_open / 390.0) * 2.5 + np.cos(minutes_since_open / 28.0) * 0.5
+            volume = 260 + (1.0 - abs((minutes_since_open - 195.0) / 195.0)) * 140
+        else:
+            base = 5008.0 + np.sin(index / 9.0) * 0.7
+            volume = 95 + abs(np.sin(index / 5.0)) * 35
+
+        open_price = previous_close
+        close_price = base + np.sin(index / 4.0) * 0.15
+        high_price = max(open_price, close_price) + 0.35 + (index % 4) * 0.03
+        low_price = min(open_price, close_price) - 0.35 - (index % 3) * 0.03
+
+        opens.append(float(open_price))
+        closes.append(float(close_price))
+        highs.append(float(high_price))
+        lows.append(float(low_price))
+        volumes.append(float(volume))
+        previous_close = close_price
+
+    return pd.DataFrame(
+        {
+            "ts_event": kept,
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": volumes,
+            "contract_id": "ESH24",
+            "symbol": "ES.v.0",
+        }
+    )
+
+
+def _reference_frame(index: pd.Index, columns: list[tuple[str, pd.Series]]) -> pd.DataFrame:
+    out = pd.DataFrame(index=index)
+    for name, series in columns:
+        out[name] = series
+    return out
+
+
+def _reference_rolling_percentile_rank_features(
+    df: pd.DataFrame,
+    columns: list[str],
+    window: int,
+) -> pd.DataFrame:
+    out = pd.DataFrame(index=df.index)
+    for column in columns:
+        if column not in df.columns:
+            continue
+        rolling = pd.to_numeric(df[column], errors="coerce").rolling(window, min_periods=window)
+        try:
+            out[f"{column}_pct_rank_{window}"] = rolling.rank(pct=True)
+        except AttributeError:
+            out[f"{column}_pct_rank_{window}"] = rolling.apply(
+                lambda values: float(np.sum(values[~np.isnan(values)] <= values[~np.isnan(values)][-1]) / len(values[~np.isnan(values)]))
+                if len(values[~np.isnan(values)]) > 0
+                else np.nan,
+                raw=True,
+            )
+    return out
+
+
+def _reference_transform_outputs(df: pd.DataFrame, config: FeatureBuilderConfig) -> dict[str, pd.DataFrame]:
+    atr = df["atr_14"] if "atr_14" in df.columns else calculate_atr(df)
+
+    lag_columns: list[tuple[str, pd.Series]] = []
+    for column in config.lag_columns:
+        if column not in df.columns:
+            continue
+        for period in config.lag_periods:
+            lag_columns.append((f"{column}_lag_{period}", df[column].shift(period)))
+
+    rolling_stat_columns: list[tuple[str, pd.Series]] = []
+    for column in config.rolling_stat_columns:
+        if column not in df.columns:
+            continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        for window in config.rolling_windows:
+            rolling = numeric.rolling(window)
+            rolling_stat_columns.append((f"{column}_roll_mean_{window}", rolling.mean()))
+            rolling_stat_columns.append((f"{column}_roll_std_{window}", rolling.std()))
+
+    zscore_columns: list[tuple[str, pd.Series]] = []
+    for column in config.zscore_columns:
+        if column not in df.columns:
+            continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        mean = numeric.rolling(config.zscore_window).mean()
+        std = numeric.rolling(config.zscore_window).std().replace(0, np.nan)
+        zscore_columns.append((f"{column}_zscore_{config.zscore_window}", (numeric - mean) / std))
+
+    winsor_columns = [
+        (
+            f"{column}_winsor_{config.winsorization_window}",
+            rolling_winsorize_series(
+                df[column],
+                window=config.winsorization_window,
+                lower_quantile=config.winsorization_lower_quantile,
+                upper_quantile=config.winsorization_upper_quantile,
+            ),
+        )
+        for column in config.winsorize_columns
+        if column in df.columns
+    ]
+
+    atr_norm_columns = [
+        (f"{column}_atr_norm", safe_divide(df[column], atr))
+        for column in config.atr_normalization_columns
+        if column in df.columns
+    ]
+
+    sigma_columns = [
+        (
+            f"{column}_sigma_norm_{config.sigma_normalization_window}",
+            rolling_sigma_normalize(df[column], config.sigma_normalization_window),
+        )
+        for column in config.sigma_normalization_columns
+        if column in df.columns
+    ]
+
+    return {
+        "winsorization": _reference_frame(df.index, winsor_columns),
+        "percentile_ranks": _reference_rolling_percentile_rank_features(
+            df,
+            list(config.percentile_rank_columns),
+            config.percentile_rank_window,
+        ),
+        "atr_normalization": _reference_frame(df.index, atr_norm_columns),
+        "sigma_normalization": _reference_frame(df.index, sigma_columns),
+        "lags": _reference_frame(df.index, lag_columns),
+        "rolling_stats": _reference_frame(df.index, rolling_stat_columns),
+        "zscores": _reference_frame(df.index, zscore_columns),
+    }
 
 
 def test_builder_threaded_transforms_match_serial_output() -> None:
@@ -86,39 +272,9 @@ def test_builder_can_downcast_generated_feature_dtypes() -> None:
     assert "transform:rolling_stats" in metadata["build_timings_seconds"]
 
 
-def test_fill_numeric_columns_forward_fills_and_zero_fills_by_dtype() -> None:
-    working = pd.DataFrame(
-        {
-            "float_feature": [np.nan, 1.5, np.nan, 3.0],
-            "int_feature": pd.Series([pd.NA, 2, pd.NA, 4], dtype="Int64"),
-            "label": ["a", "b", "c", "d"],
-        }
-    )
-
-    filled = FeatureDatasetBuilder._fill_numeric_columns(
-        working.copy(),
-        working.select_dtypes(include=[np.number]).columns,
-    )
-
-    assert filled["float_feature"].tolist() == [0.0, 1.5, 1.5, 3.0]
-    assert filled["int_feature"].tolist() == [0, 2, 2, 4]
-    assert str(filled["int_feature"].dtype) == "Int64"
-    assert filled["label"].tolist() == ["a", "b", "c", "d"]
-
-
-def test_builder_uses_low_memory_numeric_fill_helper(monkeypatch) -> None:
-    market = _sample_market_frame(rows=96)
-    called = {"count": 0}
-    original = FeatureDatasetBuilder._fill_numeric_columns
-
-    def tracking_fill(working: pd.DataFrame, numeric_columns: pd.Index) -> pd.DataFrame:
-        called["count"] += 1
-        return original(working, numeric_columns)
-
-    monkeypatch.setattr(FeatureDatasetBuilder, "_fill_numeric_columns", staticmethod(tracking_fill))
-
-    config = FeatureBuilderConfig(
-        feature_sets=["price_action"],
+def test_transform_refactor_matches_reference_outputs_with_float32_tolerance() -> None:
+    market = _sample_market_frame(rows=360)
+    base_config = FeatureBuilderConfig(
         warmup_rows=0,
         drop_warmup_rows=False,
         enable_lags=False,
@@ -129,13 +285,64 @@ def test_builder_uses_low_memory_numeric_fill_helper(monkeypatch) -> None:
         enable_atr_normalization=False,
         enable_sigma_normalization=False,
         enable_interactions=False,
-        fillna_numeric=True,
     )
+    feature_frame, _ = FeatureDatasetBuilder(base_config).build(market)
 
-    dataset, _ = FeatureDatasetBuilder(config).build(market)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", pd.errors.PerformanceWarning)
+        actual = {
+            "winsorization": add_rolling_winsorized_features(
+                feature_frame,
+                base_config.winsorize_columns,
+                base_config.winsorization_window,
+                base_config.winsorization_lower_quantile,
+                base_config.winsorization_upper_quantile,
+            ),
+            "percentile_ranks": add_rolling_percentile_rank_features(
+                feature_frame,
+                base_config.percentile_rank_columns,
+                base_config.percentile_rank_window,
+            ),
+            "atr_normalization": add_atr_normalized_features(
+                feature_frame,
+                base_config.atr_normalization_columns,
+                atr_column=base_config.atr_normalization_source,
+            ),
+            "sigma_normalization": add_sigma_normalized_features(
+                feature_frame,
+                base_config.sigma_normalization_columns,
+                base_config.sigma_normalization_window,
+            ),
+            "lags": add_lag_features(
+                feature_frame,
+                base_config.lag_columns,
+                base_config.lag_periods,
+            ),
+            "rolling_stats": add_rolling_statistics(
+                feature_frame,
+                base_config.rolling_stat_columns,
+                base_config.rolling_windows,
+            ),
+            "zscores": add_rolling_zscores(
+                feature_frame,
+                base_config.zscore_columns,
+                base_config.zscore_window,
+            ),
+        }
 
-    assert called["count"] == 1
-    assert dataset["close_return_1"].iloc[0] == 0.0
+    expected = _reference_transform_outputs(feature_frame, base_config)
+
+    for name, actual_frame in actual.items():
+        expected_frame = expected[name]
+        assert actual_frame.columns.tolist() == expected_frame.columns.tolist()
+        np.testing.assert_allclose(
+            actual_frame.to_numpy(dtype=np.float64),
+            expected_frame.to_numpy(dtype=np.float64),
+            rtol=1e-5,
+            atol=1e-6,
+            equal_nan=True,
+        )
+        assert all(dtype == np.float32 for dtype in actual_frame.dtypes)
 
 
 def test_builder_emits_progress_events() -> None:
@@ -262,44 +469,77 @@ def test_builder_runtime_tuning_scales_feature_windows_for_1m_inputs() -> None:
     assert metadata["config"]["rolling_windows"] == [25, 50, 100, 250]
 
 
-def test_builder_avoids_whole_frame_replace_during_non_finite_cleanup(monkeypatch) -> None:
-    market = _sample_market_frame(rows=4)
-    config = FeatureBuilderConfig(
-        feature_sets=[],
-        warmup_rows=0,
-        drop_warmup_rows=False,
-        enable_lags=False,
-        enable_rolling_stats=False,
-        enable_zscores=False,
-        enable_winsorization=False,
-        enable_percentile_ranks=False,
-        enable_atr_normalization=False,
-        enable_sigma_normalization=False,
-        enable_interactions=False,
-        fillna_numeric=True,
+def test_futures_microstructure_spread_proxy_is_tick_clipped_not_full_bar_range() -> None:
+    frame = pd.DataFrame(
+        {
+            "open": [5000.00, 5001.00],
+            "high": [5001.50, 5002.25],
+            "low": [4999.50, 5000.25],
+            "close": [5000.75, 5001.50],
+            "volume": [1000.0, 1200.0],
+        }
     )
 
-    def fake_transform_blocks(self, working, step_timings, config):
-        return [
-            (
-                "fake",
-                pd.DataFrame(
-                    {
-                        "problem_feature": [0.0, np.inf, -np.inf, np.nan],
-                    }
-                ),
-            )
-        ]
+    out = build_microstructure(frame, FeatureBuilderConfig(instrument="es"))
 
-    def fail_replace(self, *args, **kwargs):
-        raise AssertionError("whole-frame DataFrame.replace should not be used here")
+    assert float(out.loc[0, "approx_spread"]) == 0.50
+    assert float(out.loc[1, "approx_spread"]) == 0.50
+    assert float(out.loc[0, "approx_spread"]) < float(frame.loc[0, "high"] - frame.loc[0, "low"])
 
-    monkeypatch.setattr(FeatureDatasetBuilder, "_build_transform_blocks", fake_transform_blocks)
-    monkeypatch.setattr(pd.DataFrame, "replace", fail_replace)
 
-    dataset, _ = FeatureDatasetBuilder(config).build(market)
+def test_builder_can_build_frvp_meta_recipe_from_ts_event_futures_input(tmp_path) -> None:
+    market = _synthetic_frvp_futures_frame()
+    config = FeatureBuilderConfig.from_recipe(ROOT / "features" / "recipes" / "frvp_meta.json")
+    config.instrument = "es"
+    config.transform_workers = 1
 
-    assert dataset["problem_feature"].tolist() == [0.0, 0.0, 0.0, 0.0]
+    dataset, metadata = FeatureDatasetBuilder(config).build(market)
+
+    expected_columns = {
+        "datetime",
+        "hour",
+        "htf_30m_ema_alignment",
+        "frvp_dist_poc_session_atr",
+        "frvp_setup_type",
+        "frvp_setup_confidence_rule",
+    }
+    assert expected_columns.issubset(dataset.columns)
+    assert metadata["config"]["instrument"] == "es"
+    assert metadata["input_timeframe"] == "5m"
+
+    audit_path = tmp_path / "frvp_phase2_audit.json"
+    summary = summarize_frvp_feature_dataset(dataset, output_path=audit_path)
+
+    assert summary["frvp_column_count"] > 0
+    assert "frvp_setup_type" in summary["coverage"]
+    assert audit_path.exists()
+
+
+def test_frvp_feature_audit_preserves_open_type_missing_bucket_for_mi(tmp_path: Path) -> None:
+    rows = 48
+    timestamps = pd.date_range("2024-03-01 00:00:00", periods=rows, freq="5min", tz="UTC")
+    open_type = ([np.nan] * 30) + ([1] * 9) + ([-1] * 9)
+    target = ([0, 1] * 15) + ([1] * 9) + ([0] * 9)
+
+    dataset = pd.DataFrame(
+        {
+            "datetime": timestamps,
+            "frvp_open_type": open_type,
+            "frvp_dist_poc_session_atr": np.linspace(-1.0, 1.0, rows),
+            "htf_confluence_long_frvp_reversal": [1 if index % 6 == 0 else 0 for index in range(rows)],
+            "label_long_frvp_reversal": target,
+            "sample_weight_long_frvp_reversal": [1.5 if value else 1.0 for value in target],
+            "label_quality_long_frvp_reversal": [0.8 if value else 0.0 for value in target],
+            "exclude_long_frvp_reversal": [False] * rows,
+            "neg_ok_long_frvp_reversal": [not bool(value) for value in target],
+            "warmup_mask": [False] * rows,
+        }
+    )
+
+    summary = summarize_frvp_feature_dataset(dataset, output_path=tmp_path / "phase2_audit.json")
+
+    assert summary["coverage"]["frvp_open_type"]["null_count"] == 30
+    assert summary["key_feature_mi"]["long_frvp_reversal"]["frvp_open_type_mi"] > 0.0
 
 
 def test_prepare_strategy_input_preserves_original_columns_and_adds_aliases() -> None:

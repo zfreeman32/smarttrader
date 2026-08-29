@@ -29,6 +29,8 @@ def test_label_regimes_assigns_expected_primary_buckets() -> None:
             "ema_alignment": [0.9, 0.2, 0.0, -0.2, -0.9],
             "atr_14": [3.0, 1.0, 2.0, 4.0, 0.5],
             "range_shock_20": [1.5, 2.5, 3.5, 1.0, 2.0],
+            "frvp_open_type": [1, 0, -1, 1, 0],
+            "frvp_day_type": [3, 1, 5, 4, 2],
         }
     )
 
@@ -68,6 +70,20 @@ def test_label_regimes_assigns_expected_primary_buckets() -> None:
         "ranging_medium",
         "weak_down_high",
         "strong_down_low",
+    ]
+    assert labeled["frvp_open_type_label"].tolist() == [
+        "above_value",
+        "inside_value",
+        "below_value",
+        "above_value",
+        "inside_value",
+    ]
+    assert labeled["frvp_day_type_label"].tolist() == [
+        "trend",
+        "normal",
+        "neutral",
+        "double_distribution_trend",
+        "normal_variation",
     ]
     assert labeled["year"].astype(int).tolist() == [2024, 2024, 2024, 2024, 2024]
 
@@ -113,4 +129,42 @@ def test_label_regimes_falls_back_to_ema_alignment_when_adx_is_missing() -> None
         "ranging",
         "weak_down",
         "strong_down",
+    ]
+
+
+def test_label_regimes_splits_open_type_status_between_preopen_and_after_open_gaps() -> None:
+    frame = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(
+                [
+                    "2024-01-02 13:00:00+00:00",
+                    "2024-01-02 15:00:00+00:00",
+                    "2024-01-02 19:00:00+00:00",
+                    "2024-01-02 23:30:00+00:00",
+                ]
+            ),
+            "close": [1.10, 1.20, 1.25, 1.15],
+            "ema_50": [1.00, 1.10, 1.20, 1.10],
+            "adx_14": [20.0, 20.0, 20.0, 20.0],
+            "ema_alignment": [0.2, 0.2, 0.2, 0.2],
+            "atr_14": [1.0, 1.0, 1.0, 1.0],
+            "range_shock_20": [1.0, 1.0, 1.0, 1.0],
+            "frvp_open_type": [np.nan, np.nan, 1.0, np.nan],
+            "frvp_day_type": [1, 1, 1, 1],
+        }
+    )
+
+    labeled = label_regimes(frame, config=RegimeLabelConfig(atr_percentile_window=4))
+
+    assert labeled["frvp_open_type_status"].tolist() == [
+        "not_yet_known",
+        "missing_after_open",
+        "classified",
+        "not_yet_known",
+    ]
+    assert labeled["frvp_open_type_label"].fillna("missing").tolist() == [
+        "missing",
+        "missing",
+        "above_value",
+        "missing",
     ]

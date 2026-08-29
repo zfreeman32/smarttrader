@@ -3,34 +3,55 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
+from frvp.target_lanes import (
+    FRVP_DIRECT_TARGET_COLUMNS,
+    FRVP_META_TARGET_COLUMNS,
+    FRVP_POOLED_DIRECT_TARGET_COLUMNS,
+    FRVP_SETUP_TARGET_COLUMNS,
+    FRVP_TARGET_COLUMNS,
+)
+
 
 REFERENCE_BAR_MINUTES = 5.0
+
+LEGACY_OTE_TARGET_COLUMNS = (
+    "label_long_reversal",
+    "label_short_reversal",
+    "label_long_reversal_entry",
+    "label_short_reversal_entry",
+    "label_long_continuation_pullback",
+    "label_short_continuation_pullback",
+    "label_long_continuation_entry",
+    "label_short_continuation_entry",
+    "label_long_breakout",
+    "label_short_breakout",
+    "label_long_breakout_entry",
+    "label_short_breakout_entry",
+)
+
+ICT_TARGET_COLUMNS = (
+    "label_long_ict_reversal",
+    "label_short_ict_reversal",
+    "label_long_ict_continuation",
+    "label_short_ict_continuation",
+    "label_long_ict_meta",
+    "label_short_ict_meta",
+)
+
+AGGREGATE_TARGET_COLUMNS = (
+    "label_long_ote",
+    "label_short_ote",
+    "label_long_entry",
+    "label_short_entry",
+)
 
 
 def _default_target_columns() -> List[str]:
     return [
-        "label_long_reversal",
-        "label_short_reversal",
-        "label_long_reversal_entry",
-        "label_short_reversal_entry",
-        "label_long_continuation_pullback",
-        "label_short_continuation_pullback",
-        "label_long_continuation_entry",
-        "label_short_continuation_entry",
-        "label_long_breakout",
-        "label_short_breakout",
-        "label_long_breakout_entry",
-        "label_short_breakout_entry",
-        "label_long_frvp_reversal",
-        "label_short_frvp_reversal",
-        "label_long_frvp_continuation",
-        "label_short_frvp_continuation",
-        "label_long_frvp_meta",
-        "label_short_frvp_meta",
-        "label_long_ote",
-        "label_short_ote",
-        "label_long_entry",
-        "label_short_entry",
+        *LEGACY_OTE_TARGET_COLUMNS,
+        *FRVP_TARGET_COLUMNS,
+        *ICT_TARGET_COLUMNS,
+        *AGGREGATE_TARGET_COLUMNS,
     ]
 
 
@@ -51,6 +72,8 @@ class PreprocessingConfig:
     val_size: float = 0.15
     test_size: float = 0.15
     use_time_based_split: bool = True
+    split_embargo_bars: int = 0
+    target_split_embargo_bars: Dict[str, int] = field(default_factory=dict)
 
     similarity_threshold: float = 0.995
     correlation_threshold: float = 0.98
@@ -124,6 +147,14 @@ class TargetDatasetSpec:
 
 
 __all__ = [
+    "AGGREGATE_TARGET_COLUMNS",
+    "FRVP_DIRECT_TARGET_COLUMNS",
+    "FRVP_META_TARGET_COLUMNS",
+    "FRVP_POOLED_DIRECT_TARGET_COLUMNS",
+    "FRVP_SETUP_TARGET_COLUMNS",
+    "FRVP_TARGET_COLUMNS",
+    "ICT_TARGET_COLUMNS",
+    "LEGACY_OTE_TARGET_COLUMNS",
     "PreprocessingConfig",
     "TargetDatasetSpec",
     "_default_target_columns",

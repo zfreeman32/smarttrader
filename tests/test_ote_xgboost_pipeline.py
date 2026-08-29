@@ -20,6 +20,7 @@ from model_training.ote_training.ote_xgboost_pipeline import (
     OTETrainingConfig,
     PreparedTargetDataset,
     PurgedWalkForwardSplitter,
+    build_xgboost_fold_datasets,
     build_sequence_fold_datasets,
     build_sequence_windows,
     build_sparse_lag_view,
@@ -312,6 +313,83 @@ def test_resolve_purge_bars_prefers_label_horizon():
     assert resolve_purge_bars(config=config, context_rows=12) == 34
 
 
+def test_resolve_dataset_cv_purge_bars_prefers_ict_event_window_embargo():
+    dataset = make_synthetic_dataset()
+    dataset.target_name = "long_ict_meta"
+    dataset.event_window_lookup = {
+        10: 54,
+        20: 60,
+    }
+    config = OTETrainingConfig(
+        label_max_holding_bars=20,
+        label_exclusion_pre_bars=2,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=4,
+        event_tolerance_bars=2,
+        event_cooldown_bars=4,
+    )
+
+    assert pipeline.resolve_dataset_cv_purge_bars(dataset, config, context_rows=12) == 48
+
+
+def test_build_xgboost_fold_datasets_uses_in_fold_warmup_on_first_fold():
+    X_dev = np.arange(60 * 4, dtype=np.float32).reshape(60, 4)
+    y_dev = (np.arange(60) % 2).astype(np.uint8)
+    w_dev = np.ones(60, dtype=np.float32)
+    train_idx = np.arange(40, dtype=np.int64)
+    val_idx = np.arange(45, 55, dtype=np.int64)
+    selected_feature_idx = np.arange(4, dtype=np.int64)
+    lag_steps = [0, 2, 3]
+    config = OTETrainingConfig()
+
+    X_train, y_train, w_train, X_val, y_val, w_val = build_xgboost_fold_datasets(
+        X_dev=X_dev,
+        y_dev=y_dev,
+        w_dev=w_dev,
+        train_idx=train_idx,
+        val_idx=val_idx,
+        selected_feature_idx=selected_feature_idx,
+        lag_steps=lag_steps,
+        delta_feature_count=2,
+        config=config,
+    )
+
+    assert X_train.shape[0] == 37
+    assert X_val.shape[0] == 10
+    np.testing.assert_array_equal(y_train, y_dev[3:40])
+    np.testing.assert_array_equal(w_train, w_dev[3:40])
+    np.testing.assert_array_equal(y_val, y_dev[45:55])
+    np.testing.assert_array_equal(w_val, w_dev[45:55])
+
+
+def test_build_sequence_fold_datasets_uses_in_fold_warmup_on_first_fold():
+    X_dev = np.arange(60 * 4, dtype=np.float32).reshape(60, 4)
+    y_dev = (np.arange(60) % 2).astype(np.uint8)
+    w_dev = np.ones(60, dtype=np.float32)
+    train_idx = np.arange(40, dtype=np.int64)
+    val_idx = np.arange(45, 55, dtype=np.int64)
+    selected_feature_idx = np.arange(4, dtype=np.int64)
+    config = OTETrainingConfig(backend="torch", model_type="tcn")
+
+    X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
+        X_dev=X_dev,
+        y_dev=y_dev,
+        w_dev=w_dev,
+        train_idx=train_idx,
+        val_idx=val_idx,
+        selected_feature_idx=selected_feature_idx,
+        window_size=4,
+        config=config,
+    )
+
+    assert len(X_train) == 37
+    assert len(X_val) == 10
+    np.testing.assert_array_equal(y_train, y_dev[3:40])
+    np.testing.assert_array_equal(w_train, w_dev[3:40])
+    np.testing.assert_array_equal(y_val, y_dev[45:55])
+    np.testing.assert_array_equal(w_val, w_dev[45:55])
+
+
 def test_cross_validate_trial_records_fold_diagnostics(monkeypatch: pytest.MonkeyPatch):
     dataset = make_synthetic_dataset()
     config = OTETrainingConfig(
@@ -371,6 +449,72 @@ def test_cross_validate_trial_records_fold_diagnostics(monkeypatch: pytest.Monke
     assert first_fold["train_rows_model"] == 37
     assert first_fold["val_rows_model"] == 20
     assert first_fold["val_true_events"] == 2
+
+
+def test_cross_validate_trial_records_sequential_bootstrap_diagnostics(monkeypatch: pytest.MonkeyPatch):
+    dataset = make_synthetic_dataset()
+    dataset.target_name = "long_ict_meta"
+    dataset.source_row_idx_train = np.arange(len(dataset.y_train), dtype=np.int64)
+    dataset.source_row_idx_val = np.arange(len(dataset.y_train), len(dataset.dev_y), dtype=np.int64)
+    dataset.event_window_lookup = {
+        int(row): int(row + 6)
+        for row in dataset.dev_source_row_idx
+    }
+
+    config = OTETrainingConfig(
+        cv_initial_train_rows=40,
+        cv_val_rows=20,
+        cv_step_rows=20,
+        cv_min_folds=3,
+        min_train_positive_rows=3,
+        min_val_positive_rows=2,
+        min_val_true_events=2,
+        max_loaded_features=6,
+        window_min=4,
+        window_max=4,
+        label_max_holding_bars=4,
+        label_exclusion_pre_bars=1,
+        label_zone_pre_bars=1,
+        purge_buffer_bars=0,
+        calibration_method="none",
+        sequential_bootstrap_mode="ict",
+        use_balanced_tuning_sample=False,
+        verbosity=0,
+    )
+    params = {
+        "window_size": 4,
+        "lag_count": 3,
+        "delta_feature_count": 2,
+        "hard_negative_radius": 1,
+        "hard_negative_multiplier": 1.0,
+    }
+
+    def fake_train_and_score_fold(**kwargs):
+        y_val = kwargs["y_val"]
+        probabilities = np.linspace(0.2, 0.8, num=len(y_val), dtype=np.float32)
+        return probabilities, {
+            "average_precision": 0.4,
+            "roc_auc": 0.7,
+            "brier": 0.2,
+            "threshold": 0.5,
+            "event_precision": 0.75,
+            "event_recall": 0.5,
+            "event_f1": 0.6,
+            "event_fbeta_0_5": 0.68,
+            "predicted_events": 3.0,
+            "true_events": 2.0,
+            "matched_events": 2.0,
+        }
+
+    monkeypatch.setattr(pipeline, "train_and_score_fold", fake_train_and_score_fold)
+
+    artifacts = cross_validate_trial(dataset=dataset, params=params, config=config)
+
+    first_fold = artifacts.fold_diagnostics[0]
+    assert first_fold["sequential_bootstrap_applied"] is True
+    assert first_fold["sequential_bootstrap_mode"] == "ict"
+    assert first_fold["train_rows_fit"] == first_fold["train_rows_model"]
+    assert first_fold["sequential_bootstrap"]["matched_event_rows"] == first_fold["train_rows_model"]
 
 
 def test_cross_validate_trial_records_oof_fold_ids(monkeypatch: pytest.MonkeyPatch):
@@ -593,6 +737,79 @@ def test_load_prepared_target_dataset_reads_source_row_idx():
         shutil.rmtree(prepared_root, ignore_errors=True)
 
 
+def test_load_prepared_target_dataset_resolves_ict_event_window_lookup():
+    artifact_root = ROOT / "tmp" / f"test_load_prepared_target_dataset_resolves_ict_event_window_lookup_{uuid4().hex}"
+    prepared_root = artifact_root / "phase04_prepared" / "prepared"
+    target_dir = prepared_root / "long_ict_reversal"
+    phase03_dir = artifact_root / "phase03_labeling"
+    target_dir.mkdir(parents=True)
+    phase03_dir.mkdir(parents=True)
+
+    try:
+        (target_dir / "features.json").write_text(
+            json.dumps({"features": ["feature_a", "feature_b"], "n_features": 2}),
+            encoding="utf-8",
+        )
+        (target_dir / "report.json").write_text(
+            json.dumps({"target_name": "long_ict_reversal"}),
+            encoding="utf-8",
+        )
+
+        pd.DataFrame(
+            {
+                "source_row_idx": [10, 11, 12],
+                "feature_a": [0.1, 0.2, 0.3],
+                "feature_b": [1.0, 1.1, 1.2],
+                "target": [0, 1, 0],
+                "sample_weight": [1.0, 2.0, 1.0],
+            }
+        ).to_csv(target_dir / "train.csv", index=False)
+        pd.DataFrame(
+            {
+                "source_row_idx": [20, 21],
+                "feature_a": [0.4, 0.5],
+                "feature_b": [1.3, 1.4],
+                "target": [1, 0],
+                "sample_weight": [1.5, 1.0],
+            }
+        ).to_csv(target_dir / "val.csv", index=False)
+        pd.DataFrame(
+            {
+                "source_row_idx": [30, 31],
+                "feature_a": [0.6, 0.7],
+                "feature_b": [1.5, 1.6],
+                "target": [0, 1],
+                "sample_weight": [1.0, 2.5],
+            }
+        ).to_csv(target_dir / "test.csv", index=False)
+        pd.DataFrame(
+            {
+                "event_direction": ["long", "long"],
+                "label_family": ["ict_reversal", "ict_reversal"],
+                "signal_index": [10, 20],
+                "barrier_end_index": [14, 26],
+                "max_holding_bars": [20, 20],
+                "tb_outcome": ["tp", "timeout_profit"],
+                "excluded": [False, False],
+                "event_time": ["2026-07-24T09:35:00Z", "2026-07-24T10:15:00Z"],
+                "setup_type": ["raid_reversal", "raid_reversal"],
+            }
+        ).to_csv(phase03_dir / "ict_es_events.csv", index=False)
+
+        dataset = load_prepared_target_dataset(
+            prepared_root=prepared_root,
+            target_name="long_ict_reversal",
+            config=OTETrainingConfig(max_loaded_features=2),
+        )
+
+        assert dataset.event_window_lookup == {10: 14, 20: 26}
+        assert dataset.event_window_source is not None
+        assert Path(dataset.event_window_source).name == "ict_es_events.csv"
+        assert Path(dataset.event_window_source).parent.name == "phase03_labeling"
+    finally:
+        shutil.rmtree(artifact_root, ignore_errors=True)
+
+
 def test_resolve_prepared_targets_auto_discovers_multi_family_directories():
     prepared_root = ROOT / "tmp" / f"test_resolve_prepared_targets_{uuid4().hex}"
     long_reversal_dir = prepared_root / "long_reversal"
@@ -719,8 +936,6 @@ def test_save_training_outputs_includes_source_row_idx():
             "test_raw": np.linspace(0.2, 0.8, num=len(dataset.y_test), dtype=np.float32),
             "test_calibrated": np.linspace(0.25, 0.85, num=len(dataset.y_test), dtype=np.float32),
             "training_history": [],
-            "requested_calibration_method": "platt",
-            "resolved_calibration_method": "platt",
             "model_config": {"backend": "xgboost", "model_type": "xgboost"},
         }
 

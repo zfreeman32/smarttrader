@@ -29,8 +29,8 @@ def _base_setup_row(timestamp: pd.Timestamp, session_date: pd.Timestamp) -> dict
         "frvp_in_va": 0,
         "frvp_above_vah": 0,
         "frvp_below_val": 0,
-        "frvp_dist_vah_atr": 0.4,
-        "frvp_dist_val_atr": 0.4,
+        "frvp_dist_vah_atr": 1.0,
+        "frvp_dist_val_atr": 1.0,
         "frvp_dist_nearest_lvn_atr": 1.0,
         "frvp_hvn_above_close": np.nan,
         "frvp_hvn_below_close": np.nan,
@@ -60,7 +60,7 @@ def _setup_fixture() -> pd.DataFrame:
     )
     rows[2].update(
         {
-            "close": 105.2,
+            "close": 105.6,
             "high": 105.8,
             "low": 104.3,
             "frvp_above_vah": 1,
@@ -68,6 +68,7 @@ def _setup_fixture() -> pd.DataFrame:
             "frvp_dist_val_atr": 0.92,
             "volume_zscore_50": 2.2,
             "frvp_open_drive_flag": 1,
+            "displacement_bullish": 1,
         }
     )
     rows[3].update(
@@ -98,7 +99,7 @@ def _setup_fixture() -> pd.DataFrame:
             "high": 104.1,
             "low": 103.2,
             "frvp_in_va": 1,
-            "frvp_dist_vah_atr": 0.03,
+            "frvp_dist_vah_atr": 0.08,
             "frvp_dist_val_atr": 0.77,
             "volume_zscore_50": 0.3,
             "bars_since_sweep_high": 2.0,
@@ -122,10 +123,11 @@ def _setup_fixture() -> pd.DataFrame:
             "close": 100.0,
             "high": 100.2,
             "low": 99.8,
-            "frvp_profile_shape": 1,
-            "frvp_open_type": 1,
-            "frvp_hvn_above_close": 1.1,
-            "frvp_hvn_below_close": 0.7,
+            "frvp_profile_shape": 0,
+            "frvp_open_type": 0,
+            "frvp_in_va": 1,
+            "frvp_hvn_above_close": 1.4,
+            "frvp_hvn_below_close": 0.85,
         }
     )
     rows[8].update(
@@ -133,9 +135,10 @@ def _setup_fixture() -> pd.DataFrame:
             "close": 100.1,
             "high": 100.3,
             "low": 99.9,
-            "frvp_profile_shape": 1,
-            "frvp_open_type": 1,
-            "frvp_hvn_above_close": 1.0,
+            "frvp_profile_shape": 0,
+            "frvp_open_type": 0,
+            "frvp_in_va": 1,
+            "frvp_hvn_above_close": 1.35,
             "frvp_hvn_below_close": 0.8,
         }
     )
@@ -196,3 +199,214 @@ def test_fire_rate_summary_counts_fires_per_session_side() -> None:
     assert bool(setup1_short["within_target_band"]) is True
     assert int(setup6_short["total_fires"]) == 2
     assert float(setup6_short["avg_fires_per_session_side"]) == 1.0
+
+
+def test_setup6_requires_balanced_in_value_non_drive_context() -> None:
+    frame = _setup_fixture()
+    frame.loc[7, "frvp_in_va"] = 0
+
+    result = detect_frvp_setups(frame)
+
+    assert bool(result.iloc[7]["fired"]) is False
+    assert int(result.iloc[7]["setup_type"]) == 0
+
+
+def test_setup6_rejects_ambiguous_hvn_distances() -> None:
+    frame = _setup_fixture()
+    frame.loc[7, "frvp_hvn_above_close"] = 1.05
+    frame.loc[7, "frvp_hvn_below_close"] = 0.90
+
+    result = detect_frvp_setups(frame)
+
+    assert bool(result.iloc[7]["fired"]) is False
+    assert int(result.iloc[7]["setup_type"]) == 0
+
+
+def test_setup6_rejects_high_volume_or_displacement_context() -> None:
+    frame = _setup_fixture()
+    frame.loc[7, "volume_zscore_50"] = 0.8
+    frame.loc[7, "displacement_bearish"] = 1
+
+    result = detect_frvp_setups(frame)
+
+    assert bool(result.iloc[7]["fired"]) is False
+    assert int(result.iloc[7]["setup_type"]) == 0
+
+
+def test_setup1_allows_small_edge_reentry_when_opened_in_value() -> None:
+    row = _base_setup_row(
+        pd.Timestamp("2024-01-03 10:10:00", tz="UTC"),
+        pd.Timestamp("2024-01-03"),
+    )
+    row.update(
+        {
+            "frvp_in_va": 0,
+            "frvp_above_vah": 1,
+            "frvp_dist_vah_atr": -0.12,
+            "frvp_dist_val_atr": 0.9,
+            "volume_zscore_50": 0.2,
+        }
+    )
+
+    result = detect_frvp_setups(pd.DataFrame([row]))
+
+    assert bool(result.iloc[0]["fired"]) is True
+    assert int(result.iloc[0]["setup_type"]) == 1
+    assert int(result.iloc[0]["setup_side"]) == -1
+
+
+def test_setup2_accepts_later_retest_with_retuned_window() -> None:
+    session_date = pd.Timestamp("2024-01-03")
+    start = pd.Timestamp("2024-01-03 09:30:00", tz="UTC")
+    rows = [_base_setup_row(start + pd.Timedelta(minutes=5 * index), session_date) for index in range(12)]
+
+    rows[1].update(
+        {
+            "close": 105.6,
+            "high": 105.8,
+            "low": 104.3,
+            "frvp_above_vah": 1,
+            "frvp_dist_vah_atr": -0.12,
+            "frvp_dist_val_atr": 0.92,
+            "volume_zscore_50": 1.4,
+            "displacement_bullish": 1,
+        }
+    )
+    rows[11].update(
+        {
+            "close": 104.2,
+            "high": 104.7,
+            "low": 103.95,
+            "frvp_profile_shape": 1,
+            "frvp_dist_vah_atr": -0.02,
+            "frvp_dist_val_atr": 0.82,
+            "volume_zscore_50": 0.3,
+        }
+    )
+
+    result = detect_frvp_setups(pd.DataFrame(rows))
+
+    assert bool(result.iloc[11]["fired"]) is True
+    assert int(result.iloc[11]["setup_type"]) == 2
+    assert int(result.iloc[11]["setup_side"]) == 1
+
+
+def test_setup3_uses_retuned_volume_threshold() -> None:
+    row = _base_setup_row(
+        pd.Timestamp("2024-01-03 10:15:00", tz="UTC"),
+        pd.Timestamp("2024-01-03"),
+    )
+    row.update(
+        {
+            "open": 100.0,
+            "high": 105.0,
+            "low": 99.0,
+            "close": 104.8,
+            "frvp_profile_shape": 1,
+            "frvp_above_vah": 1,
+            "frvp_dist_vah_atr": -0.12,
+            "frvp_dist_val_atr": 0.92,
+            "volume_zscore_50": 1.3,
+            "displacement_bullish": 1,
+        }
+    )
+
+    result = detect_frvp_setups(pd.DataFrame([row]))
+
+    assert bool(result.iloc[0]["fired"]) is True
+    assert int(result.iloc[0]["setup_type"]) == 3
+    assert int(result.iloc[0]["setup_side"]) == 1
+
+
+def test_setup3_requires_real_displacement_close_efficiency() -> None:
+    row = _base_setup_row(
+        pd.Timestamp("2024-01-03 10:20:00", tz="UTC"),
+        pd.Timestamp("2024-01-03"),
+    )
+    row.update(
+        {
+            "open": 100.0,
+            "high": 105.0,
+            "low": 99.0,
+            "close": 102.2,
+            "frvp_profile_shape": 1,
+            "frvp_above_vah": 1,
+            "frvp_dist_vah_atr": -0.08,
+            "frvp_dist_val_atr": 0.92,
+            "volume_zscore_50": 1.6,
+            "displacement_bullish": 1,
+        }
+    )
+
+    result = detect_frvp_setups(pd.DataFrame([row]))
+
+    assert bool(result.iloc[0]["fired"]) is False
+    assert int(result.iloc[0]["setup_type"]) == 0
+
+
+def test_setup4_requires_same_side_sweep() -> None:
+    rows = _setup_fixture().iloc[:6].copy()
+    rows.loc[5, "bars_since_sweep_high"] = np.nan
+    rows.loc[5, "bars_since_sweep_low"] = 2.0
+
+    result = detect_frvp_setups(rows)
+
+    assert bool(result.iloc[5]["fired"]) is False
+    assert int(result.iloc[5]["setup_type"]) == 0
+
+
+def test_setup4_rejects_high_volume_reentry() -> None:
+    rows = _setup_fixture().iloc[:6].copy()
+    rows.loc[5, "volume_zscore_50"] = 1.1
+
+    result = detect_frvp_setups(rows)
+
+    assert bool(result.iloc[5]["fired"]) is False
+    assert int(result.iloc[5]["setup_type"]) == 0
+
+
+def test_setup4_requires_measurable_reentry_depth_inside_value() -> None:
+    rows = _setup_fixture().iloc[:6].copy()
+    rows.loc[5, "frvp_dist_vah_atr"] = 0.03
+
+    result = detect_frvp_setups(rows)
+
+    assert bool(result.iloc[5]["fired"]) is False
+    assert int(result.iloc[5]["setup_type"]) == 0
+
+
+def test_setup2_keeps_near_edge_hold_and_blocks_failed_auction_flip() -> None:
+    session_date = pd.Timestamp("2024-01-03")
+    start = pd.Timestamp("2024-01-03 09:30:00", tz="UTC")
+    rows = [_base_setup_row(start + pd.Timedelta(minutes=5 * index), session_date) for index in range(4)]
+
+    rows[1].update(
+        {
+            "close": 105.6,
+            "high": 105.8,
+            "low": 104.3,
+            "frvp_above_vah": 1,
+            "frvp_dist_vah_atr": -0.12,
+            "frvp_dist_val_atr": 0.92,
+            "volume_zscore_50": 1.4,
+            "displacement_bullish": 1,
+        }
+    )
+    rows[2].update(
+        {
+            "close": 103.9,
+            "high": 104.3,
+            "low": 103.7,
+            "frvp_in_va": 1,
+            "frvp_dist_vah_atr": 0.04,
+            "frvp_dist_val_atr": 0.74,
+            "volume_zscore_50": 0.2,
+            "bars_since_sweep_high": 1.0,
+        }
+    )
+
+    result = detect_frvp_setups(pd.DataFrame(rows))
+
+    assert bool(result.iloc[2]["fired"]) is True
+    assert int(result.iloc[2]["setup_type"]) == 2
+    assert int(result.iloc[2]["setup_side"]) == 1

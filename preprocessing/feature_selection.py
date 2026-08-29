@@ -39,6 +39,24 @@ SYNTHETIC_TARGET_COMPONENTS: Dict[str, Dict[str, Any]] = {
             "label_short_frvp_continuation",
         ],
     },
+    "label_long_ict_meta": {
+        "name": "long_ict_meta",
+        "direction": "long",
+        "label_kind": "ict_meta",
+        "component_target_columns": [
+            "label_long_ict_reversal",
+            "label_long_ict_continuation",
+        ],
+    },
+    "label_short_ict_meta": {
+        "name": "short_ict_meta",
+        "direction": "short",
+        "label_kind": "ict_meta",
+        "component_target_columns": [
+            "label_short_ict_reversal",
+            "label_short_ict_continuation",
+        ],
+    },
     "label_long_ote": {
         "name": "long_ote",
         "direction": "long",
@@ -561,6 +579,9 @@ def ordered_usable_positions(
 def build_split_indices(
     n_rows: int,
     config: PreprocessingConfig,
+    *,
+    source_row_idx: Optional[pd.Series | np.ndarray] = None,
+    target_name: Optional[str] = None,
 ) -> Dict[str, np.ndarray]:
     if n_rows == 0:
         empty = np.array([], dtype=int)
@@ -581,11 +602,103 @@ def build_split_indices(
     else:
         order = np.arange(n_rows)
 
+    embargo_bars = _resolve_split_embargo_bars(config, target_name)
+    source_rows = _normalize_source_row_idx_array(source_row_idx, n_rows)
+    if embargo_bars <= 0 or source_rows is None or not config.use_time_based_split:
+        return {
+            "train": order[:train_end],
+            "val": order[train_end:val_end],
+            "test": order[val_end:n_rows],
+        }
+
+    desired_val_count = max(val_end - train_end, 0)
+    desired_test_count = max(n_rows - val_end, 0)
+    val_start = _advance_to_embargo_gap(
+        source_rows,
+        start_idx=train_end,
+        left_idx=train_end - 1,
+        embargo_bars=embargo_bars,
+    )
+
+    if val_start >= n_rows:
+        return {
+            "train": order[:train_end],
+            "val": np.array([], dtype=int),
+            "test": np.array([], dtype=int),
+        }
+
+    remaining_rows = max(n_rows - val_start, 0)
+    min_test_rows = 1 if remaining_rows > 0 and n_rows >= 3 else 0
+    reserved_test_rows = max(desired_test_count, min_test_rows)
+    max_val_end_exclusive = max(val_start, n_rows - reserved_test_rows)
+    val_end_nominal = min(val_start + desired_val_count, max_val_end_exclusive)
+
+    if desired_val_count > 0 and val_start < max_val_end_exclusive:
+        val_end_nominal = max(val_start + 1, val_end_nominal)
+
+    val_end_nominal = min(max(val_end_nominal, val_start), n_rows)
+    test_start = _advance_to_embargo_gap(
+        source_rows,
+        start_idx=val_end_nominal,
+        left_idx=val_end_nominal - 1,
+        embargo_bars=embargo_bars,
+    )
+
     return {
         "train": order[:train_end],
-        "val": order[train_end:val_end],
-        "test": order[val_end:n_rows],
+        "val": order[val_start:val_end_nominal],
+        "test": order[test_start:n_rows],
     }
+
+
+def _resolve_split_embargo_bars(
+    config: PreprocessingConfig,
+    target_name: Optional[str],
+) -> int:
+    target_map = config.target_split_embargo_bars or {}
+    if target_name and target_name in target_map:
+        try:
+            return max(int(target_map[target_name]), 0)
+        except (TypeError, ValueError):
+            return 0
+    try:
+        return max(int(config.split_embargo_bars), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _normalize_source_row_idx_array(
+    source_row_idx: Optional[pd.Series | np.ndarray],
+    n_rows: int,
+) -> Optional[np.ndarray]:
+    if source_row_idx is None:
+        return None
+    if isinstance(source_row_idx, pd.Series):
+        values = pd.to_numeric(source_row_idx, errors="coerce").to_numpy(dtype=np.float64, copy=False)
+    else:
+        values = np.asarray(source_row_idx, dtype=np.float64)
+    if values.shape[0] != n_rows or not np.isfinite(values).all():
+        return None
+    return values.astype(np.int64, copy=False)
+
+
+def _advance_to_embargo_gap(
+    source_rows: np.ndarray,
+    *,
+    start_idx: int,
+    left_idx: int,
+    embargo_bars: int,
+) -> int:
+    candidate = max(int(start_idx), 0)
+    if embargo_bars <= 0 or left_idx < 0:
+        return candidate
+
+    while candidate < len(source_rows):
+        raw_gap = int(source_rows[candidate] - source_rows[left_idx] - 1)
+        if raw_gap >= embargo_bars:
+            return candidate
+        candidate += 1
+    return len(source_rows)
 
 
 def build_fill_values(df: pd.DataFrame) -> Tuple[Dict[str, float], Dict[str, Any]]:

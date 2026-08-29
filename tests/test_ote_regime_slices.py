@@ -119,3 +119,60 @@ def test_build_regime_winner_table_flags_confident_bucket_winner() -> None:
     assert row["winner_model_id"] == "short_ote_candidate_tcn_v1"
     assert bool(row["winner_confident"]) is True
     assert float(row["confidence_gap"]) > 0.0
+
+
+def test_build_regime_slice_report_supports_frvp_open_and_day_type_labels() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [0, 1, 2, 3],
+            "target": [1, 0, 1, 0],
+            "calibrated_probability": [0.9, 0.2, 0.8, 0.1],
+            "frvp_open_type_label": [
+                "above_value",
+                "above_value",
+                "inside_value",
+                "inside_value",
+            ],
+            "frvp_open_type_status": [
+                "classified",
+                "classified",
+                "not_yet_known",
+                "not_yet_known",
+            ],
+            "frvp_day_type_label": [
+                "trend",
+                "trend",
+                "neutral",
+                "neutral",
+            ],
+        }
+    )
+
+    config = RegimeSliceConfig(
+        dataset_split="test",
+        probability_column="calibrated_probability",
+        threshold=0.60,
+        event_tolerance_bars=0,
+        event_cooldown_bars=0,
+        min_positive_events_for_threshold=1,
+        bootstrap_iterations=10,
+        random_seed=11,
+        slice_families=("frvp_open_type_status", "frvp_open_type_label", "frvp_day_type_label"),
+    )
+
+    report = build_regime_slice_report(
+        frame,
+        model_id="demo_model",
+        direction="long",
+        config=config,
+    )
+
+    assert set(report["regime_family"]) == {"frvp_open_type_status", "frvp_open_type_label", "frvp_day_type_label"}
+    assert set(report["regime_key"]) == {
+        "classified",
+        "not_yet_known",
+        "above_value",
+        "inside_value",
+        "trend",
+        "neutral",
+    }

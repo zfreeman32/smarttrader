@@ -269,6 +269,9 @@ def main() -> int:
 
 def _load_selected_model_ids(selection_summary_path: Path) -> list[str]:
     payload = _read_json(selection_summary_path)
+    active_model_ids = payload.get("active_model_ids") or []
+    if active_model_ids:
+        return [str(model_id) for model_id in active_model_ids if model_id]
     recommended = payload.get("recommended_shadow_dashboard_models") or []
     model_ids = [str(item["model_id"]) for item in recommended if item.get("model_id")]
     if model_ids:

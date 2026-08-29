@@ -46,7 +46,8 @@ Reports are usually written under `model_testing/reports/`, including:
 
 The repo also includes checked-in summaries that reflect more recent comparison work, for example:
 
-- `reports/MODEL_LEADERBOARDS_20260527.md`
+- `reports/MODEL_LEADERBOARDS_20260730.md` (current cross-family leaderboard)
+- `reports/MODEL_LEADERBOARDS_20260527.md` (historical full OTE snapshot)
 - `reports/ote_regime_slices/.../SLICE_REPORT_SUMMARY.md`
 - `reports/ote_threshold_policies/.../THRESHOLD_POLICY_SUMMARY.md`
 

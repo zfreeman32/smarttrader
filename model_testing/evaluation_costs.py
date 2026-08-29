@@ -23,12 +23,16 @@ DEFAULT_6E_SESSION_SPREAD_TICKS = {
     "off_hours": 2.0,
 }
 
+DEFAULT_SPREAD_COST_MODE = "auto"
+SUPPORTED_SPREAD_COST_MODES = frozenset({"auto", "session_schedule", "feature_proxy"})
+
 
 @dataclass(frozen=True)
 class EvaluationCostConfig:
     instrument: str
     unit_label: str
     price_increment: float
+    spread_cost_mode: str
     session_spread_units: Mapping[str, float]
     fixed_slippage_units_per_trade: float
     commission_units_per_trade: float
@@ -39,10 +43,12 @@ class EvaluationCostConfig:
 def resolve_evaluation_cost_config(
     instrument: str | None,
     *,
+    spread_cost_mode: str = DEFAULT_SPREAD_COST_MODE,
     fixed_slippage_units_per_trade: float | None = None,
     commission_units_per_trade: float | None = None,
 ) -> EvaluationCostConfig:
     normalized = normalize_evaluation_instrument(instrument)
+    normalized_spread_cost_mode = normalize_spread_cost_mode(spread_cost_mode)
     if normalized in {"es", "6e"}:
         instrument_config = get_instrument_config(normalized)
         default_spread_units = (
@@ -56,6 +62,7 @@ def resolve_evaluation_cost_config(
             instrument=normalized,
             unit_label="ticks",
             price_increment=float(instrument_config.tick_size),
+            spread_cost_mode=normalized_spread_cost_mode,
             session_spread_units={
                 str(key): float(value) for key, value in default_spread_units.items()
             },
@@ -80,6 +87,7 @@ def resolve_evaluation_cost_config(
         instrument=normalized,
         unit_label="pips",
         price_increment=1e-4,
+        spread_cost_mode=normalized_spread_cost_mode,
         session_spread_units=default_spread_units,
         fixed_slippage_units_per_trade=float(
             0.3 if fixed_slippage_units_per_trade is None else fixed_slippage_units_per_trade
@@ -95,6 +103,7 @@ def describe_evaluation_cost_config(config: EvaluationCostConfig) -> dict[str, o
         "instrument": config.instrument,
         "unit_label": config.unit_label,
         "price_increment": float(config.price_increment),
+        "spread_cost_mode": config.spread_cost_mode,
         "session_spread_units": {
             str(key): float(value) for key, value in dict(config.session_spread_units).items()
         },
@@ -114,4 +123,14 @@ def normalize_evaluation_instrument(instrument: str | None) -> str:
     normalized = str(instrument).strip().lower()
     if normalized in {"eurusd", "spot_fx"}:
         return "fx"
+    return normalized
+
+
+def normalize_spread_cost_mode(spread_cost_mode: str | None) -> str:
+    normalized = str(spread_cost_mode or DEFAULT_SPREAD_COST_MODE).strip().lower()
+    if normalized not in SUPPORTED_SPREAD_COST_MODES:
+        raise ValueError(
+            f"Unsupported spread_cost_mode={spread_cost_mode!r}. "
+            f"Expected one of {sorted(SUPPORTED_SPREAD_COST_MODES)}."
+        )
     return normalized

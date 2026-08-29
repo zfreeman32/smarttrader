@@ -169,6 +169,7 @@ def summarize_trade_performance(
     period_end: pd.Timestamp | None = None,
     benchmark_monthly_returns: pd.Series | None = None,
     effective_trials: int = 1,
+    drawdown_starting_balance_pips: float = 10000.0,
 ) -> dict[str, Any]:
     start = _coerce_timestamp(period_start)
     end = _coerce_timestamp(period_end)
@@ -210,6 +211,7 @@ def summarize_trade_performance(
             quarterly_pnl=quarterly_pnl,
             benchmark_monthly_returns=benchmark_monthly_returns,
             effective_trials=effective_trials,
+            drawdown_starting_balance_pips=drawdown_starting_balance_pips,
         )
 
     working = trades.copy()
@@ -245,6 +247,7 @@ def summarize_trade_performance(
             quarterly_pnl=quarterly_pnl,
             benchmark_monthly_returns=benchmark_monthly_returns,
             effective_trials=effective_trials,
+            drawdown_starting_balance_pips=drawdown_starting_balance_pips,
         )
 
     working = working.sort_values(timestamp_column).reset_index(drop=True)
@@ -253,7 +256,11 @@ def summarize_trade_performance(
     wins = pnl.loc[pnl > 0.0]
     losses = pnl.loc[pnl < 0.0]
     equity_curve = build_equity_curve(working, timestamp_column=timestamp_column, pnl_column=pnl_column)
-    drawdown_stats = compute_drawdown_stats(equity_curve, timestamp_column=timestamp_column)
+    drawdown_stats = compute_drawdown_stats(
+        equity_curve,
+        timestamp_column=timestamp_column,
+        drawdown_starting_balance_pips=drawdown_starting_balance_pips,
+    )
 
     monthly_pnl = compute_period_pnl_series(
         working,
@@ -279,6 +286,7 @@ def summarize_trade_performance(
         quarterly_pnl=quarterly_pnl,
         benchmark_monthly_returns=benchmark_monthly_returns,
         effective_trials=effective_trials,
+        drawdown_starting_balance_pips=drawdown_starting_balance_pips,
     )
 
     total_net_pnl = float(pnl.sum())
@@ -316,6 +324,10 @@ def summarize_trade_performance(
             ),
             "max_drawdown_pips": float(drawdown_stats["max_drawdown_pips"]),
             "max_drawdown_duration_days": float(drawdown_stats["max_drawdown_duration_days"]),
+            "max_drawdown_pct": float(drawdown_stats["max_drawdown_pct"]),
+            "max_account_drawdown_pct": float(drawdown_stats["max_account_drawdown_pct"]),
+            "max_profit_retracement_pct": float(drawdown_stats["max_profit_retracement_pct"]),
+            "drawdown_starting_balance_pips": float(drawdown_stats["drawdown_starting_balance_pips"]),
             "largest_single_trade_share_of_total_pnl": largest_trade_share,
             "pnl_herfindahl_index": concentration["herfindahl_index"],
             "largest_single_trade_share_of_abs_pnl": concentration["largest_abs_share"],
@@ -328,28 +340,75 @@ def compute_drawdown_stats(
     equity_curve: pd.DataFrame,
     *,
     timestamp_column: str,
+    drawdown_starting_balance_pips: float = 10000.0,
 ) -> Mapping[str, float]:
     if equity_curve.empty or "drawdown_pips" not in equity_curve.columns or timestamp_column not in equity_curve.columns:
         return add_unit_aliases(
             {
                 "max_drawdown_pips": 0.0,
                 "max_drawdown_duration_days": 0.0,
+                "max_drawdown_pct": 0.0,
+                "max_account_drawdown_pct": 0.0,
+                "max_profit_retracement_pct": 0.0,
+                "drawdown_starting_balance_pips": float(drawdown_starting_balance_pips),
             }
         )
 
-    working = equity_curve.loc[:, [timestamp_column, "drawdown_pips"]].copy()
+    columns = [timestamp_column, "drawdown_pips"]
+    if "running_peak_pips" in equity_curve.columns:
+        columns.append("running_peak_pips")
+    if "equity_pips" in equity_curve.columns:
+        columns.append("equity_pips")
+    working = equity_curve.loc[:, columns].copy()
     working[timestamp_column] = pd.to_datetime(working[timestamp_column], errors="coerce")
     working["drawdown_pips"] = pd.to_numeric(working["drawdown_pips"], errors="coerce")
+    if "running_peak_pips" in working.columns:
+        working["running_peak_pips"] = pd.to_numeric(working["running_peak_pips"], errors="coerce")
+    if "equity_pips" in working.columns:
+        working["equity_pips"] = pd.to_numeric(working["equity_pips"], errors="coerce")
     working = working.dropna(subset=[timestamp_column, "drawdown_pips"]).reset_index(drop=True)
     if working.empty:
         return add_unit_aliases(
             {
                 "max_drawdown_pips": 0.0,
                 "max_drawdown_duration_days": 0.0,
+                "max_drawdown_pct": 0.0,
+                "max_account_drawdown_pct": 0.0,
+                "max_profit_retracement_pct": 0.0,
+                "drawdown_starting_balance_pips": float(drawdown_starting_balance_pips),
             }
         )
 
     max_drawdown = float(abs(min(float(working["drawdown_pips"].min()), 0.0)))
+    if "running_peak_pips" in working.columns:
+        peaks = working["running_peak_pips"].to_numpy(dtype=float, copy=True)
+    elif "equity_pips" in equity_curve.columns:
+        peaks = np.maximum.accumulate(
+            pd.to_numeric(equity_curve["equity_pips"], errors="coerce").to_numpy(dtype=float, copy=True)
+        )
+    else:
+        peaks = np.zeros(len(working), dtype=float)
+    drawdown_pips = working["drawdown_pips"].to_numpy(dtype=float, copy=True)
+    profit_retracement_pct = np.zeros(len(drawdown_pips), dtype=float)
+    positive_peak_mask = peaks > 0.0
+    if bool(np.any(positive_peak_mask)):
+        profit_retracement_pct[positive_peak_mask] = (
+            -np.minimum(drawdown_pips[positive_peak_mask], 0.0) / peaks[positive_peak_mask]
+        ) * 100.0
+    if "equity_pips" in working.columns:
+        equity = working["equity_pips"].to_numpy(dtype=float, copy=True)
+    else:
+        equity = np.cumsum(np.zeros(len(working), dtype=float))
+    account_equity = equity + float(drawdown_starting_balance_pips)
+    account_running_peak = np.maximum.accumulate(account_equity)
+    account_drawdown_pips = account_equity - account_running_peak
+    account_drawdown_pct = np.zeros(len(account_drawdown_pips), dtype=float)
+    positive_account_peak_mask = account_running_peak > 0.0
+    if bool(np.any(positive_account_peak_mask)):
+        account_drawdown_pct[positive_account_peak_mask] = (
+            -np.minimum(account_drawdown_pips[positive_account_peak_mask], 0.0)
+            / account_running_peak[positive_account_peak_mask]
+        ) * 100.0
     max_duration_days = 0.0
     underwater_start: pd.Timestamp | None = None
     for _, row in working.iterrows():
@@ -371,6 +430,10 @@ def compute_drawdown_stats(
         {
             "max_drawdown_pips": max_drawdown,
             "max_drawdown_duration_days": float(max_duration_days),
+            "max_drawdown_pct": float(np.max(account_drawdown_pct)) if account_drawdown_pct.size else 0.0,
+            "max_account_drawdown_pct": float(np.max(account_drawdown_pct)) if account_drawdown_pct.size else 0.0,
+            "max_profit_retracement_pct": float(np.max(profit_retracement_pct)) if profit_retracement_pct.size else 0.0,
+            "drawdown_starting_balance_pips": float(drawdown_starting_balance_pips),
         }
     )
 
@@ -514,6 +577,7 @@ def _base_performance_summary(
     quarterly_pnl: pd.Series,
     benchmark_monthly_returns: pd.Series | None,
     effective_trials: int,
+    drawdown_starting_balance_pips: float,
 ) -> dict[str, Any]:
     period_days = max((period_end - period_start).total_seconds() / 86400.0, 1.0 / 288.0)
     period_months = max(period_days / 30.4375, 1.0 / 30.4375)
@@ -565,6 +629,10 @@ def _base_performance_summary(
         "average_win_loss_ratio": 0.0,
         "max_drawdown_pips": 0.0,
         "max_drawdown_duration_days": 0.0,
+        "max_drawdown_pct": 0.0,
+        "max_account_drawdown_pct": 0.0,
+        "max_profit_retracement_pct": 0.0,
+        "drawdown_starting_balance_pips": float(drawdown_starting_balance_pips),
         "largest_single_trade_share_of_total_pnl": None,
         "pnl_herfindahl_index": 0.0,
         "largest_single_trade_share_of_abs_pnl": 0.0,

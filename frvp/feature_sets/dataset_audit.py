@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from preprocessing.config import PreprocessingConfig
+from preprocessing.config import FRVP_DIRECT_TARGET_COLUMNS, PreprocessingConfig
 from preprocessing.feature_importance import compute_feature_importance
 from preprocessing.feature_selection import discover_targets, resolve_sample_weight
 
@@ -141,12 +141,7 @@ def _mi_rankings(
         return {}
 
     config = PreprocessingConfig(
-        target_columns=[
-            "label_long_frvp_reversal",
-            "label_short_frvp_reversal",
-            "label_long_frvp_continuation",
-            "label_short_frvp_continuation",
-        ],
+        target_columns=list(FRVP_DIRECT_TARGET_COLUMNS),
         max_analysis_rows=100_000,
         min_positive_samples=1,
         min_train_rows=1,
@@ -200,12 +195,7 @@ def _key_feature_mi(
         return {}
 
     config = PreprocessingConfig(
-        target_columns=[
-            "label_long_frvp_reversal",
-            "label_short_frvp_reversal",
-            "label_long_frvp_continuation",
-            "label_short_frvp_continuation",
-        ],
+        target_columns=list(FRVP_DIRECT_TARGET_COLUMNS),
         max_analysis_rows=100_000,
         min_positive_samples=1,
         min_train_rows=1,

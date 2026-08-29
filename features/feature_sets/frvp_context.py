@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-from frvp.feature_sets.frvp_context import build_frvp_context_features
-
 from ..config import FeatureBuilderConfig
 from ..registry import register_feature_set
 
@@ -19,5 +17,10 @@ def build_frvp_context(
     config: FeatureBuilderConfig,
 ) -> pd.DataFrame:
     """Thin registry shim for the real FRVP feature family implementation."""
+
+    # Import lazily because the real implementation imports sibling feature
+    # modules. Importing it while ``features.feature_sets`` is still
+    # registering modules creates a package-initialization cycle.
+    from frvp.feature_sets.frvp_context import build_frvp_context_features
 
     return build_frvp_context_features(df, config, instrument=config.instrument)

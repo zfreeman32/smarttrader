@@ -17,6 +17,7 @@ from data.labeling.frvp_labeling_engine import (
     FRVPLabelingParams,
     build_frvp_diagnostic_report,
     build_frvp_labels,
+    build_frvp_setup_diagnostic_report,
     frvp_events_to_frame,
 )
 from features.builder import FeatureDatasetBuilder
@@ -26,7 +27,14 @@ from frvp.calendars.macro import macro_calendar_contract
 from frvp.feature_sets.dataset_audit import summarize_frvp_feature_dataset
 from frvp.setups.detector import summarize_setup_fire_rates
 from preprocessing.backend_attribution import BackendAttributionConfig, run_backend_attribution
-from preprocessing.config import PreprocessingConfig
+from preprocessing.config import (
+    FRVP_DIRECT_TARGET_COLUMNS,
+    FRVP_META_TARGET_COLUMNS,
+    FRVP_POOLED_DIRECT_TARGET_COLUMNS,
+    FRVP_SETUP_TARGET_COLUMNS,
+    FRVP_TARGET_COLUMNS,
+    PreprocessingConfig,
+)
 from preprocessing.pipeline import FeaturePreprocessingPipeline
 
 
@@ -34,20 +42,6 @@ DEFAULT_INPUT = Path("data/futures_data/ES-5m-tagged.csv")
 DEFAULT_OUTPUT_ROOT = Path("artifacts/frvp_es_primary")
 DEFAULT_RECIPE = Path("features/recipes/frvp_meta.json")
 VALID_STOP_PHASES = ("phase01", "phase02", "phase03", "phase04")
-FRVP_DIRECT_TARGET_COLUMNS = [
-    "label_long_frvp_reversal",
-    "label_short_frvp_reversal",
-    "label_long_frvp_continuation",
-    "label_short_frvp_continuation",
-]
-FRVP_META_TARGET_COLUMNS = [
-    "label_long_frvp_meta",
-    "label_short_frvp_meta",
-]
-FRVP_TARGET_COLUMNS = [
-    *FRVP_DIRECT_TARGET_COLUMNS,
-    *FRVP_META_TARGET_COLUMNS,
-]
 FRVP_HELPER_PREFIXES = (
     "label_",
     "label_quality_",
@@ -208,6 +202,9 @@ def run(config: ESPrimaryPhase04Config) -> dict[str, Any]:
     diagnostic_report = build_frvp_diagnostic_report(labels, events)
     diagnostic_report_csv = phase03_dir / "es_primary_frvp_diagnostic_report.csv"
     diagnostic_report.to_csv(diagnostic_report_csv, index=False)
+    setup_diagnostic_report = build_frvp_setup_diagnostic_report(labels, events)
+    setup_diagnostic_report_csv = phase03_dir / "es_primary_frvp_setup_diagnostic_report.csv"
+    setup_diagnostic_report.to_csv(setup_diagnostic_report_csv, index=False)
 
     feature_columns = ["datetime", *[str(column) for column in feature_metadata.get("feature_columns", [])]]
     feature_columns = [column for column in feature_columns if column in feature_dataset.columns]
@@ -268,6 +265,7 @@ def run(config: ESPrimaryPhase04Config) -> dict[str, Any]:
                 "phase03_events_csv": str(events_csv),
                 "phase03_diag_json": str(phase03_dir / "labeling_diagnostics.json"),
                 "phase03_diag_report_csv": str(diagnostic_report_csv),
+                "phase03_setup_diag_report_csv": str(setup_diagnostic_report_csv),
             },
         )
         _write_json(output_root / "phase04_gate_report.json", gate_report)
@@ -319,6 +317,7 @@ def run(config: ESPrimaryPhase04Config) -> dict[str, Any]:
             "phase03_events_csv": str(events_csv),
             "phase03_diag_json": str(phase03_dir / "labeling_diagnostics.json"),
             "phase03_diag_report_csv": str(diagnostic_report_csv),
+            "phase03_setup_diag_report_csv": str(setup_diagnostic_report_csv),
             "phase04_prepared_summary": str(prepared_root / "summary.json"),
             "phase04_backend_summary": str(prepared_root / "backend_attribution_summary.json"),
         },
@@ -616,9 +615,12 @@ def _phase04_status(
     for target_name, backend_payload in backend_summary["targets"].items():
         xgb = backend_payload["xgboost"]
         top10 = [row["feature"] for row in xgb.get("top_features_overall", [])[:10]]
+        setup_type = _setup_type_from_target_name(target_name)
         if not any(feature.startswith("frvp_dist_") for feature in top10):
             reasons.append(f"{target_name}: no FRVP distance feature reached SHAP top-10")
-        if "frvp_open_type" not in top10:
+        # Setup 1 and Setup 6 explicitly require an inside-value open, so
+        # frvp_open_type is constant and correctly removed in those lanes.
+        if setup_type not in {1, 6} and "frvp_open_type" not in top10:
             reasons.append(f"{target_name}: frvp_open_type missed SHAP top-10")
         if "frvp_day_type" not in top10:
             reasons.append(f"{target_name}: frvp_day_type missed SHAP top-10")
@@ -628,6 +630,17 @@ def _phase04_status(
     if reasons:
         return "partial", reasons
     return "pass", ["Prepared FRVP targets remain zero-special-case downstream and the backend attribution audit is directionally consistent."]
+
+
+def _setup_type_from_target_name(target_name: str) -> int | None:
+    suffix = str(target_name).strip().lower().rsplit("_setup", maxsplit=1)
+    if len(suffix) != 2:
+        return None
+    try:
+        setup_type = int(suffix[1])
+    except ValueError:
+        return None
+    return setup_type if setup_type in {1, 2, 3, 4, 5, 6} else None
 
 
 def _normalize_stop_phase(value: str) -> str:

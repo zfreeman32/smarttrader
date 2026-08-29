@@ -4,8 +4,16 @@ param(
     [string]$XgbOutputRoot = "models\frvp_es_primary_xgb_v1",
     [string]$TcnReversalOutputRoot = "models\frvp_es_primary_tcn_reversal_v1",
     [string]$TcnContinuationOutputRoot = "models\frvp_es_primary_tcn_continuation_v1",
+    [ValidateSet("pooled", "setup", "all")]
+    [string]$XgbTargetMode = "pooled",
     [int]$XgbTrials = 20,
     [int]$TcnTrials = 12,
+    [int]$XgbCvInitialTrainRows = 900,
+    [int]$XgbCvValRows = 300,
+    [int]$XgbCvStepRows = 300,
+    [int]$XgbMinTrainPositiveRows = 350,
+    [int]$XgbMinValPositiveRows = 100,
+    [int]$XgbMinValTrueEvents = 20,
     [switch]$SkipXgboostTraining,
     [switch]$SkipTcnAttribution,
     [switch]$SkipTcnTraining
@@ -51,9 +59,39 @@ Write-Host "Working directory: $repoRoot"
 Write-Host "Python:            $PythonExe"
 Write-Host "Prepared root:     $PreparedRoot"
 Write-Host "XGBoost output:    $XgbOutputRoot"
+Write-Host "XGBoost targets:   $XgbTargetMode"
 Write-Host "TCN reversal out:  $TcnReversalOutputRoot"
 Write-Host "TCN continuation:  $TcnContinuationOutputRoot"
 Write-Host "==================================================" -ForegroundColor Green
+
+$pooledXgbTargets = @(
+    "long_frvp_reversal",
+    "short_frvp_reversal",
+    "long_frvp_continuation",
+    "short_frvp_continuation",
+    "long_frvp_meta",
+    "short_frvp_meta"
+)
+$setupFamilyByType = @{
+    1 = "reversal"
+    2 = "continuation"
+    3 = "continuation"
+    4 = "reversal"
+    5 = "continuation"
+    6 = "reversal"
+}
+$setupXgbTargets = @()
+foreach ($setupType in 1..6) {
+    $family = $setupFamilyByType[$setupType]
+    foreach ($direction in @("long", "short")) {
+        $setupXgbTargets += "${direction}_frvp_${family}_setup${setupType}"
+    }
+}
+$xgbTargets = switch ($XgbTargetMode) {
+    "pooled" { @($pooledXgbTargets) }
+    "setup" { @($setupXgbTargets) }
+    "all" { @($pooledXgbTargets + $setupXgbTargets) }
+}
 
 $xgbArgs = @(
     "-m",
@@ -68,15 +106,17 @@ $xgbArgs = @(
     "--event-tolerance-bars", "2",
     "--event-cooldown-bars", "4",
     "--calibration-method", "platt",
-    "--cv-initial-train-rows", "900",
-    "--cv-val-rows", "300",
-    "--cv-step-rows", "300",
+    "--cv-initial-train-rows", $XgbCvInitialTrainRows.ToString(),
+    "--cv-val-rows", $XgbCvValRows.ToString(),
+    "--cv-step-rows", $XgbCvStepRows.ToString(),
     "--cv-min-folds", "2",
-    "--min-train-positive-rows", "350",
-    "--min-val-positive-rows", "100",
-    "--min-val-true-events", "20",
+    "--min-train-positive-rows", $XgbMinTrainPositiveRows.ToString(),
+    "--min-val-positive-rows", $XgbMinValPositiveRows.ToString(),
+    "--min-val-true-events", $XgbMinValTrueEvents.ToString(),
     "--seed", "42"
 )
+$xgbArgs += @("--targets")
+$xgbArgs += $xgbTargets
 
 $tcnAttributionArgs = @(
     "-m",
@@ -104,6 +144,9 @@ $tcnAttributionArgs = @(
     "--top-n-features", "25",
     "--random-seed", "42"
 )
+foreach ($target in $pooledXgbTargets) {
+    $tcnAttributionArgs += @("--target", $target)
+}
 
 $tcnReversalArgs = @(
     "-m",

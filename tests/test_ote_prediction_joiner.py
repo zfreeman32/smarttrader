@@ -273,6 +273,59 @@ def test_join_prediction_file_infers_family_target_from_training_summary() -> No
     assert joined_datetime.tolist() == source_datetime.tolist()
 
 
+def test_join_prediction_file_falls_back_to_feature_builder_source_for_missing_price_columns() -> None:
+    tmp_path = _make_local_tmp_dir()
+    source_path, prepared_root = _prepare_ote_dataset(tmp_path)
+    target_dir = prepared_root / "long_ote"
+    test_split = pd.read_csv(target_dir / "test.csv")
+
+    fallback_source = tmp_path / "prepared_input_without_prices.csv"
+    base_source = pd.read_csv(source_path)
+    base_source.loc[:, ["datetime", "label_long_ote", "exclude_long", "neg_ok_long", "sample_weight_long", "warmup_mask", "feature_signal"]].to_csv(
+        fallback_source,
+        index=False,
+    )
+
+    summary_path = prepared_root / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["input_file"] = str(fallback_source)
+    summary["source_lineage"] = {
+        "feature_builder_source_path": str(source_path),
+    }
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    model_dir = tmp_path / "models" / "long_ote"
+    model_dir.mkdir(parents=True)
+    prediction_path = model_dir / "test_predictions.csv"
+    pd.DataFrame(
+        {
+            "row_index": [0, 1, 2],
+            "target": [0, 1, 0],
+            "sample_weight": [1.0, 2.0, 1.0],
+            "raw_probability": [0.4, 0.8, 0.3],
+            "calibrated_probability": [0.45, 0.85, 0.35],
+            "predicted_label": [0, 1, 0],
+        }
+    ).to_csv(prediction_path, index=False)
+
+    (model_dir / "training_summary.json").write_text(
+        json.dumps({"prepared_dir": str(target_dir)}, indent=2),
+        encoding="utf-8",
+    )
+
+    joined = join_prediction_file(
+        prediction_path,
+        source_columns=["datetime", "close", "feature_signal"],
+    )
+
+    expected_source_rows = test_split["source_row_idx"].iloc[:3].tolist()
+    expected_close = base_source.iloc[expected_source_rows]["close"].to_list()
+
+    assert joined["source_row_idx"].tolist() == expected_source_rows
+    assert joined["close"].tolist() == expected_close
+    assert "feature_signal" in joined.columns
+
+
 def test_join_prediction_file_reconstructs_synthetic_ote_target_from_training_summary() -> None:
     tmp_path = _make_local_tmp_dir()
     source_path, prepared_root = _prepare_family_dataset(tmp_path)

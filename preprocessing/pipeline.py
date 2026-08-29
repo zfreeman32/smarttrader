@@ -188,6 +188,11 @@ class FeaturePreprocessingPipeline:
     ) -> Dict[str, Any]:
         header = pd.read_csv(input_path, nrows=0)
         available_columns = [str(column) for column in header.columns]
+        prepared_contract = metadata.get("prepared_contract")
+        if not isinstance(prepared_contract, dict):
+            prepared_contract = metadata.get("phase02_contract", {})
+        if not isinstance(prepared_contract, dict):
+            prepared_contract = {}
 
         declared_feature_columns = [
             str(column)
@@ -196,7 +201,7 @@ class FeaturePreprocessingPipeline:
         ]
         target_context_columns = [
             str(column)
-            for column in metadata.get("phase02_contract", {}).get("target_context_columns", [])
+            for column in prepared_contract.get("target_context_columns", [])
             if str(column) in available_columns
         ]
 
@@ -533,7 +538,13 @@ class FeaturePreprocessingPipeline:
         source_row_idx = df["source_row_idx"].iloc[ordered_positions].reset_index(drop=True)
 
         usable_rows = int(len(ordered_positions))
-        split_indices = build_split_indices(usable_rows, config)
+        applied_embargo_bars = self._resolve_target_split_embargo_bars(config, spec.name)
+        split_indices = build_split_indices(
+            usable_rows,
+            config,
+            source_row_idx=source_row_idx,
+            target_name=spec.name,
+        )
         train_idx = split_indices["train"]
         val_idx = split_indices["val"]
         test_idx = split_indices["test"]
@@ -608,6 +619,11 @@ class FeaturePreprocessingPipeline:
         )
 
         split_date_ranges = self._split_date_ranges(ordered_time_values, split_indices)
+        split_geometry = self._split_geometry_report(
+            source_row_idx=source_row_idx,
+            split_indices=split_indices,
+            applied_embargo_bars=applied_embargo_bars,
+        )
         class_balance = self._class_balance_report(
             y_all=target_series.reset_index(drop=True),
             y_train=y_train,
@@ -665,6 +681,7 @@ class FeaturePreprocessingPipeline:
                 "test": int(len(y_test)),
             },
             "split_date_ranges": split_date_ranges,
+            "split_geometry": split_geometry,
             "timezone_contract": timezone_contract,
             "source_lineage": source_lineage,
             "row_identity": {
@@ -712,6 +729,83 @@ class FeaturePreprocessingPipeline:
             "readiness_grade": readiness["grade"],
             "positive_rate": class_balance.get("positive_rate"),
             "positive_count": class_balance.get("positive_count"),
+        }
+
+    def _resolve_target_split_embargo_bars(
+        self,
+        config: PreprocessingConfig,
+        target_name: str,
+    ) -> int:
+        target_map = config.target_split_embargo_bars or {}
+        if target_name in target_map:
+            try:
+                return max(int(target_map[target_name]), 0)
+            except (TypeError, ValueError):
+                return 0
+        try:
+            return max(int(config.split_embargo_bars), 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _split_geometry_report(
+        self,
+        *,
+        source_row_idx: pd.Series,
+        split_indices: Dict[str, np.ndarray],
+        applied_embargo_bars: int,
+    ) -> Dict[str, Any]:
+        source_rows = pd.to_numeric(source_row_idx, errors="coerce").reset_index(drop=True)
+        split_ranges: Dict[str, Optional[Dict[str, int]]] = {}
+        boundaries: List[Dict[str, Any]] = []
+
+        for split_name, indices in split_indices.items():
+            if len(indices) == 0:
+                split_ranges[split_name] = None
+                continue
+            values = source_rows.iloc[indices]
+            split_ranges[split_name] = {
+                "start_source_row_idx": int(values.min()),
+                "end_source_row_idx": int(values.max()),
+                "row_count": int(len(indices)),
+            }
+
+        for current_name, next_name in (("train", "val"), ("val", "test")):
+            current_idx = split_indices[current_name]
+            next_idx = split_indices[next_name]
+            if len(current_idx) == 0 or len(next_idx) == 0:
+                boundaries.append(
+                    {
+                        "boundary_name": f"{current_name}_to_{next_name}",
+                        "available": False,
+                    }
+                )
+                continue
+
+            current_last_pos = int(current_idx[-1])
+            next_first_pos = int(next_idx[0])
+            current_last_source = int(source_rows.iloc[current_last_pos])
+            next_first_source = int(source_rows.iloc[next_first_pos])
+            raw_gap = int(next_first_source - current_last_source - 1)
+            dropped_usable_rows = int(max(next_first_pos - current_last_pos - 1, 0))
+            boundaries.append(
+                {
+                    "boundary_name": f"{current_name}_to_{next_name}",
+                    "available": True,
+                    "current_split_last_position": current_last_pos,
+                    "next_split_first_position": next_first_pos,
+                    "current_split_last_source_row_idx": current_last_source,
+                    "next_split_first_source_row_idx": next_first_source,
+                    "raw_source_row_gap_bars": raw_gap,
+                    "dropped_usable_rows_between_splits": dropped_usable_rows,
+                    "required_embargo_bars": int(applied_embargo_bars),
+                    "passes_embargo": bool(raw_gap >= int(applied_embargo_bars)),
+                }
+            )
+
+        return {
+            "applied_embargo_bars": int(applied_embargo_bars),
+            "split_source_row_ranges": split_ranges,
+            "boundaries": boundaries,
         }
 
     def _class_balance_report(

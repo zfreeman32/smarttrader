@@ -4,6 +4,7 @@ from . import fractional_diff  # noqa: F401
 from . import frvp_context  # noqa: F401
 from . import htf_context  # noqa: F401
 from . import ict_context  # noqa: F401
+from . import ict_interactions  # noqa: F401
 from . import microstructure  # noqa: F401
 from . import momentum  # noqa: F401
 from . import price_action  # noqa: F401

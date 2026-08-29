@@ -12,6 +12,13 @@ from features.config import FeatureBuilderConfig
 from frvp.continuity.continuous_contract import BackAdjustedPathBars, RawProfileBars
 from frvp.continuity.types import RollBoundaryError
 from frvp.feature_sets.frvp_context import _prepare_frvp_context, build_frvp_context_features
+from frvp.target_lanes import (
+    FRVP_POOLED_TARGET_FAMILIES,
+    FRVP_SETUP_TARGET_FAMILIES,
+    FRVP_SETUP_TYPES,
+    pooled_target_family,
+    setup_target_family,
+)
 
 try:
     from .reversal_labeling_engine import (
@@ -49,8 +56,8 @@ except ImportError:
     )
 
 
-FRVP_REVERSAL_FAMILY = "frvp_reversal"
-FRVP_CONTINUATION_FAMILY = "frvp_continuation"
+FRVP_REVERSAL_FAMILY = pooled_target_family(1)
+FRVP_CONTINUATION_FAMILY = pooled_target_family(2)
 FRVP_QUALITY_TARGET = 0.65
 MEAN_REVERSION_SETUPS = frozenset({1, 6})
 CONTINUATION_SETUPS = frozenset({2, 3, 5})
@@ -298,9 +305,7 @@ def _barrier_spec(
 
 
 def _event_target_family(setup_type: int) -> str:
-    if int(setup_type) in CONTINUATION_SETUPS:
-        return FRVP_CONTINUATION_FAMILY
-    return FRVP_REVERSAL_FAMILY
+    return pooled_target_family(int(setup_type))
 
 
 def _target_columns(
@@ -977,44 +982,62 @@ def _materialize_frvp_targets(
     events: list[SwingPoint],
     concurrency_arrays: dict[tuple[str, str], np.ndarray],
 ) -> pd.DataFrame:
-    out = pd.DataFrame(index=pd.DatetimeIndex(market["timestamp"]))
+    output_index = pd.DatetimeIndex(market["timestamp"])
     directions = ("long", "short")
-    families = (FRVP_REVERSAL_FAMILY, FRVP_CONTINUATION_FAMILY)
+    column_data: dict[str, np.ndarray] = {}
 
     for direction in directions:
-        for family in families:
-            columns = _target_columns(direction, family)
-            out[columns["label"]] = np.zeros(len(out), dtype=np.int8)
-            out[columns["quality"]] = np.zeros(len(out), dtype=np.float32)
-            out[columns["sample_weight"]] = np.ones(len(out), dtype=np.float32)
-            out[columns["exclude"]] = np.ones(len(out), dtype=bool)
-            out[columns["neg_ok"]] = np.zeros(len(out), dtype=bool)
-            out[columns["concurrency"]] = concurrency_arrays.get((direction, family), np.zeros(len(out), dtype=np.int32))
-            out[columns["htf_confluence"]] = np.zeros(len(out), dtype=np.int8)
+        for target_family in (*FRVP_POOLED_TARGET_FAMILIES, *FRVP_SETUP_TARGET_FAMILIES):
+            columns = _target_columns(direction, target_family)
+            if target_family in FRVP_POOLED_TARGET_FAMILIES:
+                concurrency_family = target_family
+            else:
+                setup_type = FRVP_SETUP_TYPES[FRVP_SETUP_TARGET_FAMILIES.index(target_family)]
+                concurrency_family = pooled_target_family(setup_type)
+            column_data[columns["label"]] = np.zeros(len(output_index), dtype=np.int8)
+            column_data[columns["quality"]] = np.zeros(len(output_index), dtype=np.float32)
+            column_data[columns["sample_weight"]] = np.ones(len(output_index), dtype=np.float32)
+            column_data[columns["exclude"]] = np.ones(len(output_index), dtype=bool)
+            column_data[columns["neg_ok"]] = np.zeros(len(output_index), dtype=bool)
+            # Setup targets intentionally inherit the pooled-family uniqueness
+            # weights/concurrency. This keeps the first split-first comparison
+            # limited to target routing instead of silently adding a weighting
+            # policy change.
+            column_data[columns["concurrency"]] = concurrency_arrays.get(
+                (direction, concurrency_family),
+                np.zeros(len(output_index), dtype=np.int32),
+            )
+            column_data[columns["htf_confluence"]] = np.zeros(len(output_index), dtype=np.int8)
+
+    out = pd.DataFrame(column_data, index=output_index)
 
     for event in events:
         direction = str(getattr(event, "event_direction"))
-        family = str(getattr(event, "target_family"))
-        columns = _target_columns(direction, family)
         event_idx = int(event.swing_index)
         if event_idx >= len(out):
             continue
 
         quality = float(getattr(event, "label_quality", 0.0))
         sample_weight = float(getattr(event, "sample_weight", 1.0))
-        out.iat[event_idx, out.columns.get_loc(columns["quality"])] = quality
-        out.iat[event_idx, out.columns.get_loc(columns["sample_weight"])] = sample_weight
-        out.iat[event_idx, out.columns.get_loc(columns["htf_confluence"])] = int(
-            bool(getattr(event, "htf_match_30m", False)) or bool(getattr(event, "htf_match_1h", False))
-        )
-
         usable = not bool(getattr(event, "excluded", False))
-        if usable:
-            out.iat[event_idx, out.columns.get_loc(columns["exclude"])] = False
-            out.iat[event_idx, out.columns.get_loc(columns["neg_ok"])] = True
+        target_families = (
+            str(getattr(event, "target_family")),
+            setup_target_family(int(getattr(event, "setup_type"))),
+        )
+        for target_family in target_families:
+            columns = _target_columns(direction, target_family)
+            out.iat[event_idx, out.columns.get_loc(columns["quality"])] = quality
+            out.iat[event_idx, out.columns.get_loc(columns["sample_weight"])] = sample_weight
+            out.iat[event_idx, out.columns.get_loc(columns["htf_confluence"])] = int(
+                bool(getattr(event, "htf_match_30m", False)) or bool(getattr(event, "htf_match_1h", False))
+            )
 
-        if usable and str(getattr(event, "tb_outcome", "")) == "tp":
-            out.iat[event_idx, out.columns.get_loc(columns["label"])] = 1
+            if usable:
+                out.iat[event_idx, out.columns.get_loc(columns["exclude"])] = False
+                out.iat[event_idx, out.columns.get_loc(columns["neg_ok"])] = True
+
+            if usable and str(getattr(event, "tb_outcome", "")) == "tp":
+                out.iat[event_idx, out.columns.get_loc(columns["label"])] = 1
 
     return out
 
@@ -1025,6 +1048,7 @@ def frvp_events_to_frame(events: Sequence[SwingPoint]) -> pd.DataFrame:
         rows.append(
             {
                 "label_family": str(getattr(event, "target_family", "frvp")),
+                "setup_target_family": setup_target_family(int(getattr(event, "setup_type", 0))),
                 "setup_type": int(getattr(event, "setup_type", 0)),
                 "setup_side": int(getattr(event, "setup_side", 0)),
                 "barrier_family": getattr(event, "barrier_family", None),
@@ -1178,8 +1202,11 @@ def build_frvp_labels(
     usable_events = [event for event in events if not bool(getattr(event, "excluded", False))]
     usable_by_target: dict[str, list[SwingPoint]] = {}
     for event in usable_events:
-        key = f"{getattr(event, 'event_direction')}_{getattr(event, 'target_family')}"
-        usable_by_target.setdefault(key, []).append(event)
+        direction = str(getattr(event, "event_direction"))
+        pooled_family = str(getattr(event, "target_family"))
+        setup_family = setup_target_family(int(getattr(event, "setup_type")))
+        usable_by_target.setdefault(f"{direction}_{pooled_family}", []).append(event)
+        usable_by_target.setdefault(f"{direction}_{setup_family}", []).append(event)
 
     diagnostics: dict[str, Any] = {
         "status": "ok",
@@ -1205,8 +1232,8 @@ def build_frvp_labels(
             diagnostics["event_cluster_cv"] = float(np.std(gaps) / np.mean(gaps))
 
     for direction in ("long", "short"):
-        for family in (FRVP_REVERSAL_FAMILY, FRVP_CONTINUATION_FAMILY):
-            key = f"{direction}_{family}"
+        for target_family in (*FRVP_POOLED_TARGET_FAMILIES, *FRVP_SETUP_TARGET_FAMILIES):
+            key = f"{direction}_{target_family}"
             group = usable_by_target.get(key, [])
             diagnostics[f"events_{key}"] = int(len(group))
             diagnostics[f"base_rate_{key}_pct"] = 100.0 * (
@@ -1328,12 +1355,94 @@ def build_frvp_diagnostic_report(
     return pd.DataFrame(summaries)
 
 
+def build_frvp_setup_diagnostic_report(
+    df_labeled: pd.DataFrame,
+    events: Sequence[SwingPoint],
+) -> pd.DataFrame:
+    """Report setup-specific target coverage without changing legacy gates."""
+
+    event_frame = frvp_events_to_frame(events)
+    if event_frame.empty:
+        return pd.DataFrame(
+            [
+                {
+                    "direction": direction,
+                    "setup_type": setup_type,
+                    "target_family": setup_target_family(setup_type),
+                    "pooled_family": pooled_target_family(setup_type),
+                    "barrier_family": None,
+                    "events": 0,
+                    "events_per_year": 0.0,
+                    "base_rate_pct": 0.0,
+                    "quality_mean": 0.0,
+                    "events_total": 0,
+                    "events_excluded": 0,
+                    "roll_spanning_excluded": 0,
+                    "sample_weight_scope": "pooled_family",
+                }
+                for setup_type in FRVP_SETUP_TYPES
+                for direction in ("long", "short")
+            ]
+        )
+
+    frame = event_frame.copy()
+    frame["direction"] = np.where(frame["setup_side"] > 0, "long", "short")
+    frame["event_year"] = pd.to_datetime(frame["swing_time"], errors="coerce", utc=True).dt.year
+    total_years: float = float(max(int(frame["event_year"].nunique()), 1))
+    if not df_labeled.empty and isinstance(df_labeled.index, pd.DatetimeIndex):
+        elapsed_years = max(
+            (df_labeled.index.max() - df_labeled.index.min()).total_seconds() / (365.25 * 86400.0),
+            0.0,
+        )
+        if elapsed_years > 0:
+            total_years = max(float(elapsed_years), 1.0)
+
+    rows: list[dict[str, Any]] = []
+    for setup_type in FRVP_SETUP_TYPES:
+        for direction in ("long", "short"):
+            subset = frame.loc[
+                frame["setup_type"].eq(setup_type) & frame["direction"].eq(direction)
+            ].copy()
+            usable = subset.loc[~subset["excluded"]].copy()
+            rows.append(
+                {
+                    "direction": direction,
+                    "setup_type": setup_type,
+                    "target_family": setup_target_family(setup_type),
+                    "pooled_family": pooled_target_family(setup_type),
+                    "barrier_family": (
+                        str(subset["barrier_family"].dropna().iloc[0])
+                        if not subset["barrier_family"].dropna().empty
+                        else None
+                    ),
+                    "events": int(len(usable)),
+                    "events_per_year": float(len(usable) / total_years),
+                    "base_rate_pct": (
+                        100.0 * float(usable["tb_outcome"].eq("tp").mean())
+                        if not usable.empty
+                        else 0.0
+                    ),
+                    "quality_mean": (
+                        float(pd.to_numeric(usable["label_quality"], errors="coerce").mean())
+                        if not usable.empty
+                        else 0.0
+                    ),
+                    "events_total": int(len(subset)),
+                    "events_excluded": int(subset["excluded"].sum()),
+                    "roll_spanning_excluded": int(subset["flag_roll_span"].sum()),
+                    "sample_weight_scope": "pooled_family",
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 __all__ = [
     "FRVPLabelingParams",
     "FRVP_CONTINUATION_FAMILY",
     "FRVP_QUALITY_TARGET",
     "FRVP_REVERSAL_FAMILY",
     "build_frvp_diagnostic_report",
+    "build_frvp_setup_diagnostic_report",
     "build_frvp_labels",
     "frvp_events_to_frame",
 ]

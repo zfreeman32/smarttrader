@@ -114,6 +114,10 @@ class OTETrainingConfig:
     threshold_turnover_target_ratio: float = 0.85
     tuning_negative_ratio: int = 8
     use_balanced_tuning_sample: bool = True
+    sequential_bootstrap_mode: str = "off"
+    sequential_bootstrap_replace: bool = True
+    sequential_bootstrap_max_candidates: int = 0
+    sequential_bootstrap_final_refit: bool = True
     calibration_method: str = "platt"
     final_refit_on_dev: bool = True
     objective_average_precision_weight: float = 0.45
@@ -172,6 +176,8 @@ class PreparedTargetDataset:
     source_row_idx_train: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
     source_row_idx_val: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
     source_row_idx_test: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
+    event_window_lookup: Dict[int, int] = field(default_factory=dict)
+    event_window_source: str | None = None
     prepared_summary: Dict[str, object] = field(default_factory=dict)
     prepared_summary_path: str | None = None
     _dev_X_cache: np.ndarray | None = field(default=None, init=False, repr=False)
@@ -481,6 +487,10 @@ def load_prepared_target_dataset(
     X_train, y_train, w_train, source_row_idx_train = read_split("train")
     X_val, y_val, w_val, source_row_idx_val = read_split("val")
     X_test, y_test, w_test, source_row_idx_test = read_split("test")
+    event_window_lookup, event_window_source = resolve_target_event_window_lookup(
+        prepared_root=prepared_root,
+        target_name=target_name,
+    )
 
     return PreparedTargetDataset(
         target_name=target_name,
@@ -502,6 +512,8 @@ def load_prepared_target_dataset(
         source_row_idx_train=source_row_idx_train,
         source_row_idx_val=source_row_idx_val,
         source_row_idx_test=source_row_idx_test,
+        event_window_lookup=event_window_lookup,
+        event_window_source=event_window_source,
     )
 
 
@@ -523,6 +535,41 @@ def resolve_dataset_source_lineage(dataset: PreparedTargetDataset) -> Dict[str, 
     if isinstance(prepared_summary_lineage, dict):
         return prepared_summary_lineage
     return {}
+
+
+def resolve_target_event_window_lookup(
+    *,
+    prepared_root: Path,
+    target_name: str,
+) -> Tuple[Dict[int, int], str | None]:
+    normalized_target = str(target_name).strip().lower()
+    if "_ict_" not in normalized_target:
+        return {}, None
+
+    phase04_dir = prepared_root.parent
+    artifact_root = phase04_dir.parent
+    events_path = artifact_root / "phase03_labeling" / "ict_es_events.csv"
+    if not events_path.exists():
+        return {}, None
+
+    from ict.reports.leakage_control import build_ict_event_window_frame
+
+    events = pd.read_csv(events_path)
+    event_windows = build_ict_event_window_frame(events)
+    target_windows = event_windows.loc[event_windows["target_name"].eq(target_name), ["signal_index", "barrier_end_index"]]
+    if target_windows.empty:
+        return {}, str(events_path)
+
+    aggregated = (
+        target_windows.groupby("signal_index", as_index=False)["barrier_end_index"]
+        .max()
+        .sort_values("signal_index")
+    )
+    lookup = {
+        int(signal_index): int(barrier_end_index)
+        for signal_index, barrier_end_index in aggregated.itertuples(index=False, name=None)
+    }
+    return lookup, str(events_path)
 
 
 def make_lag_steps(window_size: int, lag_count: int) -> List[int]:
@@ -834,6 +881,43 @@ def resolve_purge_bars(config: OTETrainingConfig, context_rows: int) -> int:
     return int(base + config.purge_buffer_bars)
 
 
+def resolve_dataset_cv_purge_bars(
+    dataset: PreparedTargetDataset,
+    config: OTETrainingConfig,
+    *,
+    context_rows: int,
+) -> int:
+    resolved = resolve_purge_bars(config, context_rows=context_rows)
+    if "_ict_" not in dataset.target_name.lower() or not dataset.event_window_lookup:
+        return resolved
+
+    swing_confirm_bars = 3
+    source_lineage = resolve_dataset_source_lineage(dataset)
+    metadata_candidate = source_lineage.get("feature_builder_source_metadata_file")
+    if metadata_candidate:
+        metadata_path = Path(str(metadata_candidate))
+        if not metadata_path.is_absolute():
+            metadata_path = REPO_ROOT / metadata_path
+        if metadata_path.exists():
+            try:
+                from ict.reports.leakage_control import resolve_ict_swing_confirm_bars
+
+                phase02_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                swing_confirm_bars = resolve_ict_swing_confirm_bars(phase02_metadata)
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                swing_confirm_bars = 3
+
+    realized_window_bars = [
+        int(barrier_end_index) - int(signal_index) + 1
+        for signal_index, barrier_end_index in dataset.event_window_lookup.items()
+        if int(barrier_end_index) >= int(signal_index)
+    ]
+    if not realized_window_bars:
+        return resolved
+    ict_recommended = int(max(realized_window_bars) + max(int(swing_confirm_bars), 0))
+    return max(resolved, ict_recommended)
+
+
 def max_context_rows_for_config(config: OTETrainingConfig) -> int:
     max_window_size = max(int(config.window_size), int(config.window_max))
     return max(max_window_size - 1, 0)
@@ -844,7 +928,11 @@ def validate_cv_geometry_for_dataset(
     config: OTETrainingConfig,
 ) -> None:
     max_context_rows = max_context_rows_for_config(config)
-    resolved_purge_bars = resolve_purge_bars(config, context_rows=max_context_rows)
+    resolved_purge_bars = resolve_dataset_cv_purge_bars(
+        dataset,
+        config,
+        context_rows=max_context_rows,
+    )
     required_rows = (
         int(config.cv_initial_train_rows)
         + resolved_purge_bars
@@ -942,6 +1030,135 @@ def sample_balanced_training_indices(
 
     combined = np.concatenate([positives, hard_negatives, sampled_easy])
     return np.sort(np.unique(combined))
+
+
+def resolve_sequential_bootstrap_enabled(
+    *,
+    dataset: PreparedTargetDataset,
+    config: OTETrainingConfig,
+) -> bool:
+    mode = str(config.sequential_bootstrap_mode).strip().lower()
+    if mode in {"", "off", "none", "false", "0"}:
+        return False
+    if mode == "ict":
+        return bool(dataset.event_window_lookup) and "_ict_" in dataset.target_name.lower()
+    if mode == "all":
+        return bool(dataset.event_window_lookup)
+    raise ValueError(
+        f"Unsupported sequential bootstrap mode {config.sequential_bootstrap_mode!r}. "
+        "Use one of: off, ict, all."
+    )
+
+
+def cap_bootstrap_candidate_indices(
+    candidate_idx: np.ndarray,
+    *,
+    y: np.ndarray,
+    weights: np.ndarray,
+    max_candidates: int,
+    seed: int,
+) -> np.ndarray:
+    if max_candidates <= 0 or len(candidate_idx) <= max_candidates:
+        return np.asarray(candidate_idx, dtype=np.int64)
+
+    rng = np.random.default_rng(seed)
+    candidate_idx = np.asarray(candidate_idx, dtype=np.int64)
+    positives = candidate_idx[y[candidate_idx] == 1]
+    negatives = candidate_idx[y[candidate_idx] == 0]
+
+    if len(positives) >= max_candidates:
+        positive_weights = weights[positives].astype(np.float64, copy=False)
+        weight_sum = float(np.sum(positive_weights))
+        probabilities = (
+            positive_weights / weight_sum
+            if np.isfinite(weight_sum) and weight_sum > 0.0
+            else None
+        )
+        selected = rng.choice(
+            positives,
+            size=max_candidates,
+            replace=False,
+            p=probabilities,
+        )
+        return np.sort(np.asarray(selected, dtype=np.int64))
+
+    keep_negatives = max(max_candidates - len(positives), 0)
+    if keep_negatives <= 0 or len(negatives) == 0:
+        return np.sort(np.asarray(positives, dtype=np.int64))
+
+    negative_weights = weights[negatives].astype(np.float64, copy=False)
+    weight_sum = float(np.sum(negative_weights))
+    probabilities = (
+        negative_weights / weight_sum
+        if np.isfinite(weight_sum) and weight_sum > 0.0
+        else None
+    )
+    sampled_negatives = rng.choice(
+        negatives,
+        size=min(keep_negatives, len(negatives)),
+        replace=False,
+        p=probabilities,
+    )
+    combined = np.concatenate([positives, np.asarray(sampled_negatives, dtype=np.int64)])
+    return np.sort(np.asarray(combined, dtype=np.int64))
+
+
+def apply_sequential_bootstrap_indices(
+    *,
+    candidate_idx: np.ndarray,
+    source_row_idx: np.ndarray,
+    event_window_lookup: Mapping[int, int],
+    replace: bool,
+    seed: int,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    from ict.reports.leakage_control import sequential_bootstrap_sample
+
+    candidate_idx = np.asarray(candidate_idx, dtype=np.int64)
+    source_rows = source_row_idx[candidate_idx].astype(np.int64, copy=False)
+    matched_mask = np.array([int(row) in event_window_lookup for row in source_rows], dtype=bool)
+    matched_idx = candidate_idx[matched_mask]
+    passthrough_idx = candidate_idx[~matched_mask]
+
+    if len(matched_idx) == 0:
+        return candidate_idx, {
+            "applied": False,
+            "reason": "no_matched_event_windows",
+            "candidate_rows": int(len(candidate_idx)),
+            "matched_event_rows": 0,
+            "passthrough_rows": int(len(passthrough_idx)),
+        }
+
+    matched_source_rows = source_row_idx[matched_idx].astype(np.int64, copy=False)
+    intervals = pd.DataFrame(
+        {
+            "signal_index": matched_source_rows,
+            "barrier_end_index": np.array(
+                [int(event_window_lookup[int(row)]) for row in matched_source_rows],
+                dtype=np.int64,
+            ),
+        }
+    )
+    sampled_relative_idx = sequential_bootstrap_sample(
+        intervals,
+        sample_size=len(matched_idx),
+        random_state=seed,
+        replace=replace,
+    )
+    bootstrapped_idx = matched_idx[sampled_relative_idx]
+    final_indices = np.concatenate([bootstrapped_idx, passthrough_idx]).astype(np.int64, copy=False)
+
+    unique_rows = np.unique(final_indices)
+    duplicate_share = 1.0 - (float(len(unique_rows)) / float(len(final_indices))) if len(final_indices) else 0.0
+    return final_indices, {
+        "applied": True,
+        "candidate_rows": int(len(candidate_idx)),
+        "matched_event_rows": int(len(matched_idx)),
+        "passthrough_rows": int(len(passthrough_idx)),
+        "selected_rows": int(len(final_indices)),
+        "unique_selected_rows": int(len(unique_rows)),
+        "duplicate_share": float(duplicate_share),
+        "replace": bool(replace),
+    }
 
 
 def group_positive_zones(y_true: np.ndarray) -> List[Tuple[int, int]]:
@@ -1649,6 +1866,21 @@ def build_sequence_fold_datasets(
     return X_train, y_train, w_train, X_val, y_val, w_val
 
 
+def slice_label_aligned_source_rows(
+    source_row_idx: np.ndarray,
+    *,
+    start_row: int,
+    end_row: int,
+    context_rows: int,
+) -> np.ndarray:
+    context_start = max(start_row - context_rows, 0)
+    missing_context = max(context_rows - (start_row - context_start), 0)
+    label_start = start_row + missing_context
+    if label_start >= end_row:
+        return np.empty(0, dtype=np.int64)
+    return np.ascontiguousarray(source_row_idx[label_start:end_row], dtype=np.int64)
+
+
 def build_fold_diagnostics(
     fold_plan: FoldPlan,
     X_train: np.ndarray | SequenceWindowSource,
@@ -1687,31 +1919,79 @@ def apply_fold_training_weights(
     X_train: np.ndarray | SequenceWindowSource,
     y_train: np.ndarray,
     w_train: np.ndarray,
+    source_row_idx_train: np.ndarray,
+    *,
+    dataset: PreparedTargetDataset,
     params: Mapping[str, float],
     config: OTETrainingConfig,
     seed: int,
-) -> Tuple[np.ndarray | SequenceWindowSource, np.ndarray, np.ndarray]:
+    allow_balanced_tuning_sample: bool,
+    allow_sequential_bootstrap: bool,
+) -> Tuple[np.ndarray | SequenceWindowSource, np.ndarray, np.ndarray, Dict[str, Any]]:
     hard_radius = int(params["hard_negative_radius"])
     hard_multiplier = float(params["hard_negative_multiplier"])
     train_weights = apply_hard_negative_weights(y_train, w_train, hard_radius, hard_multiplier)
+    selection_idx = np.arange(len(y_train), dtype=np.int64)
+    diagnostics: Dict[str, Any] = {
+        "hard_negative_radius": int(hard_radius),
+        "hard_negative_multiplier": float(hard_multiplier),
+        "balanced_sample_applied": False,
+        "sequential_bootstrap_applied": False,
+    }
 
-    if not config.use_balanced_tuning_sample:
-        return X_train, y_train, train_weights
+    if allow_balanced_tuning_sample and config.use_balanced_tuning_sample:
+        hard_mask = build_near_positive_mask(y_train, hard_radius)
+        sampled_idx = sample_balanced_training_indices(
+            y=y_train,
+            hard_negative_mask=hard_mask,
+            negative_ratio=config.tuning_negative_ratio,
+            seed=seed,
+        )
+        if len(sampled_idx) >= max(64, int(np.sum(y_train)) * 6):
+            selection_idx = sampled_idx
+            diagnostics["balanced_sample_applied"] = True
+            diagnostics["balanced_sample_rows"] = int(len(sampled_idx))
 
-    hard_mask = build_near_positive_mask(y_train, hard_radius)
-    sampled_idx = sample_balanced_training_indices(
-        y=y_train,
-        hard_negative_mask=hard_mask,
-        negative_ratio=config.tuning_negative_ratio,
-        seed=seed,
-    )
-    if len(sampled_idx) < max(64, int(np.sum(y_train)) * 6):
-        return X_train, y_train, train_weights
+    if allow_sequential_bootstrap and resolve_sequential_bootstrap_enabled(dataset=dataset, config=config):
+        max_candidates = int(max(config.sequential_bootstrap_max_candidates, 0))
+        pre_cap_rows = int(len(selection_idx))
+        capped_idx = cap_bootstrap_candidate_indices(
+            selection_idx,
+            y=y_train,
+            weights=train_weights,
+            max_candidates=max_candidates,
+            seed=seed,
+        )
+        bootstrap_idx, bootstrap_diag = apply_sequential_bootstrap_indices(
+            candidate_idx=capped_idx,
+            source_row_idx=source_row_idx_train,
+            event_window_lookup=dataset.event_window_lookup,
+            replace=bool(config.sequential_bootstrap_replace),
+            seed=seed,
+        )
+        if bootstrap_diag.get("applied"):
+            selection_idx = bootstrap_idx
+            diagnostics["sequential_bootstrap_applied"] = True
+        diagnostics.update(
+            {
+                "sequential_bootstrap_mode": str(config.sequential_bootstrap_mode),
+                "sequential_bootstrap_candidate_rows": int(len(capped_idx)),
+                "sequential_bootstrap_candidate_cap_applied": bool(
+                    max_candidates > 0 and len(capped_idx) < pre_cap_rows
+                ),
+                "sequential_bootstrap": bootstrap_diag,
+            }
+        )
 
     if isinstance(X_train, SequenceWindowSource):
-        return X_train.with_sampled_indices(sampled_idx), y_train[sampled_idx], train_weights[sampled_idx]
+        return (
+            X_train.with_sampled_indices(selection_idx),
+            y_train[selection_idx],
+            train_weights[selection_idx],
+            diagnostics,
+        )
 
-    return X_train[sampled_idx], y_train[sampled_idx], train_weights[sampled_idx]
+    return X_train[selection_idx], y_train[selection_idx], train_weights[selection_idx], diagnostics
 
 
 def train_and_score_fold(
@@ -1725,19 +2005,10 @@ def train_and_score_fold(
     config: OTETrainingConfig,
     seed: int,
 ) -> Tuple[np.ndarray, Dict[str, float]]:
-    X_fit, y_fit, w_fit = apply_fold_training_weights(
+    training_result = train_backend_model(
         X_train=X_train,
         y_train=y_train,
         w_train=w_train,
-        params=params,
-        config=config,
-        seed=seed,
-    )
-
-    training_result = train_backend_model(
-        X_train=X_fit,
-        y_train=y_fit,
-        w_train=w_fit,
         X_eval=X_val,
         y_eval=y_val,
         w_eval=w_val,
@@ -1876,7 +2147,11 @@ def cross_validate_trial(
         lag_steps = make_lag_steps(window_size=window_size, lag_count=lag_count)
         context_rows = max(lag_steps)
 
-    purge_bars = resolve_purge_bars(config=config, context_rows=context_rows)
+    purge_bars = resolve_dataset_cv_purge_bars(
+        dataset,
+        config,
+        context_rows=context_rows,
+    )
 
     splitter = PurgedWalkForwardSplitter(
         initial_train_rows=max(config.cv_initial_train_rows, context_rows + 1),
@@ -1893,6 +2168,7 @@ def cross_validate_trial(
     fold_metrics: List[Dict[str, float]] = []
     fold_plans = [asdict(fold) for fold in folds]
     fold_diagnostics: List[Dict[str, Any]] = []
+    dev_source_row_idx = dataset.dev_source_row_idx
 
     for fold_plan in folds:
         train_idx = np.arange(fold_plan.train_start, fold_plan.train_end, dtype=np.int64)
@@ -1922,6 +2198,24 @@ def cross_validate_trial(
                     config=config,
                 )
 
+            source_row_idx_train = slice_label_aligned_source_rows(
+                dev_source_row_idx,
+                start_row=int(train_idx[0]),
+                end_row=int(train_idx[-1]) + 1,
+                context_rows=context_rows,
+            )
+            X_fit, y_fit, w_fit, selection_diagnostics = apply_fold_training_weights(
+                X_train=X_train,
+                y_train=y_train,
+                w_train=w_train,
+                source_row_idx_train=source_row_idx_train,
+                dataset=dataset,
+                params=params,
+                config=config,
+                seed=config.random_seed + fold_plan.fold,
+                allow_balanced_tuning_sample=True,
+                allow_sequential_bootstrap=True,
+            )
             diagnostics = build_fold_diagnostics(
                 fold_plan=fold_plan,
                 X_train=X_train,
@@ -1931,6 +2225,9 @@ def cross_validate_trial(
                 window_size=window_size,
                 context_rows=context_rows,
             )
+            diagnostics.update(selection_diagnostics)
+            diagnostics["train_rows_fit"] = int(len(y_fit))
+            diagnostics["train_positive_rows_fit"] = int(np.sum(y_fit))
             if diagnostics["train_positive_rows"] < config.min_train_positive_rows:
                 raise optuna.TrialPruned(
                     f"Insufficient train positives in fold {fold_plan.fold}: "
@@ -1948,9 +2245,9 @@ def cross_validate_trial(
                 )
 
             probabilities, metrics = train_and_score_fold(
-                X_train=X_train,
-                y_train=y_train,
-                w_train=w_train,
+                X_train=X_fit,
+                y_train=y_fit,
+                w_train=w_fit,
                 X_val=X_val,
                 y_val=y_val,
                 w_val=w_val,
@@ -2055,12 +2352,8 @@ def fit_final_model(
         feature_names = list(selected_feature_names)
 
     y_dev = dataset.dev_y[context_rows:].astype(np.uint8, copy=False)
-    w_dev = apply_hard_negative_weights(
-        dataset.dev_y[context_rows:],
-        dataset.dev_w[context_rows:],
-        radius=int(params["hard_negative_radius"]),
-        multiplier=float(params["hard_negative_multiplier"]),
-    )
+    w_dev = dataset.dev_w[context_rows:].astype(np.float32, copy=False)
+    dev_source_row_idx = dataset.dev_source_row_idx[context_rows:].astype(np.int64, copy=False)
 
     if len(X_dev_windowed) < 64:
         raise ValueError("Not enough development rows after windowing to fit the final model.")
@@ -2085,8 +2378,21 @@ def fit_final_model(
         X_eval = X_dev_windowed[fit_end:]
     y_fit = y_dev[:fit_end]
     w_fit = w_dev[:fit_end]
+    source_row_idx_fit = dev_source_row_idx[:fit_end]
     y_eval = y_dev[fit_end:]
     w_eval = w_dev[fit_end:]
+    X_fit, y_fit, w_fit, fit_selection_diagnostics = apply_fold_training_weights(
+        X_train=X_fit,
+        y_train=y_fit,
+        w_train=w_fit,
+        source_row_idx_train=source_row_idx_fit,
+        dataset=dataset,
+        params=params,
+        config=config,
+        seed=config.random_seed,
+        allow_balanced_tuning_sample=False,
+        allow_sequential_bootstrap=bool(config.sequential_bootstrap_final_refit),
+    )
 
     training_result = train_backend_model(
         X_train=X_fit,
@@ -2100,12 +2406,25 @@ def fit_final_model(
         seed=config.random_seed,
     )
 
+    final_refit_selection_diagnostics: Dict[str, Any] | None = None
     if config.final_refit_on_dev:
         final_train_X = X_dev_windowed
-        training_result = train_backend_model(
+        final_train_X, final_train_y, final_train_w, final_refit_selection_diagnostics = apply_fold_training_weights(
             X_train=final_train_X,
             y_train=y_dev,
             w_train=w_dev,
+            source_row_idx_train=dev_source_row_idx,
+            dataset=dataset,
+            params=params,
+            config=config,
+            seed=config.random_seed,
+            allow_balanced_tuning_sample=False,
+            allow_sequential_bootstrap=bool(config.sequential_bootstrap_final_refit),
+        )
+        training_result = train_backend_model(
+            X_train=final_train_X,
+            y_train=final_train_y,
+            w_train=final_train_w,
             X_eval=X_eval,
             y_eval=y_eval,
             w_eval=w_eval,
@@ -2232,6 +2551,8 @@ def fit_final_model(
         "test_raw": raw_test,
         "test_calibrated": calibrated_test,
         "training_history": training_result.training_history,
+        "fit_selection_diagnostics": fit_selection_diagnostics,
+        "final_refit_selection_diagnostics": final_refit_selection_diagnostics,
         "model_config": {
             "backend": config.backend,
             "model_type": config.model_type if config.backend == "torch" else "xgboost",
@@ -2322,6 +2643,8 @@ def save_training_outputs(
         model_config_payload["source_lineage"] = source_lineage
     if dataset.prepared_summary_path:
         model_config_payload["prepared_summary_file"] = dataset.prepared_summary_path
+    if dataset.event_window_source:
+        model_config_payload["event_window_source"] = dataset.event_window_source
     (output_dir / "model_config.json").write_text(
         json.dumps(model_config_payload, indent=2),
         encoding="utf-8",
@@ -2395,6 +2718,17 @@ def save_training_outputs(
             }
         )
 
+    requested_calibration_method = str(
+        final_model.get("requested_calibration_method")
+        or model_config_payload.get("calibration", {}).get("requested_method")
+        or config.calibration_method
+    ).strip().lower()
+    resolved_calibration_method = str(
+        final_model.get("resolved_calibration_method")
+        or model_config_payload.get("calibration", {}).get("resolved_method")
+        or requested_calibration_method
+    ).strip().lower()
+
     metadata = {
         "config": asdict(config),
         "target": dataset.target_name,
@@ -2412,6 +2746,8 @@ def save_training_outputs(
         "report": dataset.report,
         "timezone_contract": timezone_contract,
         "source_lineage": source_lineage,
+        "event_window_source": dataset.event_window_source,
+        "event_window_count": int(len(dataset.event_window_lookup)),
         "best_params": artifacts.params,
         "selected_feature_names": final_model["selected_feature_names"],
         "lag_steps": final_model["lag_steps"],
@@ -2421,11 +2757,11 @@ def save_training_outputs(
         "threshold": final_model["threshold"],
         "model_config": model_config_payload,
         "calibration": {
-            "requested_method": final_model["requested_calibration_method"],
-            "resolved_method": final_model["resolved_calibration_method"],
+            "requested_method": requested_calibration_method,
+            "resolved_method": resolved_calibration_method,
             "disabled_for_continuation_target": (
-                final_model["requested_calibration_method"] != "none"
-                and final_model["resolved_calibration_method"] == "none"
+                requested_calibration_method != "none"
+                and resolved_calibration_method == "none"
                 and "continuation" in dataset.target_name.lower()
             ),
         },
@@ -2450,6 +2786,8 @@ def save_training_outputs(
         "cv_summary": summarize_fold_metrics(artifacts.fold_metrics),
         "cv_folds": artifacts.fold_metrics,
         "cv_fold_manifest": cv_fold_manifest_records,
+        "fit_selection_diagnostics": final_model.get("fit_selection_diagnostics"),
+        "final_refit_selection_diagnostics": final_model.get("final_refit_selection_diagnostics"),
         "row_identity": {
             "source_row_idx_column": "source_row_idx",
             "source_row_idx_available": bool(
@@ -2608,6 +2946,24 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--hard-negative-radius-max", type=int, default=8)
     parser.add_argument("--hard-negative-multiplier-min", type=float, default=1.0)
     parser.add_argument("--hard-negative-multiplier-max", type=float, default=2.5)
+    parser.add_argument("--sequential-bootstrap-mode", choices=["off", "ict", "all"], default="off")
+    parser.add_argument("--sequential-bootstrap-max-candidates", type=int, default=0)
+    parser.add_argument("--sequential-bootstrap-replace", dest="sequential_bootstrap_replace", action="store_true")
+    parser.add_argument(
+        "--no-sequential-bootstrap-replace",
+        dest="sequential_bootstrap_replace",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--sequential-bootstrap-final-refit",
+        dest="sequential_bootstrap_final_refit",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--no-sequential-bootstrap-final-refit",
+        dest="sequential_bootstrap_final_refit",
+        action="store_false",
+    )
     parser.add_argument("--torch-warmup-epochs", type=int, default=None)
     parser.add_argument("--torch-main-epochs", type=int, default=None)
     parser.add_argument("--torch-fine-epochs", type=int, default=None)
@@ -2625,7 +2981,12 @@ def parse_args() -> OTETrainingConfig:
     parser.add_argument("--use-amp", dest="use_amp", action="store_true")
     parser.add_argument("--no-use-amp", dest="use_amp", action="store_false")
     parser.add_argument("--seed", type=int, default=42)
-    parser.set_defaults(use_amp=True, torch_persistent_workers=True)
+    parser.set_defaults(
+        use_amp=True,
+        torch_persistent_workers=True,
+        sequential_bootstrap_replace=True,
+        sequential_bootstrap_final_refit=True,
+    )
     args = parser.parse_args()
 
     if args.cv_splits is not None:
@@ -2689,6 +3050,10 @@ def parse_args() -> OTETrainingConfig:
         hard_negative_radius_max=args.hard_negative_radius_max,
         hard_negative_multiplier_min=args.hard_negative_multiplier_min,
         hard_negative_multiplier_max=args.hard_negative_multiplier_max,
+        sequential_bootstrap_mode=args.sequential_bootstrap_mode,
+        sequential_bootstrap_replace=args.sequential_bootstrap_replace,
+        sequential_bootstrap_max_candidates=args.sequential_bootstrap_max_candidates,
+        sequential_bootstrap_final_refit=args.sequential_bootstrap_final_refit,
         torch_warmup_epochs=args.torch_warmup_epochs,
         torch_main_epochs=args.torch_main_epochs,
         torch_fine_epochs=args.torch_fine_epochs,

@@ -21,7 +21,7 @@ def _ts(local_value: str) -> pd.Timestamp:
 
 
 def _synthetic_frvp_frame() -> pd.DataFrame:
-    timestamps = pd.date_range(_ts("2024-01-02 09:30:00"), _ts("2024-01-03 11:00:00"), freq="5min")
+    timestamps = pd.date_range(_ts("2024-01-02 09:30:00"), _ts("2024-01-03 20:00:00"), freq="5min")
     kept: list[pd.Timestamp] = []
     for timestamp in timestamps:
         local = timestamp.tz_convert("America/New_York")
@@ -131,6 +131,7 @@ def test_frvp_context_registered_output_has_expected_columns_and_masks_ib() -> N
         "frvp_setup_side",
         "frvp_setup_confidence_rule",
         "frvp_failed_auction_with_sweep",
+        "frvp_day_type",
     }
     assert expected_columns.issubset(set(dataset.columns))
     assert str(dataset["frvp_profile_shape"].dtype) == "Int64"
@@ -161,10 +162,29 @@ def test_frvp_context_synthetic_session_values_are_sane() -> None:
     assert np.isfinite(target["frvp_open_vs_prior_poc_atr"])
     assert int(target["frvp_open_type"]) in {-1, 0, 1}
     assert int(target["frvp_session_phase"]) in {1, 2, 3, 4, 5}
+    assert int(target["frvp_day_type"]) in {1, 2, 3, 4, 5}
     assert float(target["frvp_naked_vpoc_count"]) >= 0.0
     assert 0.0 <= float(target["frvp_setup_confidence_rule"]) <= 1.0
     if pd.notna(target["frvp_rth_eth_value_overlap"]):
         assert 0.0 <= float(target["frvp_rth_eth_value_overlap"]) <= 1.0
+
+
+def test_frvp_context_keeps_next_session_preopen_open_type_blank_after_1600_roll() -> None:
+    frame = _synthetic_frvp_frame()
+    features = build_frvp_context_features(frame, _frvp_only_config())
+
+    pre_open = features.loc[frame["datetime"] == _ts("2024-01-03 08:00:00")].iloc[0]
+    next_session_preopen = features.loc[frame["datetime"] == _ts("2024-01-03 16:05:00")].iloc[0]
+
+    assert pd.isna(pre_open["frvp_open_type"])
+    assert pd.isna(pre_open["frvp_open_vs_prior_poc_atr"])
+    assert pd.isna(pre_open["frvp_open_gap_atr"])
+    assert pd.isna(pre_open["frvp_gap_into_value"])
+
+    assert pd.isna(next_session_preopen["frvp_open_type"])
+    assert pd.isna(next_session_preopen["frvp_open_vs_prior_poc_atr"])
+    assert pd.isna(next_session_preopen["frvp_open_gap_atr"])
+    assert pd.isna(next_session_preopen["frvp_gap_into_value"])
 
 
 def test_frvp_context_does_not_change_existing_rows_when_future_bar_is_appended() -> None:

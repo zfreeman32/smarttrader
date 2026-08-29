@@ -223,10 +223,23 @@ class FeatureBuilderConfig:
     swing_window: int = 3
     htf_swing_window: int = 3
     ict_zone_max_age: int = 120
+    ict_fvg_max_age: int = 120
+    ict_order_block_max_age: int = 120
     ict_fvg_min_gap_atr: float = 0.15
+    ict_sweep_buffer_atr: float = 0.05
+    ict_sweep_buffer_ticks: float = 1.0
+    ict_sweep_close_back_bars: int = 1
     ict_order_block_range_atr: float = 1.25
+    ict_order_block_use_wicks: bool = False
+    ict_displacement_range_atr: float = 1.5
+    ict_displacement_body_to_range: float = 0.65
+    ict_displacement_close_location: float = 0.75
+    ict_displacement_volume_zscore: float = 0.5
     ict_liquidity_tolerance_atr: float = 0.2
     ict_break_buffer_atr: float = 0.05
+    ict_ote_lower: float = 0.62
+    ict_ote_upper: float = 0.79
+    ict_ote_mid: float = 0.705
 
     fractional_diff_d: float = 0.4
     fractional_diff_threshold: float = 1e-3

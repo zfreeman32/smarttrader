@@ -672,11 +672,30 @@ label_long_frvp_reversal
 label_short_frvp_reversal
 label_long_frvp_continuation
 label_short_frvp_continuation
+label_long_frvp_reversal_setup1
+label_short_frvp_reversal_setup1
+label_long_frvp_continuation_setup2
+label_short_frvp_continuation_setup2
+label_long_frvp_continuation_setup3
+label_short_frvp_continuation_setup3
+label_long_frvp_reversal_setup4
+label_short_frvp_reversal_setup4
+label_long_frvp_continuation_setup5
+label_short_frvp_continuation_setup5
+label_long_frvp_reversal_setup6
+label_short_frvp_reversal_setup6
+label_long_frvp_meta
+label_short_frvp_meta
 label_long_ote
 label_short_ote
 label_long_entry
 label_short_entry
 ```
+
+The numbered FRVP lanes are additive research targets. The pooled reversal,
+continuation, and meta targets remain available as unchanged controls. Setup
+targets inherit the existing pooled-family sample-weight/concurrency contract so
+the first comparison changes target routing only.
 
 Family alias handling is built in so helper columns can be resolved across naming variants such as:
 

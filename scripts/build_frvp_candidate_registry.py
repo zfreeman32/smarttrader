@@ -171,8 +171,11 @@ def _infer_model_id(target: str, backend: str) -> str:
 
 
 def _default_promotion_reason(target: str) -> str:
-    if str(target).strip().lower().endswith("_meta"):
+    normalized = str(target).strip().lower()
+    if normalized.endswith("_meta"):
         return "Auto-generated FRVP pooled meta-model candidate from training summaries."
+    if any(normalized.endswith(f"_setup{setup_type}") for setup_type in range(1, 7)):
+        return "Auto-generated FRVP setup-specific candidate from training summaries."
     return "Auto-generated FRVP candidate from training summaries."
 
 
