@@ -46,6 +46,8 @@ SHORT_THRESHOLD_HINTS = {
 }
 
 SESSION_SPREAD_ONLY_INSTRUMENTS = frozenset({"es", "6e"})
+DEFAULT_SPREAD_COST_MODE = "auto"
+SUPPORTED_SPREAD_COST_MODES = frozenset({"auto", "session_schedule", "feature_proxy"})
 
 
 def _timestamps_to_period_count(
@@ -65,6 +67,7 @@ class ThresholdSearchConfig:
     global_threshold: float
     instrument: str = "fx"
     unit_label: str = "pips"
+    spread_cost_mode: str = DEFAULT_SPREAD_COST_MODE
     composite_column: str = "composite_regime"
     session_column: str = "session_regime"
     target_column: str = "target"
@@ -72,6 +75,10 @@ class ThresholdSearchConfig:
     datetime_column: str = "datetime"
     position_column: str = "source_row_idx"
     entry_price_column: str = "close"
+    trade_entry_price_column: str = "policy_entry_price"
+    trade_entry_datetime_column: str = "policy_entry_datetime"
+    trade_entry_position_column: str = "policy_entry_source_row_idx"
+    trade_timing_source_column: str = "policy_trade_timing_source"
     exit_price_column: str = "policy_exit_close"
     exit_datetime_column: str = "policy_exit_datetime"
     gross_pnl_column: str = "policy_gross_pnl_pips"
@@ -354,6 +361,8 @@ def attach_forward_trade_outcomes(
         source_lookup["source_row_idx"],
         errors="coerce",
     ).fillna(-1).astype(np.int64)
+    if "datetime" in source_lookup.columns:
+        source_lookup["datetime"] = pd.to_datetime(source_lookup["datetime"], errors="coerce")
 
     exit_lookup = source_lookup.rename(
         columns={
@@ -373,6 +382,23 @@ def attach_forward_trade_outcomes(
             validate="many_to_one",
         )
 
+    working[config.trade_entry_datetime_column] = pd.to_datetime(
+        working.get(config.datetime_column, pd.Series(pd.NaT, index=working.index)),
+        errors="coerce",
+    )
+    working[config.trade_entry_price_column] = pd.to_numeric(
+        working.get(config.entry_price_column, pd.Series(np.nan, index=working.index)),
+        errors="coerce",
+    )
+    working[config.trade_entry_position_column] = pd.to_numeric(
+        working.get(config.position_column, pd.Series(pd.NA, index=working.index)),
+        errors="coerce",
+    ).astype("Int64")
+    working[config.trade_timing_source_column] = "label_horizon"
+    working["policy_entry_approx_spread"] = pd.to_numeric(
+        working.get(config.approx_spread_column, pd.Series(np.nan, index=working.index)),
+        errors="coerce",
+    )
     working["policy_exit_source_row_idx"] = (
         pd.to_numeric(working[config.position_column], errors="coerce").fillna(-1).astype(np.int64)
         + int(config.label_max_holding_bars)
@@ -384,17 +410,147 @@ def attach_forward_trade_outcomes(
         validate="many_to_one",
     )
 
-    entry_price = pd.to_numeric(working[config.entry_price_column], errors="coerce")
+    breakout_required_columns = (
+        "breakout_event_trade_available",
+        "breakout_event_entry_datetime",
+        "breakout_event_entry_price",
+        "breakout_event_exit_datetime",
+        "breakout_event_exit_price",
+    )
+    if all(column in working.columns for column in breakout_required_columns):
+        working["breakout_event_trade_available"] = (
+            working["breakout_event_trade_available"].fillna(False).astype(bool)
+        )
+        working["breakout_event_entry_datetime"] = pd.to_datetime(
+            working["breakout_event_entry_datetime"],
+            errors="coerce",
+        )
+        working["breakout_event_exit_datetime"] = pd.to_datetime(
+            working["breakout_event_exit_datetime"],
+            errors="coerce",
+        )
+        working["breakout_event_entry_price"] = pd.to_numeric(
+            working["breakout_event_entry_price"],
+            errors="coerce",
+        )
+        working["breakout_event_exit_price"] = pd.to_numeric(
+            working["breakout_event_exit_price"],
+            errors="coerce",
+        )
+
+        if "datetime" in source_lookup.columns:
+            datetime_lookup = (
+                source_lookup.dropna(subset=["datetime"])
+                .drop_duplicates(subset=["datetime"], keep="last")
+                .copy()
+            )
+            entry_lookup = datetime_lookup.rename(
+                columns={
+                    "datetime": "breakout_event_entry_datetime",
+                    "source_row_idx": "breakout_event_entry_source_row_idx",
+                    config.approx_spread_column: "breakout_event_entry_approx_spread",
+                }
+            )
+            exit_lookup_by_time = datetime_lookup.rename(
+                columns={
+                    "datetime": "breakout_event_exit_datetime",
+                    "source_row_idx": "breakout_event_exit_source_row_idx",
+                    config.approx_spread_column: "breakout_event_exit_approx_spread",
+                }
+            )
+            working = working.merge(
+                entry_lookup.loc[
+                    :,
+                    [
+                        column
+                        for column in (
+                            "breakout_event_entry_datetime",
+                            "breakout_event_entry_source_row_idx",
+                            "breakout_event_entry_approx_spread",
+                        )
+                        if column in entry_lookup.columns
+                    ],
+                ],
+                on="breakout_event_entry_datetime",
+                how="left",
+                validate="many_to_one",
+            )
+            working = working.merge(
+                exit_lookup_by_time.loc[
+                    :,
+                    [
+                        column
+                        for column in (
+                            "breakout_event_exit_datetime",
+                            "breakout_event_exit_source_row_idx",
+                            "breakout_event_exit_approx_spread",
+                        )
+                        if column in exit_lookup_by_time.columns
+                    ],
+                ],
+                on="breakout_event_exit_datetime",
+                how="left",
+                validate="many_to_one",
+            )
+
+        breakout_trade_mask = (
+            working["breakout_event_trade_available"]
+            & working["breakout_event_entry_datetime"].notna()
+            & working["breakout_event_exit_datetime"].notna()
+            & working["breakout_event_entry_price"].notna()
+            & working["breakout_event_exit_price"].notna()
+        )
+        if breakout_trade_mask.any():
+            working.loc[breakout_trade_mask, config.trade_entry_datetime_column] = working.loc[
+                breakout_trade_mask,
+                "breakout_event_entry_datetime",
+            ]
+            working.loc[breakout_trade_mask, config.trade_entry_price_column] = working.loc[
+                breakout_trade_mask,
+                "breakout_event_entry_price",
+            ]
+            if "breakout_event_entry_source_row_idx" in working.columns:
+                working.loc[breakout_trade_mask, config.trade_entry_position_column] = pd.to_numeric(
+                    working.loc[breakout_trade_mask, "breakout_event_entry_source_row_idx"],
+                    errors="coerce",
+                ).astype("Int64")
+            if "breakout_event_entry_approx_spread" in working.columns:
+                working.loc[breakout_trade_mask, "policy_entry_approx_spread"] = pd.to_numeric(
+                    working.loc[breakout_trade_mask, "breakout_event_entry_approx_spread"],
+                    errors="coerce",
+                )
+            working.loc[breakout_trade_mask, config.trade_timing_source_column] = "breakout_event"
+            working.loc[breakout_trade_mask, config.exit_datetime_column] = working.loc[
+                breakout_trade_mask,
+                "breakout_event_exit_datetime",
+            ]
+            working.loc[breakout_trade_mask, config.exit_price_column] = working.loc[
+                breakout_trade_mask,
+                "breakout_event_exit_price",
+            ]
+            if "breakout_event_exit_source_row_idx" in working.columns:
+                working.loc[breakout_trade_mask, "policy_exit_source_row_idx"] = pd.to_numeric(
+                    working.loc[breakout_trade_mask, "breakout_event_exit_source_row_idx"],
+                    errors="coerce",
+                ).fillna(-1).astype(np.int64)
+            if "breakout_event_exit_approx_spread" in working.columns:
+                working.loc[breakout_trade_mask, "policy_exit_approx_spread"] = pd.to_numeric(
+                    working.loc[breakout_trade_mask, "breakout_event_exit_approx_spread"],
+                    errors="coerce",
+                )
+
+    entry_price = pd.to_numeric(working[config.trade_entry_price_column], errors="coerce")
     exit_price = pd.to_numeric(working[config.exit_price_column], errors="coerce")
     direction_sign = 1.0 if direction == "long" else -1.0
     working[config.gross_pnl_column] = direction_sign * (
         (exit_price - entry_price) / float(config.pip_size)
     )
 
-    use_feature_spread = str(config.instrument).strip().lower() not in SESSION_SPREAD_ONLY_INSTRUMENTS
+    spread_cost_mode = resolve_spread_cost_mode(config)
+    use_feature_spread = spread_cost_mode == "feature_proxy"
 
-    if use_feature_spread and config.approx_spread_column in working.columns:
-        entry_spread_units = pd.to_numeric(working[config.approx_spread_column], errors="coerce") / float(config.pip_size)
+    if use_feature_spread and "policy_entry_approx_spread" in working.columns:
+        entry_spread_units = pd.to_numeric(working["policy_entry_approx_spread"], errors="coerce") / float(config.pip_size)
     else:
         entry_spread_units = pd.Series(np.nan, index=working.index, dtype=float)
     if use_feature_spread and "policy_exit_approx_spread" in working.columns:
@@ -426,6 +582,21 @@ def attach_forward_trade_outcomes(
         - pd.to_numeric(working[config.total_cost_column], errors="coerce")
     )
     return add_unit_alias_columns(working)
+
+
+def resolve_spread_cost_mode(config: ThresholdSearchConfig) -> str:
+    normalized = str(getattr(config, "spread_cost_mode", DEFAULT_SPREAD_COST_MODE) or DEFAULT_SPREAD_COST_MODE).strip().lower()
+    if normalized not in SUPPORTED_SPREAD_COST_MODES:
+        raise ValueError(
+            f"Unsupported spread_cost_mode={normalized!r}. "
+            f"Expected one of {sorted(SUPPORTED_SPREAD_COST_MODES)}."
+        )
+    if normalized == "auto":
+        instrument = str(config.instrument).strip().lower()
+        if instrument in SESSION_SPREAD_ONLY_INSTRUMENTS:
+            return "session_schedule"
+        return "feature_proxy"
+    return normalized
 
 
 def event_metrics_for_emitted_positions(
@@ -718,6 +889,10 @@ def _resolve_frame_config(
                 datetime_column=config.datetime_column,
                 position_column=config.position_column,
                 entry_price_column=config.entry_price_column,
+                trade_entry_price_column=config.trade_entry_price_column,
+                trade_entry_datetime_column=config.trade_entry_datetime_column,
+                trade_entry_position_column=config.trade_entry_position_column,
+                trade_timing_source_column=config.trade_timing_source_column,
                 exit_price_column=config.exit_price_column,
                 exit_datetime_column=config.exit_datetime_column,
                 gross_pnl_column=config.gross_pnl_column,

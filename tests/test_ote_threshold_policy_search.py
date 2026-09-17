@@ -140,6 +140,20 @@ def test_build_arg_parser_accepts_frvp_long_continuation_overlap_composite_prune
     assert args.targeted_filter_preset == "frvp_long_continuation_xgb_overlap_composite_prune_v3"
 
 
+def test_build_arg_parser_accepts_frvp_long_continuation_setup2_medium_session_prune_preset() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args(
+        [
+            "--regime-report-root",
+            "tmp/regime",
+            "--targeted-filter-preset",
+            "frvp_long_continuation_setup2_xgb_medium_session_prune_v1",
+        ]
+    )
+
+    assert args.targeted_filter_preset == "frvp_long_continuation_setup2_xgb_medium_session_prune_v1"
+
+
 def test_build_arg_parser_accepts_evaluation_contract_metadata() -> None:
     parser = build_arg_parser()
     args = parser.parse_args(

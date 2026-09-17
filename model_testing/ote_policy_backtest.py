@@ -17,6 +17,8 @@ from model_testing.ote_policy_metrics import (
     summarize_trade_performance,
     summarize_walk_forward_efficiency,
 )
+from model_testing.promotion_gates import accepted_for_paper_trading, drawdown_acceptance_passed
+from model_testing.policy_selection import select_policy_variant
 from model_testing.ote_threshold_policy import (
     ThresholdSearchConfig,
     apply_threshold_policy,
@@ -61,6 +63,8 @@ class WalkForwardBacktestConfig:
     max_single_trade_share: float = 0.10
     minimum_profitable_quarter_share: float = 0.60
     minimum_positive_composite_share: float = 0.60
+    maximum_drawdown_pct: float = 12.0
+    drawdown_starting_balance_pips: float = 10000.0
     confidence_bucket_count: int = 5
     group_columns: tuple[str, ...] = field(
         default_factory=lambda: (
@@ -254,6 +258,7 @@ def run_walk_forward_backtest(
             evaluation,
             split_name="train",
             min_trades_per_week=backtest_config.min_trades_per_week,
+            apply_to_base_policy_variants=abstain_policy.apply_to_base_policy_variants,
         )
         selected_policy_name = str(selection["selected_policy_name"])
 
@@ -296,6 +301,7 @@ def run_walk_forward_backtest(
             period_end=train_end,
             benchmark_monthly_returns=benchmark_monthly_returns,
             effective_trials=effective_trials,
+            drawdown_starting_balance_pips=backtest_config.drawdown_starting_balance_pips,
         )
         test_metrics = summarize_trade_performance(
             fold_test_trades,
@@ -303,6 +309,7 @@ def run_walk_forward_backtest(
             period_end=fold.scheduled_test_end - pd.Timedelta(microseconds=1),
             benchmark_monthly_returns=benchmark_monthly_returns,
             effective_trials=effective_trials,
+            drawdown_starting_balance_pips=backtest_config.drawdown_starting_balance_pips,
         )
         fold_wfe = None
         if train_metrics.get("annualized_net_pnl_pips") is not None and abs(float(train_metrics["annualized_net_pnl_pips"])) > 0.0:
@@ -393,6 +400,7 @@ def run_walk_forward_backtest(
         period_end=overall_period_end,
         benchmark_monthly_returns=benchmark_monthly_returns,
         effective_trials=effective_trials,
+        drawdown_starting_balance_pips=backtest_config.drawdown_starting_balance_pips,
     )
     equity_curve = build_equity_curve(
         test_trade_frame,
@@ -452,11 +460,15 @@ def run_walk_forward_backtest(
             and float(overall_test_metrics["largest_single_trade_share_of_total_pnl"])
             < float(backtest_config.max_single_trade_share)
         ),
-        "max_drawdown_less_than_two_times_average_monthly_profit": bool(
-            float(overall_test_metrics["average_positive_month_pnl_pips"]) > 0.0
-            and float(overall_test_metrics["max_drawdown_pips"])
-            < (2.0 * float(overall_test_metrics["average_positive_month_pnl_pips"]))
+        "max_drawdown_pct_below_threshold": bool(
+            float(overall_test_metrics.get("max_drawdown_pct", 0.0))
+            < float(backtest_config.maximum_drawdown_pct)
         ),
+    }
+    paper_trading_gate = {
+        "accepted": accepted_for_paper_trading(acceptance),
+        "drawdown_gate_passed": drawdown_acceptance_passed(acceptance),
+        "drawdown_gate_is_advisory": True,
     }
 
     summary = add_unit_aliases(
@@ -477,6 +489,13 @@ def run_walk_forward_backtest(
         "train_window": train_window_summary,
         "positive_composite_expectancy_share": positive_composite_share,
         "acceptance": acceptance,
+        "paper_trading_gate": paper_trading_gate,
+        "risk_gate_config": {
+            "maximum_drawdown_pct": float(backtest_config.maximum_drawdown_pct),
+            "drawdown_starting_balance_pips": float(backtest_config.drawdown_starting_balance_pips),
+            "drawdown_gate_is_advisory": True,
+            "drawdown_pct_definition": "account_equity_with_starting_balance_units",
+        },
         }
     )
 
@@ -497,43 +516,14 @@ def select_walk_forward_policy(
     *,
     split_name: str,
     min_trades_per_week: float,
+    apply_to_base_policy_variants: bool = False,
 ) -> dict[str, Any]:
-    split_rows = evaluation.loc[evaluation["dataset_split"] == split_name].copy()
-    if split_rows.empty:
-        raise ValueError(f"Walk-forward policy selection is missing the {split_name!r} split rows.")
-
-    baseline = split_rows.loc[split_rows["policy_name"] == "global_threshold"]
-    if baseline.empty:
-        raise ValueError("Walk-forward policy selection requires a global_threshold baseline row.")
-    baseline_row = baseline.iloc[0]
-
-    qualified = split_rows.loc[
-        (split_rows["policy_name"] != "global_threshold")
-        & (pd.to_numeric(split_rows["event_f05"], errors="coerce") > float(baseline_row["event_f05"]))
-        & (
-            pd.to_numeric(split_rows["post_cost_expectancy_pips"], errors="coerce")
-            > float(baseline_row["post_cost_expectancy_pips"])
-        )
-        & (pd.to_numeric(split_rows["trades_per_week"], errors="coerce") >= float(min_trades_per_week))
-    ].copy()
-
-    if qualified.empty:
-        return {
-            "qualified_policy_names": [],
-            "selected_policy_name": "global_threshold",
-            "selection_reason": "no_non_global_policy_qualified_against_train_baseline",
-        }
-
-    qualified = qualified.sort_values(
-        ["post_cost_expectancy_pips", "event_f05", "net_pnl_pips"],
-        ascending=[False, False, False],
-    ).reset_index(drop=True)
-    selected = qualified.iloc[0]
-    return {
-        "qualified_policy_names": qualified["policy_name"].astype(str).tolist(),
-        "selected_policy_name": str(selected["policy_name"]),
-        "selection_reason": "best_train_policy_that_beats_global_on_event_f05_and_post_cost_expectancy",
-    }
+    return select_policy_variant(
+        evaluation,
+        split_name=split_name,
+        min_trades_per_week=min_trades_per_week,
+        apply_to_base_policy_variants=apply_to_base_policy_variants,
+    )
 
 
 def build_policy_variant_decisions(
@@ -595,7 +585,13 @@ def extract_emitted_trades(
     if emitted.empty:
         return pd.DataFrame()
 
-    emitted["entry_datetime"] = pd.to_datetime(emitted[threshold_config.datetime_column], errors="coerce")
+    emitted["entry_datetime"] = pd.to_datetime(
+        emitted.get(
+            threshold_config.trade_entry_datetime_column,
+            emitted.get(threshold_config.datetime_column, pd.Series(pd.NaT, index=emitted.index)),
+        ),
+        errors="coerce",
+    )
     emitted["exit_datetime"] = pd.to_datetime(
         emitted.get(threshold_config.exit_datetime_column, pd.Series(pd.NaT, index=emitted.index)),
         errors="coerce",
@@ -613,7 +609,10 @@ def extract_emitted_trades(
         errors="coerce",
     )
     emitted["entry_price"] = pd.to_numeric(
-        emitted.get(threshold_config.entry_price_column, pd.Series(np.nan, index=emitted.index)),
+        emitted.get(
+            threshold_config.trade_entry_price_column,
+            emitted.get(threshold_config.entry_price_column, pd.Series(np.nan, index=emitted.index)),
+        ),
         errors="coerce",
     )
     emitted["exit_price"] = pd.to_numeric(
@@ -623,6 +622,14 @@ def extract_emitted_trades(
     emitted["policy_probability"] = pd.to_numeric(emitted.get("policy_probability"), errors="coerce")
     emitted["policy_threshold"] = pd.to_numeric(emitted.get("policy_threshold"), errors="coerce")
     emitted["source_row_idx"] = pd.to_numeric(emitted.get(threshold_config.position_column), errors="coerce").astype("Int64")
+    emitted["entry_source_row_idx"] = pd.to_numeric(
+        emitted.get(threshold_config.trade_entry_position_column, emitted["source_row_idx"]),
+        errors="coerce",
+    ).astype("Int64")
+    emitted["trade_timing_source"] = emitted.get(
+        threshold_config.trade_timing_source_column,
+        pd.Series("label_horizon", index=emitted.index),
+    ).astype(str)
     emitted["target"] = pd.to_numeric(emitted.get(threshold_config.target_column), errors="coerce").astype("Int64")
     emitted = emitted.loc[emitted["net_pnl_pips"].notna()].copy()
     if emitted.empty:
@@ -645,6 +652,7 @@ def extract_emitted_trades(
         "entry_datetime",
         "exit_datetime",
         "source_row_idx",
+        "entry_source_row_idx",
         "target",
         "policy_name",
         "policy_probability",
@@ -658,6 +666,7 @@ def extract_emitted_trades(
         "gross_pnl_pips",
         "total_cost_pips",
         "net_pnl_pips",
+        "trade_timing_source",
         "trade_outcome",
     ]
     available_columns = [column for column in columns if column in emitted.columns]

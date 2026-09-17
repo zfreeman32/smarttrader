@@ -111,6 +111,36 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
             "apply_to_base_policy_variants": True,
         },
     },
+    "ict_long_continuation_xgb_probability_quantile_q40_v1": {
+        "ict_long_continuation_xgb_v1": {
+            "minimum_probability_quantile": 0.40,
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_long_continuation_xgb_probability_quantile_q50_v1": {
+        "ict_long_continuation_xgb_v1": {
+            "minimum_probability_quantile": 0.50,
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_long_continuation_xgb_probability_quantile_q60_v1": {
+        "ict_long_continuation_xgb_v1": {
+            "minimum_probability_quantile": 0.60,
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_short_continuation_xgb_probability_quantile_q50_v1": {
+        "ict_short_continuation_xgb_v1": {
+            "minimum_probability_quantile": 0.50,
+            "apply_to_base_policy_variants": True,
+        },
+    },
+    "ict_short_continuation_xgb_probability_quantile_q60_v1": {
+        "ict_short_continuation_xgb_v1": {
+            "minimum_probability_quantile": 0.60,
+            "apply_to_base_policy_variants": True,
+        },
+    },
     "long_breakout_regime_prune_v1": {
         "long_breakout_tcn_champion": {
             "abstain_composite_regimes": (
@@ -280,6 +310,34 @@ TARGETED_FILTER_PRESETS: dict[str, dict[str, dict[str, object]]] = {
                 ("ranging_medium", "london"),
                 ("ranging_medium", "new_york"),
                 ("strong_up_low", "asia"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_continuation_setup2_xgb_medium_session_prune_v1": {
+        "frvp_long_continuation_setup2_xgb_v1": {
+            "abstain_composite_session_pairs": (
+                ("strong_down_medium", "london"),
+                ("strong_down_medium", "overlap"),
+                ("strong_up_medium", "london"),
+                ("strong_up_medium", "overlap"),
+            ),
+            "apply_to_base_policy_variants": True,
+        }
+    },
+    "frvp_long_continuation_setup5_xgb_repeated_drawdown_prune_v1": {
+        "frvp_long_continuation_setup5_xgb_v1": {
+            "abstain_composite_session_pairs": (
+                ("strong_down_high", "london"),
+                ("strong_up_high", "london"),
+                ("strong_up_medium", "asia"),
+                ("ranging_high", "new_york"),
+                ("ranging_medium", "asia"),
+                ("strong_down_low", "london"),
+                ("strong_down_medium", "overlap"),
+                ("strong_up_low", "asia"),
+                ("strong_down_high", "new_york"),
+                ("strong_up_medium", "new_york"),
             ),
             "apply_to_base_policy_variants": True,
         }

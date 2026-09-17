@@ -77,6 +77,8 @@ def test_search_thresholds_by_composite_regime_uses_regime_and_global_fallback()
     ranging_low = policy_table.loc[policy_table["composite_regime"] == "ranging_low"].iloc[0]
 
     assert float(global_result["threshold"]) in {0.4, 0.6, 0.8}
+    assert "post_cost_expectancy_units" in policy_table.columns
+    assert "net_pnl_units" in global_result
     assert strong_up["threshold_source"] == "regime"
     assert float(strong_up["threshold"]) == 0.4
     assert bool(strong_up["threshold_data_sufficient"]) is True
@@ -144,7 +146,9 @@ def test_evaluate_policy_variants_reports_global_regime_and_abstain_versions() -
         "regime_threshold_plus_abstain",
     }
     assert "post_cost_expectancy_pips" in evaluation.columns
+    assert "post_cost_expectancy_units" in evaluation.columns
     assert "net_pnl_pips" in evaluation.columns
+    assert "net_pnl_units" in evaluation.columns
     assert "trades_per_week" in evaluation.columns
     abstain_row = evaluation.loc[
         (evaluation["dataset_split"] == "oof")
@@ -247,5 +251,168 @@ def test_attach_forward_trade_outcomes_adds_gross_and_net_pnl_columns() -> None:
 
     assert float(enriched.loc[0, "policy_exit_close"]) == 1.1020
     assert float(enriched.loc[0, "policy_gross_pnl_pips"]) == pytest.approx(20.0)
+    assert float(enriched.loc[0, "policy_gross_pnl_units"]) == pytest.approx(20.0)
     assert float(enriched.loc[0, "policy_total_cost_pips"]) > 0.0
+    assert float(enriched.loc[0, "policy_total_cost_units"]) > 0.0
     assert float(enriched.loc[0, "policy_net_pnl_pips"]) < 20.0
+    assert float(enriched.loc[0, "policy_net_pnl_units"]) < 20.0
+
+
+def test_attach_forward_trade_outcomes_uses_session_spreads_for_futures_even_if_approx_spread_is_large() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [10],
+            "close": [5000.0],
+            "session_regime": ["london"],
+        }
+    )
+    market_frame = pd.DataFrame(
+        {
+            "source_row_idx": [10, 11],
+            "close": [5000.0, 5001.0],
+            "approx_spread": [2.5, 3.0],
+        }
+    )
+    config = ThresholdSearchConfig(
+        probability_column="calibrated_probability",
+        global_threshold=0.6,
+        instrument="es",
+        unit_label="ticks",
+        pip_size=0.25,
+        label_max_holding_bars=1,
+        slippage_spread_multiplier=0.0,
+        session_spread_pips={
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0,
+        },
+    )
+
+    enriched = attach_forward_trade_outcomes(
+        frame,
+        market_frame=market_frame,
+        direction="long",
+        config=config,
+    )
+
+    assert float(enriched.loc[0, "policy_gross_pnl_pips"]) == pytest.approx(4.0)
+    assert float(enriched.loc[0, "policy_total_cost_pips"]) == pytest.approx(2.0)
+
+
+def test_attach_forward_trade_outcomes_uses_feature_proxy_for_futures_when_explicitly_requested() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [10],
+            "close": [5000.0],
+            "session_regime": ["london"],
+        }
+    )
+    market_frame = pd.DataFrame(
+        {
+            "source_row_idx": [10, 11],
+            "close": [5000.0, 5001.0],
+            "approx_spread": [2.5, 3.0],
+        }
+    )
+    config = ThresholdSearchConfig(
+        probability_column="calibrated_probability",
+        global_threshold=0.6,
+        instrument="es",
+        unit_label="ticks",
+        spread_cost_mode="feature_proxy",
+        pip_size=0.25,
+        label_max_holding_bars=1,
+        slippage_spread_multiplier=0.0,
+        session_spread_pips={
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0,
+        },
+    )
+
+    enriched = attach_forward_trade_outcomes(
+        frame,
+        market_frame=market_frame,
+        direction="long",
+        config=config,
+    )
+
+    assert float(enriched.loc[0, "policy_gross_pnl_pips"]) == pytest.approx(4.0)
+    assert float(enriched.loc[0, "policy_total_cost_pips"]) == pytest.approx(22.0)
+
+
+def test_attach_forward_trade_outcomes_prefers_breakout_event_entry_exit_when_trade_is_available() -> None:
+    frame = pd.DataFrame(
+        {
+            "source_row_idx": [10, 11],
+            "datetime": pd.to_datetime(
+                [
+                    "2024-01-01 00:50:00+00:00",
+                    "2024-01-01 00:55:00+00:00",
+                ]
+            ),
+            "close": [1.1000, 1.1010],
+            "session_regime": ["london", "london"],
+            "breakout_event_trade_available": [True, False],
+            "breakout_event_entry_datetime": pd.to_datetime(
+                [
+                    "2024-01-01 01:00:00+00:00",
+                    "2024-01-01 01:00:00+00:00",
+                ]
+            ),
+            "breakout_event_entry_price": [1.1020, 1.1020],
+            "breakout_event_exit_datetime": pd.to_datetime(
+                [
+                    "2024-01-01 01:10:00+00:00",
+                    "2024-01-01 01:10:00+00:00",
+                ]
+            ),
+            "breakout_event_exit_price": [1.1040, 1.1040],
+        }
+    )
+    market_frame = pd.DataFrame(
+        {
+            "source_row_idx": [10, 11, 12, 13, 14],
+            "datetime": pd.to_datetime(
+                [
+                    "2024-01-01 00:50:00+00:00",
+                    "2024-01-01 00:55:00+00:00",
+                    "2024-01-01 01:00:00+00:00",
+                    "2024-01-01 01:05:00+00:00",
+                    "2024-01-01 01:10:00+00:00",
+                ]
+            ),
+            "close": [1.1000, 1.1010, 1.1020, 1.1030, 1.1040],
+            "approx_spread": [0.0002, 0.0002, 0.0001, 0.0001, 0.0001],
+        }
+    )
+    config = ThresholdSearchConfig(
+        probability_column="calibrated_probability",
+        global_threshold=0.6,
+        label_max_holding_bars=2,
+        slippage_spread_multiplier=0.0,
+    )
+
+    enriched = attach_forward_trade_outcomes(
+        frame,
+        market_frame=market_frame,
+        direction="long",
+        config=config,
+    )
+
+    assert str(enriched.loc[0, "policy_trade_timing_source"]) == "breakout_event"
+    assert enriched.loc[0, "policy_entry_datetime"] == pd.Timestamp("2024-01-01 01:00:00+00:00")
+    assert float(enriched.loc[0, "policy_entry_price"]) == pytest.approx(1.1020)
+    assert float(enriched.loc[0, "policy_exit_close"]) == pytest.approx(1.1040)
+    assert int(enriched.loc[0, "policy_entry_source_row_idx"]) == 12
+    assert int(enriched.loc[0, "policy_exit_source_row_idx"]) == 14
+    assert float(enriched.loc[0, "policy_gross_pnl_pips"]) == pytest.approx(20.0)
+    assert float(enriched.loc[0, "policy_total_cost_pips"]) == pytest.approx(2.0)
+
+    assert str(enriched.loc[1, "policy_trade_timing_source"]) == "label_horizon"
+    assert enriched.loc[1, "policy_entry_datetime"] == pd.Timestamp("2024-01-01 00:55:00+00:00")
+    assert float(enriched.loc[1, "policy_exit_close"]) == pytest.approx(1.1030)
