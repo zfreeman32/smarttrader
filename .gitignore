@@ -45,6 +45,13 @@ model_testing/reports/ict_event_sample_audits/
 model_testing/reports/ict_leakage_control_audits/
 model_testing/reports/ict_spacing_cooldown_diagnostics/
 model_testing/reports/ict_spacing_refit_sweeps/
+model_testing/reports/ict_breaker_state_audits/
+model_testing/reports/ict_classic_breaker_phase3_audits/
+model_testing/reports/ict_policy_research/
+frvp_setup_specific_long_rerun_*_output*.txt
+research/es_live_audit_20260911/*.zip
+research/es_live_audit_20260911/*.png
+research/es_live_audit_20260911/audit_report.html
 
 # Generated experiment output and live runtime state stay local.
 ote_live/policy_artifacts/
@@ -53,8 +60,12 @@ ote_live/runtime_manifests/
 
 # Generated configuration, archives, SQL, and databases.
 *.json
+!features/recipes/*.json
+!ote_live/examples/research_execution/synthetic_contract.json
 *.tgz
 *.sql
+!ote_live/storage/schema.sql
+!ote_live/storage/migrations/*.sql
 *.db
 *.db-*
 *.db3
