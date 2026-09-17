@@ -16,7 +16,18 @@ def _to_transform_series(
     series = values if isinstance(values, pd.Series) else pd.Series(values, index=index)
     if downcast_float32 and pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
         series = series.astype(np.float32)
-    return series.rename(name)
+    series = series.rename(name)
+    series.attrs.clear()
+    return series
+
+
+def _concat_value_series(series_list: Sequence[pd.Series], *, axis: int = 1) -> pd.DataFrame:
+    prepared = []
+    for series in series_list:
+        clean = series.copy(deep=False)
+        clean.attrs.clear()
+        prepared.append(clean)
+    return pd.concat(prepared, axis=axis)
 
 
 def _build_transform_frame(
@@ -36,7 +47,7 @@ def _build_transform_frame(
         )
         for name, values in columns
     ]
-    return pd.concat(series_list, axis=1)
+    return _concat_value_series(series_list, axis=1)
 
 
 def safe_divide(
@@ -71,12 +82,15 @@ def bars_since_event(event: pd.Series) -> pd.Series:
 
 def calculate_true_range(df: pd.DataFrame) -> pd.Series:
     """Standard true-range calculation used across feature families."""
+    ranges = [
+        (df["high"] - df["low"]).rename("range"),
+        (df["high"] - df["close"].shift(1)).abs().rename("high_close"),
+        (df["low"] - df["close"].shift(1)).abs().rename("low_close"),
+    ]
+    for series in ranges:
+        series.attrs.clear()
     return pd.concat(
-        [
-            df["high"] - df["low"],
-            (df["high"] - df["close"].shift(1)).abs(),
-            (df["low"] - df["close"].shift(1)).abs(),
-        ],
+        ranges,
         axis=1,
     ).max(axis=1)
 
@@ -357,13 +371,13 @@ def add_rolling_zscores(
 def _combine_max(series_list: Sequence[pd.Series]) -> pd.Series | None:
     if not series_list:
         return None
-    return pd.concat(series_list, axis=1).max(axis=1)
+    return _concat_value_series(series_list, axis=1).max(axis=1)
 
 
 def _combine_mean(series_list: Sequence[pd.Series]) -> pd.Series | None:
     if not series_list:
         return None
-    return pd.concat(series_list, axis=1).mean(axis=1)
+    return _concat_value_series(series_list, axis=1).mean(axis=1)
 
 
 def proximity_score(

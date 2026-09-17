@@ -100,6 +100,37 @@ def test_build_ict_event_window_frame_synthesizes_meta_targets() -> None:
     assert "short_ict_meta" in set(frame["target_name"])
 
 
+def test_build_ict_event_window_frame_keeps_classic_breaker_out_of_meta_and_setup_suffix_targets() -> None:
+    events = pd.concat(
+        [
+            _sample_events(),
+            pd.DataFrame(
+                [
+                    {
+                        "event_direction": "long",
+                        "label_family": "ict_classic_breaker",
+                        "signal_index": 80,
+                        "barrier_end_index": 86,
+                        "max_holding_bars": 8,
+                        "tb_outcome": "tp",
+                        "excluded": False,
+                        "event_time": "2024-01-03T17:00:00Z",
+                        "setup_type": "classic_breaker",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    frame = build_ict_event_window_frame(events)
+    classic_rows = frame.loc[frame["signal_index"].eq(80)]
+
+    assert set(classic_rows["target_name"]) == {"long_ict_classic_breaker"}
+    assert "long_ict_meta" in set(frame["target_name"])
+    assert "long_ict_classic_breaker_classic_breaker" not in set(frame["target_name"])
+
+
 def test_build_ict_leakage_control_audit_detects_split_boundary_leakage(tmp_path: Path) -> None:
     prepared_root = tmp_path / "prepared"
     _write_prepared_target(

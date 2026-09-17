@@ -14,7 +14,7 @@ from ..registry import register_feature_set
 from ..transforms import bars_since_event, calculate_atr, detect_confirmed_swings, safe_divide
 
 
-def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
+def _resample_ohlcv(df: pd.DataFrame, rule: str, *, bar_minutes: float | None = None) -> pd.DataFrame:
     aggregation = {
         "open": "first",
         "high": "max",
@@ -24,7 +24,29 @@ def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     if "volume" in df.columns:
         aggregation["volume"] = "sum"
 
-    out = df.resample(rule, label="right", closed="right").agg(aggregation)
+    sampler = df.resample(rule, label="right", closed="left" if bar_minutes is not None else "right")
+    out = sampler.agg(aggregation)
+    if bar_minutes is not None:
+        interval = pd.Timedelta(minutes=bar_minutes)
+        period = pd.Timedelta(rule)
+        expected = period / interval
+        if expected != int(expected) or expected < 1:
+            raise ValueError("HTF period must be an integer multiple of source bar duration.")
+        # Reject truncated/gappy/provisional buckets rather than treating their
+        # partial OHLCV as a finalized higher-timeframe observation.
+        complete = sampler["close"].count().eq(int(expected))
+        # Counts and endpoints alone do not prove the interior source slots:
+        # a duplicate or an off-grid timestamp can hide a missing constituent.
+        slots = pd.Series(df.index, index=df.index)
+        on_grid = (df.index - df.index.floor(rule)) % interval == pd.Timedelta(0)
+        valid_rows = pd.Series(on_grid & ~df.index.duplicated(keep=False), index=df.index)
+        valid_rows &= np.isfinite(df[list(aggregation)]).all(axis=1)
+        complete &= valid_rows.resample(rule, label="right", closed="left").min().fillna(False).astype(bool)
+        complete &= slots.resample(rule, label="right", closed="left").first().eq(out.index - period)
+        complete &= slots.resample(rule, label="right", closed="left").last().eq(out.index - interval)
+        if "is_complete" in df.columns:
+            complete &= df["is_complete"].eq(True).resample(rule, label="right", closed="left").min().fillna(False).astype(bool)
+        out = out.loc[complete]
     return out.dropna(subset=["open", "high", "low", "close"])
 
 
@@ -108,18 +130,28 @@ def build_htf_context(
     base_columns = ["open", "high", "low", "close"]
     if "volume" in df.columns:
         base_columns.append("volume")
+    if "is_complete" in df.columns:
+        base_columns.append("is_complete")
 
     market = df.loc[valid_mask, base_columns].copy()
     market.index = pd.DatetimeIndex(datetime_series.loc[valid_mask])
     market = market[~market.index.duplicated(keep="last")].sort_index()
 
-    target_dt_index = market.index
+    semantics = config.htf_bar_timestamp_semantics
+    if semantics is None:
+        semantics = "bar_open" if str(config.instrument).lower() == "es" else "legacy_right_closed"
+    corrected = semantics == "bar_open"
+    source_bar_minutes = float(config.htf_source_bar_minutes)
+    # Align back to each original valid row, including unsorted/repeated inputs.
+    target_dt_index = pd.DatetimeIndex(datetime_series.loc[valid_mask])
+    if corrected:
+        target_dt_index = target_dt_index + pd.Timedelta(minutes=source_bar_minutes)
     output_index = df.index[valid_mask]
     atr_like = df["atr_14"] if "atr_14" in df.columns else calculate_atr(df)
 
     for rule, prefix in (("30min", "htf_30m"), ("1h", "htf_1h")):
-        resampled = _resample_ohlcv(market, rule)
-        if resampled.empty:
+        resampled = _resample_ohlcv(market, rule, bar_minutes=source_bar_minutes if corrected else None)
+        if resampled.empty and not corrected:
             continue
 
         block, swing_high_event, swing_low_event = _build_htf_block(
@@ -128,6 +160,12 @@ def build_htf_context(
             swing_window=config.htf_swing_window,
         )
         out = out.join(_align_continuous(block, target_dt_index, output_index))
+        if corrected:
+            source_close = pd.Series(resampled.index, index=resampled.index).reindex(target_dt_index, method="ffill")
+            out[f"{prefix}_source_age_minutes"] = pd.Series(
+                (target_dt_index - pd.DatetimeIndex(source_close)).total_seconds() / 60.0, index=output_index,
+            )
+            out[f"{prefix}_source_complete"] = pd.Series(source_close.notna().to_numpy(dtype=np.int8), index=output_index)
 
         aligned_high_event = _align_events(swing_high_event, target_dt_index, output_index)
         aligned_low_event = _align_events(swing_low_event, target_dt_index, output_index)
@@ -145,10 +183,10 @@ def build_htf_context(
     daily = resample_ohlcv_by_close_labels(market, daily_labels)
     if not daily.empty:
         daily_levels = pd.DataFrame(index=daily.index)
-        daily_levels["htf_prev_day_high"] = daily["high"].shift(1)
-        daily_levels["htf_prev_day_low"] = daily["low"].shift(1)
-        daily_levels["htf_rolling_daily_high"] = daily["high"].shift(1).rolling(5, min_periods=1).max()
-        daily_levels["htf_rolling_daily_low"] = daily["low"].shift(1).rolling(5, min_periods=1).min()
+        daily_levels["htf_prev_day_high"] = daily["high"].shift(0 if corrected else 1)
+        daily_levels["htf_prev_day_low"] = daily["low"].shift(0 if corrected else 1)
+        daily_levels["htf_rolling_daily_high"] = daily["high"].shift(0 if corrected else 1).rolling(5, min_periods=1).max()
+        daily_levels["htf_rolling_daily_low"] = daily["low"].shift(0 if corrected else 1).rolling(5, min_periods=1).min()
         out = out.join(_align_continuous(daily_levels, target_dt_index, output_index))
 
     weekly_labels = build_market_week_close_labels(
@@ -162,8 +200,8 @@ def build_htf_context(
     weekly = resample_ohlcv_by_close_labels(market, weekly_labels)
     if not weekly.empty:
         weekly_levels = pd.DataFrame(index=weekly.index)
-        weekly_levels["htf_rolling_weekly_high"] = weekly["high"].shift(1).rolling(4, min_periods=1).max()
-        weekly_levels["htf_rolling_weekly_low"] = weekly["low"].shift(1).rolling(4, min_periods=1).min()
+        weekly_levels["htf_rolling_weekly_high"] = weekly["high"].shift(0 if corrected else 1).rolling(4, min_periods=1).max()
+        weekly_levels["htf_rolling_weekly_low"] = weekly["low"].shift(0 if corrected else 1).rolling(4, min_periods=1).min()
         out = out.join(_align_continuous(weekly_levels, target_dt_index, output_index))
 
     prev_day_high = out["htf_prev_day_high"] if "htf_prev_day_high" in out.columns else pd.Series(np.nan, index=df.index)

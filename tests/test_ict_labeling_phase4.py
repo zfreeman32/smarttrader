@@ -11,7 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ict.labeling.ict_labeling_engine import ICTLabelingConfig, build_ict_labels, ict_events_to_frame  # noqa: E402
+from ict.labeling.ict_labeling_engine import (  # noqa: E402
+    ICT_LABEL_TARGET_COLUMNS,
+    ICTLabelingConfig,
+    build_ict_labels,
+    ict_events_to_frame,
+)
 from ict.setups.setup_types import build_empty_setup_frame  # noqa: E402
 
 
@@ -162,6 +167,61 @@ def test_build_ict_labels_routes_continuation_events_into_continuation_and_meta_
     assert int(labeled.iloc[0]["label_long_ict_meta"]) == 1
     assert int(labeled.iloc[0]["label_long_ict_reversal"]) == 0
     assert bool(labeled.iloc[0]["exclude_long_ict_continuation"]) is False
+
+
+def test_build_ict_labels_routes_classic_breaker_to_isolated_research_family() -> None:
+    market = _market_frame(
+        [
+            (101.0, 101.2, 100.8, 101.0),
+            (101.2, 101.3, 101.0, 101.1),
+            (101.1, 102.7, 101.0, 102.5),
+            (102.5, 102.6, 102.2, 102.4),
+        ]
+    )
+    setup = _setup_frame(market)
+    _configure_event(
+        setup,
+        0,
+        setup_type="classic_breaker",
+        setup_family="reversal",
+        side=1,
+        confidence=0.86,
+        anchor_level=100.75,
+        stop_reference=100.25,
+        target_reference=102.5,
+        htf_context="aligned_bull",
+        reference_level_type="classic_breaker_zone",
+    )
+    setup.loc[0, "order_block_id"] = 17
+    setup.loc[0, "breaker_id"] = 5
+    setup.loc[0, "breaker_source_order_block_id"] = 17
+    setup.loc[0, "breaker_activation_index"] = 3
+    setup.loc[0, "breaker_source_order_block_formed_index"] = 1
+    setup.loc[0, "breaker_retest_index"] = 4
+    setup.loc[0, "breaker_age_bars"] = 1.0
+    setup.loc[0, "breaker_retest_count"] = 1.0
+    setup.loc[0, "breaker_zone_lower"] = 100.5
+    setup.loc[0, "breaker_zone_upper"] = 101.0
+    setup.loc[0, "displacement_index"] = 3
+
+    labeled, diagnostics, events = build_ict_labels(
+        market,
+        params=_params(classic_breaker_enabled=True),
+        setup_output=setup,
+        verbose=False,
+    )
+    event_frame = ict_events_to_frame(events).set_index("setup_type")
+
+    assert "label_long_ict_classic_breaker" not in ICT_LABEL_TARGET_COLUMNS
+    assert diagnostics["events_ict_classic_breaker"] == 1
+    assert str(event_frame.loc["classic_breaker", "label_family"]) == "ict_classic_breaker"
+    assert str(event_frame.loc["classic_breaker", "barrier_family"]) == "reversal"
+    assert int(event_frame.loc["classic_breaker", "breaker_id"]) == 5
+    assert int(labeled.iloc[0]["label_long_ict_classic_breaker"]) == 1
+    assert int(labeled.iloc[0]["label_long_ict_reversal"]) == 0
+    assert int(labeled.iloc[0]["label_long_ict_meta"]) == 0
+    assert bool(labeled.iloc[0]["exclude_long_ict_classic_breaker"]) is False
+    assert bool(labeled.iloc[0]["exclude_long_ict_meta"]) is True
 
 
 def test_build_ict_labels_excludes_ambiguous_barriers_without_1m_resolution() -> None:

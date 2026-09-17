@@ -96,6 +96,7 @@ def detect_frvp_setups(df: pd.DataFrame) -> pd.DataFrame:
     setup_type: list[int] = []
     setup_side: list[int] = []
     confidence: list[float] = []
+    candidate_records: list[dict[str, object]] = []
 
     previous_candidates: dict[tuple[int, int], bool] = {}
     last_breakout_above: _BreakoutState | None = None
@@ -156,6 +157,23 @@ def detect_frvp_setups(df: pd.DataFrame) -> pd.DataFrame:
             if not previous_candidates.get((candidate.setup_type, candidate.setup_side), False)
         ]
         selected = _select_candidate(eligible)
+        for candidate in current_candidates:
+            is_eligible = candidate in eligible
+            is_selected = candidate is selected
+            candidate_records.append(
+                {
+                    "source_row_idx": index,
+                    "event_time": row.get("timestamp", row.get("event_time")),
+                    "setup_type": int(candidate.setup_type),
+                    "setup_side": int(candidate.setup_side),
+                    "confidence": float(candidate.confidence),
+                    "eligible": is_eligible,
+                    "selected": is_selected,
+                    "rejection_reasons": (
+                        [] if is_selected else ["detector_priority" if is_eligible else "already_active"]
+                    ),
+                }
+            )
 
         if selected is None:
             fired.append(False)
@@ -196,7 +214,7 @@ def detect_frvp_setups(df: pd.DataFrame) -> pd.DataFrame:
         previous_session_key = session_key
         previous_contract_id = contract_id
 
-    return pd.DataFrame(
+    output = pd.DataFrame(
         {
             "fired": pd.Series(fired, dtype=bool),
             "setup_type": pd.Series(setup_type, dtype="int64"),
@@ -205,6 +223,12 @@ def detect_frvp_setups(df: pd.DataFrame) -> pd.DataFrame:
         },
         index=df.index,
     )
+    # Retain every rule candidate for the research audit without changing the
+    # established one-selected-setup-per-bar output or its priority rules.
+    output.attrs["candidate_events"] = candidate_records
+    output.attrs["fired_events"] = [record for record in candidate_records if record["selected"]]
+    output.attrs["detector_phase"] = "frvp_rule_detector"
+    return output
 
 
 def summarize_setup_fire_rates(

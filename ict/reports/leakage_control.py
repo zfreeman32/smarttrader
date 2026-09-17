@@ -10,6 +10,7 @@ import pandas as pd
 
 POSITIVE_OUTCOMES = frozenset({"tp", "timeout_profit"})
 PREPARED_SPLIT_NAMES = ("train", "val", "test")
+CANONICAL_META_COMPONENT_LABEL_FAMILIES = frozenset({"ict_reversal", "ict_continuation"})
 DEFAULT_TARGET_NAMES = (
     "long_ict_reversal",
     "short_ict_reversal",
@@ -171,6 +172,7 @@ def build_ict_event_window_frame(events: pd.DataFrame) -> pd.DataFrame:
                 "realized_window_bars",
                 "max_holding_bars",
                 "positive_event",
+                "setup_type",
             ]
         )
 
@@ -198,11 +200,26 @@ def build_ict_event_window_frame(events: pd.DataFrame) -> pd.DataFrame:
     ]].copy()
     family_rows["target_name"] = family_rows["event_direction"].astype(str) + "_" + family_rows["label_family"].astype(str)
 
-    meta_rows = family_rows.copy()
+    canonical_family_rows = family_rows.loc[
+        family_rows["label_family"].astype(str).isin(CANONICAL_META_COMPONENT_LABEL_FAMILIES)
+    ].copy()
+
+    meta_rows = canonical_family_rows.copy()
     meta_rows["label_family"] = "ict_meta"
     meta_rows["target_name"] = meta_rows["event_direction"].astype(str) + "_ict_meta"
 
-    out = pd.concat([family_rows, meta_rows], ignore_index=True)
+    setup_rows = canonical_family_rows.copy()
+    setup_rows["setup_type"] = setup_rows["setup_type"].fillna("").astype(str).str.strip().str.lower()
+    setup_rows = setup_rows.loc[setup_rows["setup_type"].ne("") & setup_rows["setup_type"].ne("nan")].copy()
+    setup_rows["target_name"] = (
+        setup_rows["event_direction"].astype(str)
+        + "_"
+        + setup_rows["label_family"].astype(str)
+        + "_"
+        + setup_rows["setup_type"].astype(str)
+    )
+
+    out = pd.concat([family_rows, meta_rows, setup_rows], ignore_index=True)
     out = out.sort_values(["target_name", "signal_index", "barrier_end_index"]).reset_index(drop=True)
     return out
 

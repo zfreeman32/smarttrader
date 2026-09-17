@@ -10,10 +10,10 @@ from frvp.calendars.macro import annotate_us_macro_event_flags
 
 from ..common import session_phase_codes_from_frame
 from ..config.instruments import get_ict_instrument_config
-from ..config.setups import ICTSetupDetectorConfig
+from ..config.setups import DEFAULT_ICT_SETUP_TYPES, ICTSetupDetectorConfig
 from ..sessions.equity import build_ict_equity_session_frame
 from ..setups.detector import detect_ict_setups
-from ..setups.setup_types import build_empty_setup_frame
+from ..setups.setup_types import ICTSetupType, build_empty_setup_frame
 
 
 ICT_LABEL_TARGET_COLUMNS = (
@@ -28,6 +28,11 @@ ICT_LABEL_TARGET_COLUMNS = (
 ICT_REVERSAL_FAMILY = "ict_reversal"
 ICT_CONTINUATION_FAMILY = "ict_continuation"
 ICT_META_FAMILY = "ict_meta"
+ICT_CLASSIC_BREAKER_FAMILY = "ict_classic_breaker"
+ICT_CLASSIC_BREAKER_TARGET_COLUMNS = (
+    "label_long_ict_classic_breaker",
+    "label_short_ict_classic_breaker",
+)
 REVERSAL_SETUP_TYPES = frozenset(
     {
         "sweep_reclaim",
@@ -44,6 +49,7 @@ CONTINUATION_SETUP_TYPES = frozenset(
         "displacement_continuation_after_raid",
     }
 )
+CLASSIC_BREAKER_SETUP_TYPES = frozenset({ICTSetupType.CLASSIC_BREAKER.value})
 SESSION_OPEN_SETUP_TYPES = frozenset(
     {
         "session_open_manipulation_pre_ib",
@@ -67,6 +73,16 @@ SETUP_OUTPUT_REQUIRED_COLUMNS = (
     "fvg_id",
     "ce_price",
     "order_block_id",
+    "breaker_id",
+    "breaker_source_order_block_id",
+    "breaker_activation_index",
+    "breaker_source_order_block_formed_index",
+    "breaker_retest_index",
+    "breaker_age_bars",
+    "breaker_retest_count",
+    "breaker_zone_lower",
+    "breaker_zone_upper",
+    "displacement_index",
     "displacement_id",
     "displacement_volume_z",
     "session_phase",
@@ -112,6 +128,8 @@ class ICTLabelingConfig:
     warmup_bars: int = 0
     require_intrabar_resolution: bool = True
     compute_uniqueness: bool = True
+    classic_breaker_enabled: bool = False
+    classic_breaker_canonical_pooling_enabled: bool = False
 
     def validate(self) -> None:
         assert self.timeout_policy in {"pnl_sign", "zero"}
@@ -132,6 +150,11 @@ class ICTLabelingConfig:
         assert 0.0 <= self.thin_session_min_rth_share <= 1.0
         assert self.thin_session_minutes_until_close >= 0
         assert self.warmup_bars >= 0
+        if self.classic_breaker_canonical_pooling_enabled:
+            raise ValueError(
+                "classic_breaker_canonical_pooling_enabled is disabled for this research lane; "
+                "promoting classic breaker into canonical labels requires an explicit contract change."
+            )
 
 
 @dataclass
@@ -154,9 +177,19 @@ class ICTEvent:
     fvg_id: int | None
     ce_price: float
     order_block_id: int | None
-    displacement_id: int | None
-    displacement_volume_z: float
-    session_phase: int | None
+    breaker_id: int | None = None
+    breaker_source_order_block_id: int | None = None
+    breaker_activation_index: int | None = None
+    breaker_source_order_block_formed_index: int | None = None
+    breaker_retest_index: int | None = None
+    breaker_age_bars: float = np.nan
+    breaker_retest_count: float = np.nan
+    breaker_zone_lower: float = np.nan
+    breaker_zone_upper: float = np.nan
+    displacement_index: int | None = None
+    displacement_id: int | None = None
+    displacement_volume_z: float = np.nan
+    session_phase: int | None = None
     entry_index: int | None = None
     entry_time: pd.Timestamp | None = None
     entry_price: float | None = None
@@ -213,16 +246,16 @@ def build_ict_labels(
     market = _prepare_market_frame(df_5m, config)
     if not config.enabled:
         diagnostics = {"status": "skipped", "reason": "disabled", "total_events_sampled": 0}
-        return _empty_label_frame(market), diagnostics, []
+        return _empty_label_frame(market, config=config), diagnostics, []
 
     exec_market = _prepare_execution_frame(df_1m, config) if df_1m is not None else None
     setup_frame = _resolve_setup_output(market, config, setup_output=setup_output)
-    events = _build_ict_events(market, setup_frame)
+    events = _build_ict_events(market, setup_frame, config)
     events = _evaluate_event_barriers(market, events, config, exec_market=exec_market)
     events = _apply_basic_exclusions(market, events, config)
     events = _compute_event_quality(events)
     concurrency_arrays = _apply_event_concurrency_and_weights(market, events, config)
-    label_frame = _materialize_ict_targets(market, events, concurrency_arrays)
+    label_frame = _materialize_ict_targets(market, events, concurrency_arrays, config=config)
     diagnostics = _build_labeling_diagnostics(market, events, config)
 
     if verbose:
@@ -257,6 +290,16 @@ def ict_events_to_frame(events: Sequence[ICTEvent]) -> pd.DataFrame:
                 "fvg_id": event.fvg_id,
                 "ce_price": event.ce_price,
                 "order_block_id": event.order_block_id,
+                "breaker_id": event.breaker_id,
+                "breaker_source_order_block_id": event.breaker_source_order_block_id,
+                "breaker_activation_index": event.breaker_activation_index,
+                "breaker_source_order_block_formed_index": event.breaker_source_order_block_formed_index,
+                "breaker_retest_index": event.breaker_retest_index,
+                "breaker_age_bars": event.breaker_age_bars,
+                "breaker_retest_count": event.breaker_retest_count,
+                "breaker_zone_lower": event.breaker_zone_lower,
+                "breaker_zone_upper": event.breaker_zone_upper,
+                "displacement_index": event.displacement_index,
                 "displacement_id": event.displacement_id,
                 "displacement_volume_z": event.displacement_volume_z,
                 "session_phase": event.session_phase,
@@ -370,12 +413,19 @@ def _resolve_setup_output(
     setup_output: pd.DataFrame | None,
 ) -> pd.DataFrame:
     if setup_output is not None:
+        setup_attrs = dict(getattr(setup_output, "attrs", {}) or {})
         setup_frame = setup_output.reset_index(drop=True).copy()
+        setup_frame.attrs.update(setup_attrs)
     elif set(SETUP_OUTPUT_REQUIRED_COLUMNS).issubset(market.columns):
         setup_frame = market.loc[:, SETUP_OUTPUT_REQUIRED_COLUMNS].reset_index(drop=True).copy()
     else:
-        detector_config = ICTSetupDetectorConfig(instrument=config.instrument)
-        setup_frame = detect_ict_setups(market.copy(), config=detector_config).reset_index(drop=True)
+        detector_config = ICTSetupDetectorConfig(
+            instrument=config.instrument,
+            enabled_setup_types=_enabled_setup_types_for_labeling(config),
+        )
+        detected = detect_ict_setups(market.copy(), config=detector_config)
+        setup_frame = detected.reset_index(drop=True).copy()
+        setup_frame.attrs.update(dict(getattr(detected, "attrs", {}) or {}))
 
     if len(setup_frame) != len(market):
         raise ValueError(
@@ -385,58 +435,132 @@ def _resolve_setup_output(
 
     missing = [column for column in SETUP_OUTPUT_REQUIRED_COLUMNS if column not in setup_frame.columns]
     if missing:
+        setup_attrs = dict(getattr(setup_frame, "attrs", {}) or {})
         event_time = market["datetime"]
         repaired = build_empty_setup_frame(setup_frame.index, event_time=event_time)
         for column in setup_frame.columns:
             if column in repaired.columns:
                 repaired[column] = setup_frame[column]
         setup_frame = repaired
+        setup_frame.attrs.update(setup_attrs)
     return setup_frame
 
 
-def _build_ict_events(market: pd.DataFrame, setup_frame: pd.DataFrame) -> list[ICTEvent]:
+def _enabled_setup_types_for_labeling(config: ICTLabelingConfig) -> tuple[str, ...]:
+    enabled = list(DEFAULT_ICT_SETUP_TYPES)
+    if bool(config.classic_breaker_enabled):
+        enabled.append(ICTSetupType.CLASSIC_BREAKER.value)
+    return tuple(enabled)
+
+
+def _build_ict_events(
+    market: pd.DataFrame,
+    setup_frame: pd.DataFrame,
+    config: ICTLabelingConfig,
+) -> list[ICTEvent]:
     events: list[ICTEvent] = []
     timestamps = pd.DatetimeIndex(market["datetime"])
+    event_keys: set[tuple[object, ...]] = set()
+
+    def append_event(signal_index: int, row: pd.Series) -> None:
+        if signal_index < 0 or signal_index >= len(timestamps):
+            return
+        setup_type = str(row.get("setup_type", "")).strip().lower()
+        setup_side = _to_int(row.get("setup_side"), default=0)
+        label_family = _label_family_for_setup_type(setup_type, config)
+        if label_family is None or setup_side not in {-1, 1}:
+            return
+        event = _event_from_setup_row(
+            row=row,
+            timestamps=timestamps,
+            signal_index=int(signal_index),
+            setup_type=setup_type,
+            setup_side=setup_side,
+            label_family=label_family,
+        )
+        key = (
+            event.signal_index,
+            event.event_direction,
+            event.label_family,
+            event.setup_type,
+            event.breaker_id,
+            event.order_block_id,
+            event.fvg_id,
+        )
+        if key in event_keys:
+            return
+        event_keys.add(key)
+        events.append(event)
+
     for idx, row in setup_frame.iterrows():
         if not _as_bool(row.get("fired")):
             continue
-        setup_type = str(row.get("setup_type", "")).strip().lower()
-        setup_side = _to_int(row.get("setup_side"), default=0)
-        if setup_type in REVERSAL_SETUP_TYPES:
-            label_family = ICT_REVERSAL_FAMILY
-        elif setup_type in CONTINUATION_SETUP_TYPES:
-            label_family = ICT_CONTINUATION_FAMILY
-        else:
-            continue
-        if setup_side not in {-1, 1}:
-            continue
+        append_event(int(idx), row)
 
-        event = ICTEvent(
-            label_family=label_family,
-            setup_type=setup_type,
-            setup_family=str(row.get("setup_family", "")),
-            setup_side=setup_side,
-            event_direction="long" if setup_side > 0 else "short",
-            event_time=pd.Timestamp(timestamps[idx]),
-            signal_index=int(idx),
-            anchor_level=_to_float(row.get("anchor_level")),
-            reference_level=_to_float(row.get("reference_level")),
-            reference_level_type=str(row.get("reference_level_type", "")),
-            sweep_type=str(row.get("sweep_type", "")),
-            setup_confidence=_to_float(row.get("confidence"), default=0.0),
-            stop_reference=_to_float(row.get("stop_reference")),
-            target_reference=_to_float(row.get("target_reference")),
-            htf_context=str(row.get("htf_context", "")),
-            fvg_id=_nullable_int(row.get("fvg_id")),
-            ce_price=_to_float(row.get("ce_price")),
-            order_block_id=_nullable_int(row.get("order_block_id")),
-            displacement_id=_nullable_int(row.get("displacement_id")),
-            displacement_volume_z=_to_float(row.get("displacement_volume_z")),
-            session_phase=_nullable_int(row.get("session_phase")),
-        )
-        event.htf_confluence_flag = "aligned" in event.htf_context
-        events.append(event)
+    research_fired = setup_frame.attrs.get("research_fired_events")
+    if bool(config.classic_breaker_enabled) and isinstance(research_fired, pd.DataFrame) and not research_fired.empty:
+        for _, row in research_fired.iterrows():
+            setup_type = str(row.get("setup_type", "")).strip().lower()
+            if setup_type not in CLASSIC_BREAKER_SETUP_TYPES:
+                continue
+            append_event(_to_int(row.get("bar_index"), default=-1), row)
     return events
+
+
+def _label_family_for_setup_type(setup_type: str, config: ICTLabelingConfig) -> str | None:
+    if setup_type in CLASSIC_BREAKER_SETUP_TYPES:
+        return ICT_CLASSIC_BREAKER_FAMILY if bool(config.classic_breaker_enabled) else None
+    if setup_type in REVERSAL_SETUP_TYPES:
+        return ICT_REVERSAL_FAMILY
+    if setup_type in CONTINUATION_SETUP_TYPES:
+        return ICT_CONTINUATION_FAMILY
+    return None
+
+
+def _event_from_setup_row(
+    *,
+    row: pd.Series,
+    timestamps: pd.DatetimeIndex,
+    signal_index: int,
+    setup_type: str,
+    setup_side: int,
+    label_family: str,
+) -> ICTEvent:
+    event = ICTEvent(
+        label_family=label_family,
+        setup_type=setup_type,
+        setup_family=str(row.get("setup_family", "")),
+        setup_side=setup_side,
+        event_direction="long" if setup_side > 0 else "short",
+        event_time=pd.Timestamp(timestamps[signal_index]),
+        signal_index=int(signal_index),
+        anchor_level=_to_float(row.get("anchor_level")),
+        reference_level=_to_float(row.get("reference_level")),
+        reference_level_type=str(row.get("reference_level_type", "")),
+        sweep_type=str(row.get("sweep_type", "")),
+        setup_confidence=_to_float(row.get("confidence"), default=0.0),
+        stop_reference=_to_float(row.get("stop_reference")),
+        target_reference=_to_float(row.get("target_reference")),
+        htf_context=str(row.get("htf_context", "")),
+        fvg_id=_nullable_int(row.get("fvg_id")),
+        ce_price=_to_float(row.get("ce_price")),
+        order_block_id=_nullable_int(row.get("order_block_id")),
+        breaker_id=_nullable_int(row.get("breaker_id")),
+        breaker_source_order_block_id=_nullable_int(row.get("breaker_source_order_block_id")),
+        breaker_activation_index=_nullable_int(row.get("breaker_activation_index")),
+        breaker_source_order_block_formed_index=_nullable_int(row.get("breaker_source_order_block_formed_index")),
+        breaker_retest_index=_nullable_int(row.get("breaker_retest_index")),
+        breaker_age_bars=_to_float(row.get("breaker_age_bars")),
+        breaker_retest_count=_to_float(row.get("breaker_retest_count")),
+        breaker_zone_lower=_to_float(row.get("breaker_zone_lower")),
+        breaker_zone_upper=_to_float(row.get("breaker_zone_upper")),
+        displacement_index=_nullable_int(row.get("displacement_index")),
+        displacement_id=_nullable_int(row.get("displacement_id")),
+        displacement_volume_z=_to_float(row.get("displacement_volume_z")),
+        session_phase=_nullable_int(row.get("session_phase")),
+    )
+    event.htf_confluence_flag = "aligned" in event.htf_context
+    return event
 
 
 def _evaluate_event_barriers(
@@ -793,7 +917,8 @@ def _apply_event_concurrency_and_weights(
     groups: dict[tuple[str, str], list[ICTEvent]] = {}
     for event in usable:
         groups.setdefault((event.event_direction, event.label_family), []).append(event)
-        groups.setdefault((event.event_direction, ICT_META_FAMILY), []).append(event)
+        if _event_contributes_to_meta(event):
+            groups.setdefault((event.event_direction, ICT_META_FAMILY), []).append(event)
 
     outputs: dict[tuple[str, str], dict[str, np.ndarray]] = {}
     for key, group in groups.items():
@@ -827,10 +952,12 @@ def _materialize_ict_targets(
     market: pd.DataFrame,
     events: list[ICTEvent],
     group_arrays: dict[tuple[str, str], dict[str, np.ndarray]],
+    *,
+    config: ICTLabelingConfig,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=pd.DatetimeIndex(market["datetime"]))
     directions = ("long", "short")
-    families = (ICT_REVERSAL_FAMILY, ICT_CONTINUATION_FAMILY, ICT_META_FAMILY)
+    families = _target_families_for_materialization(events, config)
 
     for direction in directions:
         for family in families:
@@ -856,29 +983,44 @@ def _materialize_ict_targets(
         direction = event.event_direction
         label_value = 1 if _event_is_positive(event) else 0
         family_columns = get_ict_helper_column_names(direction, event.label_family)
-        meta_columns = get_ict_helper_column_names(direction, ICT_META_FAMILY)
         family_label = f"label_{direction}_{event.label_family}"
-        meta_label = f"label_{direction}_{ICT_META_FAMILY}"
         family_quality = f"label_quality_{direction}_{event.label_family}"
-        meta_quality = f"label_quality_{direction}_{ICT_META_FAMILY}"
         idx = int(event.signal_index)
 
-        if event.excluded:
+        if event.excluded or family_label not in out.columns:
             continue
 
         out.iat[idx, out.columns.get_loc(family_label)] = label_value
-        out.iat[idx, out.columns.get_loc(meta_label)] = label_value
         out.iat[idx, out.columns.get_loc(family_quality)] = float(event.label_quality)
-        out.iat[idx, out.columns.get_loc(meta_quality)] = float(event.label_quality)
         out.iat[idx, out.columns.get_loc(family_columns["exclude"])] = False
-        out.iat[idx, out.columns.get_loc(meta_columns["exclude"])] = False
         out.iat[idx, out.columns.get_loc(family_columns["neg_ok"])] = True
-        out.iat[idx, out.columns.get_loc(meta_columns["neg_ok"])] = True
         out.iat[idx, out.columns.get_loc(family_columns["htf_confluence"])] = int(event.htf_confluence_flag)
-        out.iat[idx, out.columns.get_loc(meta_columns["htf_confluence"])] = int(event.htf_confluence_flag)
+        if _event_contributes_to_meta(event):
+            meta_columns = get_ict_helper_column_names(direction, ICT_META_FAMILY)
+            meta_label = f"label_{direction}_{ICT_META_FAMILY}"
+            meta_quality = f"label_quality_{direction}_{ICT_META_FAMILY}"
+            out.iat[idx, out.columns.get_loc(meta_label)] = label_value
+            out.iat[idx, out.columns.get_loc(meta_quality)] = float(event.label_quality)
+            out.iat[idx, out.columns.get_loc(meta_columns["exclude"])] = False
+            out.iat[idx, out.columns.get_loc(meta_columns["neg_ok"])] = True
+            out.iat[idx, out.columns.get_loc(meta_columns["htf_confluence"])] = int(event.htf_confluence_flag)
 
     out["warmup_mask"] = pd.to_numeric(market.get("warmup_mask", pd.Series(False, index=market.index)), errors="coerce").fillna(0).astype(bool).to_numpy()
     return out
+
+
+def _target_families_for_materialization(
+    events: list[ICTEvent],
+    config: ICTLabelingConfig,
+) -> tuple[str, ...]:
+    families: list[str] = [ICT_REVERSAL_FAMILY, ICT_CONTINUATION_FAMILY, ICT_META_FAMILY]
+    if bool(config.classic_breaker_enabled) or any(event.label_family == ICT_CLASSIC_BREAKER_FAMILY for event in events):
+        families.append(ICT_CLASSIC_BREAKER_FAMILY)
+    return tuple(families)
+
+
+def _event_contributes_to_meta(event: ICTEvent) -> bool:
+    return event.label_family in {ICT_REVERSAL_FAMILY, ICT_CONTINUATION_FAMILY}
 
 
 def _build_labeling_diagnostics(
@@ -906,7 +1048,11 @@ def _build_labeling_diagnostics(
             sum(1 for event in direction_events if _event_is_positive(event)) / max(len(direction_events), 1)
         )
 
-    for family in (ICT_REVERSAL_FAMILY, ICT_CONTINUATION_FAMILY):
+    diagnostic_families = [ICT_REVERSAL_FAMILY, ICT_CONTINUATION_FAMILY]
+    if bool(config.classic_breaker_enabled) or any(event.label_family == ICT_CLASSIC_BREAKER_FAMILY for event in events):
+        diagnostic_families.append(ICT_CLASSIC_BREAKER_FAMILY)
+
+    for family in diagnostic_families:
         family_events = [event for event in usable if event.label_family == family]
         diagnostics[f"events_{family}"] = int(len(family_events))
         diagnostics[f"base_rate_{family}_pct"] = 100.0 * (
@@ -938,8 +1084,8 @@ def _build_labeling_diagnostics(
     return diagnostics
 
 
-def _empty_label_frame(market: pd.DataFrame) -> pd.DataFrame:
-    return _materialize_ict_targets(market, [], {})
+def _empty_label_frame(market: pd.DataFrame, *, config: ICTLabelingConfig) -> pd.DataFrame:
+    return _materialize_ict_targets(market, [], {}, config=config)
 
 
 def _resolve_barrier_prices(
@@ -953,7 +1099,7 @@ def _resolve_barrier_prices(
     stop_floor = max(float(config.min_stop_atr) * atr_at_event, float(config.min_stop_ticks) * tick_size)
     target_floor_atr = (
         float(config.reversal_fallback_target_atr)
-        if event.label_family == ICT_REVERSAL_FAMILY
+        if event.label_family in {ICT_REVERSAL_FAMILY, ICT_CLASSIC_BREAKER_FAMILY}
         else float(config.continuation_fallback_target_atr)
     )
 
@@ -1009,7 +1155,7 @@ def _resolve_intrabar_order(
 def _event_barrier_family(event: ICTEvent) -> str:
     if event.setup_type in SESSION_OPEN_SETUP_TYPES:
         return "session_open_reversal"
-    if event.label_family == ICT_REVERSAL_FAMILY:
+    if event.label_family in {ICT_REVERSAL_FAMILY, ICT_CLASSIC_BREAKER_FAMILY}:
         return "reversal"
     return "continuation"
 
@@ -1045,7 +1191,7 @@ def _event_horizon_bars(
 
     if event.setup_type in SESSION_OPEN_SETUP_TYPES:
         return max(1, int(round(float(config.session_open_reversal_max_bars) * scale))), scale
-    if event.label_family == ICT_REVERSAL_FAMILY:
+    if event.label_family in {ICT_REVERSAL_FAMILY, ICT_CLASSIC_BREAKER_FAMILY}:
         return max(1, int(round(float(config.reversal_max_bars) * scale))), scale
     return max(1, int(round(float(config.continuation_max_bars) * scale))), scale
 
@@ -1274,6 +1420,8 @@ def _clip(value: float, *, lower: float, upper: float) -> float:
 
 __all__ = [
     "ICTLabelingConfig",
+    "ICT_CLASSIC_BREAKER_FAMILY",
+    "ICT_CLASSIC_BREAKER_TARGET_COLUMNS",
     "ICT_LABEL_TARGET_COLUMNS",
     "ICT_CONTINUATION_FAMILY",
     "ICT_META_FAMILY",

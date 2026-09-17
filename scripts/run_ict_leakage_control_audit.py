@@ -34,6 +34,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--phase02-metadata", type=Path, default=None)
     parser.add_argument("--report-root", type=Path, default=DEFAULT_REPORT_ROOT)
     parser.add_argument("--report-id", default=None)
+    parser.add_argument(
+        "--target-name",
+        action="append",
+        default=None,
+        help="Target name to audit. Repeat for multiple targets; defaults to the canonical ICT target set.",
+    )
     parser.add_argument("--bootstrap-sample-size", type=int, default=256)
     parser.add_argument("--bootstrap-max-events", type=int, default=3000)
     return parser
@@ -69,13 +75,15 @@ def main(argv: list[str] | None = None) -> int:
     report_id = args.report_id or f"{args.artifact_run_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     report_dir = args.report_root / report_id
 
-    summary = build_ict_leakage_control_audit(
-        events,
-        phase02_metadata=phase02_metadata,
-        prepared_root=prepared_root,
-        bootstrap_sample_size=args.bootstrap_sample_size,
-        bootstrap_max_events=args.bootstrap_max_events,
-    )
+    audit_kwargs = {
+        "phase02_metadata": phase02_metadata,
+        "prepared_root": prepared_root,
+        "bootstrap_sample_size": args.bootstrap_sample_size,
+        "bootstrap_max_events": args.bootstrap_max_events,
+    }
+    if args.target_name:
+        audit_kwargs["target_names"] = tuple(args.target_name)
+    summary = build_ict_leakage_control_audit(events, **audit_kwargs)
     summary["report_id"] = report_id
     summary["artifact_run_id"] = args.artifact_run_id
     summary["source_paths"] = {

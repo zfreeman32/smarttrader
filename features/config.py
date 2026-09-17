@@ -222,6 +222,10 @@ class FeatureBuilderConfig:
 
     swing_window: int = 3
     htf_swing_window: int = 3
+    # ES corrected collection uses bar-open OHLCV; None keeps legacy alignment
+    # for other instruments until their model lineage is reviewed separately.
+    htf_bar_timestamp_semantics: str | None = None
+    htf_source_bar_minutes: float = 5.0
     ict_zone_max_age: int = 120
     ict_fvg_max_age: int = 120
     ict_order_block_max_age: int = 120
@@ -231,6 +235,7 @@ class FeatureBuilderConfig:
     ict_sweep_close_back_bars: int = 1
     ict_order_block_range_atr: float = 1.25
     ict_order_block_use_wicks: bool = False
+    ict_breaker_sweep_window_bars: int = 5
     ict_displacement_range_atr: float = 1.5
     ict_displacement_body_to_range: float = 0.65
     ict_displacement_close_location: float = 0.75

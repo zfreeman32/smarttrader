@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from ict.pipelines import ICTESPrimaryPhase06Config, run_es_primary_phase06  # noqa: E402
 from ict.pipelines.es_primary_phase06 import _load_ict_label_dataset  # noqa: E402
+from ict.reports.leakage_control import build_ict_event_window_frame  # noqa: E402
 
 
 def _marks(rows: int, hits: set[int]) -> list[int]:
@@ -253,3 +254,16 @@ def test_ict_phase6_label_loader_accepts_unnamed_datetime_column(tmp_path: Path)
     assert dtype_text.startswith("datetime64[")
     assert "UTC" in dtype_text
     assert "label_long_ict_reversal" in loaded.columns
+
+
+def test_ict_event_window_frame_includes_setup_specific_targets(tmp_path: Path) -> None:
+    _write_phase06_inputs(tmp_path)
+    events = pd.read_csv(tmp_path / "ict_es_events.csv")
+
+    windows = build_ict_event_window_frame(events)
+
+    target_names = set(windows["target_name"])
+    assert "long_ict_reversal" in target_names
+    assert "long_ict_meta" in target_names
+    assert "long_ict_reversal_reversal" in target_names
+    assert "long_ict_continuation_continuation" in target_names

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -10,8 +11,10 @@ import pandas as pd
 
 from features.io import standardize_market_frame
 from ict.labeling.ict_labeling_engine import ICTLabelingConfig, build_ict_labels, ict_events_to_frame
-from ict.config.setups import ICTSetupDetectorConfig
+from ict.config.setups import DEFAULT_ICT_SETUP_TYPES, ICTSetupDetectorConfig
 from ict.setups.detector import detect_ict_setups
+from ict.setups.setup_types import ICTSetupType
+from ict.taxonomy import get_ict_taxonomy_snapshot
 
 
 DEFAULT_REVIEW_COLUMNS = (
@@ -47,6 +50,8 @@ def refresh_ict_phase03_labeling_artifacts(
     market_1m_path: str | Path | None = None,
     setup_feature_path: str | Path | None = None,
     config: ICTLabelingConfig | None = None,
+    setup_detector_config: ICTSetupDetectorConfig | None = None,
+    setup_detector_enabled_setup_types: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Regenerate ICT Phase 3 labels/events/diagnostics from the current labeler."""
 
@@ -61,12 +66,16 @@ def refresh_ict_phase03_labeling_artifacts(
 
     setup_output = None
     setup_source_rows = 0
+    detector_config = setup_detector_config or ICTSetupDetectorConfig(
+        instrument=labeling_config.instrument,
+        enabled_setup_types=setup_detector_enabled_setup_types or _enabled_setup_types_for_labeling(labeling_config),
+    )
     if setup_feature_path is not None:
         setup_surface = _load_setup_surface_frame(setup_feature_path)
         setup_source_rows = int(len(setup_surface))
         setup_output = detect_ict_setups(
             setup_surface,
-            config=ICTSetupDetectorConfig(instrument=labeling_config.instrument),
+            config=detector_config,
         )
 
     labels, diagnostics, events = build_ict_labels(
@@ -86,16 +95,39 @@ def refresh_ict_phase03_labeling_artifacts(
     labels_path = phase03_path / "ict_es_labels.csv"
     events_path = phase03_path / "ict_es_events.csv"
     diagnostics_path = phase03_path / "ict_es_labeling_diagnostics.json"
+    metadata_path = phase03_path / "ict_es_labeling_metadata.json"
+    metadata = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "phase": "phase03_labeling",
+        "labeling_config": asdict(labeling_config),
+        "setup_detector_config": detector_config.to_dict(),
+        "classic_breaker": {
+            "enabled": bool(labeling_config.classic_breaker_enabled),
+            "label_family": "ict_classic_breaker",
+            "canonical_pooling_enabled": bool(labeling_config.classic_breaker_canonical_pooling_enabled),
+            "canonical_pooling_disabled_for_classic_breaker": not bool(
+                labeling_config.classic_breaker_canonical_pooling_enabled
+            ),
+        },
+        "taxonomy": get_ict_taxonomy_snapshot(),
+        "source_paths": {
+            "market_5m_path": str(Path(market_5m_path)),
+            "market_1m_path": str(Path(market_1m_path)) if market_1m_path is not None else None,
+            "setup_feature_path": str(Path(setup_feature_path)) if setup_feature_path is not None else None,
+        },
+    }
 
     labels_reset.to_csv(labels_path, index=False)
     events_frame.to_csv(events_path, index=False)
     diagnostics_path.write_text(json.dumps(_json_safe(diagnostics), indent=2), encoding="utf-8")
+    metadata_path.write_text(json.dumps(_json_safe(metadata), indent=2), encoding="utf-8")
 
     return {
         "phase03_dir": str(phase03_path),
         "labels_csv": str(labels_path),
         "events_csv": str(events_path),
         "diagnostics_json": str(diagnostics_path),
+        "metadata_json": str(metadata_path),
         "market_5m_path": str(Path(market_5m_path)),
         "market_1m_path": str(Path(market_1m_path)) if market_1m_path is not None else None,
         "setup_feature_path": str(Path(setup_feature_path)) if setup_feature_path is not None else None,
@@ -313,6 +345,13 @@ def _load_label_market_frame(path: str | Path) -> pd.DataFrame:
             in {"ts_event", "datetime", "timestamp", "open", "high", "low", "close", "volume", "contract_id", "warmup_mask"},
         )
     )
+
+
+def _enabled_setup_types_for_labeling(config: ICTLabelingConfig) -> tuple[str, ...]:
+    enabled = list(DEFAULT_ICT_SETUP_TYPES)
+    if bool(config.classic_breaker_enabled):
+        enabled.append(ICTSetupType.CLASSIC_BREAKER.value)
+    return tuple(enabled)
 
 
 def _load_execution_market_frame(path: str | Path) -> pd.DataFrame:

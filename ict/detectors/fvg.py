@@ -21,13 +21,24 @@ class _GapZone:
     ce: float
     formed_index: int
     formed_time: object
+    pattern_start_index: int
+    pattern_start_time: object
     source_timeframe: str
     created_by_displacement: bool
     inverted: bool = False
     inversion_index: int | None = None
+    inversion_time: object | None = None
+    first_inversion_index: int | None = None
+    first_inversion_time: object | None = None
     ce_tapped: bool = False
     max_mitigation: float = 0.0
+    mitigation_index: int | None = None
+    mitigation_time: object | None = None
+    full_mitigation_index: int | None = None
+    full_mitigation_time: object | None = None
     invalidated: bool = False
+    invalidated_index: int | None = None
+    invalidated_time: object | None = None
 
 
 def _distance_to_zone(price: float, lower: float, upper: float) -> float:
@@ -108,6 +119,7 @@ def detect_ict_fvg(
     bear_created_by_disp = np.zeros(len(df), dtype=np.int8)
 
     zones: list[_GapZone] = []
+    archived_zones: list[_GapZone] = []
     emitted_records: list[dict[str, object]] = []
     zone_id_counter = itertools.count(1)
 
@@ -121,29 +133,51 @@ def detect_ict_fvg(
         current_low = lows[i]
         current_close = closes[i]
         current_atr = atr_values[i] if atr_values[i] > 0 else 1.0
+        current_time = event_time.iloc[i] if i < len(event_time) else pd.NaT
 
         for zone in zones:
             if zone.invalidated:
                 continue
             if (i - zone.formed_index) > max_age:
                 zone.invalidated = True
+                zone.invalidated_index = i
+                zone.invalidated_time = current_time
                 continue
 
             overlap = max(0.0, min(current_high, zone.upper) - max(current_low, zone.lower))
             width = max(zone.upper - zone.lower, tick_size)
             if overlap > 0:
-                zone.max_mitigation = max(zone.max_mitigation, overlap / width)
+                mitigation_pct = overlap / width
+                zone.max_mitigation = max(zone.max_mitigation, mitigation_pct)
+                if zone.mitigation_index is None:
+                    zone.mitigation_index = i
+                    zone.mitigation_time = current_time
+                if mitigation_pct >= 1.0 and zone.full_mitigation_index is None:
+                    zone.full_mitigation_index = i
+                    zone.full_mitigation_time = current_time
                 if current_low <= zone.ce <= current_high:
                     zone.ce_tapped = True
 
             if zone.direction == 1 and current_close < zone.lower:
+                if zone.first_inversion_index is None:
+                    zone.first_inversion_index = i
+                    zone.first_inversion_time = current_time
                 zone.direction = -1
                 zone.inverted = True
                 zone.inversion_index = i
+                zone.inversion_time = current_time
             elif zone.direction == -1 and current_close > zone.upper:
+                if zone.first_inversion_index is None:
+                    zone.first_inversion_index = i
+                    zone.first_inversion_time = current_time
                 zone.direction = 1
                 zone.inverted = True
                 zone.inversion_index = i
+                zone.inversion_time = current_time
+
+        if zones:
+            archived_zones.extend(zone for zone in zones if zone.invalidated)
+            zones = [zone for zone in zones if not zone.invalidated]
 
         if i >= 2 and np.isfinite(highs[i - 2]) and bull_form[i] > min_gap[i]:
             lower = float(highs[i - 2])
@@ -157,6 +191,8 @@ def detect_ict_fvg(
                 ce=(lower + upper) / 2.0,
                 formed_index=i,
                 formed_time=event_time.iloc[i] if i < len(event_time) else pd.NaT,
+                pattern_start_index=i - 2,
+                pattern_start_time=event_time.iloc[i - 2] if i - 2 < len(event_time) else pd.NaT,
                 source_timeframe="5m",
                 created_by_displacement=bool(bull_disp[i]),
             )
@@ -186,6 +222,8 @@ def detect_ict_fvg(
                 ce=(lower + upper) / 2.0,
                 formed_index=i,
                 formed_time=event_time.iloc[i] if i < len(event_time) else pd.NaT,
+                pattern_start_index=i - 2,
+                pattern_start_time=event_time.iloc[i - 2] if i - 2 < len(event_time) else pd.NaT,
                 source_timeframe="5m",
                 created_by_displacement=bool(bear_disp[i]),
             )
@@ -283,15 +321,26 @@ def detect_ict_fvg(
                 "ce": zone.ce,
                 "formed_index": zone.formed_index,
                 "formed_time": zone.formed_time,
+                "pattern_start_index": zone.pattern_start_index,
+                "pattern_start_time": zone.pattern_start_time,
                 "source_timeframe": zone.source_timeframe,
                 "created_by_displacement": zone.created_by_displacement,
                 "inverted": zone.inverted,
                 "inversion_index": zone.inversion_index,
+                "inversion_time": zone.inversion_time,
+                "first_inversion_index": zone.first_inversion_index,
+                "first_inversion_time": zone.first_inversion_time,
                 "ce_tapped": zone.ce_tapped,
                 "mitigated_pct": zone.max_mitigation,
+                "mitigation_index": zone.mitigation_index,
+                "mitigation_time": zone.mitigation_time,
+                "full_mitigation_index": zone.full_mitigation_index,
+                "full_mitigation_time": zone.full_mitigation_time,
                 "invalidated": zone.invalidated,
+                "invalidated_index": zone.invalidated_index,
+                "invalidated_time": zone.invalidated_time,
             }
-            for zone in zones
+            for zone in [*archived_zones, *zones]
         ]
     )
     return out

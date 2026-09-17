@@ -16,6 +16,7 @@ class ICTSetupType(StrEnum):
     SWEEP_RECLAIM = "sweep_reclaim"
     SWEEP_DISPLACEMENT_FVG = "sweep_displacement_fvg"
     OB_RETEST_AFTER_MSS = "ob_retest_after_mss"
+    CLASSIC_BREAKER = "classic_breaker"
     IFVG_REVERSAL = "ifvg_reversal"
     PREMIUM_DISCOUNT_CONTINUATION = "premium_discount_continuation"
     SESSION_OPEN_MANIPULATION_PRE_IB = "session_open_manipulation_pre_ib"
@@ -47,6 +48,16 @@ SETUP_OUTPUT_COLUMNS = (
     "fvg_id",
     "ce_price",
     "order_block_id",
+    "breaker_id",
+    "breaker_source_order_block_id",
+    "breaker_activation_index",
+    "breaker_source_order_block_formed_index",
+    "breaker_retest_index",
+    "breaker_age_bars",
+    "breaker_retest_count",
+    "breaker_zone_lower",
+    "breaker_zone_upper",
+    "displacement_index",
     "displacement_id",
     "displacement_volume_z",
     "session_phase",
@@ -73,6 +84,16 @@ def build_empty_setup_frame(index: pd.Index, *, event_time: pd.Series | None = N
             "fvg_id": pd.Series(pd.NA, index=index, dtype="Int64"),
             "ce_price": pd.Series(float("nan"), index=index, dtype=float),
             "order_block_id": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_id": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_source_order_block_id": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_activation_index": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_source_order_block_formed_index": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_retest_index": pd.Series(pd.NA, index=index, dtype="Int64"),
+            "breaker_age_bars": pd.Series(float("nan"), index=index, dtype=float),
+            "breaker_retest_count": pd.Series(float("nan"), index=index, dtype=float),
+            "breaker_zone_lower": pd.Series(float("nan"), index=index, dtype=float),
+            "breaker_zone_upper": pd.Series(float("nan"), index=index, dtype=float),
+            "displacement_index": pd.Series(pd.NA, index=index, dtype="Int64"),
             "displacement_id": pd.Series(pd.NA, index=index, dtype="Int64"),
             "displacement_volume_z": pd.Series(float("nan"), index=index, dtype=float),
             "session_phase": pd.Series(pd.NA, index=index, dtype="Int64"),

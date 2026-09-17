@@ -49,6 +49,7 @@ def build_ict_context_features(
         config,
         displacement_features=displacement,
         structure_features=structure,
+        sweep_features=sweeps,
     )
     premium_discount = detect_ict_premium_discount(
         df,
@@ -103,4 +104,5 @@ def build_ict_context_features(
     out.attrs["fvg_zones"] = fvg.attrs.get("fvg_zones", pd.DataFrame())
     out.attrs["sweep_events"] = sweeps.attrs.get("sweep_events", pd.DataFrame())
     out.attrs["order_blocks"] = order_blocks.attrs.get("order_blocks", pd.DataFrame())
+    out.attrs["breaker_blocks"] = order_blocks.attrs.get("breaker_blocks", pd.DataFrame())
     return out

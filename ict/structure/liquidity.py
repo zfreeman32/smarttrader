@@ -13,11 +13,32 @@ def _empty_output(index: pd.Index) -> pd.DataFrame:
     return pd.DataFrame(index=index)
 
 
+def _latest_prior_values(values: pd.Series, keys: pd.Series) -> pd.Series:
+    """Look up a strictly earlier observed period without requiring a future key.
+
+    ``values`` must have a sorted period index. Missing periods carry the last
+    observed reference. Absent earlier history and unknown keys remain NaN.
+    An aggregate is historical once its session/week key is strictly earlier;
+    this does not attest that every source bar in that period was received.
+    """
+    positions = values.index.searchsorted(keys, side="left") - 1
+    result = np.full(len(keys), np.nan, dtype=float)
+    valid = (positions >= 0) & keys.notna().to_numpy()
+    result[valid] = values.to_numpy(dtype=float)[positions[valid]]
+    return pd.Series(result, index=keys.index)
+
+
 def build_reference_level_features(
     df: pd.DataFrame,
     config: object,
 ) -> pd.DataFrame:
-    """Build ES-specific reference levels used by ICT liquidity logic."""
+    """Build ICT references from chronological, left-labeled source bars.
+
+    Prior references use the latest observed strictly earlier RTH session or
+    W-FRI week, including on overnight rows with no current RTH history. Opens
+    are published forward only from their actual opening bar. Missing history
+    stays unknown; appending later bars must not rewrite the earlier surface.
+    """
 
     out = _empty_output(df.index)
     if not {"open", "high", "low", "close"}.issubset(df.columns):
@@ -83,15 +104,16 @@ def build_reference_level_features(
                 rth_high=("high", "max"),
                 rth_low=("low", "min"),
                 rth_close=("close", "last"),
-                rth_open=("open", "first"),
             )
             .sort_index()
         )
-        prior_rth = session_rth.shift(1)
-        out["ict_prior_rth_high"] = working["session_date"].map(prior_rth["rth_high"])
-        out["ict_prior_rth_low"] = working["session_date"].map(prior_rth["rth_low"])
-        out["ict_prior_rth_close"] = working["session_date"].map(prior_rth["rth_close"])
-        out["ict_rth_open"] = working["session_date"].map(session_rth["rth_open"])
+        for suffix in ("high", "low", "close"):
+            out[f"ict_prior_rth_{suffix}"] = _latest_prior_values(
+                session_rth[f"rth_{suffix}"], working["session_date"]
+            )
+        # A later first observed RTH bar is not evidence of the opening price.
+        opening_bar = working["is_rth"] & working["minutes_since_rth_open"].eq(0)
+        out["ict_rth_open"] = working["open"].where(opening_bar).groupby(working["session_date"]).ffill()
 
         week_key = pd.to_datetime(session_rth.index).to_series(index=session_rth.index).dt.to_period("W-FRI")
         weekly = (
@@ -100,14 +122,9 @@ def build_reference_level_features(
             .agg(week_high=("rth_high", "max"), week_low=("rth_low", "min"))
             .sort_index()
         )
-        prior_weekly = weekly.shift(1)
-        session_week_map = week_key.to_dict()
-        out["ict_prior_week_high"] = working["session_date"].map(
-            lambda value: prior_weekly["week_high"].get(session_week_map.get(value))
-        )
-        out["ict_prior_week_low"] = working["session_date"].map(
-            lambda value: prior_weekly["week_low"].get(session_week_map.get(value))
-        )
+        current_week = working["session_date"].dt.to_period("W-FRI")
+        out["ict_prior_week_high"] = _latest_prior_values(weekly["week_high"], current_week)
+        out["ict_prior_week_low"] = _latest_prior_values(weekly["week_low"], current_week)
     else:
         out["ict_prior_rth_high"] = np.nan
         out["ict_prior_rth_low"] = np.nan
@@ -147,12 +164,8 @@ def build_reference_level_features(
     out["ict_ib_low_developing"] = ib_low_dev
 
     local_date = local_dt.dt.tz_localize(None).dt.normalize()
-    out["ict_midnight_open"] = local_date.map(
-        working.loc[local_minutes.eq(0)].groupby(local_date[local_minutes.eq(0)])["open"].first()
-    )
-    out["ict_open_0830"] = local_date.map(
-        working.loc[local_minutes.eq(8 * 60 + 30)].groupby(local_date[local_minutes.eq(8 * 60 + 30)])["open"].first()
-    )
+    out["ict_midnight_open"] = working["open"].where(local_minutes.eq(0)).groupby(local_date).ffill()
+    out["ict_open_0830"] = working["open"].where(local_minutes.eq(8 * 60 + 30)).groupby(local_date).ffill()
 
     typical_price = (working["high"] + working["low"] + working["close"]) / 3.0
     if volume.notna().any():

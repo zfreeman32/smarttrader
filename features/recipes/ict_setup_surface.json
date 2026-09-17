@@ -1,0 +1,16 @@
+{
+  "feature_sets": [
+    "ict_context"
+  ],
+  "warmup_rows": 0,
+  "drop_warmup_rows": false,
+  "fillna_numeric": false,
+  "enable_lags": false,
+  "enable_rolling_stats": false,
+  "enable_zscores": false,
+  "enable_winsorization": false,
+  "enable_percentile_ranks": false,
+  "enable_atr_normalization": false,
+  "enable_sigma_normalization": false,
+  "enable_interactions": false
+}

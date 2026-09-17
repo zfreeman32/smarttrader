@@ -15,6 +15,7 @@ class ICTTradeType(StrEnum):
 ICT_REVERSAL_LABEL_FAMILY = "ict_reversal"
 ICT_CONTINUATION_LABEL_FAMILY = "ict_continuation"
 ICT_META_LABEL_FAMILY = "ict_meta"
+ICT_CLASSIC_BREAKER_LABEL_FAMILY = "ict_classic_breaker"
 
 ICT_TRADE_TYPE_TO_LABEL_FAMILY = {
     ICTTradeType.REVERSAL.value: ICT_REVERSAL_LABEL_FAMILY,
@@ -53,11 +54,15 @@ ICT_SETUP_TYPE_TO_FAMILY = {
     ICTSetupType.SWEEP_RECLAIM.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.SWEEP_DISPLACEMENT_FVG.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.OB_RETEST_AFTER_MSS.value: ICTSetupFamily.REVERSAL.value,
+    ICTSetupType.CLASSIC_BREAKER.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.IFVG_REVERSAL.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.SESSION_OPEN_MANIPULATION_PRE_IB.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.SESSION_OPEN_MANIPULATION_POST_IB.value: ICTSetupFamily.REVERSAL.value,
     ICTSetupType.PREMIUM_DISCOUNT_CONTINUATION.value: ICTSetupFamily.CONTINUATION.value,
     ICTSetupType.DISPLACEMENT_CONTINUATION_AFTER_RAID.value: ICTSetupFamily.CONTINUATION.value,
+}
+ICT_SETUP_TYPE_TO_LABEL_FAMILY_OVERRIDES = {
+    ICTSetupType.CLASSIC_BREAKER.value: ICT_CLASSIC_BREAKER_LABEL_FAMILY,
 }
 
 
@@ -89,7 +94,13 @@ def infer_ict_setup_family(setup_type: object) -> str | None:
 
 
 def infer_ict_label_family_from_setup_type(setup_type: object) -> str | None:
-    setup_family = infer_ict_setup_family(setup_type)
+    normalized = normalize_ict_setup_type(setup_type)
+    if not normalized:
+        return None
+    override = ICT_SETUP_TYPE_TO_LABEL_FAMILY_OVERRIDES.get(normalized)
+    if override is not None:
+        return override
+    setup_family = infer_ict_setup_family(normalized)
     if setup_family is None:
         return None
     return ICT_SETUP_FAMILY_TO_LABEL_FAMILY.get(setup_family)
@@ -123,6 +134,9 @@ def get_ict_taxonomy_snapshot() -> dict[str, Any]:
             ICT_CONTINUATION_LABEL_FAMILY,
             ICT_META_LABEL_FAMILY,
         ],
+        "research_label_families": [
+            ICT_CLASSIC_BREAKER_LABEL_FAMILY,
+        ],
         "meta_label_family": ICT_META_LABEL_FAMILY,
         "meta_component_trade_types": [
             ICTTradeType.REVERSAL.value,
@@ -130,6 +144,7 @@ def get_ict_taxonomy_snapshot() -> dict[str, Any]:
         ],
         "meta_component_label_families": list(ICT_META_COMPONENT_LABEL_FAMILIES),
         "setup_type_to_setup_family": dict(ICT_SETUP_TYPE_TO_FAMILY),
+        "setup_type_to_label_family_overrides": dict(ICT_SETUP_TYPE_TO_LABEL_FAMILY_OVERRIDES),
         "setup_family_to_trade_type": dict(ICT_SETUP_FAMILY_TO_TRADE_TYPE),
         "setup_family_to_label_family": dict(ICT_SETUP_FAMILY_TO_LABEL_FAMILY),
         "trade_type_to_setup_families": {
@@ -142,6 +157,7 @@ def get_ict_taxonomy_snapshot() -> dict[str, Any]:
 
 __all__ = [
     "ICT_CONTINUATION_LABEL_FAMILY",
+    "ICT_CLASSIC_BREAKER_LABEL_FAMILY",
     "ICT_LABEL_FAMILY_TO_SETUP_FAMILY",
     "ICT_LABEL_FAMILY_TO_TRADE_TYPE",
     "ICT_META_COMPONENT_LABEL_FAMILIES",
@@ -150,6 +166,7 @@ __all__ = [
     "ICT_SETUP_FAMILY_TO_TRADE_TYPE",
     "ICT_SETUP_FAMILY_TO_LABEL_FAMILY",
     "ICT_SETUP_TYPE_TO_FAMILY",
+    "ICT_SETUP_TYPE_TO_LABEL_FAMILY_OVERRIDES",
     "ICT_TRADE_TYPE_TO_LABEL_FAMILY",
     "ICT_TRADE_TYPE_TO_SETUP_FAMILIES",
     "ICTTradeType",

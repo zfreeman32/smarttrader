@@ -37,6 +37,7 @@ SETUP_MIN_SPACING = {
     ICTSetupType.SWEEP_RECLAIM.value: 6,
     ICTSetupType.SWEEP_DISPLACEMENT_FVG.value: 6,
     ICTSetupType.OB_RETEST_AFTER_MSS.value: 8,
+    ICTSetupType.CLASSIC_BREAKER.value: 8,
     ICTSetupType.IFVG_REVERSAL.value: 8,
     ICTSetupType.PREMIUM_DISCOUNT_CONTINUATION.value: 10,
     ICTSetupType.SESSION_OPEN_MANIPULATION_PRE_IB.value: 60,
@@ -49,10 +50,11 @@ SETUP_PRIORITY = {
     ICTSetupType.SESSION_OPEN_MANIPULATION_POST_IB.value: 1,
     ICTSetupType.IFVG_REVERSAL.value: 2,
     ICTSetupType.OB_RETEST_AFTER_MSS.value: 3,
-    ICTSetupType.SWEEP_DISPLACEMENT_FVG.value: 4,
-    ICTSetupType.DISPLACEMENT_CONTINUATION_AFTER_RAID.value: 5,
-    ICTSetupType.PREMIUM_DISCOUNT_CONTINUATION.value: 6,
-    ICTSetupType.SWEEP_RECLAIM.value: 7,
+    ICTSetupType.CLASSIC_BREAKER.value: 4,
+    ICTSetupType.SWEEP_DISPLACEMENT_FVG.value: 5,
+    ICTSetupType.DISPLACEMENT_CONTINUATION_AFTER_RAID.value: 6,
+    ICTSetupType.PREMIUM_DISCOUNT_CONTINUATION.value: 7,
+    ICTSetupType.SWEEP_RECLAIM.value: 8,
 }
 
 
@@ -73,6 +75,16 @@ class _SetupCandidate:
     fvg_id: int | None = None
     ce_price: float = np.nan
     order_block_id: int | None = None
+    breaker_id: int | None = None
+    breaker_source_order_block_id: int | None = None
+    breaker_activation_index: int | None = None
+    breaker_source_order_block_formed_index: int | None = None
+    breaker_retest_index: int | None = None
+    breaker_age_bars: float = np.nan
+    breaker_retest_count: float = np.nan
+    breaker_zone_lower: float = np.nan
+    breaker_zone_upper: float = np.nan
+    displacement_index: int | None = None
     displacement_id: int | None = None
     displacement_volume_z: float = np.nan
     session_phase: int | None = None
@@ -92,16 +104,25 @@ def detect_ict_setups(
 
     out = build_empty_setup_frame(df.index, event_time=event_time)
     enabled = {str(value) for value in config.enabled_setup_types}
+    classic_setup_type = ICTSetupType.CLASSIC_BREAKER.value
+    classic_enabled = classic_setup_type in enabled
+    classic_as_primary = classic_enabled and not bool(enabled.difference({classic_setup_type}))
     previous_active: dict[str, bool] = {}
     last_fired_index: dict[str, int] = {}
     side_session_counts: dict[tuple[object, int], int] = {}
     candidate_records: list[dict[str, object]] = []
     fired_records: list[dict[str, object]] = []
+    research_previous_active: dict[str, bool] = {}
+    research_last_fired_index: dict[str, int] = {}
+    research_side_session_counts: dict[tuple[object, int], int] = {}
+    research_candidate_records: list[dict[str, object]] = []
+    research_fired_records: list[dict[str, object]] = []
 
     for position in range(len(working)):
         row = working.iloc[position]
         session_key = row.get("session_date")
         current_candidates: list[_SetupCandidate] = []
+        current_research_candidates: list[_SetupCandidate] = []
 
         if ICTSetupType.SESSION_OPEN_MANIPULATION_PRE_IB.value in enabled:
             candidate = _candidate_session_open_manipulation(row, config, pre_ib=True)
@@ -135,8 +156,16 @@ def detect_ict_setups(
             candidate = _candidate_sweep_reclaim(row, config)
             if candidate is not None:
                 current_candidates.append(candidate)
+        if classic_enabled:
+            candidate = _candidate_classic_breaker(row, config, position=position)
+            if candidate is not None:
+                if classic_as_primary:
+                    current_candidates.append(candidate)
+                else:
+                    current_research_candidates.append(candidate)
 
         current_active = {candidate.anchor_key: True for candidate in current_candidates}
+        research_current_active = {candidate.anchor_key: True for candidate in current_research_candidates}
         eligible: list[_SetupCandidate] = []
 
         for candidate in current_candidates:
@@ -183,10 +212,58 @@ def detect_ict_setups(
 
         previous_active = current_active
 
+        research_eligible: list[_SetupCandidate] = []
+        for candidate in current_research_candidates:
+            active_key = candidate.anchor_key
+            session_side_key = (session_key, int(candidate.setup_side))
+            already_active = research_previous_active.get(active_key, False)
+            spacing = max(1, SETUP_MIN_SPACING.get(candidate.setup_type, int(config.cooldown_bars)))
+            within_spacing = (
+                active_key in research_last_fired_index
+                and (position - research_last_fired_index[active_key]) < spacing
+            )
+            side_session_exhausted = (
+                research_side_session_counts.get(session_side_key, 0)
+                >= int(config.max_same_side_fires_per_session)
+            )
+            is_eligible = (not already_active) and (not within_spacing) and (not side_session_exhausted)
+            research_candidate_records.append(
+                _candidate_record(
+                    row=row,
+                    position=position,
+                    candidate=candidate,
+                    session_key=session_key,
+                    eligible=is_eligible,
+                    selected=False,
+                )
+            )
+            if is_eligible:
+                research_eligible.append(candidate)
+
+        selected_research = _select_candidate(research_eligible)
+        if selected_research is not None:
+            research_last_fired_index[selected_research.anchor_key] = position
+            side_session_key = (session_key, int(selected_research.setup_side))
+            research_side_session_counts[side_session_key] = research_side_session_counts.get(side_session_key, 0) + 1
+            research_fired_records.append(
+                _candidate_record(
+                    row=row,
+                    position=position,
+                    candidate=selected_research,
+                    session_key=session_key,
+                    eligible=True,
+                    selected=True,
+                )
+            )
+
+        research_previous_active = research_current_active
+
     out.attrs["detector_phase"] = "phase3_setup_detector"
     out.attrs["detector_config"] = asdict(config)
     out.attrs["candidate_events"] = pd.DataFrame(candidate_records)
     out.attrs["fired_events"] = pd.DataFrame(fired_records)
+    out.attrs["research_candidate_events"] = pd.DataFrame(research_candidate_records)
+    out.attrs["research_fired_events"] = pd.DataFrame(research_fired_records)
     if "session_date" in working.columns:
         out.attrs["session_date"] = pd.Series(working["session_date"].to_numpy(), index=out.index)
     validate_ict_setup_output(out)
@@ -257,6 +334,29 @@ def _ensure_setup_input_frame(
         "dist_to_bull_fvg_atr",
         "dist_to_bull_order_block_atr",
     }
+    if ICTSetupType.CLASSIC_BREAKER.value in {str(value) for value in config.enabled_setup_types}:
+        context_required.update(
+            {
+                "ict_bull_breaker_retest_event",
+                "ict_bear_breaker_retest_event",
+                "ict_nearest_bull_breaker_id",
+                "ict_nearest_bear_breaker_id",
+                "ict_nearest_bull_breaker_source_order_block_id",
+                "ict_nearest_bear_breaker_source_order_block_id",
+                "ict_nearest_bull_breaker_lower",
+                "ict_nearest_bull_breaker_upper",
+                "ict_nearest_bear_breaker_lower",
+                "ict_nearest_bear_breaker_upper",
+                "ict_nearest_bull_breaker_formed_index",
+                "ict_nearest_bear_breaker_formed_index",
+                "ict_nearest_bull_breaker_source_order_block_formed_index",
+                "ict_nearest_bear_breaker_source_order_block_formed_index",
+                "ict_bull_breaker_retest_count",
+                "ict_bear_breaker_retest_count",
+                "bull_breaker_age_bars",
+                "bear_breaker_age_bars",
+            }
+        )
     if not context_required.issubset(working.columns):
         context = build_ict_context_features(working, config)
         fresh_columns = [column for column in context.columns if column not in working.columns]
@@ -284,6 +384,7 @@ def _ensure_setup_input_frame(
     derived_columns["_last_sell_side_sweep_level"] = sweep_level_value.where(sell_sweep.gt(0)).ffill()
     derived_columns["_last_buy_side_sweep_type"] = derived_columns["_last_buy_side_sweep_code"].map(LEVEL_CODE_TO_NAME).fillna("")
     derived_columns["_last_sell_side_sweep_type"] = derived_columns["_last_sell_side_sweep_code"].map(LEVEL_CODE_TO_NAME).fillna("")
+    derived_columns["_prev_close"] = pd.to_numeric(working.get("close"), errors="coerce").shift(1)
     working = pd.concat([working, pd.DataFrame(derived_columns, index=working.index)], axis=1)
 
     return working
@@ -497,6 +598,101 @@ def _candidate_ob_retest_after_mss(
             displacement_volume_z=_to_float(row.get("ict_displacement_volume_zscore")),
             session_phase=_to_int(row.get("ict_session_phase_code"), default=0),
             anchor_key=_build_anchor_key(ICTSetupType.OB_RETEST_AFTER_MSS.value, side, "ob", zone["id"]),
+        )
+    return None
+
+
+def _candidate_classic_breaker(
+    row: pd.Series,
+    config: ICTSetupDetectorConfig,
+    *,
+    position: int,
+) -> _SetupCandidate | None:
+    for side in (1, -1):
+        zone = _breaker_zone(row, side)
+        if zone is None or not zone["retest_event"]:
+            continue
+
+        lower = float(zone["lower"])
+        upper = float(zone["upper"])
+        breaker_id = zone["id"]
+        source_order_block_id = zone["source_order_block_id"]
+        activation_index = float(zone["formed_index"])
+        source_formed_index = float(zone["source_order_block_formed_index"])
+        age_bars = float(zone["age_bars"])
+        retest_count = float(zone["retest_count"])
+        if breaker_id is None or source_order_block_id is None:
+            continue
+        if not np.isfinite(lower) or not np.isfinite(upper) or lower >= upper:
+            continue
+        if not np.isfinite(activation_index) or not np.isfinite(source_formed_index):
+            continue
+        if not (int(source_formed_index) < int(activation_index) < int(position)):
+            continue
+        if not np.isfinite(age_bars) or age_bars <= 0 or age_bars > float(config.classic_breaker_max_age):
+            continue
+        if bool(config.classic_breaker_first_retest_only) and _to_int(retest_count, default=0) != 1:
+            continue
+        if bool(config.classic_breaker_require_rejection_close) and not _breaker_rejection_close(row, side, lower, upper):
+            continue
+        displacement_index = _latest_displacement_index(row, side)
+        if np.isfinite(displacement_index) and int(displacement_index) > int(position):
+            continue
+
+        reference_level, reference_type, sweep_type = _recent_reference_for_side(row, side)
+        if not np.isfinite(reference_level):
+            reference_level = _zone_mid(lower, upper)
+            reference_type = "classic_breaker_zone"
+            sweep_type = ""
+        supportive_zone = _supportive_zone(row, side, include_ifvg=True)
+        supportive_zone_near = supportive_zone is not None and float(supportive_zone.get("dist_atr", np.inf)) <= 0.50
+        fvg_id = (
+            supportive_zone["id"]
+            if supportive_zone_near and supportive_zone["kind"] in {"fvg", "ifvg"}
+            else None
+        )
+        ce_price = (
+            float(supportive_zone["ce"])
+            if supportive_zone_near and supportive_zone["kind"] in {"fvg", "ifvg"}
+            else np.nan
+        )
+        confidence = _bounded_confidence(
+            0.74
+            + 0.08 * int(_recent_mss(row, side, 6))
+            + 0.06 * int(supportive_zone_near)
+            + 0.05 * int(_pd_aligned(row, side))
+            + 0.04 * int(_to_float(row.get("dist_to_bull_breaker_atr" if side > 0 else "dist_to_bear_breaker_atr")) <= 0.25)
+        )
+        return _SetupCandidate(
+            setup_type=ICTSetupType.CLASSIC_BREAKER.value,
+            setup_family=ICTSetupFamily.REVERSAL.value,
+            setup_side=side,
+            confidence=confidence,
+            anchor_level=_zone_mid(lower, upper),
+            entry_price=_to_float(row.get("close")),
+            stop_reference=_zone_stop(lower, upper, side, row, config),
+            target_reference=_target_reference_for_side(row, side),
+            reference_level=reference_level,
+            reference_level_type=reference_type,
+            sweep_type=sweep_type,
+            htf_context=_htf_context_label(row, side),
+            fvg_id=fvg_id,
+            ce_price=ce_price,
+            order_block_id=source_order_block_id,
+            breaker_id=breaker_id,
+            breaker_source_order_block_id=source_order_block_id,
+            breaker_activation_index=int(activation_index),
+            breaker_source_order_block_formed_index=int(source_formed_index),
+            breaker_retest_index=int(position),
+            breaker_age_bars=age_bars,
+            breaker_retest_count=retest_count,
+            breaker_zone_lower=lower,
+            breaker_zone_upper=upper,
+            displacement_index=_nullable_int(displacement_index),
+            displacement_id=_latest_displacement_id(row, side),
+            displacement_volume_z=_to_float(row.get("ict_displacement_volume_zscore")),
+            session_phase=_to_int(row.get("ict_session_phase_code"), default=0),
+            anchor_key=_build_anchor_key(ICTSetupType.CLASSIC_BREAKER.value, side, "breaker", breaker_id),
         )
     return None
 
@@ -754,6 +950,38 @@ def _order_block_zone(row: pd.Series, side: int) -> dict[str, object] | None:
     return None
 
 
+def _breaker_zone(row: pd.Series, side: int) -> dict[str, object] | None:
+    if side > 0 and _as_bool(row.get("ict_bull_breaker_retest_event")):
+        return {
+            "id": _nullable_int(row.get("ict_nearest_bull_breaker_id")),
+            "source_order_block_id": _nullable_int(row.get("ict_nearest_bull_breaker_source_order_block_id")),
+            "lower": _to_float(row.get("ict_nearest_bull_breaker_lower")),
+            "upper": _to_float(row.get("ict_nearest_bull_breaker_upper")),
+            "formed_index": _to_float(row.get("ict_nearest_bull_breaker_formed_index")),
+            "source_order_block_formed_index": _to_float(
+                row.get("ict_nearest_bull_breaker_source_order_block_formed_index")
+            ),
+            "age_bars": _to_float(row.get("bull_breaker_age_bars")),
+            "retest_count": _to_float(row.get("ict_bull_breaker_retest_count")),
+            "retest_event": True,
+        }
+    if side < 0 and _as_bool(row.get("ict_bear_breaker_retest_event")):
+        return {
+            "id": _nullable_int(row.get("ict_nearest_bear_breaker_id")),
+            "source_order_block_id": _nullable_int(row.get("ict_nearest_bear_breaker_source_order_block_id")),
+            "lower": _to_float(row.get("ict_nearest_bear_breaker_lower")),
+            "upper": _to_float(row.get("ict_nearest_bear_breaker_upper")),
+            "formed_index": _to_float(row.get("ict_nearest_bear_breaker_formed_index")),
+            "source_order_block_formed_index": _to_float(
+                row.get("ict_nearest_bear_breaker_source_order_block_formed_index")
+            ),
+            "age_bars": _to_float(row.get("bear_breaker_age_bars")),
+            "retest_count": _to_float(row.get("ict_bear_breaker_retest_count")),
+            "retest_event": True,
+        }
+    return None
+
+
 def _recent_reference_for_side(row: pd.Series, side: int) -> tuple[float, str, str]:
     if side > 0:
         return (
@@ -915,6 +1143,20 @@ def _bar_touches_level(row: pd.Series, level: float) -> bool:
     return np.isfinite(level) and np.isfinite(high) and np.isfinite(low) and (low <= level <= high)
 
 
+def _breaker_rejection_close(row: pd.Series, side: int, lower: float, upper: float) -> bool:
+    close_price = _to_float(row.get("close"))
+    prev_close = _to_float(row.get("_prev_close"))
+    if not np.isfinite(close_price):
+        return False
+    if side > 0:
+        if close_price < upper:
+            return False
+        return (not np.isfinite(prev_close)) or prev_close >= upper
+    if close_price > lower:
+        return False
+    return (not np.isfinite(prev_close)) or prev_close <= lower
+
+
 def _stop_buffer(row: pd.Series, config: ICTSetupDetectorConfig) -> float:
     atr = _to_float(row.get("atr_14"))
     tick_size = float(get_tick_size(config))
@@ -953,6 +1195,18 @@ def _write_candidate_to_output(out: pd.DataFrame, position: int, candidate: _Set
     out.iloc[position, out.columns.get_loc("fvg_id")] = candidate.fvg_id
     out.iloc[position, out.columns.get_loc("ce_price")] = candidate.ce_price
     out.iloc[position, out.columns.get_loc("order_block_id")] = candidate.order_block_id
+    out.iloc[position, out.columns.get_loc("breaker_id")] = candidate.breaker_id
+    out.iloc[position, out.columns.get_loc("breaker_source_order_block_id")] = candidate.breaker_source_order_block_id
+    out.iloc[position, out.columns.get_loc("breaker_activation_index")] = candidate.breaker_activation_index
+    out.iloc[position, out.columns.get_loc("breaker_source_order_block_formed_index")] = (
+        candidate.breaker_source_order_block_formed_index
+    )
+    out.iloc[position, out.columns.get_loc("breaker_retest_index")] = candidate.breaker_retest_index
+    out.iloc[position, out.columns.get_loc("breaker_age_bars")] = candidate.breaker_age_bars
+    out.iloc[position, out.columns.get_loc("breaker_retest_count")] = candidate.breaker_retest_count
+    out.iloc[position, out.columns.get_loc("breaker_zone_lower")] = candidate.breaker_zone_lower
+    out.iloc[position, out.columns.get_loc("breaker_zone_upper")] = candidate.breaker_zone_upper
+    out.iloc[position, out.columns.get_loc("displacement_index")] = candidate.displacement_index
     out.iloc[position, out.columns.get_loc("displacement_id")] = candidate.displacement_id
     out.iloc[position, out.columns.get_loc("displacement_volume_z")] = candidate.displacement_volume_z
     out.iloc[position, out.columns.get_loc("session_phase")] = candidate.session_phase
@@ -971,17 +1225,35 @@ def _candidate_record(
         "bar_index": position,
         "event_time": row.get("datetime", row.get("timestamp")),
         "session_date": session_key,
+        "fired": bool(selected),
         "setup_type": candidate.setup_type,
         "setup_family": candidate.setup_family,
         "setup_side": int(candidate.setup_side),
         "confidence": float(candidate.confidence),
         "anchor_level": candidate.anchor_level,
+        "entry_price": candidate.entry_price,
+        "stop_reference": candidate.stop_reference,
+        "target_reference": candidate.target_reference,
         "reference_level": candidate.reference_level,
         "reference_level_type": candidate.reference_level_type,
         "sweep_type": candidate.sweep_type,
+        "htf_context": candidate.htf_context,
         "fvg_id": candidate.fvg_id,
+        "ce_price": candidate.ce_price,
         "order_block_id": candidate.order_block_id,
+        "breaker_id": candidate.breaker_id,
+        "breaker_source_order_block_id": candidate.breaker_source_order_block_id,
+        "breaker_activation_index": candidate.breaker_activation_index,
+        "breaker_source_order_block_formed_index": candidate.breaker_source_order_block_formed_index,
+        "breaker_retest_index": candidate.breaker_retest_index,
+        "breaker_age_bars": candidate.breaker_age_bars,
+        "breaker_retest_count": candidate.breaker_retest_count,
+        "breaker_zone_lower": candidate.breaker_zone_lower,
+        "breaker_zone_upper": candidate.breaker_zone_upper,
+        "displacement_index": candidate.displacement_index,
         "displacement_id": candidate.displacement_id,
+        "displacement_volume_z": candidate.displacement_volume_z,
+        "session_phase": candidate.session_phase,
         "eligible": bool(eligible),
         "selected": bool(selected),
         "anchor_key": candidate.anchor_key,

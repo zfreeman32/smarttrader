@@ -17,6 +17,10 @@ DEFAULT_ICT_SETUP_TYPES = (
     "displacement_continuation_after_raid",
 )
 
+RESEARCH_ICT_SETUP_TYPES = (
+    "classic_breaker",
+)
+
 
 @dataclass(frozen=True)
 class ICTSetupDetectorConfig:
@@ -37,6 +41,10 @@ class ICTSetupDetectorConfig:
     order_block_max_age: int = 120
     order_block_use_wicks: bool = False
     order_block_range_atr: float = 1.25
+    breaker_sweep_window_bars: int = 5
+    classic_breaker_max_age: int = 120
+    classic_breaker_first_retest_only: bool = True
+    classic_breaker_require_rejection_close: bool = True
     displacement_range_atr: float = 1.5
     displacement_body_to_range: float = 0.65
     displacement_close_location: float = 0.75

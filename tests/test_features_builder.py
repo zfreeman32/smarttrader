@@ -245,8 +245,8 @@ def test_builder_threaded_transforms_match_serial_output() -> None:
     assert serial_dataset.columns.tolist() == threaded_dataset.columns.tolist()
     numeric_columns = serial_dataset.select_dtypes(include=[np.number]).columns
     np.testing.assert_allclose(
-        serial_dataset.loc[:, numeric_columns].to_numpy(),
-        threaded_dataset.loc[:, numeric_columns].to_numpy(),
+        serial_dataset.loc[:, numeric_columns].to_numpy(dtype=np.float64),
+        threaded_dataset.loc[:, numeric_columns].to_numpy(dtype=np.float64),
         equal_nan=True,
     )
     assert serial_metadata["transform_counts"] == threaded_metadata["transform_counts"]
@@ -343,6 +343,32 @@ def test_transform_refactor_matches_reference_outputs_with_float32_tolerance() -
             equal_nan=True,
         )
         assert all(dtype == np.float32 for dtype in actual_frame.dtypes)
+
+
+def test_transform_concat_ignores_dataframe_valued_series_attrs() -> None:
+    feature_frame = _sample_market_frame(rows=24)
+    feature_frame.attrs["fvg_zones"] = pd.DataFrame(
+        {"zone_id": [1, 2], "lower": [1.081, 1.083], "upper": [1.084, 1.086]}
+    )
+
+    lagged = add_lag_features(
+        feature_frame,
+        columns=["open", "close"],
+        periods=[1, 2],
+    )
+
+    assert lagged.columns.tolist() == [
+        "open_lag_1",
+        "open_lag_2",
+        "close_lag_1",
+        "close_lag_2",
+    ]
+    assert lagged.attrs == {}
+    np.testing.assert_allclose(
+        lagged["close_lag_1"].iloc[1:].to_numpy(),
+        feature_frame["close"].iloc[:-1].to_numpy(),
+        rtol=1e-6,
+    )
 
 
 def test_builder_emits_progress_events() -> None:

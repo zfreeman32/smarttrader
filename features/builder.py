@@ -29,6 +29,11 @@ from .transforms import (
 )
 
 REFERENCE_BAR_MINUTES = 5.0
+PORTABLE_FEATURE_ATTR_NAMES = frozenset(
+    {
+        "fvg_zones",
+    }
+)
 
 
 class FeatureDatasetBuilder:
@@ -141,7 +146,9 @@ class FeatureDatasetBuilder:
                     generated_columns.extend(added)
 
                 if prepared_blocks:
+                    portable_attrs = self._portable_feature_attrs(working)
                     working = pd.concat([working, *prepared_blocks], axis=1)
+                    self._restore_feature_attrs(working, portable_attrs)
                 del prepared_blocks
                 del transform_blocks
                 gc.collect()
@@ -380,8 +387,24 @@ class FeatureDatasetBuilder:
         prepared, new_columns = FeatureDatasetBuilder._prepare_feature_block(set(working.columns), additions)
         if not new_columns:
             return working, []
+        portable_attrs = FeatureDatasetBuilder._portable_feature_attrs(working, additions)
         merged = pd.concat([working, prepared], axis=1)
+        FeatureDatasetBuilder._restore_feature_attrs(merged, portable_attrs)
         return merged, new_columns
+
+    @staticmethod
+    def _portable_feature_attrs(*frames: pd.DataFrame) -> Dict[str, object]:
+        attrs: Dict[str, object] = {}
+        for frame in frames:
+            for name in PORTABLE_FEATURE_ATTR_NAMES:
+                if name in frame.attrs:
+                    attrs[name] = frame.attrs[name]
+        return attrs
+
+    @staticmethod
+    def _restore_feature_attrs(frame: pd.DataFrame, attrs: Dict[str, object]) -> None:
+        for name, value in attrs.items():
+            frame.attrs[name] = value
 
     def _build_transform_blocks(
         self,
