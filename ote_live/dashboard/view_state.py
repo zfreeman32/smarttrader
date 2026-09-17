@@ -157,6 +157,7 @@ def persist_ict_dashboard_state(
         "instrument_id": bar.instrument_id,
         "levels": _build_ict_level_payload(latest),
         "zones": _build_ict_zone_payload(latest),
+        "fvg_history": _build_ict_fvg_history_payload(policy_frame),
         "context": _build_ict_context_payload(latest),
         "latest_setup": setup_payload,
         "recent_setups": recent_setups,
@@ -325,6 +326,84 @@ def _build_ict_zone_payload(latest: pd.Series) -> dict[str, dict[str, Any]]:
     return zones
 
 
+def _build_ict_fvg_history_payload(policy_frame: pd.DataFrame) -> list[dict[str, Any]]:
+    fvg_zones = policy_frame.attrs.get("fvg_zones")
+    if not isinstance(fvg_zones, pd.DataFrame) or fvg_zones.empty:
+        return []
+
+    history: list[dict[str, Any]] = []
+    seen: set[tuple[object, ...]] = set()
+    for row in fvg_zones.to_dict(orient="records"):
+        lower = _coerce_price_level(row.get("lower"))
+        upper = _coerce_price_level(row.get("upper"))
+        if lower is None or upper is None or lower > upper:
+            continue
+        formed_index = _coerce_int(row.get("formed_index"))
+        if formed_index is None or formed_index < 0:
+            continue
+        direction = _coerce_int(row.get("original_direction"))
+        if direction not in (-1, 1):
+            direction = _coerce_int(row.get("direction"))
+        if direction not in (-1, 1):
+            continue
+        zone_id = _coerce_int(row.get("fvg_id"))
+        source_timeframe = str(row.get("source_timeframe") or "5m")
+        key = (
+            source_timeframe,
+            direction,
+            formed_index,
+            round(lower, 10),
+            round(upper, 10),
+            zone_id,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        formed_time = _coerce_timestamp_text(row.get("formed_time"))
+        ce_price = _coerce_price_level(row.get("ce"))
+        if ce_price is None or not lower <= ce_price <= upper:
+            ce_price = _zone_mid(lower, upper)
+        history.append(
+            {
+                "id": zone_id,
+                "direction": direction,
+                "current_direction": _coerce_int(row.get("direction")),
+                "lower": lower,
+                "upper": upper,
+                "ce_price": ce_price,
+                "formed_index": formed_index,
+                "formed_time": formed_time,
+                "pattern_start_index": _coerce_int(row.get("pattern_start_index")),
+                "pattern_start_time": _coerce_timestamp_text(row.get("pattern_start_time")),
+                "source_timeframe": source_timeframe,
+                "created_by_displacement": bool(_coerce_bool(row.get("created_by_displacement"))),
+                "inverted": bool(_coerce_bool(row.get("inverted"))),
+                "inversion_index": _coerce_int(row.get("inversion_index")),
+                "inversion_time": _coerce_timestamp_text(row.get("inversion_time")),
+                "first_inversion_index": _coerce_int(row.get("first_inversion_index")),
+                "first_inversion_time": _coerce_timestamp_text(row.get("first_inversion_time")),
+                "ce_tapped": bool(_coerce_bool(row.get("ce_tapped"))),
+                "mitigated_pct": _coerce_float(row.get("mitigated_pct")),
+                "mitigation_index": _coerce_int(row.get("mitigation_index")),
+                "mitigation_time": _coerce_timestamp_text(row.get("mitigation_time")),
+                "full_mitigation_index": _coerce_int(row.get("full_mitigation_index")),
+                "full_mitigation_time": _coerce_timestamp_text(row.get("full_mitigation_time")),
+                "invalidated": bool(_coerce_bool(row.get("invalidated"))),
+                "invalidated_index": _coerce_int(row.get("invalidated_index")),
+                "invalidated_time": _coerce_timestamp_text(row.get("invalidated_time")),
+            }
+        )
+    history.sort(key=lambda item: int(item["formed_index"]))
+    return history
+
+
+def _coerce_timestamp_text(value: Any) -> str | None:
+    timestamp = pd.to_datetime(value, errors="coerce", utc=True)
+    if pd.isna(timestamp):
+        return None
+    return timestamp.isoformat()
+
+
 def _build_ict_context_payload(latest: pd.Series) -> dict[str, Any]:
     return {
         "structure_state": _coerce_int(latest.get("ict_structure_state")),
@@ -363,17 +442,17 @@ def _build_ict_setup_payload(policy_frame: pd.DataFrame, *, close_price: float) 
         "confidence": confidence,
         "label": _ict_setup_label(setup_type=setup_type, setup_side=setup_side),
         "close": close_price,
-        "anchor_level": _coerce_float(last_detection.get("anchor_level")),
-        "entry_price": _coerce_float(last_detection.get("entry_price")),
-        "stop_reference": _coerce_float(last_detection.get("stop_reference")),
-        "target_reference": _coerce_float(last_detection.get("target_reference")),
-        "reference_level": _coerce_float(last_detection.get("reference_level")),
+        "anchor_level": _coerce_price_level(last_detection.get("anchor_level")),
+        "entry_price": _coerce_price_level(last_detection.get("entry_price")),
+        "stop_reference": _coerce_price_level(last_detection.get("stop_reference")),
+        "target_reference": _coerce_price_level(last_detection.get("target_reference")),
+        "reference_level": _coerce_price_level(last_detection.get("reference_level")),
         "reference_level_type": str(last_detection.get("reference_level_type") or ""),
         "sweep_type": str(last_detection.get("sweep_type") or ""),
         "htf_context": str(last_detection.get("htf_context") or ""),
-        "ce_price": _coerce_float(last_detection.get("ce_price")),
-        "order_block_id": _coerce_int(last_detection.get("order_block_id")),
-        "displacement_id": _coerce_int(last_detection.get("displacement_id")),
+        "ce_price": _coerce_price_level(last_detection.get("ce_price")),
+        "order_block_id": _coerce_positive_int(last_detection.get("order_block_id")),
+        "displacement_id": _coerce_positive_int(last_detection.get("displacement_id")),
         "session_phase": _coerce_int(last_detection.get("session_phase")),
     }
 
@@ -431,6 +510,13 @@ def _coerce_int(value) -> int | None:
     if resolved is None:
         return None
     return int(resolved)
+
+
+def _coerce_positive_int(value) -> int | None:
+    resolved = _coerce_int(value)
+    if resolved is None or resolved <= 0:
+        return None
+    return resolved
 
 
 def _coerce_bool(value) -> bool | None:

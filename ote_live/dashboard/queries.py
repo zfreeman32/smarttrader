@@ -9,6 +9,7 @@ import pandas as pd
 
 from ote_live.ingestion.base import ensure_utc, utc_now
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
+from ote_live.storage.collection import LEGACY_COLLECTION, MixedCollectionError
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,16 @@ class DashboardPerformanceSummary:
     cumulative_markout_pips: float
 
 
+@dataclass(frozen=True)
+class DashboardFrvpPaperSignalSummary:
+    event_count: int
+    completed_count: int
+    open_count: int
+    win_rate: float | None
+    avg_net_ticks: float | None
+    cumulative_net_ticks: float
+
+
 def fetch_recent_bars(
     store: SQLiteLiveDataStore,
     *,
@@ -62,7 +73,9 @@ def fetch_recent_bars(
             source,
             symbol,
             contract_symbol,
-            instrument_id
+            instrument_id,
+            is_complete, bar_version, feed_type, observation_kind,
+            first_observed_at_utc, last_observed_at_utc
         FROM canonical_bars
         WHERE asset = ? AND timeframe = ?
         ORDER BY timestamp_utc DESC
@@ -87,6 +100,12 @@ def fetch_recent_bars(
             "symbol": row["symbol"],
             "contract_symbol": row["contract_symbol"],
             "instrument_id": int(row["instrument_id"]) if row["instrument_id"] is not None else None,
+            "is_complete": bool(row["is_complete"]) if row["is_complete"] is not None else None,
+            "bar_version": row["bar_version"],
+            "feed_type": row["feed_type"],
+            "observation_kind": row["observation_kind"],
+            "first_observed_at_utc": row["first_observed_at_utc"],
+            "last_observed_at_utc": row["last_observed_at_utc"],
         }
         for row in reversed(rows)
     ]
@@ -98,10 +117,23 @@ def fetch_recent_signals(
     *,
     model_ids: Sequence[str] | None = None,
     decisions: Sequence[str] | None = None,
+    runtime_manifest_hashes: Sequence[str] | None = None,
+    collection_version: str | None = None,
+    asset: str | None = None,
+    timeframe: str | None = None,
     limit: int = 100,
 ) -> pd.DataFrame:
     filters: list[str] = []
     params: list[Any] = []
+    if asset is not None:
+        filters.append("fs.asset = ?")
+        params.append(asset)
+    if timeframe is not None:
+        filters.append("fs.timeframe = ?")
+        params.append(timeframe)
+    if collection_version is not None:
+        filters.append("sd.collection_version = ?")
+        params.append(collection_version)
     if model_ids:
         placeholders = ", ".join("?" for _ in model_ids)
         filters.append(f"sd.model_id IN ({placeholders})")
@@ -110,6 +142,14 @@ def fetch_recent_signals(
         placeholders = ", ".join("?" for _ in decisions)
         filters.append(f"sd.decision IN ({placeholders})")
         params.extend(str(item) for item in decisions)
+    if runtime_manifest_hashes is not None:
+        resolved_hashes = tuple(str(item) for item in runtime_manifest_hashes)
+        if not resolved_hashes:
+            filters.append("1 = 0")
+        else:
+            placeholders = ", ".join("?" for _ in resolved_hashes)
+            filters.append(f"rm.manifest_hash IN ({placeholders})")
+            params.extend(resolved_hashes)
     where_clause = ""
     if filters:
         where_clause = "AND " + " AND ".join(filters)
@@ -118,6 +158,7 @@ def fetch_recent_signals(
         f"""
         SELECT
             sd.id AS signal_decision_id,
+            sd.collection_version,
             sd.model_id,
             sd.direction,
             sd.timestamp_utc,
@@ -128,6 +169,12 @@ def fetch_recent_signals(
             sd.threshold,
             sd.regime,
             sd.reasons_json,
+            COALESCE(
+                sd.runtime_manifest_id,
+                mp.runtime_manifest_id,
+                fs.runtime_manifest_id
+            ) AS runtime_manifest_id,
+            rm.manifest_hash,
             fs.asset,
             fs.timeframe,
             b.open AS bar_open,
@@ -141,6 +188,12 @@ def fetch_recent_signals(
             ON mp.id = sd.prediction_id
         LEFT JOIN feature_snapshots AS fs
             ON fs.id = mp.feature_snapshot_id
+        LEFT JOIN runtime_manifests AS rm
+            ON rm.id = COALESCE(
+                sd.runtime_manifest_id,
+                mp.runtime_manifest_id,
+                fs.runtime_manifest_id
+            )
         LEFT JOIN canonical_bars AS b
             ON b.asset = fs.asset
            AND b.timeframe = fs.timeframe
@@ -168,6 +221,7 @@ def fetch_recent_signals(
     payload = [
         {
             "signal_decision_id": int(row["signal_decision_id"]),
+            "collection_version": row["collection_version"],
             "model_id": row["model_id"],
             "direction": row["direction"],
             "timestamp": _parse_datetime(row["timestamp_utc"]),
@@ -178,6 +232,12 @@ def fetch_recent_signals(
             "threshold": float(row["threshold"]) if row["threshold"] is not None else None,
             "regime": row["regime"],
             "reasons": _parse_json_list(row["reasons_json"]),
+            "runtime_manifest_id": (
+                int(row["runtime_manifest_id"])
+                if row["runtime_manifest_id"] is not None
+                else None
+            ),
+            "manifest_hash": row["manifest_hash"],
             "asset": row["asset"],
             "timeframe": row["timeframe"],
             "bar_open": float(row["bar_open"]) if row["bar_open"] is not None else None,
@@ -197,16 +257,37 @@ def fetch_confidence_history(
     *,
     model_id: str | None = None,
     direction: str | None = None,
+    runtime_manifest_hashes: Sequence[str] | None = None,
+    collection_version: str | None = None,
+    asset: str | None = None,
+    timeframe: str | None = None,
     limit: int = 300,
 ) -> pd.DataFrame:
     filters = []
     params: list[Any] = []
+    if collection_version is not None:
+        filters.append("mp.collection_version = ?")
+        params.append(collection_version)
+    if asset is not None:
+        filters.append("fs.asset = ?")
+        params.append(asset)
+    if timeframe is not None:
+        filters.append("fs.timeframe = ?")
+        params.append(timeframe)
     if model_id is not None:
         filters.append("mp.model_id = ?")
         params.append(model_id)
     if direction is not None:
         filters.append("mp.direction = ?")
         params.append(direction)
+    if runtime_manifest_hashes is not None:
+        resolved_hashes = tuple(str(item) for item in runtime_manifest_hashes)
+        if not resolved_hashes:
+            filters.append("1 = 0")
+        else:
+            placeholders = ", ".join("?" for _ in resolved_hashes)
+            filters.append(f"rm.manifest_hash IN ({placeholders})")
+            params.extend(resolved_hashes)
     where_clause = " AND ".join(filters)
     if where_clause:
         where_clause = "WHERE " + where_clause
@@ -224,10 +305,18 @@ def fetch_confidence_history(
             mp.calibrated_probability,
             mp.threshold_applied,
             mp.threshold_source,
+            mp.collection_version,
+            mp.prediction_json,
+            fs.timeframe,
+            COALESCE(mp.runtime_manifest_id, sd.runtime_manifest_id) AS runtime_manifest_id,
+            rm.manifest_hash,
             sd.decision
         FROM model_predictions AS mp
+        LEFT JOIN feature_snapshots AS fs ON fs.id = mp.feature_snapshot_id
         LEFT JOIN signal_decisions AS sd
             ON sd.prediction_id = mp.id
+        LEFT JOIN runtime_manifests AS rm
+            ON rm.id = COALESCE(mp.runtime_manifest_id, sd.runtime_manifest_id)
         {where_clause}
         ORDER BY mp.timestamp_utc DESC, mp.id DESC
         LIMIT ?
@@ -238,6 +327,9 @@ def fetch_confidence_history(
     payload = [
         {
             "prediction_id": int(row["prediction_id"]),
+            "collection_version": row["collection_version"],
+            "prediction_recorded_at_utc": json.loads(row["prediction_json"]).get("prediction_recorded_at_utc"),
+            "timeframe": row["timeframe"],
             "signal_decision_id": int(row["signal_decision_id"]) if row["signal_decision_id"] is not None else None,
             "model_id": row["model_id"],
             "direction": row["direction"],
@@ -247,6 +339,12 @@ def fetch_confidence_history(
             "calibrated_probability": float(row["calibrated_probability"]),
             "threshold_applied": float(row["threshold_applied"]) if row["threshold_applied"] is not None else None,
             "threshold_source": row["threshold_source"],
+            "runtime_manifest_id": (
+                int(row["runtime_manifest_id"])
+                if row["runtime_manifest_id"] is not None
+                else None
+            ),
+            "manifest_hash": row["manifest_hash"],
             "decision": row["decision"],
         }
         for row in reversed(rows)
@@ -300,6 +398,7 @@ def build_health_summary(
     asset: str,
     timeframe: str,
     now: datetime | None = None,
+    runtime_manifest_hashes: Sequence[str] | None = None,
 ) -> DashboardHealthSummary:
     resolved_now = ensure_utc(now or utc_now())
     latest_bar_timestamp = store.get_latest_bar_timestamp(
@@ -309,10 +408,12 @@ def build_health_summary(
     latest_prediction_timestamp = _fetch_latest_timestamp(
         store,
         table_name="model_predictions",
+        runtime_manifest_hashes=runtime_manifest_hashes,
     )
     latest_signal_timestamp = _fetch_latest_timestamp(
         store,
         table_name="signal_decisions",
+        runtime_manifest_hashes=runtime_manifest_hashes,
     )
     heartbeat_row = store.connection.execute(
         """
@@ -399,11 +500,28 @@ def compute_signal_markouts(
     limit: int = 100,
     decisions: Sequence[str] = ("emit",),
     model_ids: Sequence[str] | None = None,
+    collection_version: str | None = None,
 ) -> pd.DataFrame:
+    # Check the entire requested population before LIMIT can hide an older cohort.
+    filters: list[str] = []
+    params: list[Any] = []
+    for column, values in (("model_id", model_ids), ("decision", decisions)):
+        if values:
+            filters.append(f"{column} IN ({', '.join('?' for _ in values)})")
+            params.extend(values)
+    query = "SELECT DISTINCT collection_version FROM signal_decisions"
+    if filters:
+        query += " WHERE " + " AND ".join(filters)
+    versions = {row[0] for row in store.connection.execute(query, params)}
+    if collection_version is None:
+        if len(versions) > 1:
+            raise MixedCollectionError("Mixed collection versions: choose an explicit collection_version for this report")
+        collection_version = next(iter(versions), LEGACY_COLLECTION)
     signals = fetch_recent_signals(
         audit_repository,
         model_ids=model_ids,
         decisions=decisions,
+        collection_version=collection_version,
         limit=limit,
     )
     if signals.empty:
@@ -447,6 +565,7 @@ def compute_signal_markouts(
             rows.append(
                 {
                     "signal_decision_id": int(row.signal_decision_id),
+                    "collection_version": row.collection_version,
                     "timestamp": row.timestamp,
                     "direction": row.direction,
                     "decision": row.decision,
@@ -475,6 +594,8 @@ def compute_signal_markouts(
 
 
 def summarize_signal_markouts(markouts: pd.DataFrame) -> DashboardPerformanceSummary:
+    if "collection_version" in markouts and markouts["collection_version"].fillna(LEGACY_COLLECTION).nunique() > 1:
+        raise MixedCollectionError("Cannot summarize mixed collection versions")
     if markouts.empty:
         return DashboardPerformanceSummary(
             signal_count=0,
@@ -511,14 +632,158 @@ def summarize_signal_markouts(markouts: pd.DataFrame) -> DashboardPerformanceSum
     )
 
 
-def _fetch_latest_timestamp(store: SQLiteLiveDataStore, *, table_name: str) -> datetime | None:
+def fetch_frvp_paper_signal_markouts(
+    store: SQLiteLiveDataStore,
+    *,
+    bundle_id: str,
+    runtime_manifest_hashes: Sequence[str] | None = None,
+    limit: int | None = None,
+) -> pd.DataFrame:
+    """Read the controlled FRVP 120-bar, friction-adjusted ES markout ledger."""
+
+    filters = [
+        "bundle_id = ?",
+        "asset = 'ES'",
+        "timeframe = '5m'",
+        "holding_period_bars = 120",
+    ]
+    params: list[Any] = [str(bundle_id)]
+    if runtime_manifest_hashes is not None:
+        resolved_hashes = tuple(str(item) for item in runtime_manifest_hashes)
+        if not resolved_hashes:
+            filters.append("1 = 0")
+        else:
+            placeholders = ", ".join("?" for _ in resolved_hashes)
+            filters.append(f"manifest_hash IN ({placeholders})")
+            params.extend(resolved_hashes)
+    where_clause = " AND ".join(filters)
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = "LIMIT ?"
+        params.append(int(limit))
+    rows = store.connection.execute(
+        f"""
+        SELECT
+            id,
+            signal_decision_id,
+            bundle_id,
+            runtime_manifest_id,
+            manifest_hash,
+            model_id,
+            source_timestamp_utc,
+            entry_price,
+            holding_period_bars,
+            total_cost_ticks,
+            lifecycle_status,
+            exit_timestamp_utc,
+            exit_price,
+            gross_pnl_ticks,
+            net_pnl_ticks,
+            outcome
+        FROM frvp_paper_signal_events
+        WHERE {where_clause}
+        ORDER BY source_timestamp_utc DESC, id DESC
+        {limit_clause}
+        """,
+        params,
+    ).fetchall()
+    payload = [
+        {
+            "event_id": int(row["id"]),
+            "signal_decision_id": int(row["signal_decision_id"]),
+            "bundle_id": row["bundle_id"],
+            "runtime_manifest_id": int(row["runtime_manifest_id"]),
+            "manifest_hash": row["manifest_hash"],
+            "model_id": row["model_id"],
+            "timestamp": _parse_datetime(row["source_timestamp_utc"]),
+            "entry_price": float(row["entry_price"]),
+            "holding_period_bars": int(row["holding_period_bars"]),
+            "total_cost_ticks": float(row["total_cost_ticks"]),
+            "status": row["lifecycle_status"],
+            "exit_timestamp": (
+                _parse_datetime(row["exit_timestamp_utc"])
+                if row["exit_timestamp_utc"] is not None
+                else None
+            ),
+            "exit_price": (
+                float(row["exit_price"])
+                if row["exit_price"] is not None
+                else None
+            ),
+            "gross_markout_ticks": (
+                float(row["gross_pnl_ticks"])
+                if row["gross_pnl_ticks"] is not None
+                else None
+            ),
+            "net_markout_ticks": (
+                float(row["net_pnl_ticks"])
+                if row["net_pnl_ticks"] is not None
+                else None
+            ),
+            "outcome": row["outcome"],
+        }
+        for row in reversed(rows)
+    ]
+    return pd.DataFrame(payload)
+
+
+def summarize_frvp_paper_signal_markouts(
+    markouts: pd.DataFrame,
+) -> DashboardFrvpPaperSignalSummary:
+    if markouts.empty:
+        return DashboardFrvpPaperSignalSummary(
+            event_count=0,
+            completed_count=0,
+            open_count=0,
+            win_rate=None,
+            avg_net_ticks=None,
+            cumulative_net_ticks=0.0,
+        )
+
+    completed = markouts.loc[markouts["status"] == "settled"].copy()
+    open_count = int((markouts["status"] != "settled").sum())
+    net_ticks = pd.to_numeric(
+        completed["net_markout_ticks"], errors="coerce"
+    ).dropna()
+    return DashboardFrvpPaperSignalSummary(
+        event_count=int(len(markouts)),
+        completed_count=int(len(completed)),
+        open_count=open_count,
+        win_rate=float((net_ticks > 0.0).mean()) if not net_ticks.empty else None,
+        avg_net_ticks=float(net_ticks.mean()) if not net_ticks.empty else None,
+        cumulative_net_ticks=float(net_ticks.sum()) if not net_ticks.empty else 0.0,
+    )
+
+
+def _fetch_latest_timestamp(
+    store: SQLiteLiveDataStore,
+    *,
+    table_name: str,
+    runtime_manifest_hashes: Sequence[str] | None = None,
+) -> datetime | None:
+    if table_name not in {"model_predictions", "signal_decisions"}:
+        raise ValueError(f"Unsupported timestamp table: {table_name}")
+    params: list[Any] = []
+    where_clause = ""
+    if runtime_manifest_hashes is not None:
+        resolved_hashes = tuple(str(item) for item in runtime_manifest_hashes)
+        if not resolved_hashes:
+            where_clause = "WHERE 1 = 0"
+        else:
+            placeholders = ", ".join("?" for _ in resolved_hashes)
+            where_clause = f"WHERE rm.manifest_hash IN ({placeholders})"
+            params.extend(resolved_hashes)
     row = store.connection.execute(
         f"""
-        SELECT timestamp_utc
-        FROM {table_name}
-        ORDER BY timestamp_utc DESC, id DESC
+        SELECT source.timestamp_utc
+        FROM {table_name} AS source
+        LEFT JOIN runtime_manifests AS rm
+            ON rm.id = source.runtime_manifest_id
+        {where_clause}
+        ORDER BY source.timestamp_utc DESC, source.id DESC
         LIMIT 1
-        """
+        """,
+        params,
     ).fetchone()
     if row is None:
         return None

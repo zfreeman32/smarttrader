@@ -2,27 +2,33 @@ from __future__ import annotations
 
 from .queries import (
     DashboardHealthSummary,
+    DashboardFrvpPaperSignalSummary,
     DashboardPerformanceSummary,
     build_health_summary,
     compute_signal_markouts,
+    fetch_frvp_paper_signal_markouts,
     fetch_confidence_history,
     fetch_recent_bars,
     fetch_recent_health_events,
     fetch_recent_signals,
     summarize_signal_markouts,
+    summarize_frvp_paper_signal_markouts,
 )
 
 __all__ = [
     "DashboardHealthSummary",
+    "DashboardFrvpPaperSignalSummary",
     "DashboardPerformanceSummary",
     "build_health_summary",
     "compute_signal_markouts",
     "create_dashboard_app",
     "fetch_confidence_history",
+    "fetch_frvp_paper_signal_markouts",
     "fetch_recent_bars",
     "fetch_recent_health_events",
     "fetch_recent_signals",
     "summarize_signal_markouts",
+    "summarize_frvp_paper_signal_markouts",
 ]
 
 

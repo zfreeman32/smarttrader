@@ -6,16 +6,25 @@ from pathlib import Path
 from ote_live.env import env_bool, env_int, env_path, env_str, load_repo_env
 from ote_live.dashboard.app import create_dashboard_app
 from ote_live.dashboard.view_registry import (
-    DEFAULT_FRVP_ACTIVE_WEIGHT_MODEL_IDS,
+    DEFAULT_FRVP_MODEL_ORDER,
     DEFAULT_FRVP_LONG_RUNTIME_MANIFEST_PATH,
     DEFAULT_FRVP_REGISTRY_PATH,
     DEFAULT_FRVP_SHORT_RUNTIME_MANIFEST_PATH,
+    DEFAULT_FRVP_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_FRVP_SETUP_MODEL_ORDER,
+    DEFAULT_FRVP_SETUP_REGISTRY_PATH,
+    DEFAULT_FRVP_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
     DEFAULT_ICT_ACTIVE_WEIGHT_MODEL_IDS,
     DEFAULT_ICT_LONG_RUNTIME_MANIFEST_PATH,
     DEFAULT_ICT_MODEL_ORDER,
     DEFAULT_ICT_REGISTRY_PATH,
     DEFAULT_ICT_SHORT_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_SETUP_MODEL_ORDER,
+    DEFAULT_ICT_SETUP_REGISTRY_PATH,
+    DEFAULT_ICT_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
     DashboardViewConfig,
+    resolve_frvp_dashboard_presentation,
 )
 from ote_live.ingestion.runtime import DEFAULT_DB_PATH, DEFAULT_LONG_RUNTIME_MANIFEST_PATH, DEFAULT_SHORT_RUNTIME_MANIFEST_PATH
 
@@ -62,6 +71,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(env_path("FRVP_LIVE_REGISTRY_PATH", DEFAULT_FRVP_REGISTRY_PATH)),
     )
     parser.add_argument(
+        "--frvp-setup-long-runtime-manifest-path",
+        default=str(
+            env_path(
+                "FRVP_SETUP_LIVE_LONG_RUNTIME_MANIFEST_PATH",
+                DEFAULT_FRVP_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--frvp-setup-short-runtime-manifest-path",
+        default=str(
+            env_path(
+                "FRVP_SETUP_LIVE_SHORT_RUNTIME_MANIFEST_PATH",
+                DEFAULT_FRVP_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--frvp-setup-registry-path",
+        default=str(env_path("FRVP_SETUP_LIVE_REGISTRY_PATH", DEFAULT_FRVP_SETUP_REGISTRY_PATH)),
+    )
+    parser.add_argument(
         "--ict-long-runtime-manifest-path",
         default=str(env_path("ICT_LIVE_LONG_RUNTIME_MANIFEST_PATH", DEFAULT_ICT_LONG_RUNTIME_MANIFEST_PATH)),
     )
@@ -72,6 +103,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ict-registry-path",
         default=str(env_path("ICT_LIVE_REGISTRY_PATH", DEFAULT_ICT_REGISTRY_PATH)),
+    )
+    parser.add_argument(
+        "--ict-setup-long-runtime-manifest-path",
+        default=str(
+            env_path(
+                "ICT_SETUP_LIVE_LONG_RUNTIME_MANIFEST_PATH",
+                DEFAULT_ICT_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--ict-setup-short-runtime-manifest-path",
+        default=str(
+            env_path(
+                "ICT_SETUP_LIVE_SHORT_RUNTIME_MANIFEST_PATH",
+                DEFAULT_ICT_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--ict-setup-registry-path",
+        default=str(env_path("ICT_SETUP_LIVE_REGISTRY_PATH", DEFAULT_ICT_SETUP_REGISTRY_PATH)),
     )
     parser.add_argument("--frvp-data-supplier", default=env_str("FRVP_LIVE_DATA_SUPPLIER", "IBKR"))
     parser.add_argument("--ict-data-supplier", default=env_str("ICT_LIVE_DATA_SUPPLIER", "IBKR"))
@@ -96,6 +149,16 @@ def main() -> int:
     load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
+    frvp_long_manifest_path = Path(args.frvp_long_runtime_manifest_path)
+    frvp_short_manifest_path = Path(args.frvp_short_runtime_manifest_path)
+    frvp_registry_path = Path(args.frvp_registry_path)
+    frvp_active_weight_model_ids, frvp_view_label = (
+        resolve_frvp_dashboard_presentation(
+            frvp_long_manifest_path,
+            frvp_short_manifest_path,
+            frvp_registry_path,
+        )
+    )
     view_configs = (
         DashboardViewConfig(
             view_id="OTE",
@@ -114,17 +177,29 @@ def main() -> int:
             asset=args.frvp_asset,
             timeframe=args.frvp_timeframe,
             data_supplier=args.frvp_data_supplier,
-            long_runtime_manifest_path=Path(args.frvp_long_runtime_manifest_path),
-            short_runtime_manifest_path=Path(args.frvp_short_runtime_manifest_path),
-            registry_path=Path(args.frvp_registry_path),
-            preferred_model_order=(
-                "frvp_long_continuation_xgb_v1",
-                "frvp_long_reversal_xgb_v1",
-                "frvp_short_meta_xgb_v1",
-            ),
-            active_weight_model_ids=DEFAULT_FRVP_ACTIVE_WEIGHT_MODEL_IDS,
-            description=f"{args.frvp_asset} {args.frvp_timeframe} FRVP shadow operator view",
+            long_runtime_manifest_path=frvp_long_manifest_path,
+            short_runtime_manifest_path=frvp_short_manifest_path,
+            registry_path=frvp_registry_path,
+            preferred_model_order=DEFAULT_FRVP_MODEL_ORDER,
+            active_weight_model_ids=frvp_active_weight_model_ids,
+            description=f"{args.frvp_asset} {args.frvp_timeframe} FRVP {frvp_view_label}",
             recent_activity_title="Recent FRVP Setups",
+            enable_frvp_overlays=True,
+            runtime_state_key="FRVP",
+        ),
+        DashboardViewConfig(
+            view_id="FRVP_SETUP",
+            label="FRVP Setup Models",
+            asset=args.frvp_asset,
+            timeframe=args.frvp_timeframe,
+            data_supplier=args.frvp_data_supplier,
+            long_runtime_manifest_path=Path(args.frvp_setup_long_runtime_manifest_path),
+            short_runtime_manifest_path=Path(args.frvp_setup_short_runtime_manifest_path),
+            registry_path=Path(args.frvp_setup_registry_path),
+            preferred_model_order=DEFAULT_FRVP_SETUP_MODEL_ORDER,
+            active_weight_model_ids=(),
+            description=f"{args.frvp_asset} {args.frvp_timeframe} FRVP setup-family shadow operator view",
+            recent_activity_title="Recent FRVP Setup-Model Decisions",
             enable_frvp_overlays=True,
             runtime_state_key="FRVP",
         ),
@@ -141,6 +216,22 @@ def main() -> int:
             active_weight_model_ids=DEFAULT_ICT_ACTIVE_WEIGHT_MODEL_IDS,
             description=f"{args.ict_asset} {args.ict_timeframe} ICT controlled paper-signal view",
             recent_activity_title="Recent ICT Setups",
+            enable_ict_overlays=True,
+            runtime_state_key="ICT",
+        ),
+        DashboardViewConfig(
+            view_id="ICT_SETUP",
+            label="ICT Setup Models",
+            asset=args.ict_asset,
+            timeframe=args.ict_timeframe,
+            data_supplier=args.ict_data_supplier,
+            long_runtime_manifest_path=Path(args.ict_setup_long_runtime_manifest_path),
+            short_runtime_manifest_path=Path(args.ict_setup_short_runtime_manifest_path),
+            registry_path=Path(args.ict_setup_registry_path),
+            preferred_model_order=DEFAULT_ICT_SETUP_MODEL_ORDER,
+            active_weight_model_ids=(),
+            description=f"{args.ict_asset} {args.ict_timeframe} ICT setup-family shadow operator view",
+            recent_activity_title="Recent ICT Setup-Model Decisions",
             enable_ict_overlays=True,
             runtime_state_key="ICT",
         ),
