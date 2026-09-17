@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Callable
 
 from ote_live.dashboard.view_registry import (
     DEFAULT_FRVP_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_FRVP_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_FRVP_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
     DEFAULT_FRVP_SHORT_RUNTIME_MANIFEST_PATH,
     DEFAULT_ICT_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+    DEFAULT_ICT_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
     DEFAULT_ICT_SHORT_RUNTIME_MANIFEST_PATH,
 )
 from ote_live.env import env_bool, env_float, env_int, env_path, env_str, load_repo_env
@@ -21,9 +25,14 @@ from ote_live.ingestion.runtime import (
     LiveCollectorConfig,
     LiveCollectorRuntime,
 )
-from ote_live.ingestion.signals import LiveSignalProcessor
+from ote_live.ingestion.signals import (
+    LiveSignalProcessor,
+    MultiGroupLiveSignalProcessor,
+    _issue_frvp_paper_signal_runtime_authorization,
+)
 from ote_live.ops import (
     DiskSpaceMonitor,
+    ServiceHealthSnapshot,
     ServiceHeartbeatWriter,
     capture_startup_recovery_state,
     collect_service_health_snapshot,
@@ -39,12 +48,26 @@ from ote_live.scripts.run_live_collector import (
     _service_status_for_summary,
     build_parser as build_base_parser,
 )
+from ote_live.storage.frvp_paper_signal import (
+    FRVP_PAPER_SIGNAL_MODEL_IDS as FRVP_LEDGER_MODEL_IDS,
+    supports_frvp_paper_signal_manifest,
+)
+from ote_live.storage.frvp_confirmation_lifecycle import (
+    record_frvp_confirmation_start,
+)
 from scripts.audit_ict_paper_signal_readiness import (
     BUNDLE_ID as ICT_PAPER_SIGNAL_BUNDLE_ID,
     DEFAULT_BUNDLE_DIR as ICT_PAPER_SIGNAL_BUNDLE_DIR,
     DEFAULT_ENV_PATH as ICT_PAPER_SIGNAL_ENV_PATH,
     EXPECTED_MODEL_IDS as ICT_PAPER_SIGNAL_MODEL_IDS,
     audit_readiness as audit_ict_paper_signal_readiness,
+)
+from scripts.audit_frvp_paper_signal_readiness import (
+    BUNDLE_ID as FRVP_PAPER_SIGNAL_BUNDLE_ID,
+    DEFAULT_BUNDLE_DIR as FRVP_PAPER_SIGNAL_BUNDLE_DIR,
+    DEFAULT_ENV_PATH as FRVP_PAPER_SIGNAL_ENV_PATH,
+    EXPECTED_MODEL_IDS as FRVP_PAPER_SIGNAL_MODEL_IDS,
+    audit_readiness as audit_frvp_paper_signal_readiness,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -60,57 +83,12 @@ ICT_PAPER_SIGNAL_LONG_MANIFEST_PATH = (
 ICT_PAPER_SIGNAL_SHORT_MANIFEST_PATH = (
     ICT_PAPER_SIGNAL_BUNDLE_DIR / "live_runtime_manifest_short.json"
 )
-
-
-class MultiGroupLiveSignalProcessor:
-    def __init__(self, processors: tuple[LiveSignalProcessor, ...]) -> None:
-        if not processors:
-            raise ValueError("At least one signal processor is required.")
-        self.processors = tuple(processors)
-        self.bindings = tuple(
-            binding
-            for processor in self.processors
-            for binding in processor.bindings
-        )
-        runtime_history_bars = max(
-            int(
-                getattr(
-                    getattr(getattr(processor, "feature_engine", None), "plan", None),
-                    "runtime_history_bars",
-                    0,
-                )
-                or 0
-            )
-            for processor in self.processors
-        )
-        self.feature_engine = SimpleNamespace(
-            plan=SimpleNamespace(runtime_history_bars=runtime_history_bars)
-        )
-
-    def warm_from_store(self) -> int:
-        return sum(processor.warm_from_store() for processor in self.processors)
-
-    def seed_latest_predictions_from_store(self):
-        results = []
-        for processor in self.processors:
-            results.extend(processor.seed_latest_predictions_from_store())
-        return tuple(results)
-
-    def process_new_bars_from_store(
-        self,
-        *,
-        emit_operator_artifacts: bool,
-        max_timestamp,
-    ):
-        results = []
-        for processor in self.processors:
-            results.extend(
-                processor.process_new_bars_from_store(
-                    emit_operator_artifacts=emit_operator_artifacts,
-                    max_timestamp=max_timestamp,
-                )
-            )
-        return tuple(results)
+FRVP_PAPER_SIGNAL_LONG_MANIFEST_PATH = (
+    FRVP_PAPER_SIGNAL_BUNDLE_DIR / "live_runtime_manifest_long.json"
+)
+FRVP_PAPER_SIGNAL_SHORT_MANIFEST_PATH = (
+    FRVP_PAPER_SIGNAL_BUNDLE_DIR / "live_runtime_manifest_short.json"
+)
 
 
 def build_parser():
@@ -151,6 +129,10 @@ def build_parser():
         all_models_active=env_bool("ES_LIVE_ALL_MODELS_ACTIVE", env_bool("FRVP_LIVE_ALL_MODELS_ACTIVE", False)),
         ict_paper_signal_trial_enabled=env_bool(
             "ICT_PAPER_SIGNAL_TRIAL_ENABLED",
+            False,
+        ),
+        frvp_paper_signal_trial_enabled=env_bool(
+            "FRVP_PAPER_SIGNAL_TRIAL_ENABLED",
             False,
         ),
         enable_signal_chart_capture=env_bool("ES_LIVE_ENABLE_SIGNAL_CHART_CAPTURE", env_bool("FRVP_LIVE_ENABLE_SIGNAL_CHART_CAPTURE", True)),
@@ -218,6 +200,28 @@ def build_parser():
     include_ict_group = parser.add_mutually_exclusive_group()
     include_ict_group.add_argument("--include-ict", dest="include_ict", action="store_true")
     include_ict_group.add_argument("--exclude-ict", dest="include_ict", action="store_false")
+    include_frvp_setup_group = parser.add_mutually_exclusive_group()
+    include_frvp_setup_group.add_argument(
+        "--include-frvp-setup",
+        dest="include_frvp_setup",
+        action="store_true",
+    )
+    include_frvp_setup_group.add_argument(
+        "--exclude-frvp-setup",
+        dest="include_frvp_setup",
+        action="store_false",
+    )
+    include_ict_setup_group = parser.add_mutually_exclusive_group()
+    include_ict_setup_group.add_argument(
+        "--include-ict-setup",
+        dest="include_ict_setup",
+        action="store_true",
+    )
+    include_ict_setup_group.add_argument(
+        "--exclude-ict-setup",
+        dest="include_ict_setup",
+        action="store_false",
+    )
     parser.add_argument(
         "--allow-ict-clean-handoff",
         action="store_true",
@@ -228,9 +232,38 @@ def build_parser():
             "explicit one-launch handoff mode, not a persistent environment setting."
         ),
     )
+    parser.add_argument(
+        "--allow-frvp-clean-handoff",
+        action="store_true",
+        default=False,
+        help=(
+            "Allow the final FRVP launch guard to use an exact, healthy, non-stale "
+            "clean stopped ES heartbeat no more than 120 seconds old. This is an "
+            "explicit one-launch handoff mode, not a persistent environment setting."
+        ),
+    )
+    ict_delayed_test_group = parser.add_mutually_exclusive_group()
+    ict_delayed_test_group.add_argument(
+        "--allow-ict-delayed-test",
+        dest="allow_ict_delayed_test",
+        action="store_true",
+        help=(
+            "Run ICT on delayed IBKR data for dashboard/operator testing. ICT "
+            "models are forced to shadow mode and ICT paper-signal ledger writes "
+            "are disabled; this does not authorize the controlled paper trial."
+        ),
+    )
+    ict_delayed_test_group.add_argument(
+        "--no-ict-delayed-test",
+        dest="allow_ict_delayed_test",
+        action="store_false",
+    )
     parser.set_defaults(
         include_frvp=env_bool("ES_LIVE_INCLUDE_FRVP", True),
         include_ict=env_bool("ES_LIVE_INCLUDE_ICT", True),
+        include_frvp_setup=env_bool("ES_LIVE_INCLUDE_FRVP_SETUP", False),
+        include_ict_setup=env_bool("ES_LIVE_INCLUDE_ICT_SETUP", False),
+        allow_ict_delayed_test=env_bool("ICT_DELAYED_DATA_TEST_ENABLED", False),
     )
     parser.add_argument(
         "--frvp-long-runtime-manifest-path",
@@ -247,6 +280,42 @@ def build_parser():
     parser.add_argument(
         "--ict-short-runtime-manifest-path",
         default=str(env_path("ICT_LIVE_SHORT_RUNTIME_MANIFEST_PATH", DEFAULT_ICT_SHORT_RUNTIME_MANIFEST_PATH)),
+    )
+    parser.add_argument(
+        "--frvp-setup-long-runtime-manifest-path",
+        default=str(
+            env_path(
+                "FRVP_SETUP_LIVE_LONG_RUNTIME_MANIFEST_PATH",
+                DEFAULT_FRVP_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--frvp-setup-short-runtime-manifest-path",
+        default=str(
+            env_path(
+                "FRVP_SETUP_LIVE_SHORT_RUNTIME_MANIFEST_PATH",
+                DEFAULT_FRVP_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--ict-setup-long-runtime-manifest-path",
+        default=str(
+            env_path(
+                "ICT_SETUP_LIVE_LONG_RUNTIME_MANIFEST_PATH",
+                DEFAULT_ICT_SETUP_LONG_RUNTIME_MANIFEST_PATH,
+            )
+        ),
+    )
+    parser.add_argument(
+        "--ict-setup-short-runtime-manifest-path",
+        default=str(
+            env_path(
+                "ICT_SETUP_LIVE_SHORT_RUNTIME_MANIFEST_PATH",
+                DEFAULT_ICT_SETUP_SHORT_RUNTIME_MANIFEST_PATH,
+            )
+        ),
     )
     return parser
 
@@ -269,7 +338,66 @@ def _build_group_specs(args) -> list[dict[str, object]]:
                 "short_path": Path(args.ict_short_runtime_manifest_path),
             }
         )
+    if bool(args.include_frvp_setup):
+        group_specs.append(
+            {
+                "name": "FRVP",
+                "long_path": Path(args.frvp_setup_long_runtime_manifest_path),
+                "short_path": Path(args.frvp_setup_short_runtime_manifest_path),
+            }
+        )
+    if bool(args.include_ict_setup):
+        group_specs.append(
+            {
+                "name": "ICT",
+                "long_path": Path(args.ict_setup_long_runtime_manifest_path),
+                "short_path": Path(args.ict_setup_short_runtime_manifest_path),
+            }
+        )
     return group_specs
+
+
+def _ict_delayed_test_enabled(args) -> bool:
+    return bool(getattr(args, "allow_ict_delayed_test", False))
+
+
+def _validate_ict_delayed_test_runtime(args) -> None:
+    """Allow delayed-data ICT chart testing without authorizing paper signals."""
+
+    manifest_paths = (
+        _resolve_repo_runtime_path(args.ict_long_runtime_manifest_path),
+        _resolve_repo_runtime_path(args.ict_short_runtime_manifest_path),
+    )
+    expected_manifest_paths = (
+        ICT_PAPER_SIGNAL_LONG_MANIFEST_PATH.resolve(),
+        ICT_PAPER_SIGNAL_SHORT_MANIFEST_PATH.resolve(),
+    )
+    if manifest_paths != expected_manifest_paths:
+        raise ValueError(
+            "ICT delayed test mode is locked to the exact controlled bundle "
+            f"{ICT_PAPER_SIGNAL_BUNDLE_ID}; renamed, copied, or custom manifest "
+            "paths are not permitted."
+        )
+    if bool(args.all_models_active):
+        raise ValueError(
+            "ICT delayed test mode requires ES_LIVE_ALL_MODELS_ACTIVE=false "
+            "so ICT models remain shadow-only."
+        )
+    if not bool(args.ibkr_enabled):
+        raise ValueError("ICT delayed test mode requires IBKR_ENABLED=true.")
+    if str(args.ibkr_account_mode or "").strip().lower() != "paper":
+        raise ValueError("ICT delayed test mode requires IBKR_ACCOUNT_MODE=paper.")
+    requested_type = str(getattr(args, "ibkr_market_data_type", "") or "").strip().lower()
+    delayed_requested = requested_type in {"delayed", "3", "delayed_frozen", "4"}
+    if not delayed_requested and not bool(args.ibkr_allow_delayed_fallback):
+        raise ValueError(
+            "ICT delayed test mode requires IBKR_MARKET_DATA_TYPE=delayed "
+            "or IBKR_ALLOW_DELAYED_FALLBACK=true."
+        )
+    LOGGER.warning(
+        "ICT delayed test mode enabled; ICT models will run in shadow mode and "
+        "ICT paper-signal ledger writes are disabled."
+    )
 
 
 def _validate_ict_paper_signal_runtime(
@@ -280,6 +408,9 @@ def _validate_ict_paper_signal_runtime(
     """Fail closed on overrides that would invalidate the controlled ICT trial."""
 
     if not bool(args.include_ict):
+        return
+    if _ict_delayed_test_enabled(args):
+        _validate_ict_delayed_test_runtime(args)
         return
     manifest_paths = (
         _resolve_repo_runtime_path(args.ict_long_runtime_manifest_path),
@@ -351,6 +482,210 @@ def _validate_ict_paper_signal_runtime(
     _require_exact_ready_contract(result)
 
 
+def _validate_frvp_paper_signal_runtime(
+    args,
+    *,
+    readiness_audit: Callable[..., dict[str, Any]] | None = None,
+) -> object | None:
+    """Fail closed whenever an active FRVP manifest is requested."""
+
+    if not bool(args.include_frvp):
+        return None
+    if bool(args.all_models_active):
+        raise ValueError(
+            "Every FRVP runtime, including candidate-only bootstrap bundles, "
+            "requires ES_LIVE_ALL_MODELS_ACTIVE=false."
+        )
+    manifest_paths = (
+        _resolve_repo_runtime_path(args.frvp_long_runtime_manifest_path),
+        _resolve_repo_runtime_path(args.frvp_short_runtime_manifest_path),
+    )
+    has_active_models = _frvp_manifest_set_has_active_models(manifest_paths)
+    trial_enabled = bool(
+        getattr(args, "frvp_paper_signal_trial_enabled", False)
+    )
+    if not has_active_models:
+        if trial_enabled:
+            raise ValueError(
+                "FRVP_PAPER_SIGNAL_TRIAL_ENABLED=true is only valid for the exact "
+                "controlled active bundle."
+            )
+        return None
+    expected_manifest_paths = (
+        FRVP_PAPER_SIGNAL_LONG_MANIFEST_PATH.resolve(),
+        FRVP_PAPER_SIGNAL_SHORT_MANIFEST_PATH.resolve(),
+    )
+    if manifest_paths != expected_manifest_paths:
+        raise ValueError(
+            "Active FRVP launch is locked to the exact controlled bundle "
+            f"{FRVP_PAPER_SIGNAL_BUNDLE_ID}; renamed, copied, or custom active "
+            "manifest paths are not permitted."
+        )
+    if not trial_enabled:
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle is configured but its "
+            "fail-closed launch switch is disabled. Run the readiness audit, "
+            "resolve every blocker, then set FRVP_PAPER_SIGNAL_TRIAL_ENABLED=true."
+        )
+    if not bool(getattr(args, "enable_signal_runtime", False)):
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires "
+            "ES_LIVE_ENABLE_SIGNAL_RUNTIME=true."
+        )
+    if str(getattr(args, "asset", "") or "").strip().upper() != "ES":
+        raise ValueError("The FRVP controlled paper-signal bundle requires asset ES.")
+    if str(getattr(args, "source_timeframe", "") or "").strip() != "5m":
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires source timeframe 5m."
+        )
+    if str(getattr(args, "data_supplier", "") or "").strip().upper() != "IBKR":
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires data supplier IBKR."
+        )
+    if not bool(args.ibkr_enabled):
+        raise ValueError("The FRVP controlled paper-signal bundle requires IBKR_ENABLED=true.")
+    if str(args.ibkr_account_mode or "").strip().lower() != "paper":
+        raise ValueError("The FRVP controlled paper-signal bundle requires IBKR_ACCOUNT_MODE=paper.")
+    if int(args.ibkr_port) not in {4002, 7497}:
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires paper port 4002 or 7497."
+        )
+    if bool(args.ibkr_allow_delayed_fallback):
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires "
+            "IBKR_ALLOW_DELAYED_FALLBACK=false."
+        )
+    if str(getattr(args, "ibkr_market_data_type", "") or "").strip().lower() not in {
+        "live",
+        "1",
+    }:
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires live IBKR market data."
+        )
+    if str(getattr(args, "ibkr_what_to_show", "") or "").strip().upper() != "TRADES":
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires IBKR_WHAT_TO_SHOW=TRADES."
+        )
+    if bool(getattr(args, "ibkr_use_rth", True)):
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires IBKR_ES_USE_RTH=false."
+        )
+    if str(getattr(args, "ibkr_bar_size", "") or "").strip().lower() != "5 mins":
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires IBKR_ES_BAR_SIZE='5 mins'."
+        )
+    if not bool(getattr(args, "ibkr_keep_up_to_date", False)):
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires IBKR_KEEP_UP_TO_DATE=true."
+        )
+    contract_fields = {
+        "ibkr_symbol": "ES",
+        "ibkr_security_type": "FUT",
+        "ibkr_exchange": "CME",
+        "ibkr_currency": "USD",
+        "ibkr_multiplier": "50",
+        "ibkr_trading_class": "ES",
+    }
+    for field, expected in contract_fields.items():
+        actual = str(getattr(args, field, "") or "").strip().upper()
+        if actual != expected:
+            raise ValueError(
+                "The FRVP controlled paper-signal bundle requires "
+                f"{field}={expected}."
+            )
+    if getattr(args, "max_cycles", None) is not None:
+        raise ValueError(
+            "The 28-day FRVP paper-signal launch does not permit finite max_cycles."
+        )
+    if (
+        _resolve_service_name(
+            configured_service_name=str(getattr(args, "service_name", "")),
+            group_name=str(getattr(args, "group_name", "")),
+        )
+        != ES_SHARED_DEFAULT_SERVICE_NAME
+    ):
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires the shared ES service name."
+        )
+    if _resolve_repo_runtime_path(args.heartbeat_file) != ES_SHARED_DEFAULT_HEARTBEAT_PATH.resolve():
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires the default shared heartbeat path."
+        )
+    if _resolve_repo_runtime_path(args.db_path) != DEFAULT_DB_PATH.resolve():
+        raise ValueError(
+            "The FRVP controlled paper-signal bundle requires the default live database path."
+        )
+    if not bool(getattr(args, "allow_frvp_clean_handoff", False)):
+        raise ValueError(
+            "The final FRVP launch requires an explicit clean-stopped collector handoff."
+        )
+
+    audit = readiness_audit or audit_frvp_paper_signal_readiness
+    result = audit(
+        bundle_dir=FRVP_PAPER_SIGNAL_BUNDLE_DIR,
+        env_path=FRVP_PAPER_SIGNAL_ENV_PATH,
+        heartbeat_path=Path(args.heartbeat_file),
+        environ={
+            "ES_LIVE_ALL_MODELS_ACTIVE": str(bool(args.all_models_active)).lower(),
+            "IBKR_ENABLED": str(bool(args.ibkr_enabled)).lower(),
+            "IBKR_ACCOUNT_MODE": str(args.ibkr_account_mode or ""),
+            "IBKR_PORT": str(int(args.ibkr_port)),
+            "IBKR_ALLOW_DELAYED_FALLBACK": str(
+                bool(args.ibkr_allow_delayed_fallback)
+            ).lower(),
+            "FRVP_PAPER_SIGNAL_TRIAL_ENABLED": str(
+                trial_enabled
+            ).lower(),
+            "ES_LIVE_ENABLE_SIGNAL_RUNTIME": str(
+                bool(args.enable_signal_runtime)
+            ).lower(),
+            "FRVP_LIVE_DATA_SUPPLIER": str(args.data_supplier),
+            "FRVP_LIVE_ASSET": str(args.asset),
+            "FRVP_LIVE_SOURCE_TIMEFRAME": str(args.source_timeframe),
+            "IBKR_MARKET_DATA_TYPE": str(args.ibkr_market_data_type),
+            "IBKR_WHAT_TO_SHOW": str(args.ibkr_what_to_show),
+            "IBKR_ES_USE_RTH": str(bool(args.ibkr_use_rth)).lower(),
+            "IBKR_ES_BAR_SIZE": str(args.ibkr_bar_size),
+            "IBKR_KEEP_UP_TO_DATE": str(bool(args.ibkr_keep_up_to_date)).lower(),
+            "IBKR_ES_SYMBOL": str(args.ibkr_symbol),
+            "IBKR_ES_SECURITY_TYPE": str(args.ibkr_security_type),
+            "IBKR_ES_EXCHANGE": str(args.ibkr_exchange),
+            "IBKR_ES_CURRENCY": str(args.ibkr_currency),
+            "IBKR_ES_MULTIPLIER": str(args.ibkr_multiplier),
+            "IBKR_ES_TRADING_CLASS": str(args.ibkr_trading_class),
+        },
+        preflight=False,
+        allow_clean_stopped_handoff=True,
+    )
+    _require_exact_frvp_ready_contract(result)
+    return _issue_frvp_paper_signal_runtime_authorization()
+
+
+def _frvp_manifest_set_has_active_models(paths: tuple[Path, Path]) -> bool:
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise ValueError(
+                f"FRVP runtime manifest {path} is missing or invalid."
+            ) from exc
+        models = payload.get("models") if isinstance(payload, dict) else None
+        if not isinstance(models, list):
+            raise ValueError(f"FRVP runtime manifest {path} has no valid model roster.")
+        for model in models:
+            if not isinstance(model, dict):
+                raise ValueError(f"FRVP runtime manifest {path} has a malformed model entry.")
+            if not str(model.get("model_id") or "").strip():
+                raise ValueError(f"FRVP runtime manifest {path} has a model without an ID.")
+            if str(model.get("status") or "") not in {"active", "candidate", "deprecated"}:
+                raise ValueError(
+                    f"FRVP runtime manifest {path} has an invalid model status."
+                )
+        if any(str(model["status"]) == "active" for model in models):
+            return True
+    return False
+
+
 def _resolve_repo_runtime_path(value: str | Path) -> Path:
     path = Path(value)
     return path.resolve() if path.is_absolute() else (REPO_ROOT / path).resolve()
@@ -392,13 +727,97 @@ def _require_exact_ready_contract(result: dict[str, Any]) -> None:
         )
 
 
+def _require_exact_frvp_ready_contract(result: dict[str, Any]) -> None:
+    facts = result.get("facts")
+    facts = facts if isinstance(facts, dict) else {}
+    bundle_dir = facts.get("bundle_dir")
+    try:
+        resolved_result_bundle = (
+            _resolve_repo_runtime_path(bundle_dir) if bundle_dir else None
+        )
+    except (OSError, TypeError, ValueError):
+        resolved_result_bundle = None
+    identity_matches = (
+        result.get("bundle_id") == FRVP_PAPER_SIGNAL_BUNDLE_ID
+        and resolved_result_bundle == FRVP_PAPER_SIGNAL_BUNDLE_DIR.resolve()
+        and frozenset(facts.get("model_ids") or ()) == FRVP_PAPER_SIGNAL_MODEL_IDS
+    )
+    if not identity_matches:
+        raise ValueError(
+            "FRVP readiness audit returned a bundle identity/content mismatch; "
+            "launch remains blocked."
+        )
+    if result.get("status") != "ready_to_start" or result.get("ready_to_start") is not True:
+        blocking_reasons = result.get("blocking_reasons")
+        reason_codes = sorted(
+            {
+                str(reason.get("code") or "unknown")
+                for reason in blocking_reasons or ()
+                if isinstance(reason, dict)
+            }
+        )
+        reason_summary = ", ".join(reason_codes) if reason_codes else "readiness_not_confirmed"
+        raise ValueError(
+            "FRVP readiness contract blocked launch: "
+            f"{reason_summary}. Resolve the default audit before enabling FRVP."
+        )
+    heartbeat = facts.get("heartbeat")
+    heartbeat = heartbeat if isinstance(heartbeat, dict) else {}
+    if heartbeat.get("acceptance") != "clean_stopped_handoff":
+        raise ValueError(
+            "FRVP final launch requires readiness acceptance from the explicit "
+            "clean-stopped collector handoff."
+        )
+
+
+def _require_authorized_frvp_signal_processor(
+    processor: LiveSignalProcessor | MultiGroupLiveSignalProcessor | None,
+) -> None:
+    """Verify the exact non-shadow reversal and its ledger before heartbeat start."""
+
+    if processor is None:
+        raise RuntimeError(
+            "The authorized FRVP paper-signal runtime has no signal processor."
+        )
+    processors = (
+        processor.processors
+        if isinstance(processor, MultiGroupLiveSignalProcessor)
+        else (processor,)
+    )
+    controlled: list[tuple[LiveSignalProcessor, object]] = []
+    for item in processors:
+        for binding in item.bindings:
+            if binding.loaded_model.model_id in FRVP_LEDGER_MODEL_IDS:
+                controlled.append((item, binding))
+    if len(controlled) != 1:
+        raise RuntimeError(
+            "The authorized FRVP runtime must load exactly one controlled reversal binding."
+        )
+    owner, binding = controlled[0]
+    if binding.shadow_mode:
+        raise RuntimeError("The controlled FRVP reversal binding loaded in shadow mode.")
+    if not supports_frvp_paper_signal_manifest(binding.loaded_model.manifest):
+        raise RuntimeError(
+            "The loaded FRVP reversal binding does not match the frozen manifest hash."
+        )
+    if getattr(owner, "frvp_paper_signal_ledger", None) is None:
+        raise RuntimeError(
+            "The controlled FRVP reversal binding loaded without its confirmation ledger."
+        )
+
+
 async def _run(args) -> int:
+    frvp_paper_signal_authorization = _validate_frvp_paper_signal_runtime(args)
     _validate_ict_paper_signal_runtime(args)
+    ict_delayed_test_enabled = _ict_delayed_test_enabled(args)
     group_specs = _build_group_specs(args)
     if not group_specs:
         raise ValueError("At least one ES signal family must be enabled.")
 
     primary_group = group_specs[0]
+    primary_is_ict_delayed_test = (
+        ict_delayed_test_enabled and str(primary_group["name"]).upper() == "ICT"
+    )
     config = LiveCollectorConfig(
         group_name=str(primary_group["name"]),
         data_supplier=str(args.data_supplier).upper(),
@@ -435,6 +854,9 @@ async def _run(args) -> int:
         alert_sms_recipients=tuple(
             part.strip() for part in str(args.alert_sms_recipients).split(",") if part.strip()
         ),
+        frvp_paper_signal_authorization=frvp_paper_signal_authorization,
+        force_signal_shadow_mode=primary_is_ict_delayed_test,
+        enable_ict_paper_signal_ledger=not primary_is_ict_delayed_test,
         ibkr=IBKRRuntimeConfig(
             enabled=bool(args.ibkr_enabled),
             host=args.ibkr_host,
@@ -491,6 +913,13 @@ async def _run(args) -> int:
             all_models_active=config.all_models_active,
             group_name=str(group_spec["name"]),
             data_supplier=config.data_supplier,
+            frvp_paper_signal_authorization=frvp_paper_signal_authorization,
+            force_shadow_mode=(
+                ict_delayed_test_enabled and str(group_spec["name"]).upper() == "ICT"
+            ),
+            enable_ict_paper_signal_ledger=not (
+                ict_delayed_test_enabled and str(group_spec["name"]).upper() == "ICT"
+            ),
         )
         if processor is None:
             LOGGER.warning("No eligible runtime models were loaded for %s.", group_spec["name"])
@@ -505,10 +934,24 @@ async def _run(args) -> int:
     else:
         runtime.signal_processor = MultiGroupLiveSignalProcessor(tuple(processors))
 
-    return await _run_runtime_with_ops(runtime, args)
+    if frvp_paper_signal_authorization is not None:
+        _require_authorized_frvp_signal_processor(runtime.signal_processor)
+
+    return await _run_runtime_with_ops(
+        runtime,
+        args,
+        frvp_confirmation_clock_enabled=(
+            frvp_paper_signal_authorization is not None
+        ),
+    )
 
 
-async def _run_runtime_with_ops(runtime: LiveCollectorRuntime, args) -> int:
+async def _run_runtime_with_ops(
+    runtime: LiveCollectorRuntime,
+    args,
+    *,
+    frvp_confirmation_clock_enabled: bool = False,
+) -> int:
     config = runtime.config
     service_name = _resolve_service_name(
         configured_service_name=str(args.service_name),
@@ -550,22 +993,28 @@ async def _run_runtime_with_ops(runtime: LiveCollectorRuntime, args) -> int:
             runtime.audit_repository,
             paths=ops_paths,
         )
-        heartbeat_writer.write_snapshot(
-            collect_service_health_snapshot(
-                runtime.store,
-                service_name=service_name,
-                service_status=service_status,
-                db_path=config.db_path,
-                asset=config.asset,
-                source_timeframe=config.source_timeframe,
-                signal_timeframe=config.signal_timeframe,
-                disk_statuses=disk_statuses,
-                bootstrap_payload=_build_bootstrap_payload(summary),
-                runtime_payload=_build_runtime_payload(
-                    summary,
-                    latest_cycle_result["value"],
-                ),
-            )
+        runtime_payload = _build_runtime_payload(
+            summary,
+            latest_cycle_result["value"],
+        )
+        runtime_payload["collector_contract"] = _build_es_collector_contract(runtime)
+        snapshot = collect_service_health_snapshot(
+            runtime.store,
+            service_name=service_name,
+            service_status=service_status,
+            db_path=config.db_path,
+            asset=config.asset,
+            source_timeframe=config.source_timeframe,
+            signal_timeframe=config.signal_timeframe,
+            disk_statuses=disk_statuses,
+            bootstrap_payload=_build_bootstrap_payload(summary),
+            runtime_payload=runtime_payload,
+        )
+        heartbeat_writer.write_snapshot(snapshot)
+        _record_frvp_confirmation_clock_after_heartbeat(
+            runtime,
+            snapshot,
+            enabled=frvp_confirmation_clock_enabled,
         )
 
     _write_service_snapshot("starting")
@@ -601,12 +1050,177 @@ async def _run_runtime_with_ops(runtime: LiveCollectorRuntime, args) -> int:
     return 0 if summary.terminal_status == "completed" else 1
 
 
+def _record_frvp_confirmation_clock_after_heartbeat(
+    runtime: LiveCollectorRuntime,
+    snapshot: ServiceHealthSnapshot,
+    *,
+    enabled: bool,
+) -> None:
+    """Start the no-order confirmation clock after the first exact healthy heartbeat."""
+
+    if (
+        not enabled
+        or snapshot.service_status != "running"
+        or snapshot.health_state != "healthy"
+    ):
+        return
+    lifecycle = record_frvp_confirmation_start(
+        runtime.store,
+        heartbeat=snapshot.to_dict(),
+        bundle_id=FRVP_PAPER_SIGNAL_BUNDLE_ID,
+        first_healthy_final_heartbeat_confirmed=True,
+        recorded_at_utc=snapshot.generated_at_utc,
+    )
+    if not lifecycle.started:
+        refusal = ", ".join(lifecycle.refusal_reasons) or "unknown_contract_mismatch"
+        raise RuntimeError(
+            "The healthy FRVP final-process heartbeat could not start the "
+            f"confirmation clock: {refusal}."
+        )
+    if lifecycle.newly_started:
+        LOGGER.info(
+            "FRVP controlled paper-signal confirmation clock started at %s; "
+            "minimum completion is %s and broker orders remain unauthorized.",
+            lifecycle.confirmation_start_utc.isoformat()
+            if lifecycle.confirmation_start_utc is not None
+            else None,
+            lifecycle.earliest_minimum_completion_utc.isoformat()
+            if lifecycle.earliest_minimum_completion_utc is not None
+            else None,
+        )
+
+
+def _build_es_collector_contract(runtime: LiveCollectorRuntime) -> dict[str, Any]:
+    """Describe configured and observed feed/runtime identity in each heartbeat."""
+
+    config = runtime.config
+    ibkr = config.ibkr
+    service_status: dict[str, Any] = {}
+    service = getattr(getattr(runtime, "client", None), "service", None)
+    get_status = getattr(service, "get_status", None)
+    if callable(get_status):
+        try:
+            raw_status = get_status()
+            if isinstance(raw_status, dict):
+                service_status = raw_status
+        except Exception:
+            service_status = {}
+
+    signal_processor = runtime.signal_processor
+    processors = (
+        signal_processor.processors
+        if isinstance(signal_processor, MultiGroupLiveSignalProcessor)
+        else (signal_processor,)
+        if signal_processor is not None
+        else ()
+    )
+    bindings = [binding for processor in processors for binding in processor.bindings]
+    loaded_model_ids = sorted({binding.loaded_model.model_id for binding in bindings})
+    active_model_ids = sorted(
+        {
+            binding.loaded_model.model_id
+            for binding in bindings
+            if not binding.shadow_mode
+        }
+    )
+    shadow_model_ids = sorted(
+        {
+            binding.loaded_model.model_id
+            for binding in bindings
+            if binding.shadow_mode
+        }
+    )
+    registry_paths = sorted(
+        {
+            binding.loaded_model.manifest.registry_path.replace("\\", "/")
+            for binding in bindings
+        }
+    )
+    frvp_ledger_ready = any(
+        getattr(processor, "frvp_paper_signal_ledger", None) is not None
+        for processor in processors
+    )
+    ict_ledger_ready = any(
+        getattr(processor, "ict_paper_signal_ledger", None) is not None
+        for processor in processors
+    )
+    ict_delayed_test_mode = any(
+        bool(getattr(processor, "force_shadow_mode", False))
+        and any(
+            str(binding.loaded_model.model_id).startswith("ict_")
+            for binding in getattr(processor, "bindings", ())
+        )
+        for processor in processors
+    )
+    return {
+        "schema_version": 1,
+        "feed": {
+            "data_supplier": config.data_supplier,
+            "heartbeat_source": "ibkr.historical.polling"
+            if config.data_supplier == "IBKR"
+            else "fmp.polling",
+            "asset": config.asset,
+            "source_timeframe": config.source_timeframe,
+            "ibkr_enabled": bool(ibkr.enabled) if ibkr is not None else False,
+            "account_mode": str(ibkr.account_mode) if ibkr is not None else None,
+            "market_data_type_requested": (
+                str(ibkr.market_data_type).lower() if ibkr is not None else None
+            ),
+            "market_data_type_received": service_status.get(
+                "market_data_type_received"
+            ),
+            "connection_state": service_status.get("connection_state"),
+            "allow_delayed_fallback": (
+                bool(ibkr.allow_delayed_fallback) if ibkr is not None else None
+            ),
+            "what_to_show": str(ibkr.what_to_show) if ibkr is not None else None,
+            "use_rth": bool(ibkr.use_rth) if ibkr is not None else None,
+            "bar_size": str(ibkr.bar_size) if ibkr is not None else None,
+            "keep_up_to_date": (
+                bool(ibkr.keep_up_to_date) if ibkr is not None else None
+            ),
+            "contract": {
+                "symbol": str(ibkr.symbol) if ibkr is not None else None,
+                "security_type": (
+                    str(ibkr.security_type) if ibkr is not None else None
+                ),
+                "exchange": str(ibkr.exchange) if ibkr is not None else None,
+                "currency": str(ibkr.currency) if ibkr is not None else None,
+                "multiplier": str(ibkr.multiplier) if ibkr is not None else None,
+                "trading_class": (
+                    str(ibkr.trading_class) if ibkr is not None else None
+                ),
+            },
+        },
+        "signal_runtime": {
+            "enabled": bool(config.enable_signal_runtime),
+            "loaded": bool(bindings),
+            "all_models_active": bool(config.all_models_active),
+            "loaded_model_ids": loaded_model_ids,
+            "active_model_ids": active_model_ids,
+            "shadow_model_ids": shadow_model_ids,
+            "registry_paths": registry_paths,
+            "frvp_paper_signal_ledger_ready": frvp_ledger_ready,
+            "ict_paper_signal_ledger_ready": ict_ledger_ready,
+            "ict_delayed_test_mode": ict_delayed_test_mode,
+        },
+    }
+
+
 def main() -> int:
     load_repo_env()
     parser = build_parser()
     args = parser.parse_args()
-    if not args.include_frvp and not args.include_ict:
-        parser.error("At least one of --include-frvp or --include-ict must be enabled.")
+    if not (
+        args.include_frvp
+        or args.include_ict
+        or args.include_frvp_setup
+        or args.include_ict_setup
+    ):
+        parser.error(
+            "At least one of --include-frvp, --include-ict, "
+            "--include-frvp-setup, or --include-ict-setup must be enabled."
+        )
     configure_live_logging(
         args.log_level,
         log_path=Path(args.log_file),

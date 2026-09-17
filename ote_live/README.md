@@ -8,6 +8,11 @@ The live Dash app now serves both operator views from one process:
 
 The FRVP and ICT tabs do not talk to IBKR directly. The shared ES collector writes completed ES bars, model outputs, and FRVP/ICT chart state into the shared SQLite store, and the dashboard reads that store.
 
+FRVP and ICT also retain an append-only setup history beyond the chart's latest
+40 events, including rejected candidates, prediction links, source corrections
+and diagnostic follow-up candles. See the [A5 storage contract](../docs/live_app_change_journal.md#imported-a5)
+for query interfaces, retention and outcome limitations.
+
 ## Install
 
 ```powershell
@@ -153,10 +158,67 @@ audit before it stops or starts any app process. A normal launcher run keeps ICT
 excluded. Renamed, copied, or custom ICT manifest paths fail closed; use
 `--exclude-ict` when intentionally running the shared feed without this trial.
 
+For dashboard-only testing on delayed IBKR data, use the explicit shadow mode:
+
+```powershell
+.\app_start_cmd.ps1 -IncludeIctDelayedTest
+```
+
+This starts ICT without the clean-handoff paper-trial audit, forces ICT models
+to shadow decisions, and disables ICT paper-signal ledger writes. It is for
+fresh dashboard overlays on delayed data; it does not authorize the controlled
+paper-signal trial.
+
 For operator preflight and launch, run the audit with its default bundle,
 validation, heartbeat-age, and heartbeat paths. Its path and age CLI overrides
 exist for isolated tests and diagnostics; they do not relax the collector's
 exact-bundle launch guard.
+
+The FRVP decision bundle is separately fail-closed. The normal shared-collector
+defaults remain on the July 21 all-shadow bundle until the controlled trial is
+ready, so a healthy one-cycle shadow run can provide the bounded handoff:
+
+```powershell
+python -m ote_live.scripts.run_es_live_collector --exclude-ict --max-cycles 1 --dashboard-url http://127.0.0.1:8050
+python scripts/audit_frvp_paper_signal_readiness.py --preflight --allow-clean-stopped-handoff
+```
+
+Keep `FRVP_PAPER_SIGNAL_TRIAL_ENABLED=false` until preflight reports
+`ready_except_enable_switch`. Then set it to `true` and, inside the same
+120-second clean-handoff window, launch the exact reversal-only bundle:
+
+```powershell
+python -m ote_live.scripts.run_es_live_collector --include-frvp --exclude-ict --allow-frvp-clean-handoff `
+  --frvp-long-runtime-manifest-path ote_live/runtime_manifests/frvp_es_paper_signal_20260816/live_runtime_manifest_long.json `
+  --frvp-short-runtime-manifest-path ote_live/runtime_manifests/frvp_es_paper_signal_20260816/live_runtime_manifest_short.json `
+  --dashboard-url http://127.0.0.1:8050
+```
+
+Point the separate dashboard process at the same controlled bundle so its
+status badges and policy copy show reversal as the only active-weight model:
+
+```powershell
+python -m ote_live.scripts.run_live_dashboard `
+  --frvp-long-runtime-manifest-path ote_live/runtime_manifests/frvp_es_paper_signal_20260816/live_runtime_manifest_long.json `
+  --frvp-short-runtime-manifest-path ote_live/runtime_manifests/frvp_es_paper_signal_20260816/live_runtime_manifest_short.json `
+  --frvp-registry-path models/frvp_es_paper_signal_registry_20260816.json
+```
+
+The dashboard grants the controlled label only when all three files are at the
+frozen paths and match their immutable SHA-256 digests. Its FRVP confidence and
+signal history is then restricted to those exact persisted runtime-manifest
+hashes, so July shadow rows with the same model IDs cannot appear in the August
+view. `Paper Markout` reads the dedicated FRVP event ledger and reports the full
+trial's 120-completed-bar, friction-adjusted ES net ticks; it does not reuse the
+legacy three-bar FX-pip calculation.
+
+The collector detects any active FRVP manifest by content, rejects renamed or
+copied active bundles, reruns the full default readiness audit, and requires
+paper mode on `4002` or `7497` with delayed fallback disabled. The 28-day clock
+starts only at the final process's first healthy `running` heartbeat. This trial
+records independent 120-completed-bar close markouts; it never submits or tracks
+broker orders. The standalone FRVP collector is not the controlled-trial entry
+point.
 
 Optional FRVP-only ES collector:
 
@@ -197,6 +259,22 @@ The July 21, 2026 FRVP bundle uses:
 
 - `frvp_long_continuation_xgb_v1` v3 as the primary extended-shadow baseline
 - `frvp_long_reversal_xgb_recent_regime_prune_v2` as the operational selective-deployment reversal contract
+
+The immutable August 16 decision bundle is staged separately:
+
+- `models/frvp_es_paper_signal_registry_20260816.json`
+- `ote_live/runtime_manifests/frvp_es_paper_signal_20260816/`
+- `ote_live/policy_artifacts/frvp_es_paper_signal_20260816/`
+- `model_testing/reports/frvp_paper_signal_bundles/frvp_es_paper_signal_20260816/run_summary.json`
+
+Only `frvp_long_reversal_xgb_v1` is active there, under the corrected global
+`0.60` recent-regime contract with all 11 accepted filters. Continuation remains
+candidate/shadow because its exact fixed global-`0.70` sensitivity missed the
+Sharpe, profitable-quarter, and single-trade-concentration gates. Reversal's
+fixed-policy sensitivity remained strong but missed concentration, so the
+controlled paper-signal window is specifically a concentration-validation trial,
+not full promotion. The deferred human TradingView signoff is waived only for
+this no-order trial and remains required for full promotion.
 
 ## ICT Defaults
 
@@ -261,7 +339,9 @@ The legacy convenience launcher still exists:
 python -m ote_live.scripts.run_live_stack
 ```
 
-It remains OTE-oriented. FRVP v1 is launched with the dedicated `run_frvp_live_collector` command above.
+It remains OTE-oriented. The dedicated `run_frvp_live_collector` command above
+is available for the legacy FRVP shadow bundle only; the August 16 controlled
+trial must use the readiness-bound shared ES collector documented earlier.
 
 ## IBKR Requirements And Limits
 
@@ -287,3 +367,18 @@ It remains OTE-oriented. FRVP v1 is launched with the dedicated `run_frvp_live_c
   `IBKR_ALLOW_DELAYED_FALLBACK=true`.
 - Full setup, ports, status interpretation, smoke testing, and troubleshooting:
   [`docs/IBKR_ES_live_data_setup.md`](../docs/IBKR_ES_live_data_setup.md).
+- ES observation provenance and the 90-second completed-bar gate are documented
+  in [the A4 evidence note](../docs/live_app_change_journal.md#imported-a4). Dated broker
+  calendar coverage is required for bar eligibility; delayed/backfilled scores
+  retain diagnostic metadata and receive no executable historical entry.
+- ES FRVP/ICT shadow decisions separate raw scores, threshold crossings, matching
+  setups and full-policy eligibility under the versioned [A6 contract](../docs/live_app_change_journal.md#imported-a6).
+  Gate results and rejection reasons are persisted, with collection-scoped queries
+  through `LiveAuditRepository.list_shadow_evaluations`. Qualified entries remain
+  blocked pending finalized B1/B2/B3 and explicit scored-ledger integration;
+  these diagnostics do not open paper positions.
+- The [A7 research ledger](../docs/live_app_change_journal.md#imported-a7) supports
+  explicit diagnostic execution replay with independent setup/threshold/policy
+  books, costs, position limits and censoring. Its [synthetic example](examples/research_execution/README.md)
+  runs in a separate database. Scored registration is disabled until the
+  outcome/comparison and baseline prerequisites are finalized.

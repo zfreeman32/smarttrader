@@ -21,6 +21,7 @@ from ote_live.ingestion.ibkr import (
     IBKRMarketDataService,
     SQLiteIBKRSnapshotSink,
 )
+from ote_live.ingestion.provenance import observe_bar
 
 # Keep the established public name used by collector configuration and tests.
 IBKRRuntimeConfig = IBKRConfig
@@ -186,7 +187,7 @@ class IBKRBackfillConnector(AbstractBackfillConnector):
             end_date=window.end,
         )
         return [
-            bar
+            observe_bar(bar, observation_kind="backfill")
             for bar in bars
             if ensure_utc(window.start) <= bar.timestamp <= ensure_utc(window.end)
         ]

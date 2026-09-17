@@ -8,6 +8,9 @@ from ote_live.models.loaders import (
     LoadedRuntimeModel,
     load_direction_runtime_manifest,
     load_runtime_model,
+    requires_frozen_frvp_preload_validation,
+    validate_frozen_frvp_active_manifest,
+    validate_runtime_artifact_integrity,
 )
 
 
@@ -66,19 +69,29 @@ def load_direction_models(
     loaded_models: dict[str, LoadedRuntimeModel] = {}
     unavailable_models: dict[str, str] = {}
 
-    for manifest in direction_manifest.models:
-        if requested_ids is not None and manifest.model_id not in requested_ids:
-            continue
+    selected_manifests = tuple(
+        manifest
+        for manifest in direction_manifest.models
+        if requested_ids is None or manifest.model_id in requested_ids
+    )
+    # Validate every controlled model before loading the first model in the
+    # direction. This prevents an earlier shadow model from being deserialized
+    # before a mutated active contract is discovered later in the bundle.
+    for manifest in selected_manifests:
+        if requires_frozen_frvp_preload_validation(manifest):
+            validate_frozen_frvp_active_manifest(manifest)
+            validate_runtime_artifact_integrity(manifest)
 
+    for manifest in selected_manifests:
         try:
             loaded_models[manifest.model_id] = load_runtime_model(
                 manifest,
                 require_complete_policy=require_complete_policy,
             )
-        except ImportError as exc:
+        except Exception as exc:
             if not skip_unavailable_backends:
                 raise
-            unavailable_models[manifest.model_id] = str(exc)
+            unavailable_models[manifest.model_id] = f"{type(exc).__name__}: {exc}"
 
     return LoadedDirectionModels(
         direction_manifest=direction_manifest,

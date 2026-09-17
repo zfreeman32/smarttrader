@@ -62,6 +62,51 @@ def test_gap_detector_flags_missing_after_sunday_reopen_boundary() -> None:
     assert after_weekend.gap.missing_timestamps == [datetime(2026, 4, 12, 21, 5, tzinfo=timezone.utc)]
 
 
+def test_es_gap_detector_ignores_daily_globex_maintenance_break() -> None:
+    detector = GapDetector(asset="ES", timeframe="5m")
+
+    detector.observe(
+        _bar_at(
+            datetime(2026, 7, 29, 20, 55, tzinfo=timezone.utc),
+            timeframe="5m",
+            asset="ES",
+        )
+    )
+    after_break = detector.observe(
+        _bar_at(
+            datetime(2026, 7, 29, 22, 0, tzinfo=timezone.utc),
+            timeframe="5m",
+            asset="ES",
+        )
+    )
+
+    assert after_break.gap is None
+
+
+def test_es_gap_detector_ignores_weekend_but_flags_missing_reopen_bar() -> None:
+    detector = GapDetector(asset="ES", timeframe="5m")
+
+    detector.observe(
+        _bar_at(
+            datetime(2026, 7, 31, 20, 55, tzinfo=timezone.utc),
+            timeframe="5m",
+            asset="ES",
+        )
+    )
+    after_weekend = detector.observe(
+        _bar_at(
+            datetime(2026, 8, 2, 22, 5, tzinfo=timezone.utc),
+            timeframe="5m",
+            asset="ES",
+        )
+    )
+
+    assert after_weekend.gap is not None
+    assert after_weekend.gap.missing_timestamps == [
+        datetime(2026, 8, 2, 22, 0, tzinfo=timezone.utc)
+    ]
+
+
 def test_heartbeat_monitor_marks_source_stale_after_threshold() -> None:
     monitor = HeartbeatMonitor(source="fmp.polling", stale_after=timedelta(seconds=30))
     beat_at = datetime(2024, 1, 2, 10, 0, tzinfo=timezone.utc)
@@ -79,9 +124,14 @@ def _bar(minute: int) -> MarketBar:
     return _bar_at(datetime(2024, 1, 2, 10, minute, tzinfo=timezone.utc))
 
 
-def _bar_at(timestamp: datetime, *, timeframe: str = "1m") -> MarketBar:
+def _bar_at(
+    timestamp: datetime,
+    *,
+    timeframe: str = "1m",
+    asset: str = "EURUSD",
+) -> MarketBar:
     return MarketBar(
-        asset="EURUSD",
+        asset=asset,
         timeframe=timeframe,
         timestamp=timestamp,
         open=1.1,

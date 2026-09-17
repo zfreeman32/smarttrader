@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,13 +8,27 @@ from typing import Any
 
 import joblib
 
-from ote_live.features.manifest import DirectionRuntimeManifest, LiveRuntimeManifest
+from ote_live.features.manifest import ArtifactReferences, DirectionRuntimeManifest, LiveRuntimeManifest
 from ote_live.models.calibrators import load_probability_calibrator
 from ote_live.models.registry import validate_manifest_for_live_decisions
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCALE_CLIP = 8.0
 DEFAULT_BATCH_SIZE = 256
+FROZEN_FRVP_ACTIVE_MODEL_ID = "frvp_long_reversal_xgb_v1"
+FROZEN_FRVP_ACTIVE_REGISTRY_PATH = "models/frvp_es_paper_signal_registry_20260816.json"
+FROZEN_FRVP_ACTIVE_MANIFEST_SHA256 = (
+    "12c51c6e03bfcde587c14d69e30bf1885541ffd6b55f68d863789b3b4dd96f7a"
+)
+FROZEN_FRVP_REQUIRED_CONTENT_PIN_KEYS = frozenset(
+    {
+        "model_file",
+        "scaler_file",
+        "calibrator_file",
+        "model_config_file",
+        "training_summary_file",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -76,6 +91,9 @@ def load_runtime_model(
         manifest,
         require_complete_policy=require_complete_policy,
     )
+    if requires_frozen_frvp_preload_validation(manifest):
+        validate_frozen_frvp_active_manifest(manifest)
+    validate_runtime_artifact_integrity(manifest)
 
     training_summary_path = _resolve_repo_path(manifest.artifact_references.training_summary_file)
     training_summary = _read_json(training_summary_path)
@@ -87,7 +105,6 @@ def load_runtime_model(
         if manifest.artifact_references.calibrator_file
         else None
     )
-
     return LoadedRuntimeModel(
         manifest=manifest,
         model=model,
@@ -108,6 +125,77 @@ def load_runtime_model(
             training_summary=training_summary,
         ),
     )
+
+
+def requires_frozen_frvp_preload_validation(manifest: LiveRuntimeManifest) -> bool:
+    """Identify the controlled active contract without capturing legacy shadow manifests."""
+
+    return manifest.model_id == FROZEN_FRVP_ACTIVE_MODEL_ID and (
+        manifest.status == "active"
+        or manifest.registry_path.replace("\\", "/") == FROZEN_FRVP_ACTIVE_REGISTRY_PATH
+    )
+
+
+def runtime_manifest_sha256(manifest: LiveRuntimeManifest) -> str:
+    payload = json.dumps(
+        manifest.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def validate_frozen_frvp_active_manifest(manifest: LiveRuntimeManifest) -> None:
+    """Validate the immutable active FRVP manifest before artifact deserialization."""
+
+    actual_pin_keys = frozenset(manifest.artifact_references.content_sha256)
+    if actual_pin_keys != FROZEN_FRVP_REQUIRED_CONTENT_PIN_KEYS:
+        raise ValueError(
+            "Frozen active FRVP manifest must contain exactly the required content-pin set: "
+            f"{sorted(FROZEN_FRVP_REQUIRED_CONTENT_PIN_KEYS)}."
+        )
+    actual_hash = runtime_manifest_sha256(manifest)
+    if actual_hash != FROZEN_FRVP_ACTIVE_MANIFEST_SHA256:
+        raise ValueError(
+            "Frozen active FRVP manifest SHA-256 mismatch: expected "
+            f"{FROZEN_FRVP_ACTIVE_MANIFEST_SHA256}, got {actual_hash}."
+        )
+def validate_runtime_artifact_integrity(manifest: LiveRuntimeManifest) -> None:
+    """Fail before deserialization when a manifest-pinned artifact changed bytes."""
+
+    references = manifest.artifact_references
+    for reference_key, expected_sha256 in sorted(references.content_sha256.items()):
+        if reference_key not in ArtifactReferences.model_fields:
+            raise ValueError(
+                f"Manifest {manifest.model_id} pins unknown artifact reference "
+                f"{reference_key!r}."
+            )
+        reference = getattr(references, reference_key)
+        if not isinstance(reference, str) or not reference:
+            raise ValueError(
+                f"Manifest {manifest.model_id} pins missing artifact reference "
+                f"{reference_key!r}."
+            )
+        normalized_expected = str(expected_sha256).strip().lower()
+        if len(normalized_expected) != 64 or any(
+            character not in "0123456789abcdef" for character in normalized_expected
+        ):
+            raise ValueError(
+                f"Manifest {manifest.model_id} has an invalid SHA-256 pin for "
+                f"{reference_key!r}."
+            )
+        artifact_path = _resolve_repo_path(reference)
+        if not artifact_path.is_file():
+            raise FileNotFoundError(
+                f"Manifest {manifest.model_id} pinned artifact is missing: {artifact_path}."
+            )
+        actual_sha256 = _file_sha256(artifact_path)
+        if actual_sha256 != normalized_expected:
+            raise ValueError(
+                f"Manifest {manifest.model_id} artifact SHA-256 mismatch for "
+                f"{reference_key!r}: expected {normalized_expected}, got {actual_sha256}."
+            )
 
 
 def _load_backend_model(manifest: LiveRuntimeManifest) -> Any:
@@ -159,6 +247,14 @@ def _resolve_repo_path(path: str | Path) -> Path:
     if path_obj.is_absolute():
         return path_obj
     return (REPO_ROOT / path_obj).resolve()
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _read_json(path: Path) -> dict[str, Any]:

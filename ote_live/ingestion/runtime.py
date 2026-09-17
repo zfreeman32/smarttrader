@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ote_live.ingestion.provenance import observe_bar
+
 import asyncio
 import inspect
 import logging
@@ -42,7 +44,11 @@ from ote_live.ingestion.connector_stream import FMPPollingBarStream
 from ote_live.ingestion.normalizer import canonical_asset_to_fmp_symbol, canonical_timeframe_to_fmp_interval
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
-from ote_live.ingestion.signals import LiveSignalProcessor, RuntimeSignalResult
+from ote_live.ingestion.signals import (
+    FrvpPaperSignalContractError,
+    LiveSignalProcessor,
+    RuntimeSignalResult,
+)
 from ote_live.ingestion.service import CollectorCycleResult, LiveBarIngestionService
 from ote_live.media import PillowSignalAnnotator, PlotlySignalChartRenderer, SignalChartCaptureService
 from ote_live.storage.db import SQLiteLiveDataStore
@@ -108,6 +114,9 @@ class LiveCollectorConfig:
     dashboard_url: str | None = None
     alert_email_recipients: tuple[str, ...] = ()
     alert_sms_recipients: tuple[str, ...] = ()
+    frvp_paper_signal_authorization: object | None = None
+    force_signal_shadow_mode: bool = False
+    enable_ict_paper_signal_ledger: bool = True
     ibkr: IBKRRuntimeConfig | None = None
 
     def __post_init__(self) -> None:
@@ -323,8 +332,15 @@ class LiveCollectorRuntime:
                     dashboard_url=config.dashboard_url,
                     skip_unavailable_backends=config.skip_unavailable_model_backends,
                     all_models_active=config.all_models_active,
+                    force_shadow_mode=config.force_signal_shadow_mode,
                     group_name=config.group_name,
                     data_supplier=config.data_supplier,
+                    frvp_paper_signal_authorization=(
+                        config.frvp_paper_signal_authorization
+                    ),
+                    enable_ict_paper_signal_ledger=(
+                        config.enable_ict_paper_signal_ledger
+                    ),
                 )
                 if signal_processor is None:
                     LOGGER.warning("Live signal runtime is enabled, but no eligible runtime models were loaded.")
@@ -340,6 +356,10 @@ class LiveCollectorRuntime:
                             "short_runtime_manifest_path": str(config.short_runtime_manifest_path),
                         },
                     )
+                    if config.frvp_paper_signal_authorization is not None:
+                        raise RuntimeError(
+                            "The authorized FRVP paper-signal runtime loaded no eligible models."
+                        )
             except Exception as exc:
                 LOGGER.warning("Live signal runtime initialization failed: %s", exc)
                 audit_repository.record_health_event(
@@ -356,6 +376,12 @@ class LiveCollectorRuntime:
                         "error_message": str(exc),
                     },
                 )
+                if config.frvp_paper_signal_authorization is not None:
+                    raise RuntimeError(
+                        "The authorized FRVP paper-signal runtime failed to initialize."
+                    ) from exc
+                if isinstance(exc, FrvpPaperSignalContractError):
+                    raise
 
         return cls(
             config=config,
@@ -383,7 +409,7 @@ class LiveCollectorRuntime:
                     interval=canonical_timeframe_to_fmp_interval(self.config.source_timeframe),
                     outputsize=startup_history_bars,
                 )
-                seed_bars = self._filter_finalized_source_bars(seed_bars)
+                seed_bars = [observe_bar(bar, observation_kind="backfill") for bar in self._filter_finalized_source_bars(seed_bars)]
                 processed = await self.service.process_bars(seed_bars)
                 summary.seeded_history_bars = len(seed_bars)
                 summary.stored_source_bars += processed.stored_source_bars
@@ -463,7 +489,7 @@ class LiveCollectorRuntime:
 
             for window in self._build_catchup_windows(start=start, end=end):
                 recovered_bars = await self.backfill_connector.backfill_bars(window)
-                recovered_bars = self._filter_finalized_source_bars(recovered_bars)
+                recovered_bars = [observe_bar(bar, observation_kind="backfill") for bar in self._filter_finalized_source_bars(recovered_bars)]
                 processed = await self.service.process_bars(recovered_bars)
                 summary.catchup_bars += len(recovered_bars)
                 summary.stored_source_bars += processed.stored_source_bars
@@ -628,6 +654,9 @@ class LiveCollectorRuntime:
 
     async def close(self) -> None:
         await self.client.aclose()
+        close_signal_processor = getattr(self.signal_processor, "close", None)
+        if callable(close_signal_processor):
+            close_signal_processor()
         self.store.close()
 
     def _warm_runtime_state(self, latest_stored_timestamp) -> None:
@@ -662,6 +691,7 @@ class LiveCollectorRuntime:
             SELECT timestamp_utc
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ? AND timestamp_utc <= ?
+              AND is_complete IS NOT 0
             ORDER BY timestamp_utc DESC
             LIMIT 1
             """,

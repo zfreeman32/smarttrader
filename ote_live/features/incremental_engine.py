@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import re
+import threading
+import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -13,7 +16,8 @@ from features.config import FeatureBuilderConfig
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
 from ote_live.features.manifest import LiveRuntimeManifest
-from ote_live.features.runtime_state import FeatureRuntimeState
+from ote_live.features.input_contract import INPUT_CONTRACT_VERSION, evaluate_model_input_contract
+from ote_live.features.runtime_state import FeatureRuntimeState, _row_from_bar
 from ote_live.features.strategy_adapter import StrategyFeatureAdapter
 from ote_live.features.warmup import (
     WarmupStatus,
@@ -324,8 +328,9 @@ def build_runtime_feature_config(
     _prune_feature_sets(config, plan.built_feature_names)
     _prune_transform_settings(config, plan.built_feature_names)
     plan.strategy_adapter.apply_to_config(config)
-    if any(feature_name.startswith(("frvp_", "ict_")) for feature_name in plan.built_feature_names):
+    if plan.asset.upper() == "ES" or any(feature_name.startswith(("frvp_", "ict_")) for feature_name in plan.built_feature_names):
         config.instrument = _ASSET_TO_FEATURE_INSTRUMENT.get(plan.asset.upper(), config.instrument)
+    config.htf_source_bar_minutes = pd.Timedelta(plan.timeframe).total_seconds() / 60.0
     return config
 
 
@@ -355,6 +360,11 @@ class IncrementalFeatureEngine:
         )
         if _manifests_preserve_numeric_nans(self.manifests):
             self.config.fillna_numeric = False
+        # Inspect raw missingness before applying the frozen zero-imputation
+        # contract used by sequence models and mixed-backend engines.
+        self._fillna_after_input_contract = self.plan.asset.upper() == "ES" and self.config.fillna_numeric
+        if self._fillna_after_input_contract:
+            self.config.fillna_numeric = False
         self.builder = FeatureDatasetBuilder(self.config)
         self.state = FeatureRuntimeState(
             max_history_bars=self.plan.runtime_history_bars + self.plan.additive_seed_prefix_bars
@@ -364,15 +374,22 @@ class IncrementalFeatureEngine:
             for feature_name, value in (feature_seed_offsets or {}).items()
             if feature_name in self.plan.additive_seed_feature_names
         }
+        self._cache_lock = threading.RLock()
         self._cached_feature_frame: pd.DataFrame | None = None
-        self._cached_state_signature: tuple[object | None, int] | None = None
+        self._cached_state_signature: tuple[object, ...] | None = None
+        self._feature_build_count = 0
+        self._feature_cache_hit_count = 0
+        self.last_build_metadata: dict[str, object] = {}
+        self.last_build_timings_seconds: dict[str, float] = {}
+        self.last_build_from_cache = False
 
     def ingest_bar(self, bar: MarketBar) -> None:
-        next_seed_offsets = self._rolling_seed_offsets_for_next_window(bar)
-        self.state.ingest_bar(bar)
-        if next_seed_offsets is not None:
-            self.feature_seed_offsets = next_seed_offsets
-        self._invalidate_cache()
+        with self._cache_lock:
+            next_seed_offsets = self._rolling_seed_offsets_for_next_window(bar)
+            self.state.ingest_bar(bar)
+            if next_seed_offsets is not None:
+                self.feature_seed_offsets = next_seed_offsets
+            self._invalidate_cache()
 
     def extend(self, bars: Iterable[MarketBar]) -> None:
         for bar in bars:
@@ -384,51 +401,109 @@ class IncrementalFeatureEngine:
         *,
         include_policy_features: bool = False,
     ) -> pd.DataFrame:
-        if market_frame is None:
-            signature = (self.state.latest_timestamp, len(self.state))
+        with self._cache_lock:
+            source_frame = self.state.to_frame() if market_frame is None else market_frame.copy()
+
+            if source_frame.empty:
+                columns = self.plan.built_feature_names if include_policy_features else self.plan.selected_feature_names
+                empty = pd.DataFrame(columns=list(columns))
+                signature = self._state_cache_signature() if market_frame is None else self._market_frame_cache_signature(empty)
+                self._cached_feature_frame = empty
+                self._cached_state_signature = signature
+                self.last_build_from_cache = False
+                self.last_build_metadata = {
+                    "rows": 0,
+                    "cache_hit": False,
+                    "cache_signature": signature,
+                }
+                self.last_build_timings_seconds = {}
+                return empty.copy()
+
+            bounded = self._slice_runtime_window(source_frame)
+            signature = self._state_cache_signature() if market_frame is None else self._market_frame_cache_signature(bounded)
             if self._cached_state_signature == signature and self._cached_feature_frame is not None:
+                self._feature_cache_hit_count += 1
+                self.last_build_from_cache = True
                 cached = self._cached_feature_frame.copy()
                 if include_policy_features:
                     return cached
                 return cached.loc[:, list(self.plan.selected_feature_names)].copy()
-            source_frame = self.state.to_frame()
-        else:
-            signature = None
-            source_frame = market_frame
 
-        if source_frame.empty:
-            columns = self.plan.built_feature_names if include_policy_features else self.plan.selected_feature_names
-            empty = pd.DataFrame(columns=list(columns))
-            if signature is not None:
-                self._cached_feature_frame = empty
-                self._cached_state_signature = signature
-            return empty.copy()
-
-        bounded = self._slice_runtime_window(source_frame)
-        built_frame, _ = self.builder.build(bounded)
-        built_frame = self._apply_feature_seed_offsets(built_frame)
-        built_frame = _materialize_live_default_features(
-            built_frame,
-            requested_feature_names=self.plan.built_feature_names,
-        )
-        missing_feature_names = [
-            feature_name for feature_name in self.plan.built_feature_names if feature_name not in built_frame.columns
-        ]
-        if missing_feature_names:
-            raise ValueError(
-                "Live feature build did not produce all selected features: "
-                + ", ".join(missing_feature_names[:20])
+            built_frame, metadata = self.builder.build(bounded)
+            self._feature_build_count += 1
+            self.last_build_from_cache = False
+            self.last_build_metadata = dict(metadata)
+            self.last_build_timings_seconds = {
+                str(key): float(value)
+                for key, value in dict(metadata.get("build_timings_seconds") or {}).items()
+            }
+            built_frame = self._apply_feature_seed_offsets(built_frame)
+            missing_producers = [name for name in self.plan.built_feature_names if name not in built_frame.columns]
+            fallback_features = [name for name in missing_producers if name.startswith(_LIVE_ZERO_DEFAULT_FEATURE_PREFIXES)]
+            built_frame = _materialize_live_default_features(
+                built_frame,
+                requested_feature_names=self.plan.built_feature_names,
             )
+            missing_feature_names = [
+                feature_name for feature_name in self.plan.built_feature_names if feature_name not in built_frame.columns
+            ]
+            if missing_feature_names:
+                # Keep unaffected models running; these columns are explicit
+                # missing producers and can only support diagnostic scores.
+                built_frame = built_frame.assign(**{name: np.nan for name in missing_feature_names})
 
-        available = built_frame.loc[:, list(self.plan.built_feature_names)].copy()
-        if len(available) > self.plan.runtime_history_bars:
-            available = available.iloc[-self.plan.runtime_history_bars :].reset_index(drop=True)
-        if signature is not None:
+            contracts = {
+                manifest.model_id: evaluate_model_input_contract(
+                    manifest,
+                    built_frame,
+                    missing_producer_features=missing_producers,
+                    fallback_features=fallback_features,
+                    producer_contracts=bounded.attrs.get("feature_producer_contracts"),
+                )
+                for manifest in self.manifests
+            }
+            if self.plan.asset.upper() == "ES":
+                expected_time = pd.to_datetime(self._extract_latest_timestamp(bounded), errors="coerce", utc=True)
+                actual_time = pd.to_datetime(
+                    built_frame.iloc[-1].get("datetime", built_frame.iloc[-1].get("timestamp"))
+                    if not built_frame.empty else None, errors="coerce", utc=True,
+                )
+                if pd.isna(expected_time) or pd.isna(actual_time) or actual_time != expected_time:
+                    # OHLC validation can remove the newest source row. Its
+                    # predecessor must not masquerade as current model inputs.
+                    for contract in contracts.values():
+                        contract["reasons"].append("feature_source_timestamp_mismatch")
+                        contract["status"] = "diagnostic_only"
+                        contract["diagnostic_only"] = True
+            self.last_build_metadata["input_contract_version"] = INPUT_CONTRACT_VERSION
+            self.last_build_metadata["model_input_contracts"] = contracts
+            self.last_build_metadata["fallback_feature_names"] = fallback_features
+            self.last_build_metadata["missing_producer_feature_names"] = missing_producers
+            if self._fillna_after_input_contract:
+                self.builder._fill_numeric_columns_inplace(built_frame)
+
+            available = built_frame.loc[:, list(self.plan.built_feature_names)].copy()
+            if len(available) > self.plan.runtime_history_bars:
+                available = available.iloc[-self.plan.runtime_history_bars :].reset_index(drop=True)
             self._cached_feature_frame = available
             self._cached_state_signature = signature
-        if include_policy_features:
-            return available.copy()
-        return available.loc[:, list(self.plan.selected_feature_names)].copy()
+            if include_policy_features:
+                return available.copy()
+            return available.loc[:, list(self.plan.selected_feature_names)].copy()
+
+    def input_contract_status(self, model_id: str, *, feature_frame: pd.DataFrame | None = None) -> dict[str, object]:
+        """Return qualification metadata for the most recently built inputs."""
+        self._manifest_by_id(model_id)
+        if feature_frame is None and self._cached_feature_frame is None:
+            self.build_feature_frame()
+        contracts = dict(self.last_build_metadata.get("model_input_contracts") or {})
+        return deepcopy(contracts.get(model_id) or {
+            "contract_version": INPUT_CONTRACT_VERSION,
+            "model_id": model_id,
+            "status": "diagnostic_only",
+            "diagnostic_only": True,
+            "reasons": ["input_contract_unavailable"],
+        })
 
     def warmup_status(
         self,
@@ -498,17 +573,33 @@ class IncrementalFeatureEngine:
     def _invalidate_cache(self) -> None:
         self._cached_feature_frame = None
         self._cached_state_signature = None
+        self.last_build_from_cache = False
 
     def set_feature_seed_offsets(self, feature_seed_offsets: dict[str, float] | None) -> None:
-        self.feature_seed_offsets = {
-            feature_name: float(value)
-            for feature_name, value in (feature_seed_offsets or {}).items()
-            if feature_name in self.plan.additive_seed_feature_names
-        }
-        self._invalidate_cache()
+        with self._cache_lock:
+            self.feature_seed_offsets = {
+                feature_name: float(value)
+                for feature_name, value in (feature_seed_offsets or {}).items()
+                if feature_name in self.plan.additive_seed_feature_names
+            }
+            self._invalidate_cache()
 
     def get_feature_seed_offsets(self) -> dict[str, float]:
         return dict(self.feature_seed_offsets)
+
+    @property
+    def feature_build_count(self) -> int:
+        return int(self._feature_build_count)
+
+    @property
+    def feature_cache_hit_count(self) -> int:
+        return int(self._feature_cache_hit_count)
+
+    def cache_stats(self) -> dict[str, int]:
+        return {
+            "feature_build_count": self.feature_build_count,
+            "feature_cache_hit_count": self.feature_cache_hit_count,
+        }
 
     def derive_feature_seed_offsets_from_market_frame(self, market_frame: pd.DataFrame) -> dict[str, float]:
         if not self.plan.additive_seed_feature_names:
@@ -539,26 +630,7 @@ class IncrementalFeatureEngine:
 
     @staticmethod
     def market_frame_from_bars(bars: Iterable[MarketBar]) -> pd.DataFrame:
-        rows = [
-            {
-                "asset": bar.asset,
-                "timeframe": bar.timeframe,
-                "timestamp": bar.timestamp,
-                "open": bar.open,
-                "high": bar.high,
-                "low": bar.low,
-                "close": bar.close,
-                "volume": bar.volume,
-                "bid": bar.bid,
-                "ask": bar.ask,
-                "spread": bar.spread,
-                "source": bar.source,
-                "symbol": bar.symbol,
-                "contract_symbol": bar.contract_symbol,
-                "instrument_id": bar.instrument_id,
-            }
-            for bar in bars
-        ]
+        rows = [_row_from_bar(bar) for bar in bars]
         return pd.DataFrame.from_records(rows)
 
     def _apply_feature_seed_offsets(self, feature_frame: pd.DataFrame) -> pd.DataFrame:
@@ -602,6 +674,37 @@ class IncrementalFeatureEngine:
             if manifest.model_id == model_id:
                 return manifest
         raise KeyError(f"Unknown live manifest model_id '{model_id}'.")
+
+    def _state_cache_signature(self) -> tuple[object, ...]:
+        return (
+            "state",
+            self.state.latest_timestamp,
+            len(self.state),
+            tuple(sorted(self.feature_seed_offsets.items())),
+        )
+
+    @classmethod
+    def _market_frame_cache_signature(cls, market_frame: pd.DataFrame) -> tuple[object, ...]:
+        latest_timestamp = None
+        if not market_frame.empty:
+            try:
+                latest_timestamp = cls._extract_latest_timestamp(market_frame)
+            except ValueError:
+                latest_timestamp = None
+        comparable = market_frame.reset_index(drop=True)
+        try:
+            row_hashes = pd.util.hash_pandas_object(comparable, index=True)
+        except TypeError:
+            row_hashes = pd.util.hash_pandas_object(comparable.astype(str), index=True)
+        content_hash = int(row_hashes.to_numpy(dtype=np.uint64, copy=False).sum(dtype=np.uint64))
+        return (
+            "market_frame",
+            latest_timestamp,
+            len(market_frame),
+            tuple(str(column) for column in market_frame.columns),
+            content_hash,
+            json.dumps(market_frame.attrs.get("feature_producer_contracts") or {}, sort_keys=True, default=str),
+        )
 
     @staticmethod
     def _extract_latest_timestamp(market_frame: pd.DataFrame):
@@ -772,12 +875,10 @@ def _materialize_live_default_features(
     *,
     requested_feature_names: Sequence[str],
 ) -> pd.DataFrame:
-    """Materialize causal defaults for offline helper columns absent from raw bars.
+    """Preserve legacy diagnostic imputation, never evidence of a valid input.
 
-    HTF confluence helpers are sparse event-time flags in the training datasets:
-    every non-event row is zero. Live IBKR bars do not carry the offline label
-    helper columns, so zero is the only causal value until a live event-specific
-    confluence producer is available.
+    Missing HTF confluence producers are recorded by the per-model input
+    contract and prevent qualification even though legacy scores use zero.
     """
 
     missing_default_names = [
@@ -798,6 +899,9 @@ def _materialize_live_default_features(
 def infer_required_history_bars(selected_feature_names: Sequence[str]) -> int:
     selected_feature_names = tuple(dict.fromkeys(selected_feature_names))
     required_bars = 0
+
+    if any(name.startswith(("ict_prior_week", "ict_")) for name in selected_feature_names):
+        required_bars = max(required_bars, DEFAULT_WEEKLY_CONTEXT_HISTORY_BARS)
 
     if any(feature_name in _FRVP_PRIOR_RTH_HISTORY_FEATURE_NAMES for feature_name in selected_feature_names):
         required_bars = max(required_bars, DEFAULT_FRVP_PRIOR_RTH_HISTORY_BARS)

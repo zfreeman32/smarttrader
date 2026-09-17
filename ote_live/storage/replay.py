@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isclose
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.prediction import ModelPrediction
@@ -206,9 +206,11 @@ def _rebuild_prediction_and_signal(
         audit_trail.prediction_metadata.get("policy_context")
         or audit_trail.signal_metadata.get("policy_context")
     )
-    if audit_trail.prediction.regime is not None and (
-        policy_context is None or not _policy_context_includes_regime(policy_context)
-    ):
+    # The stored prediction is the policy-enriched value that actually drove the
+    # original threshold decision.  Preserve it even when the resolved policy
+    # context also contains regime columns: callers may have supplied an
+    # explicit prediction regime that intentionally took precedence.
+    if audit_trail.prediction.regime is not None:
         replayed_prediction = replayed_prediction.model_copy(update={"regime": audit_trail.prediction.regime})
 
     shadow_mode = bool(
@@ -216,6 +218,16 @@ def _rebuild_prediction_and_signal(
         or audit_trail.signal_metadata.get("shadow_mode")
         or False
     )
+    stored_shadow = audit_trail.signal.shadow_evaluation
+    if stored_shadow is not None:
+        replayed_feature_snapshot = replayed_feature_snapshot.model_copy(update={
+            "collection_version": audit_trail.feature_snapshot.collection_version,
+            "observation_metadata": audit_trail.feature_snapshot.observation_metadata,
+        })
+        replayed_prediction = replayed_prediction.model_copy(update={
+            "collection_version": audit_trail.prediction.collection_version,
+            "prediction_recorded_at_utc": audit_trail.prediction.prediction_recorded_at_utc,
+        })
     replayed_path = LiveDecisionEngine(persist_decisions=()).evaluate_prediction(
         replayed_prediction,
         live_policy=manifest.live_policy,
@@ -224,23 +236,12 @@ def _rebuild_prediction_and_signal(
         shadow_mode=shadow_mode,
         feature_snapshot=replayed_feature_snapshot,
         runtime_manifest=manifest,
+        evaluate_shadow_contract=stored_shadow is not None,
+        shadow_setup_match=stored_shadow.get("setup_match") if stored_shadow else None,
+        shadow_state_before=stored_shadow.get("state_before") if stored_shadow else None,
+        force_hold_reasons=stored_shadow.get("force_hold_reasons", ()) if stored_shadow else (),
     )
     return replayed_feature_snapshot, replayed_path
-
-
-def _policy_context_includes_regime(policy_context: object) -> bool:
-    if not isinstance(policy_context, Mapping):
-        return False
-    return any(
-        key in policy_context
-        for key in (
-            "composite_regime",
-            "trend_regime",
-            "vol_regime",
-            "session_regime",
-            "stress_regime",
-        )
-    )
 
 
 def _compare_feature_snapshots(
@@ -334,11 +335,23 @@ def _signals_match(
         return False
     if expected.cooldown_bars_remaining != actual.cooldown_bars_remaining:
         return False
+    if not _nested_values_match(expected.shadow_evaluation, actual.shadow_evaluation, atol=probability_atol):
+        return False
     if not _values_match(expected.threshold, actual.threshold, atol=1e-12):
         return False
     if not _values_match(expected.probability, actual.probability, atol=probability_atol):
         return False
     return True
+
+
+def _nested_values_match(expected: Any, actual: Any, *, atol: float) -> bool:
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return expected.keys() == actual.keys() and all(
+            _nested_values_match(expected[key], actual[key], atol=atol) for key in expected)
+    if isinstance(expected, list) and isinstance(actual, list):
+        return len(expected) == len(actual) and all(
+            _nested_values_match(left, right, atol=atol) for left, right in zip(expected, actual))
+    return _values_match(expected, actual, atol=atol)
 
 
 def _values_match(expected: Any, actual: Any, *, atol: float) -> bool:

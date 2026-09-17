@@ -9,6 +9,7 @@ from threading import RLock
 from typing import Any, Callable
 
 from ote_live.contracts.market_data import MarketBar
+from ote_live.ingestion.provenance import source_bar_version
 
 from .contracts import QualifiedESContract
 
@@ -34,13 +35,18 @@ class IBKRBar:
     source: str = "ibkr.historical"
     market_data_type: str | None = None
     received_at_utc: datetime = datetime.min.replace(tzinfo=UTC)
+    first_observed_at_utc: datetime | None = None
+    version: int = 1
+    observation_kind: str = "unknown"
+    trading_hours: str | None = None
+    timezone: str | None = None
 
     @property
     def key(self) -> tuple[int, datetime, str, str]:
         return (self.conid, self.timestamp_utc, self.bar_size, self.data_type)
 
     def to_market_bar(self, *, asset: str = "ES", timeframe: str = "5m") -> MarketBar:
-        return MarketBar(
+        bar = MarketBar(
             asset=asset,
             timeframe=timeframe,
             timestamp=self.timestamp_utc,
@@ -53,14 +59,24 @@ class IBKRBar:
             symbol=asset,
             contract_symbol=self.local_symbol,
             instrument_id=self.conid,
+            source_timestamp=self.timestamp_utc,
+            is_complete=self.is_complete,
+            feed_type=self.market_data_type,
+            first_observed_at=self.first_observed_at_utc or (self.received_at_utc if self.received_at_utc.year > 1 else None),
+            last_observed_at=self.received_at_utc if self.received_at_utc.year > 1 else None,
+            observation_kind=self.observation_kind,
             feature_context={
                 "ibkr_contract_month": self.contract_month,
                 "ibkr_wap": self.wap,
                 "ibkr_trade_count": self.trade_count,
                 "ibkr_market_data_type": self.market_data_type,
                 "ibkr_is_complete": self.is_complete,
+                "ibkr_bar_version": self.version,
+                "ibkr_trading_hours": self.trading_hours,
+                "ibkr_timezone": self.timezone,
             },
         )
+        return bar.model_copy(update={"bar_version": source_bar_version(bar)})
 
 
 @dataclass(frozen=True)
@@ -123,35 +139,49 @@ class IBKRMarketDataStore:
         self._notify()
 
     def upsert_bar(self, bar: IBKRBar) -> None:
+        changed_bars: list[IBKRBar] = []
+        received = _utc(bar.received_at_utc) if bar.received_at_utc.year > 1 else datetime.now(UTC)
         normalized = replace(
             bar,
             timestamp_utc=_utc(bar.timestamp_utc),
-            received_at_utc=_utc(bar.received_at_utc),
+            received_at_utc=received,
+            first_observed_at_utc=bar.first_observed_at_utc or received,
         )
         with self._lock:
             prior_active_key = self._latest_key_for_contract(normalized.conid)
             if prior_active_key is not None:
                 prior = self._bars[prior_active_key]
                 if prior.timestamp_utc < normalized.timestamp_utc and not prior.is_complete:
-                    self._bars[prior_active_key] = replace(prior, is_complete=True)
+                    finalized = replace(prior, is_complete=True, version=prior.version + 1, received_at_utc=received)
+                    self._bars[prior_active_key] = finalized
+                    changed_bars.append(finalized)
             existing = self._bars.get(normalized.key)
-            if existing is not None and existing.is_complete:
-                normalized = replace(normalized, is_complete=True)
+            if existing is not None:
+                normalized = replace(normalized, is_complete=existing.is_complete or normalized.is_complete,
+                                     first_observed_at_utc=existing.first_observed_at_utc,
+                                     version=existing.version + 1)
             self._bars[normalized.key] = normalized
+            changed_bars.append(normalized)
             self._bars.move_to_end(normalized.key)
             while len(self._bars) > self.max_bars:
                 self._bars.popitem(last=False)
+        self._notify_bar_observations(changed_bars)
         self._notify()
 
-    def mark_request_history_complete(self, conid: int) -> None:
+    def mark_request_history_complete(self, conid: int, *, observed_at_utc: datetime | None = None) -> None:
         # With keepUpToDate=True the newest bucket remains partial. Sequential
         # callback inserts already marked all preceding buckets complete.
+        completed: list[IBKRBar] = []
+        observed = _utc(observed_at_utc or datetime.now(UTC))
         with self._lock:
-            keys = [key for key in self._bars if key[0] == int(conid)]
+            keys = sorted((key for key in self._bars if key[0] == int(conid)), key=lambda key: key[1])
             for key in keys[:-1]:
                 bar = self._bars[key]
                 if not bar.is_complete:
-                    self._bars[key] = replace(bar, is_complete=True)
+                    finalized = replace(bar, is_complete=True, version=bar.version + 1, received_at_utc=observed)
+                    self._bars[key] = finalized
+                    completed.append(finalized)
+        self._notify_bar_observations(completed)
         self._notify()
 
     def update_quote(
@@ -193,9 +223,8 @@ class IBKRMarketDataStore:
             quote = self._quotes.get(int(conid))
             if quote is not None:
                 self._quotes[int(conid)] = replace(quote, market_data_type=value)
-            for key, bar in tuple(self._bars.items()):
-                if key[0] == int(conid):
-                    self._bars[key] = replace(bar, market_data_type=value)
+            # Feed changes describe subsequent callbacks. Relabeling an already
+            # observed delayed bar as live would erase its collection provenance.
         self._notify()
 
     def update_status(self, **values: Any) -> None:
@@ -283,6 +312,15 @@ class IBKRMarketDataStore:
                 listener(snapshot)
             except Exception:
                 LOGGER.exception("IBKR market-data snapshot listener failed.")
+
+    def _notify_bar_observations(self, bars: list[IBKRBar]) -> None:
+        # Observation persistence bypasses the dashboard's throttled snapshots.
+        with self._lock:
+            listeners = tuple(self._listeners)
+        for listener in listeners:
+            record = getattr(listener, "record_bar_observations", None)
+            if callable(record):
+                record(bars)
 
 
 def _serialize_bar(bar: IBKRBar) -> dict[str, Any]:

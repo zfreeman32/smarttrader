@@ -32,10 +32,12 @@ def _args(**overrides):
             "live_runtime_manifest_short.json"
         ),
         "all_models_active": False,
+        "allow_ict_delayed_test": False,
         "ict_paper_signal_trial_enabled": True,
         "ibkr_enabled": True,
         "ibkr_account_mode": "paper",
         "ibkr_port": 4002,
+        "ibkr_market_data_type": "live",
         "ibkr_allow_delayed_fallback": False,
         "heartbeat_file": "ote_live/runtime_data/health/test-heartbeat.json",
         "allow_ict_clean_handoff": False,
@@ -98,6 +100,34 @@ def test_ict_paper_signal_runtime_rejects_delayed_fallback() -> None:
     with pytest.raises(ValueError, match="IBKR_ALLOW_DELAYED_FALLBACK=false"):
         _validate_ict_paper_signal_runtime(
             _args(ibkr_allow_delayed_fallback=True)
+        )
+
+
+def test_ict_delayed_test_runtime_accepts_delayed_shadow_configuration() -> None:
+    def unexpected_audit(**_kwargs):
+        raise AssertionError("controlled trial audit must not run in delayed test mode")
+
+    _validate_ict_paper_signal_runtime(
+        _args(
+            allow_ict_delayed_test=True,
+            ict_paper_signal_trial_enabled=False,
+            ibkr_port=4001,
+            ibkr_market_data_type="delayed",
+            ibkr_allow_delayed_fallback=True,
+        ),
+        readiness_audit=unexpected_audit,
+    )
+
+
+def test_ict_delayed_test_runtime_rejects_all_models_active() -> None:
+    with pytest.raises(ValueError, match="shadow-only"):
+        _validate_ict_paper_signal_runtime(
+            _args(
+                allow_ict_delayed_test=True,
+                all_models_active=True,
+                ibkr_market_data_type="delayed",
+                ibkr_allow_delayed_fallback=True,
+            )
         )
 
 

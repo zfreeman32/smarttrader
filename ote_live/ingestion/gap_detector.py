@@ -41,6 +41,7 @@ class GapDetector:
             missing_timestamps = filter_expected_market_bar_timestamps(
                 missing_timestamps,
                 asset=bar.asset,
+                feature_context=bar.feature_context,
             )
             if missing_timestamps:
                 gap = IngestionGap(

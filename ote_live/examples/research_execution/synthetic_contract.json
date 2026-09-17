@@ -1,0 +1,35 @@
+{
+  "version": "es-research-execution-v1",
+  "mode": "diagnostic",
+  "collection_version": "a7-test",
+  "outcome_contract_ref": "draft-test-B1",
+  "comparison_contract_ref": "draft-test-B3",
+  "asset": "ES",
+  "timeframe": "5m",
+  "model_ids": [
+    "frvp_long_continuation_xgb_v1"
+  ],
+  "entry_mode": "next_bar_open",
+  "entry_latency_seconds": 0.0,
+  "entry_wait_seconds": 900.0,
+  "max_bar_delay_seconds": 90.0,
+  "tick_size": 0.25,
+  "tick_value": 12.5,
+  "stop_ticks": 4.0,
+  "target_ticks": 8.0,
+  "timeout_bars": 3,
+  "ambiguity": "stop_first",
+  "missing_bars": "censor",
+  "quantity": 1,
+  "max_positions": 1,
+  "max_contracts": 1,
+  "concurrency_scope": "per_model",
+  "allow_opposite_positions": false,
+  "spread_ticks": 1.0,
+  "slippage_ticks_per_side": 0.25,
+  "commission_ticks_round_trip": 0.4,
+  "cost_multipliers": [
+    1.0,
+    2.0
+  ]
+}

@@ -198,6 +198,52 @@ def test_live_bar_ingestion_service_resolves_weekend_only_startup_gap_without_ba
     assert health_events[0].payload["market_closed_timestamp_count"] == len(missing_timestamps)
 
 
+def test_live_bar_ingestion_service_resolves_es_labor_day_halt_gap_without_backfill() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_service_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    store = SQLiteLiveDataStore(tmp_root / f"{uuid.uuid4().hex}.sqlite")
+    audit = LiveAuditRepository(store)
+    backfill = _FakeBackfill([])
+
+    service = LiveBarIngestionService(
+        stream=_FakeStream([]),
+        backfill=backfill,
+        store=store,
+        gap_detector=GapDetector(asset="ES", timeframe="5m"),
+        aggregator=MultiTimeframeBarAggregator(target_timeframes=("30m",)),
+        heartbeat_monitor=HeartbeatMonitor(source="fake-stream"),
+        audit_repository=audit,
+    )
+    missing_timestamps = _timestamp_range(
+        datetime(2026, 9, 7, 17, 0, tzinfo=timezone.utc),
+        datetime(2026, 9, 7, 20, 55, tzinfo=timezone.utc),
+        step=timedelta(minutes=5),
+    )
+    store.record_gap(
+        IngestionGap(
+            asset="ES",
+            timeframe="5m",
+            expected_timestamp=missing_timestamps[0],
+            observed_timestamp=datetime(2026, 9, 7, 22, 0, tzinfo=timezone.utc),
+            missing_timestamps=missing_timestamps,
+            gap_size=len(missing_timestamps),
+        )
+    )
+
+    unresolved_gaps = store.fetch_gaps(asset="ES", timeframe="5m", unresolved_only=True)
+    result = asyncio.run(service.recover_unresolved_gaps(list(unresolved_gaps)))
+    gaps = store.fetch_gaps(asset="ES", timeframe="5m", unresolved_only=False)
+    health_events = audit.fetch_health_events(component="collector.bootstrap", event_type="gap_resolved_market_closed")
+    store.close()
+
+    assert backfill.calls == 0
+    assert result.backfilled_bars == 0
+    assert len(gaps) == 1
+    assert gaps[0].resolved_at_utc is not None
+    assert len(health_events) == 1
+    assert health_events[0].payload["market_closed_timestamp_count"] == len(missing_timestamps)
+
+
 class _FakeStream:
     def __init__(self, bars: list[MarketBar]) -> None:
         self._bars = bars

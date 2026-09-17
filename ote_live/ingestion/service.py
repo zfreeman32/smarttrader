@@ -10,10 +10,11 @@ from ote_live.ingestion.aggregator import (
     aggregate_bar_sequence,
     floor_timestamp_to_timeframe,
 )
-from ote_live.ingestion.base import AbstractBackfillConnector, AbstractBarStream, IngestionGap, ensure_utc, timeframe_to_timedelta
+from ote_live.ingestion.base import AbstractBackfillConnector, AbstractBarStream, IngestionGap, canonical_asset_symbol, ensure_utc, timeframe_to_timedelta
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
 from ote_live.ingestion.market_calendar import filter_expected_market_bar_timestamps
+from ote_live.ingestion.provenance import observe_bar
 from ote_live.storage.repositories import LiveAuditRepository
 from ote_live.storage.db import SQLiteLiveDataStore, StoredIngestionGap
 
@@ -102,6 +103,7 @@ class LiveBarIngestionService:
         result = CollectorCycleResult(polled_bars=len(bars))
 
         for bar in sorted(bars, key=lambda item: item.timestamp):
+            bar = observe_bar(bar)
             observation = self.gap_detector.observe(bar)
             if observation.gap is not None:
                 result.gaps_detected += 1
@@ -160,10 +162,12 @@ class LiveBarIngestionService:
 
             if observation.duplicate:
                 result.duplicates += 1
+                self.store.record_bar_observation(bar)
                 continue
 
             if observation.out_of_order:
                 result.out_of_order += 1
+                self.store.record_bar_observation(bar)
                 continue
 
             self._store_source_bar(bar)
@@ -254,7 +258,18 @@ class LiveBarIngestionService:
         repaired_bars = [deduped_by_timestamp[timestamp] for timestamp in sorted(deduped_by_timestamp)]
 
         result = CollectorCycleResult(polled_bars=len(repaired_bars))
+        existing = {
+            bar.timestamp: bar for bar in self.store.fetch_bars(
+                asset=repaired_bars[0].asset, timeframe=repaired_bars[0].timeframe,
+                start=repaired_bars[0].timestamp, end=repaired_bars[-1].timestamp,
+            )
+        }
         for bar in repaired_bars:
+            observed = observe_bar(bar)
+            prior = existing.get(bar.timestamp)
+            # Poll reconciliation runs before model inference. An unchanged
+            # refetch must retain the original live observation classification.
+            bar = prior if prior is not None and prior.bar_version == observed.bar_version else observe_bar(observed, observation_kind="repair")
             self._store_source_bar(bar)
             result.stored_source_bars += 1
         result.stored_aggregated_bars += self._repair_aggregates_for_gap_bars(repaired_bars)
@@ -314,14 +329,15 @@ class LiveBarIngestionService:
         existing_by_timestamp = {
             ensure_utc(bar.timestamp): bar
             for bar in existing_bars
+            if self._valid_gap_bar(gap, bar)
         }
         recovered_by_timestamp: dict[datetime, MarketBar] = {}
         missing_timestamp_set = self._recoverable_missing_timestamp_set(gap)
         skipped_market_closed_bar_count = self._market_closed_missing_timestamp_count(gap)
         for bar in recovered_bars:
             timestamp = ensure_utc(bar.timestamp)
-            if timestamp in missing_timestamp_set:
-                recovered_by_timestamp[timestamp] = bar
+            if timestamp in missing_timestamp_set and self._valid_gap_bar(gap, bar):
+                recovered_by_timestamp[timestamp] = observe_bar(bar, observation_kind="backfill")
 
         merged = dict(existing_by_timestamp)
         merged.update(recovered_by_timestamp)
@@ -366,8 +382,14 @@ class LiveBarIngestionService:
         return complete_gap_bars, new_gap_bars
 
     def _has_full_gap_coverage(self, gap: IngestionGap | StoredIngestionGap, bars: tuple[MarketBar, ...]) -> bool:
-        covered_timestamps = {ensure_utc(bar.timestamp) for bar in bars}
+        covered_timestamps = {ensure_utc(bar.timestamp) for bar in bars if self._valid_gap_bar(gap, bar)}
         return all(timestamp in covered_timestamps for timestamp in self._recoverable_missing_timestamp_set(gap))
+
+    @staticmethod
+    def _valid_gap_bar(gap: IngestionGap | StoredIngestionGap, bar: MarketBar) -> bool:
+        if canonical_asset_symbol(bar.asset) != canonical_asset_symbol(gap.asset) or bar.timeframe != gap.timeframe:
+            return False
+        return bar.is_complete is True if canonical_asset_symbol(gap.asset) == "ES" else bar.is_complete is not False
 
     def _recoverable_missing_timestamp_set(self, gap: IngestionGap | StoredIngestionGap) -> set[datetime]:
         return {

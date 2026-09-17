@@ -95,6 +95,13 @@ def _row_from_bar(bar: MarketBar) -> dict[str, object]:
         "symbol": bar.symbol,
         "contract_symbol": bar.contract_symbol,
         "instrument_id": bar.instrument_id,
+        "source_timestamp": bar.source_timestamp,
+        "bar_version": bar.bar_version,
+        "is_complete": bar.is_complete,
+        "feed_type": bar.feed_type,
+        "first_observed_at": bar.first_observed_at,
+        "last_observed_at": bar.last_observed_at,
+        "observation_kind": bar.observation_kind,
     }
     for key, value in dict(bar.feature_context or {}).items():
         if key in row:

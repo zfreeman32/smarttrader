@@ -16,7 +16,7 @@ from ote_live.contracts.signal import SignalDecision
 from ote_live.models.loaders import load_live_runtime_manifest
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore
 
-LONG_MANIFEST_PATH = ROOT / "ote_live" / "runtime_manifests" / "long_ote_champion_v1" / "live_runtime_manifest.json"
+LONG_MANIFEST_PATH = ROOT / "ote_live" / "runtime_manifests" / "long_ote_meta_tcn_champion" / "live_runtime_manifest.json"
 
 
 def test_live_audit_repository_reconstructs_signal_from_database_rows() -> None:

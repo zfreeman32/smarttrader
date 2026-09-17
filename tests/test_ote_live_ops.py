@@ -284,6 +284,7 @@ def test_service_heartbeat_writer_persists_health_snapshot_file() -> None:
             ),
             bootstrap_payload={"catchup_bars": 2},
             runtime_payload={"terminal_status": "running"},
+            now=source_bar.timestamp + timedelta(seconds=15),
         )
         writer = ServiceHeartbeatWriter(heartbeat_path)
         writer.write_snapshot(snapshot)

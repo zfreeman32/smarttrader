@@ -98,7 +98,7 @@ class _RecordingSmsTransport:
         return f"sms-{len(self.messages)}"
 
 
-def test_runtime_emits_signal_and_automatically_persists_notification_and_screenshot() -> None:
+def test_runtime_emits_signal_and_notifies_without_saving_images() -> None:
     tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
     db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
@@ -150,7 +150,7 @@ def test_runtime_emits_signal_and_automatically_persists_notification_and_screen
 
     assert summary.emitted_signals == 1
     assert summary.sent_notifications == 2
-    assert summary.captured_media_artifacts == 1
+    assert summary.captured_media_artifacts == 0
     assert len(email_transport.messages) == 1
     assert len(sms_transport.messages) == 1
 
@@ -168,9 +168,7 @@ def test_runtime_emits_signal_and_automatically_persists_notification_and_screen
     assert len(reconstructed.notifications) == 2
     assert reconstructed.notifications[0].status == "sent"
     assert reconstructed.notifications[1].status == "sent"
-    assert len(reconstructed.media_artifacts) == 1
-    assert reconstructed.media_artifacts[0].artifact_type == "chart_screenshot"
-    assert Path(reconstructed.media_artifacts[0].file_path).exists()
+    assert len(reconstructed.media_artifacts) == 0
 
 
 def test_runtime_emits_signal_sends_notifications_without_operator_artifacts() -> None:
@@ -250,7 +248,7 @@ def test_runtime_emits_signal_sends_notifications_without_operator_artifacts() -
     assert len(reconstructed.media_artifacts) == 0
 
 
-def test_runtime_shadow_signal_above_threshold_persists_screenshot_without_notifications() -> None:
+def test_runtime_shadow_signal_above_threshold_does_not_save_images_or_notify() -> None:
     tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
     db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
@@ -304,7 +302,7 @@ def test_runtime_shadow_signal_above_threshold_persists_screenshot_without_notif
     assert summary.evaluated_signals == 1
     assert summary.emitted_signals == 0
     assert summary.sent_notifications == 0
-    assert summary.captured_media_artifacts == 1
+    assert summary.captured_media_artifacts == 0
     assert len(email_transport.messages) == 0
     assert len(sms_transport.messages) == 0
 
@@ -321,9 +319,7 @@ def test_runtime_shadow_signal_above_threshold_persists_screenshot_without_notif
 
     assert reconstructed.signal.decision == "shadow"
     assert len(reconstructed.notifications) == 0
-    assert len(reconstructed.media_artifacts) == 1
-    assert reconstructed.media_artifacts[0].artifact_type == "chart_screenshot"
-    assert Path(reconstructed.media_artifacts[0].file_path).exists()
+    assert len(reconstructed.media_artifacts) == 0
 
 
 def test_runtime_shadow_signal_below_threshold_does_not_send_notifications() -> None:
@@ -466,6 +462,40 @@ def test_live_signal_processor_can_activate_all_loaded_models(monkeypatch) -> No
     assert all(binding.shadow_mode is False for binding in processor.bindings)
 
 
+def test_live_signal_processor_can_force_loaded_models_into_shadow_mode(monkeypatch) -> None:
+    active_model_id = "ict_long_meta_xgb_v1"
+    candidate_model_id = "ict_long_reversal_xgb_v1"
+    bundle = LoadedDirectionModels(
+        direction_manifest=SimpleNamespace(
+            recommendations=SimpleNamespace(recommended_primary_model_id=active_model_id),
+            models=(
+                SimpleNamespace(model_id=active_model_id, status="active"),
+                SimpleNamespace(model_id=candidate_model_id, status="candidate"),
+            ),
+        ),
+        loaded_models={
+            active_model_id: SimpleNamespace(model_id=active_model_id),
+            candidate_model_id: SimpleNamespace(model_id=candidate_model_id),
+        },
+        unavailable_models={},
+    )
+    monkeypatch.setattr("ote_live.ingestion.signals.load_direction_models", lambda *args, **kwargs: bundle)
+
+    processor = _InspectableSignalProcessor.from_direction_manifest_paths(
+        audit_repository=SimpleNamespace(),
+        long_manifest_path="ote_live/runtime_manifests/live_runtime_manifest_long.json",
+        short_manifest_path=None,
+        force_shadow_mode=True,
+    )
+
+    assert processor is not None
+    assert [binding.loaded_model.model_id for binding in processor.bindings] == [
+        active_model_id,
+        candidate_model_id,
+    ]
+    assert [binding.shadow_mode for binding in processor.bindings] == [True, True]
+
+
 def test_live_signal_processor_all_models_active_tolerates_missing_primary(monkeypatch) -> None:
     configured_primary_id = "long_breakout_tcn_champion"
     fallback_model_id = "long_reversal_tcn_champion"
@@ -532,6 +562,55 @@ def test_live_signal_processor_uses_manifest_status_for_shadow_mode(monkeypatch)
         shadow_model_id,
     ]
     assert [binding.shadow_mode for binding in processor.bindings] == [False, True]
+
+
+def test_signal_processor_seeds_latest_prediction_once_without_notifications() -> None:
+    tmp_root = ROOT / "tmp" / "ote_live_signal_runtime_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+    chart_root = tmp_root / "charts"
+
+    store = SQLiteLiveDataStore(db_path)
+    audit = LiveAuditRepository(store)
+    email_transport = _RecordingEmailTransport()
+    sms_transport = _RecordingSmsTransport()
+    signal_bars = [
+        _minute_bar(offset * 5).model_copy(update={"timeframe": "5m"})
+        for offset in range(1, 301)
+    ]
+    store.upsert_bars(signal_bars)
+    signal_processor = _build_signal_processor(
+        store=store,
+        audit=audit,
+        email_transport=email_transport,
+        sms_transport=sms_transport,
+        chart_root=chart_root,
+    )
+
+    warmed_bars = signal_processor.warm_from_store()
+    seeded = signal_processor.seed_latest_predictions_from_store()
+    seeded_again = signal_processor.seed_latest_predictions_from_store()
+
+    assert warmed_bars == 260
+    assert len(seeded) == 1
+    assert seeded[0].timestamp == signal_bars[-1].timestamp
+    assert seeded_again == ()
+    prediction_count = store.connection.execute(
+        """
+        SELECT COUNT(*) AS prediction_count
+        FROM model_predictions
+        WHERE model_id = ? AND timestamp_utc = ?
+        """,
+        (
+            signal_processor.bindings[0].loaded_model.model_id,
+            signal_bars[-1].timestamp.isoformat(),
+        ),
+    ).fetchone()
+    assert int(prediction_count["prediction_count"]) == 1
+    assert email_transport.messages == []
+    assert sms_transport.messages == []
+
+    store.close()
 
 
 def test_runtime_persists_primary_hold_decisions_for_dashboard_confidence() -> None:
@@ -647,6 +726,16 @@ def test_build_policy_frame_batches_feature_columns_without_changing_overwrite_b
         "ask",
         "spread",
         "source",
+        "symbol",
+        "contract_symbol",
+        "instrument_id",
+        "source_timestamp",
+        "bar_version",
+        "is_complete",
+        "feed_type",
+        "first_observed_at",
+        "last_observed_at",
+        "observation_kind",
         "custom_feature",
     ]
     assert policy_frame["open"].tolist() == [10.0, 11.0]

@@ -1,7 +1,12 @@
 param(
     [string]$NgrokUrl = "https://stencil-exporter-pound.ngrok-free.dev",
     [switch]$IncludeIct,
-    [switch]$PrepareIctHandoff
+    [switch]$PrepareIctHandoff,
+    [switch]$IncludeIctDelayedTest,
+    [Alias("include-frvp-setup")]
+    [switch]$IncludeFrvpSetup,
+    [Alias("include-ict-setup")]
+    [switch]$IncludeIctSetup
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +15,28 @@ $repoRoot = $PSScriptRoot
 $pythonExe = Join-Path $repoRoot "ote_venv\Scripts\python.exe"
 $logRoot = Join-Path $repoRoot "ote_live\runtime_data\logs"
 $healthRoot = Join-Path $repoRoot "ote_live\runtime_data\health"
+$defaultNgrokUrl = "https://stencil-exporter-pound.ngrok-free.dev"
+
+$collectorSetupArguments = @()
+if ($NgrokUrl -in @("--include-frvp-setup", "--include-ict-setup")) {
+    $collectorSetupArguments += $NgrokUrl
+    $NgrokUrl = $defaultNgrokUrl
+}
+$collectorSetupArguments += @($args)
+
+foreach ($argument in $collectorSetupArguments) {
+    switch -Exact ($argument) {
+        "--include-frvp-setup" { $IncludeFrvpSetup = $true }
+        "--include-ict-setup" { $IncludeIctSetup = $true }
+        default {
+            throw "Unexpected launcher argument '$argument'. Use PowerShell switches such as -IncludeIctDelayedTest, -IncludeFrvpSetup, and -IncludeIctSetup; pass ngrok URLs with -NgrokUrl."
+        }
+    }
+}
+
+if ($NgrokUrl -match '^\s*-') {
+    throw "NgrokUrl was parsed as '$NgrokUrl'. Pass setup-family options as -IncludeFrvpSetup/-IncludeIctSetup, or pass the ngrok URL explicitly with -NgrokUrl."
+}
 
 if (-not (Test-Path -LiteralPath $pythonExe)) {
     throw "Python virtual environment was not found at $pythonExe"
@@ -176,8 +203,12 @@ function Get-NgrokDashboardTunnel {
 
 Push-Location $repoRoot
 try {
-    if ($IncludeIct -and $PrepareIctHandoff) {
-        throw "-IncludeIct and -PrepareIctHandoff are mutually exclusive."
+    $ictModeCount = 0
+    if ($IncludeIct) { $ictModeCount += 1 }
+    if ($PrepareIctHandoff) { $ictModeCount += 1 }
+    if ($IncludeIctDelayedTest) { $ictModeCount += 1 }
+    if ($ictModeCount -gt 1) {
+        throw "-IncludeIct, -PrepareIctHandoff, and -IncludeIctDelayedTest are mutually exclusive."
     }
 
     $esHeartbeat = Join-Path $healthRoot "es_shared_live_signal_service_heartbeat.json"
@@ -232,9 +263,19 @@ try {
             $esCollectorArguments = @("--exclude-ict", "--max-cycles", "1")
             Write-Host "Starting a one-cycle FRVP-only ES bootstrap that must exit cleanly before the 120-second ICT handoff."
         }
+        elseif ($IncludeIctDelayedTest) {
+            $esCollectorArguments = @("--include-ict", "--allow-ict-delayed-test")
+            Write-Host "Starting the shared ES collector with ICT delayed-data shadow test mode enabled."
+        }
         elseif (-not $IncludeIct) {
             $esCollectorArguments = @("--exclude-ict")
             Write-Host "Starting the shared ES collector in ongoing FRVP-only mode. Use -PrepareIctHandoff for the controlled ICT launch sequence."
+        }
+        if ($IncludeFrvpSetup) {
+            $esCollectorArguments += "--include-frvp-setup"
+        }
+        if ($IncludeIctSetup) {
+            $esCollectorArguments += "--include-ict-setup"
         }
         Start-AppProcess `
             -Name "shared FRVP/ICT collector" `

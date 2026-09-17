@@ -15,10 +15,11 @@ class ModelPrediction(BaseModel):
     direction: Literal["long", "short"]
     backend: Literal["tcn", "lstm", "xgboost"]
     timestamp: datetime
+    collection_version: str = "legacy-unversioned"
+    prediction_recorded_at_utc: datetime | None = None
     source_row_idx: int | None = None
     regime: str | None = None
     raw_score: float | None = None
     calibrated_probability: float
     threshold_applied: float | None = None
     threshold_source: Literal["global", "regime", "shadow", "unknown"] = "unknown"
-

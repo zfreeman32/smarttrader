@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from features.fx_calendar import normalize_datetime_series
 from features.io import validate_ohlcv
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import CanonicalTimeframe, canonical_asset_symbol
+from ote_live.ingestion.provenance import observe_bar
 
 _FMP_TO_CANONICAL_INTERVAL: dict[str, CanonicalTimeframe] = {
     "1min": "1m",
@@ -95,6 +97,8 @@ def bars_to_dataframe(bars: list[MarketBar]) -> pd.DataFrame:
                 "symbol",
                 "contract_symbol",
                 "instrument_id",
+                "feature_context", "source_timestamp", "bar_version", "is_complete", "feed_type",
+                "first_observed_at", "last_observed_at", "observation_kind",
             ]
         )
 
@@ -115,6 +119,14 @@ def bars_to_dataframe(bars: list[MarketBar]) -> pd.DataFrame:
             "symbol": bar.symbol,
             "contract_symbol": bar.contract_symbol,
             "instrument_id": bar.instrument_id,
+            "feature_context": bar.feature_context,
+            "source_timestamp": bar.source_timestamp,
+            "bar_version": bar.bar_version,
+            "is_complete": bar.is_complete,
+            "feed_type": bar.feed_type,
+            "first_observed_at": bar.first_observed_at,
+            "last_observed_at": bar.last_observed_at,
+            "observation_kind": bar.observation_kind,
         }
         for bar in bars
     ]
@@ -163,10 +175,18 @@ def dataframe_to_market_bars(
                 bid=_optional_float(getattr(row, "bid", None)),
                 ask=_optional_float(getattr(row, "ask", None)),
                 spread=_optional_float(getattr(row, "spread", None)),
-                source=source,
+                source=source or _optional_str(getattr(row, "source", None)),
                 symbol=_optional_str(getattr(row, "symbol", None)),
                 contract_symbol=_optional_str(getattr(row, "contract_symbol", None)),
                 instrument_id=_optional_int(getattr(row, "instrument_id", None)),
+                feature_context=getattr(row, "feature_context", None) if isinstance(getattr(row, "feature_context", None), dict) else {},
+                source_timestamp=_optional_timestamp(getattr(row, "source_timestamp", None)),
+                bar_version=_optional_str(getattr(row, "bar_version", None)),
+                is_complete=_optional_bool(getattr(row, "is_complete", None)),
+                feed_type=_optional_str(getattr(row, "feed_type", None)),
+                first_observed_at=_optional_timestamp(getattr(row, "first_observed_at", None)),
+                last_observed_at=_optional_timestamp(getattr(row, "last_observed_at", None)),
+                observation_kind=_optional_str(getattr(row, "observation_kind", None)) or "unknown",
             )
         )
     return bars
@@ -196,12 +216,13 @@ def load_local_csv_bars(
         drop_invalid=True,
     )
     validated = validated.drop_duplicates(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-    return dataframe_to_market_bars(
+    bars = dataframe_to_market_bars(
         validated,
         asset=asset,
         timeframe=timeframe,
         source=source or f"local_csv:{path.name}",
     )
+    return [observe_bar(bar, observation_kind="replay") for bar in bars]
 
 
 def _normalize_fmp_bar(
@@ -218,7 +239,7 @@ def _normalize_fmp_bar(
         canonical_timezone="UTC",
     ).iloc[0]
 
-    return MarketBar(
+    return observe_bar(MarketBar(
         asset=canonical_asset_symbol(symbol),
         timeframe=fmp_interval_to_canonical_timeframe(interval),
         timestamp=timestamp,
@@ -228,7 +249,7 @@ def _normalize_fmp_bar(
         close=float(payload["close"]),
         volume=float(payload.get("volume") or 0.0),
         source=source,
-    )
+    ))
 
 
 def _read_local_csv_frame(path: Path, *, skiprows: int = 0, nrows: int | None = None) -> pd.DataFrame:
@@ -305,7 +326,23 @@ def _optional_int(value: Any) -> int | None:
 
 
 def _optional_str(value: Any) -> str | None:
-    if value is None:
+    if value is None or pd.isna(value):
         return None
     text = str(value).strip()
     return text or None
+
+
+def _optional_timestamp(value: Any) -> datetime | None:
+    return None if value is None or pd.isna(value) else pd.Timestamp(value).to_pydatetime()
+
+
+def _optional_bool(value: Any) -> bool | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, str):
+        if value.lower() in {"true", "1"}:
+            return True
+        if value.lower() in {"false", "0"}:
+            return False
+        return None
+    return bool(value)

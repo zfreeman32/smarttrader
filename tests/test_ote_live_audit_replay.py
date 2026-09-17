@@ -21,7 +21,7 @@ from ote_live.policies.decision_engine import LiveDecisionEngine
 from ote_live.storage import LiveAuditRepository, SQLiteLiveDataStore, replay_audited_signal
 
 SHORT_XGB_V1_MANIFEST_PATH = (
-    ROOT / "ote_live" / "runtime_manifests" / "short_ote_xgb_v1_candidate" / "live_runtime_manifest.json"
+    ROOT / "ote_live" / "runtime_manifests" / "short_reversal_xgb_v2_20260525" / "live_runtime_manifest.json"
 )
 EURUSD_5M_PATH = ROOT / "data" / "currency_data" / "eurusd-5m.csv"
 
@@ -101,6 +101,90 @@ def test_audit_replay_service_rebuilds_prediction_and_signal_from_stored_rows() 
     assert replay_report.calibrated_probability_abs_diff <= replay_report.calibrated_probability_atol
     assert replay_report.replayed_signal == decision_path.signal
     assert replay_report.replayed_prediction == decision_path.prediction
+
+
+def test_audit_replay_reuses_stored_regime_when_policy_context_lacks_regime_columns() -> None:
+    base_manifest = _subset_manifest(
+        load_live_runtime_manifest(SHORT_XGB_V1_MANIFEST_PATH),
+        [
+            "strategy__smi_signals__smi",
+            "ema_200",
+            "close_vs_ema_8_atr_lag_1",
+        ],
+    )
+    live_policy = base_manifest.live_policy.model_copy(
+        update={
+            "thresholds": base_manifest.live_policy.thresholds.model_copy(
+                update={
+                    "global_threshold": 0.0,
+                    "regime_thresholds": {},
+                }
+            ),
+            "abstain_policy": base_manifest.live_policy.abstain_policy.model_copy(
+                update={"enabled": False}
+            ),
+        }
+    )
+    manifest = base_manifest.model_copy(update={"live_policy": live_policy})
+
+    market_frame = _load_standardized_market_frame().tail(420).reset_index(drop=True)
+    bars = [
+        _market_bar_from_row(row, asset=manifest.asset, timeframe=manifest.timeframe)
+        for row in market_frame.itertuples(index=False)
+    ]
+
+    tmp_root = ROOT / "tmp" / "ote_live_audit_replay_tests"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_root / f"{uuid.uuid4().hex}.sqlite"
+
+    with SQLiteLiveDataStore(db_path) as store:
+        store.upsert_bars(bars)
+        audit = LiveAuditRepository(store)
+        runner = RuntimeModelRunner(_build_fake_loaded_model(manifest))
+        feature_engine = IncrementalFeatureEngine([manifest], rolling_window_bars=420)
+        feature_engine.extend(bars)
+        feature_frame = feature_engine.build_feature_frame()
+        feature_frame_for_runner = feature_frame.copy()
+        feature_frame_for_runner["timestamp"] = [bar.timestamp for bar in bars[-len(feature_frame_for_runner) :]]
+        feature_frame_for_runner["source_row_idx"] = list(
+            range(len(bars) - len(feature_frame_for_runner), len(bars))
+        )
+
+        snapshot = runner.build_latest_snapshot(feature_frame_for_runner)
+        prediction = runner.predict_latest(feature_frame_for_runner).model_copy(
+            update={"regime": "weak_up_medium"}
+        )
+
+        decision_engine = LiveDecisionEngine(audit_repository=audit, persist_decisions=("emit",))
+        decision_path = decision_engine.evaluate_prediction(
+            prediction,
+            live_policy=manifest.live_policy,
+            policy_context={
+                "timestamp": prediction.timestamp.isoformat(),
+                "close": 1.20,
+                "ema_alignment": 0.25,
+                "atr_14": 1.0,
+                "range_shock_20": 2.5,
+            },
+            timezone_contract=manifest.timezone_contract,
+            shadow_mode=False,
+            feature_snapshot=snapshot,
+            runtime_manifest=manifest,
+        )
+
+        assert decision_path.audit_record is not None
+        assert decision_path.prediction.regime == "weak_up_medium"
+        assert decision_path.signal.regime == "weak_up_medium"
+
+        replay_report = replay_audited_signal(
+            audit,
+            decision_path.audit_record.signal_decision_id,
+            model_loader=_build_fake_loaded_model,
+        )
+
+    assert replay_report.matches
+    assert replay_report.replayed_prediction.regime == "weak_up_medium"
+    assert replay_report.replayed_signal.regime == "weak_up_medium"
 
 
 def _subset_manifest(

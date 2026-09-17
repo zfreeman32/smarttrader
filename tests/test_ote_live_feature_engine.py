@@ -8,16 +8,21 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from features.io import standardize_market_frame
 from features.config import FeatureBuilderConfig
 from ote_live.features.incremental_engine import (
     DEFAULT_RECIPE_PATH,
     IncrementalFeatureEngine,
+    _materialize_live_default_features,
+    _manifest_allows_nan_feature_values,
     build_manifest_feature_plan,
     build_runtime_feature_config,
     infer_required_history_bars,
 )
 from ote_live.features.manifest import LiveRuntimeManifest
 from ote_live.features.strategy_adapter import StrategyFeatureAdapter
+from ote_live.models.loaders import LoadedRuntimeModel, load_runtime_model
+from ote_live.models.runners import RuntimeModelRunner
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LONG_V2_MANIFEST_PATH = (
@@ -32,6 +37,14 @@ SHORT_V2_MANIFEST_PATH = (
     / "ote_live"
     / "runtime_manifests"
     / "short_reversal_xgb_v2_20260525"
+    / "live_runtime_manifest.json"
+)
+FRVP_SHORT_META_MANIFEST_PATH = (
+    REPO_ROOT
+    / "ote_live"
+    / "runtime_manifests"
+    / "frvp_es_shadow_20260715"
+    / "frvp_short_meta_xgb_v1"
     / "live_runtime_manifest.json"
 )
 EURUSD_5M_PATH = REPO_ROOT / "data" / "currency_data" / "eurusd-5m.csv"
@@ -61,6 +74,13 @@ def _subset_manifest(
         }
     )
     return manifest.model_copy(update={"feature_manifest": feature_manifest})
+
+
+def _resolve_repo_path(path_value: str) -> Path:
+    candidate = Path(path_value)
+    if candidate.is_absolute():
+        return candidate
+    return (REPO_ROOT / candidate).resolve()
 
 
 def _collect_columns(
@@ -100,6 +120,27 @@ def _collect_columns_and_values(
         columns.add(base)
         values.add(int(match.group(value_group)))
     return columns, values
+
+
+def test_ict_xgboost_runtime_preserves_the_frozen_nan_contract() -> None:
+    source_manifest = _load_manifest(FRVP_SHORT_META_MANIFEST_PATH)
+    ict_manifest = source_manifest.model_copy(update={"model_id": "ict_nan_contract_xgb", "backend": "xgboost"})
+
+    engine = IncrementalFeatureEngine([ict_manifest], rolling_window_bars=300)
+    loaded_model = LoadedRuntimeModel(
+        manifest=ict_manifest,
+        model=object(),
+        scaler=None,
+        calibrator=None,
+        training_summary={},
+        scale_clip=8.0,
+        batch_size=1,
+        use_amp=False,
+    )
+
+    assert _manifest_allows_nan_feature_values(ict_manifest) is True
+    assert engine.config.fillna_numeric is False
+    assert loaded_model.allows_nan_feature_values is True
 
 
 def test_strategy_adapter_resolves_real_candidate_manifest_prefixes() -> None:
@@ -223,7 +264,125 @@ def test_runtime_feature_config_prunes_transforms_to_selected_manifest_features(
     )
 
 
+def test_runtime_feature_config_prunes_family_context_sets_for_generic_manifest_subset() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(SHORT_V2_MANIFEST_PATH),
+        [
+            "rsi_14",
+            "dist_to_prior_high_20_atr",
+            "atr_ratio_14_50_roll_mean_100",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+    config = build_runtime_feature_config(plan)
+
+    assert "frvp_context" not in config.feature_sets
+    assert "ict_context" not in config.feature_sets
+
+
+def test_runtime_feature_config_keeps_family_context_sets_when_requested() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(SHORT_V2_MANIFEST_PATH),
+        [
+            "frvp_dist_poc_session_atr",
+            "ict_nearest_bull_fvg_ce",
+            "dist_to_bull_fvg_atr",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+    config = build_runtime_feature_config(plan)
+
+    assert "frvp_context" in config.feature_sets
+    assert "ict_context" in config.feature_sets
+
+
+def test_runtime_feature_config_keeps_frvp_context_for_target_specific_htf_confluence_features() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(SHORT_V2_MANIFEST_PATH),
+        [
+            "htf_confluence_short_frvp_continuation",
+            "htf_confluence_short_frvp_reversal",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+    config = build_runtime_feature_config(plan)
+
+    assert "frvp_context" in config.feature_sets
+    assert "ict_context" not in config.feature_sets
+
+
+def test_runtime_feature_config_keeps_ict_context_for_interaction_only_manifest_subset() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(FRVP_SHORT_META_MANIFEST_PATH),
+        [
+            "interaction_bull_structure_proximity",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+    config = build_runtime_feature_config(plan)
+
+    assert "ict_context" in config.feature_sets
+
+
+def test_runtime_feature_config_enables_requested_ict_interaction_family() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(FRVP_SHORT_META_MANIFEST_PATH),
+        ["ict_bear_zone_in_premium"],
+    )
+
+    plan = build_manifest_feature_plan((manifest,))
+    config = build_runtime_feature_config(plan)
+
+    assert "ict_context" in config.feature_sets
+    assert "ict_interactions" in config.feature_sets
+
+
+def test_runtime_feature_config_enables_ict_context_derived_transforms() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(FRVP_SHORT_META_MANIFEST_PATH),
+        [
+            "ict_total_confluence_1atr_lag_1",
+            "ict_total_confluence_1atr_roll_mean_20",
+            "ict_zone_balance_1atr_roll_std_50",
+            "ict_zone_balance_1atr_zscore_60",
+        ],
+    )
+
+    config = build_runtime_feature_config(build_manifest_feature_plan([manifest]))
+
+    assert config.lag_columns == ["ict_total_confluence_1atr"]
+    assert config.lag_periods == [1]
+    assert config.rolling_stat_columns == [
+        "ict_total_confluence_1atr",
+        "ict_zone_balance_1atr",
+    ]
+    assert config.rolling_windows == [20, 50]
+    assert config.zscore_columns == ["ict_zone_balance_1atr"]
+    assert config.zscore_window == 60
+
+
+def test_live_feature_defaults_materialize_sparse_htf_confluence_helpers() -> None:
+    source = pd.DataFrame({"close": [6000.0, 6001.0]})
+
+    materialized = _materialize_live_default_features(
+        source,
+        requested_feature_names=(
+            "close",
+            "htf_confluence_long_frvp_continuation",
+            "htf_confluence_short_ict_reversal",
+        ),
+    )
+
+    assert materialized["htf_confluence_long_frvp_continuation"].tolist() == [0, 0]
+    assert materialized["htf_confluence_short_ict_reversal"].tolist() == [0, 0]
+
+
 def test_infer_required_history_bars_expands_for_htf_context_features() -> None:
+    assert infer_required_history_bars(["frvp_va_width_zscore_20"]) >= 8000
     assert infer_required_history_bars(["htf_30m_ema_spread_21_50_atr"]) >= 1000
     assert infer_required_history_bars(["htf_1h_ema_spread_21_50_atr"]) >= 2000
     assert infer_required_history_bars(["htf_alignment_score"]) >= 2000
@@ -242,6 +401,21 @@ def test_manifest_plan_prefers_htf_history_over_strategy_default_budget() -> Non
 
     assert plan.inferred_history_bars >= 2000
     assert plan.runtime_history_bars >= 2000
+
+
+def test_manifest_plan_expands_for_frvp_prior_rth_history_features() -> None:
+    manifest = _subset_manifest(
+        _load_manifest(FRVP_SHORT_META_MANIFEST_PATH),
+        [
+            "frvp_va_width_zscore_20",
+            "htf_confluence_short_frvp_continuation",
+        ],
+    )
+
+    plan = build_manifest_feature_plan([manifest])
+
+    assert plan.inferred_history_bars >= 8000
+    assert plan.runtime_history_bars >= 8000
 
 
 def test_incremental_engine_builds_selected_subset_with_single_strategy_feature() -> None:
@@ -299,3 +473,151 @@ def test_incremental_engine_can_include_policy_context_features_without_changing
     assert pd.notna(latest_policy_row["ema_alignment"])
     assert pd.notna(latest_policy_row["atr_14"])
     assert pd.notna(latest_policy_row["range_shock_20"])
+
+
+def test_incremental_engine_reuses_snapshot_scoped_feature_cache_for_identical_market_frame() -> None:
+    base_manifest = _load_manifest(LONG_V2_MANIFEST_PATH)
+    selected_feature_names = [
+        "rsi_14",
+        "dist_to_prior_high_20_atr",
+        "atr_ratio_14_50_roll_mean_100",
+    ]
+    manifest = _subset_manifest(base_manifest, selected_feature_names)
+
+    engine = IncrementalFeatureEngine([manifest], rolling_window_bars=300)
+    market_frame = pd.read_csv(EURUSD_5M_PATH).tail(300).reset_index(drop=True)
+
+    first = engine.build_feature_frame(market_frame, include_policy_features=True)
+    second = engine.build_feature_frame(market_frame.copy(), include_policy_features=True)
+
+    pd.testing.assert_frame_equal(first, second)
+    assert engine.feature_build_count == 1
+    assert engine.feature_cache_hit_count == 1
+
+    repaired = market_frame.copy()
+    repaired.loc[repaired.index[-1], "Close"] += 0.0001
+    engine.build_feature_frame(repaired, include_policy_features=True)
+
+    assert engine.feature_build_count == 2
+
+
+def test_incremental_engine_preserves_frvp_htf_confluence_carry_through_features() -> None:
+    base_manifest = _load_manifest(FRVP_SHORT_META_MANIFEST_PATH)
+    selected_feature_names = [
+        "htf_confluence_short_frvp_continuation",
+        "htf_confluence_short_frvp_reversal",
+    ]
+    manifest = _subset_manifest(base_manifest, selected_feature_names)
+
+    upstream_path = _resolve_repo_path(manifest.source_lineage.upstream_source_path)
+    feature_csv_path = _resolve_repo_path(manifest.source_lineage.feature_csv)
+    upstream_market_frame = standardize_market_frame(
+        pd.read_csv(upstream_path),
+        source_timezone=manifest.source_lineage.upstream_timezone_contract.source_timezone,
+        canonical_timezone=manifest.timezone_contract.canonical_timezone,
+    )
+    upstream_market_frame["datetime"] = pd.to_datetime(
+        upstream_market_frame["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    upstream_market_frame = upstream_market_frame.dropna(subset=["datetime"])
+
+    feature_context_frame = pd.read_csv(
+        feature_csv_path,
+        usecols=[
+            "datetime",
+            *selected_feature_names,
+        ],
+    )
+    feature_context_frame["datetime"] = pd.to_datetime(
+        feature_context_frame["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    feature_context_frame = feature_context_frame.dropna(subset=["datetime"])
+    feature_context_frame = feature_context_frame.drop_duplicates(subset=["datetime"], keep="last")
+
+    market_frame = (
+        upstream_market_frame.merge(
+            feature_context_frame,
+            on="datetime",
+            how="left",
+        )
+        .tail(600)
+        .reset_index(drop=True)
+    )
+
+    engine = IncrementalFeatureEngine([manifest], rolling_window_bars=600)
+    feature_frame = engine.build_feature_frame(market_frame)
+
+    assert list(feature_frame.columns) == selected_feature_names
+    pd.testing.assert_series_equal(
+        feature_frame["htf_confluence_short_frvp_continuation"].reset_index(drop=True),
+        market_frame["htf_confluence_short_frvp_continuation"].reset_index(drop=True),
+        check_names=False,
+    )
+    pd.testing.assert_series_equal(
+        feature_frame["htf_confluence_short_frvp_reversal"].reset_index(drop=True),
+        market_frame["htf_confluence_short_frvp_reversal"].reset_index(drop=True),
+        check_names=False,
+    )
+
+
+def test_runtime_model_runner_accepts_frvp_xgboost_selected_nan_features() -> None:
+    manifest = _load_manifest(FRVP_SHORT_META_MANIFEST_PATH)
+    loaded_model = load_runtime_model(manifest)
+    runner = RuntimeModelRunner(loaded_model)
+
+    feature_csv_path = _resolve_repo_path(manifest.source_lineage.feature_csv)
+    feature_frame = pd.read_csv(
+        feature_csv_path,
+        usecols=lambda candidate: candidate in {"datetime", *manifest.feature_manifest.selected_feature_names},
+    )
+    feature_frame["datetime"] = pd.to_datetime(
+        feature_frame["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    feature_frame = feature_frame.dropna(subset=["datetime"]).reset_index(drop=True)
+
+    target_timestamp = pd.Timestamp("2026-06-17T00:10:00+00:00")
+    target_index = int(feature_frame.index[feature_frame["datetime"] == target_timestamp][0])
+    window = feature_frame.iloc[target_index - 30 : target_index + 1].reset_index(drop=True)
+    window["timestamp"] = window["datetime"]
+
+    prediction = runner.predict_latest(
+        window,
+        timestamp=target_timestamp.to_pydatetime(),
+        source_row_idx=target_index,
+        regime="ranging_medium",
+    )
+
+    assert prediction.model_id == manifest.model_id
+
+
+def test_runtime_model_runner_snapshot_normalizes_frvp_selected_nan_features_to_none() -> None:
+    manifest = _load_manifest(FRVP_SHORT_META_MANIFEST_PATH)
+    loaded_model = load_runtime_model(manifest)
+    runner = RuntimeModelRunner(loaded_model)
+
+    feature_csv_path = _resolve_repo_path(manifest.source_lineage.feature_csv)
+    feature_frame = pd.read_csv(
+        feature_csv_path,
+        usecols=lambda candidate: candidate in {"datetime", *manifest.feature_manifest.selected_feature_names},
+    )
+    feature_frame["datetime"] = pd.to_datetime(
+        feature_frame["datetime"],
+        errors="coerce",
+        utc=True,
+    )
+    feature_frame = feature_frame.dropna(subset=["datetime"]).reset_index(drop=True)
+
+    target_timestamp = pd.Timestamp("2026-06-17T00:10:00+00:00")
+    target_index = int(feature_frame.index[feature_frame["datetime"] == target_timestamp][0])
+    window = feature_frame.iloc[target_index - 30 : target_index + 1].reset_index(drop=True)
+    window["timestamp"] = window["datetime"]
+
+    snapshot = runner.build_latest_snapshot(window)
+
+    assert snapshot.feature_values["frvp_dist_ib_low_atr"] is None

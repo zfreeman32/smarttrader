@@ -47,6 +47,12 @@ class ArtifactReferences(ManifestModel):
     model_config_file: str
     training_summary_file: str
     test_predictions_file: str | None = None
+    content_sha256: dict[str, str] = Field(
+        default_factory=dict,
+        # Preserve the serialized shape/hash of legacy manifests that predate
+        # artifact pinning. A non-empty map is part of the manifest contract.
+        exclude_if=lambda value: not value,
+    )
 
 
 class FeatureValidationSummary(ManifestModel):
@@ -57,6 +63,7 @@ class FeatureValidationSummary(ManifestModel):
 
 
 class FeatureManifest(ManifestModel):
+    input_contract_version: str | None = Field(default=None, exclude_if=lambda value: value is None)
     canonical_feature_metadata_file: str
     canonical_feature_count: int
     direction_feature_file: str

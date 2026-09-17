@@ -28,10 +28,15 @@ from ote_live.storage import (
 )
 from ote_live.storage.retention import RetentionPolicy
 
-SHORT_MANIFEST_PATH = ROOT / "ote_live" / "runtime_manifests" / "short_ote_xgb_v1_candidate" / "live_runtime_manifest.json"
+SHORT_MANIFEST_PATH = (
+    ROOT / "ote_live" / "runtime_manifests" / "short_reversal_xgb_v2_20260525" / "live_runtime_manifest.json"
+)
 
 
-def test_monthly_archive_restore_preserves_signal_lineage() -> None:
+def test_monthly_archive_restore_preserves_signal_lineage(monkeypatch) -> None:
+    # The manifest is archived by creation time; keep all fixture rows in April
+    # regardless of the wall clock when this regression is run.
+    monkeypatch.setattr("ote_live.storage.repositories.utc_now", lambda: datetime(2026, 4, 2, tzinfo=UTC))
     tmp_root = ROOT / "tmp" / "ote_live_archive_tests"
     tmp_root.mkdir(parents=True, exist_ok=True)
 

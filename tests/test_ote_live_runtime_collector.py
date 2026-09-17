@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import IngestionGap
+from ote_live.ingestion.connector_ibkr import IBKRRuntimeConfig
 from ote_live.ingestion.aggregator import MultiTimeframeBarAggregator
 from ote_live.ingestion.gap_detector import GapDetector
 from ote_live.ingestion.heartbeat import HeartbeatMonitor
@@ -72,6 +73,13 @@ def test_live_collector_config_preserves_explicit_signal_processing_delay() -> N
 
     assert config.finalized_bar_grace_seconds == 75.0
     assert config.signal_processing_delay_seconds == 150.0
+
+
+def test_live_collector_config_initializes_ibkr_runtime_defaults() -> None:
+    config = LiveCollectorConfig(data_supplier="ibkr")
+
+    assert config.data_supplier == "IBKR"
+    assert isinstance(config.ibkr, IBKRRuntimeConfig)
 
 
 def test_runtime_bootstrap_recovers_from_last_stored_bar(monkeypatch) -> None:

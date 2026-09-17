@@ -107,6 +107,50 @@ class LiveAuditRepository:
     def __init__(self, store: SQLiteLiveDataStore) -> None:
         self.store = store
 
+    def latest_shadow_policy_state(self, *, collection_version: str, model_id: str,
+                                   contract_version: str, policy_sha256: str,
+                                   asset: str, timeframe: str) -> dict | None:
+        rows = self.store.connection.execute(
+            "SELECT sd.signal_json FROM signal_decisions sd "
+            "JOIN model_predictions mp ON mp.id=sd.prediction_id "
+            "JOIN feature_snapshots fs ON fs.id=mp.feature_snapshot_id "
+            "WHERE sd.collection_version=? AND sd.model_id=? AND fs.asset=? AND fs.timeframe=? "
+            "ORDER BY sd.id DESC",
+            (collection_version, model_id, asset, timeframe),
+        )
+        for row in rows:
+            evaluation = json.loads(row["signal_json"]).get("shadow_evaluation") or {}
+            if evaluation.get("contract_version") == contract_version and evaluation.get("policy_sha256") == policy_sha256:
+                return evaluation["state_after"]
+        return None
+
+    def list_shadow_evaluations(self, *, collection_version: str | None = None,
+                                model_id: str | None = None, stage: str = "raw") -> list[dict]:
+        """Return one observation partition, never interpreting diagnostic rows as trades."""
+        from ote_live.storage.collection import select_report_collection
+        from ote_live.policies.shadow import SHADOW_POLICY_CONTRACT
+
+        stage_fields = {"raw": None, "threshold": "threshold_crossed", "setup": "setup_matched_decision",
+                        "policy": "policy_candidate_eligible", "qualified": "qualified_shadow_entry"}
+        if stage not in stage_fields:
+            raise ValueError(f"Unknown shadow evaluation stage: {stage}")
+        version = select_report_collection(self.store, collection_version=collection_version, model_id=model_id)
+        query = "SELECT id, prediction_id, model_id, signal_json FROM signal_decisions WHERE collection_version=?"
+        params = [version]
+        if model_id is not None:
+            query += " AND model_id=?"
+            params.append(model_id)
+        rows = []
+        for row in self.store.connection.execute(query + " ORDER BY id", params):
+            evaluation = json.loads(row["signal_json"]).get("shadow_evaluation")
+            if not evaluation or evaluation.get("contract_version") != SHADOW_POLICY_CONTRACT:
+                continue
+            if stage_fields[stage] and evaluation.get(stage_fields[stage]) is not True:
+                continue
+            rows.append({"signal_decision_id": row["id"], "prediction_id": row["prediction_id"],
+                         "model_id": row["model_id"], "collection_version": version, "evaluation": evaluation})
+        return rows
+
     def record_runtime_manifest(
         self,
         manifest: LiveRuntimeManifest,
@@ -189,8 +233,8 @@ class LiveAuditRepository:
             """
             INSERT INTO feature_snapshots (
                 runtime_manifest_id, asset, timeframe, direction, timestamp_utc, source_row_idx,
-                feature_values_json, valid_feature_count, metadata_json, snapshot_json, recorded_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                feature_values_json, valid_feature_count, metadata_json, snapshot_json, recorded_at_utc, collection_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 runtime_manifest_id,
@@ -204,6 +248,7 @@ class LiveAuditRepository:
                 _json_dumps(dict(metadata or {})),
                 _json_dumps(snapshot_payload),
                 _isoformat(utc_now()),
+                snapshot.collection_version,
             ),
         )
         self.store.connection.commit()
@@ -241,8 +286,8 @@ class LiveAuditRepository:
             INSERT INTO model_predictions (
                 runtime_manifest_id, feature_snapshot_id, model_id, direction, backend, timestamp_utc,
                 source_row_idx, regime, raw_score, calibrated_probability, threshold_applied,
-                threshold_source, metadata_json, prediction_json, recorded_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                threshold_source, metadata_json, prediction_json, recorded_at_utc, collection_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 resolved_manifest_id,
@@ -260,6 +305,7 @@ class LiveAuditRepository:
                 _json_dumps(dict(metadata or {})),
                 _json_dumps(prediction_payload),
                 _isoformat(utc_now()),
+                prediction.collection_version,
             ),
         )
         self.store.connection.commit()
@@ -297,8 +343,8 @@ class LiveAuditRepository:
             INSERT INTO signal_decisions (
                 runtime_manifest_id, prediction_id, model_id, direction, timestamp_utc, source_row_idx,
                 decision, probability, threshold, regime, reasons_json, cooldown_bars_remaining,
-                metadata_json, signal_json, recorded_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                metadata_json, signal_json, recorded_at_utc, collection_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 resolved_manifest_id,
@@ -316,6 +362,7 @@ class LiveAuditRepository:
                 _json_dumps(dict(metadata or {})),
                 _json_dumps(signal_payload),
                 _isoformat(utc_now()),
+                signal.collection_version,
             ),
         )
         self.store.connection.commit()

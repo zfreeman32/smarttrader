@@ -144,6 +144,15 @@ class SQLiteIBKRSnapshotSink:
         with self._lock:
             self._store.close()
 
+    def record_bar_observations(self, bars: list[IBKRBar]) -> None:
+        with self._lock:
+            for bar in bars:
+                timeframe = {"1 min": "1m", "5 mins": "5m", "30 mins": "30m", "1 hour": "1h"}.get(bar.bar_size)
+                if timeframe is None:
+                    continue
+                self._store.record_bar_observation(bar.to_market_bar(asset=self._asset, timeframe=timeframe), commit=False)
+            self._store.connection.commit()
+
 
 class IBKRMarketDataService:
     """Owns one official TWS API connection and one API network-loop thread."""
@@ -329,6 +338,7 @@ class IBKRMarketDataService:
                 config=self.config,
                 market_data_type=self.get_status().get("market_data_type_received"),
                 received_at=self._now(),
+                is_update=is_update,
             )
         except (TypeError, ValueError) as exc:
             LOGGER.warning("Ignored malformed IBKR historical bar: %s", exc)
@@ -345,7 +355,7 @@ class IBKRMarketDataService:
         del start, end
         record = self._request_ids.get(request_id)
         if record is not None and record.contract is not None:
-            self.store.mark_request_history_complete(record.contract.conid)
+            self.store.mark_request_history_complete(record.contract.conid, observed_at_utc=self._now())
         with self._callback_lock:
             waiter = self._history_waiters.get(int(request_id))
             if waiter is not None:
@@ -1114,6 +1124,7 @@ def _normalize_historical_bar(
     config: IBKRConfig,
     market_data_type: str | None,
     received_at: datetime,
+    is_update: bool = True,
 ) -> IBKRBar:
     return IBKRBar(
         timestamp_utc=_coerce_ibkr_timestamp(getattr(payload, "date")),
@@ -1132,9 +1143,12 @@ def _normalize_historical_bar(
         bar_size=config.bar_size,
         data_type=config.what_to_show,
         is_complete=False,
-        source="ibkr.historical.update",
+        source="ibkr.historical.update" if is_update else "ibkr.historical.backfill",
         market_data_type=market_data_type,
         received_at_utc=ensure_utc(received_at),
+        observation_kind="live" if is_update else "backfill",
+        trading_hours=contract.trading_hours,
+        timezone=contract.timezone,
     )
 
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
 from ote_live.contracts.market_data import MarketBar
-from ote_live.ingestion.base import CanonicalTimeframe
+from ote_live.ingestion.base import CanonicalTimeframe, timeframe_to_timedelta
 from ote_live.ingestion.normalizer import bars_to_dataframe, dataframe_to_market_bars
+from ote_live.ingestion.provenance import source_bar_version
+from ote_live.ingestion.market_calendar import is_expected_market_bar_timestamp
 
 _TIMEFRAME_TO_RULE: dict[CanonicalTimeframe, str] = {
     "1m": "1min",
@@ -49,12 +51,57 @@ def aggregate_bar_sequence(
         .dropna(subset=["open", "high", "low", "close"])
         .reset_index()
     )
-    return dataframe_to_market_bars(
+    result = dataframe_to_market_bars(
         resampled,
         asset=bars[0].asset,
         timeframe=target_timeframe,
         source=source or f"local_aggregation:{bars[0].timeframe}->{target_timeframe}",
     )
+    buckets: dict[object, list[MarketBar]] = {}
+    for bar in bars:
+        buckets.setdefault(floor_timestamp_to_timeframe(bar.timestamp, target_timeframe), []).append(bar)
+    return [_with_bucket_provenance(bar, buckets[bar.timestamp]) for bar in result]
+
+
+def _with_bucket_provenance(aggregated: MarketBar, sources: list[MarketBar]) -> MarketBar:
+    sources = sorted(sources, key=lambda bar: bar.timestamp)
+    step = timeframe_to_timedelta(sources[0].timeframe)
+    cursor = aggregated.timestamp
+    end = cursor + timeframe_to_timedelta(aggregated.timeframe)
+    expected = set()
+    while cursor < end:
+        if is_expected_market_bar_timestamp(cursor, asset=aggregated.asset, feature_context=sources[-1].feature_context):
+            expected.add(cursor)
+        cursor += step
+    actual = {bar.timestamp for bar in sources}
+    covered = bool(expected) and actual == expected and len(actual) == len(sources)
+    completion = False if not covered or any(bar.is_complete is False for bar in sources) else True if all(bar.is_complete is True for bar in sources) else None
+    feeds = {bar.feed_type for bar in sources}
+    kinds = {bar.observation_kind for bar in sources}
+    first_observations = [bar.first_observed_at for bar in sources]
+    last_observations = [bar.last_observed_at for bar in sources]
+    context = dict(sources[-1].feature_context)
+    context["source_bars"] = [
+        {"timestamp": bar.timestamp.isoformat(), "bar_version": bar.bar_version or source_bar_version(bar),
+         "is_complete": bar.is_complete, "feed_type": bar.feed_type,
+         "source_timestamp": bar.source_timestamp.isoformat() if bar.source_timestamp else None,
+         "observation_kind": bar.observation_kind,
+         "first_observed_at": bar.first_observed_at.isoformat() if bar.first_observed_at else None,
+         "last_observed_at": bar.last_observed_at.isoformat() if bar.last_observed_at else None}
+        for bar in sources
+    ]
+    context["source_coverage_complete"] = covered
+    result = aggregated.model_copy(update={
+        "symbol": sources[-1].symbol, "contract_symbol": sources[-1].contract_symbol,
+        "instrument_id": sources[-1].instrument_id,
+        "source_timestamp": aggregated.timestamp, "is_complete": completion,
+        "feed_type": next(iter(feeds)) if len(feeds) == 1 else "mixed",
+        "first_observed_at": max(first_observations) if all(first_observations) else None,
+        "last_observed_at": max(last_observations) if all(last_observations) else None,
+        "observation_kind": "backfill" if kinds & {"backfill", "historical", "repair", "replay"} else "live" if kinds == {"live"} else "unknown",
+        "feature_context": context,
+    })
+    return result.model_copy(update={"bar_version": source_bar_version(result)})
 
 
 @dataclass
@@ -71,6 +118,7 @@ class _BucketState:
     symbol: str | None
     contract_symbol: str | None
     instrument_id: int | None
+    source_bars: list[MarketBar] = field(default_factory=list)
 
     @classmethod
     def from_bar(cls, bucket_start, bar: MarketBar) -> "_BucketState":
@@ -87,9 +135,11 @@ class _BucketState:
             symbol=bar.symbol,
             contract_symbol=bar.contract_symbol,
             instrument_id=bar.instrument_id,
+            source_bars=[bar],
         )
 
     def update(self, bar: MarketBar) -> None:
+        self.source_bars.append(bar)
         self.high = max(self.high, bar.high)
         self.low = min(self.low, bar.low)
         self.close = bar.close
@@ -166,13 +216,13 @@ class MultiTimeframeBarAggregator:
         state: _BucketState,
         sample_bar: MarketBar | None = None,
     ) -> MarketBar:
-        asset = sample_bar.asset if sample_bar is not None else "EURUSD"
+        asset = state.source_bars[0].asset
         source_timeframe = (
             sample_bar.timeframe
             if sample_bar is not None
             else (self._source_timeframe or "1m")
         )
-        return MarketBar(
+        result = MarketBar(
             asset=asset,
             timeframe=timeframe,
             timestamp=state.bucket_start,
@@ -189,6 +239,7 @@ class MultiTimeframeBarAggregator:
             contract_symbol=state.contract_symbol,
             instrument_id=state.instrument_id,
         )
+        return _with_bucket_provenance(result, state.source_bars)
 
 
 def _validate_bar_sequence(bars: list[MarketBar]) -> None:

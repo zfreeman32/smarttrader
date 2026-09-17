@@ -124,14 +124,8 @@ def test_live_registry_uses_model_prepared_feature_catalogs_for_breakout_artifac
     )
     assert long_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
     assert long_breakout.feature_manifest.validation.missing_from_direction_feature_list == []
-    assert not short_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
-    assert short_breakout.feature_manifest.validation.missing_from_direction_feature_list == [
-        "close_return_10",
-        "rsi_14",
-        "rsi_slope_decay_3_8",
-        "strategy__cmo_absolute_indicator_signals__cmo",
-        "strategy__membership_based_trading_signals_trend_following_treasuries_strategy__membership_signal__long",
-    ]
+    assert short_breakout.feature_manifest.validation.selected_features_in_direction_feature_list
+    assert short_breakout.feature_manifest.validation.missing_from_direction_feature_list == []
 
 
 def test_live_policy_schema_requires_abstain_fields_and_context_rows() -> None:

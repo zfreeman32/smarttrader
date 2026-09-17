@@ -62,6 +62,9 @@ def is_bar_finalized(
     now: datetime | None = None,
     grace_period_seconds: float = 0.0,
 ) -> bool:
+    # Clock age cannot upgrade an explicitly provisional provider bar.
+    if bar.is_complete is False or bar.feature_context.get("ibkr_is_complete") is False:
+        return False
     resolved_timeframe = timeframe or bar.timeframe  # type: ignore[assignment]
     return ensure_utc(bar.timestamp) <= latest_finalized_bar_start(
         resolved_timeframe,  # type: ignore[arg-type]

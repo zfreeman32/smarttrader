@@ -16,6 +16,7 @@ from .loaders import (
     load_direction_runtime_manifest,
     load_live_runtime_manifest,
     load_runtime_model,
+    validate_runtime_artifact_integrity,
 )
 from .replay import (
     DEFAULT_TORCH_CALIBRATED_PROBABILITY_ATOL,
@@ -51,6 +52,7 @@ __all__ = [
     "load_live_runtime_manifest",
     "load_runtime_model",
     "replay_prediction_parity",
+    "validate_runtime_artifact_integrity",
     "validate_manifest_for_live_decisions",
     "write_direction_runtime_manifests",
 ]

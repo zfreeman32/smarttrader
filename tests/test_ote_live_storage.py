@@ -29,6 +29,13 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
             close=1.1012,
             volume=42.0,
             source="unit-test",
+            symbol="ES",
+            contract_symbol="ESU6",
+            instrument_id=123456,
+            feature_context={
+                "htf_confluence_long_frvp_continuation": 1,
+                "htf_confluence_short_frvp_reversal": 0,
+            },
         )
         store.upsert_bar(bar)
         store.record_raw_event(
@@ -79,6 +86,13 @@ def test_sqlite_live_data_store_round_trips_bars_and_events() -> None:
     assert len(bars) == 1
     assert bars[0].timestamp == bar.timestamp
     assert bars[0].close == bar.close
+    assert bars[0].symbol == "ES"
+    assert bars[0].contract_symbol == "ESU6"
+    assert bars[0].instrument_id == 123456
+    assert bars[0].feature_context == {
+        "htf_confluence_long_frvp_continuation": 1,
+        "htf_confluence_short_frvp_reversal": 0,
+    }
     assert runtime_state == {
         "feature_seed_offsets": {"foo": 1.5},
         "latest_timestamp": bar.timestamp.isoformat(),

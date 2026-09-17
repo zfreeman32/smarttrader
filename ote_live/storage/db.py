@@ -9,6 +9,7 @@ from typing import Any
 
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import BackfillWindow, HeartbeatStatus, IngestionGap, ensure_utc, utc_now
+from ote_live.ingestion.provenance import observe_bar
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 MIGRATIONS_DIR = Path(__file__).with_name("migrations")
@@ -77,13 +78,32 @@ class SQLiteLiveDataStore:
 
     def upsert_bar(self, bar: MarketBar) -> None:
         now = _isoformat(utc_now())
+        bar = observe_bar(bar)
+        prior = self._connection.execute(
+            "SELECT * FROM canonical_bars WHERE asset = ? AND timeframe = ? AND timestamp_utc = ?",
+            (bar.asset, bar.timeframe, _isoformat(bar.timestamp)),
+        ).fetchone()
+        if prior is not None and prior["bar_version"] is None:
+            # Preserve the unversioned baseline before its first corrective write.
+            import hashlib
+            payload = _json_dumps(dict(prior))
+            self._connection.execute(
+                "INSERT INTO source_bar_history (asset, timeframe, timestamp_utc, bar_version, observed_at_utc, event_type, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (bar.asset, bar.timeframe, _isoformat(bar.timestamp), "legacy:" + hashlib.sha256(payload.encode()).hexdigest(),
+                 now, "legacy_baseline", payload),
+            )
+        if prior is not None and prior["first_observed_at_utc"]:
+            first = min(_parse_datetime(prior["first_observed_at_utc"]), bar.first_observed_at)
+            bar = bar.model_copy(update={"first_observed_at": first})
+        bar = self.record_bar_observation(bar, commit=False)
         self._connection.execute(
             """
             INSERT INTO canonical_bars (
                 asset, timeframe, timestamp_utc, open, high, low, close, volume,
                 bid, ask, spread, source, symbol, contract_symbol, instrument_id, feature_context_json,
-                inserted_at_utc, updated_at_utc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                inserted_at_utc, updated_at_utc, source_timestamp_utc, bar_version, is_complete,
+                feed_type, first_observed_at_utc, last_observed_at_utc, observation_kind
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(asset, timeframe, timestamp_utc) DO UPDATE SET
                 open = excluded.open,
                 high = excluded.high,
@@ -98,7 +118,14 @@ class SQLiteLiveDataStore:
                 contract_symbol = excluded.contract_symbol,
                 instrument_id = excluded.instrument_id,
                 feature_context_json = excluded.feature_context_json,
-                updated_at_utc = excluded.updated_at_utc
+                updated_at_utc = excluded.updated_at_utc,
+                source_timestamp_utc = excluded.source_timestamp_utc,
+                bar_version = excluded.bar_version,
+                is_complete = excluded.is_complete,
+                feed_type = excluded.feed_type,
+                first_observed_at_utc = excluded.first_observed_at_utc,
+                last_observed_at_utc = excluded.last_observed_at_utc,
+                observation_kind = excluded.observation_kind
             """,
             (
                 bar.asset,
@@ -119,9 +146,39 @@ class SQLiteLiveDataStore:
                 _json_dumps(bar.feature_context),
                 now,
                 now,
+                _isoformat(bar.source_timestamp),
+                bar.bar_version,
+                int(bar.is_complete) if bar.is_complete is not None else None,
+                bar.feed_type,
+                _isoformat(bar.first_observed_at),
+                _isoformat(bar.last_observed_at),
+                bar.observation_kind,
             ),
         )
         self._connection.commit()
+
+    def record_bar_observation(self, bar: MarketBar, *, commit: bool = True) -> MarketBar:
+        """Retain callback revisions, including provisional bars, without publishing them."""
+        bar = observe_bar(bar)
+        previous = self._connection.execute(
+            "SELECT bar_version, payload_json FROM source_bar_history WHERE asset = ? AND timeframe = ? AND timestamp_utc = ? ORDER BY id DESC LIMIT 1",
+            (bar.asset, bar.timeframe, _isoformat(bar.timestamp)),
+        ).fetchone()
+        if previous is not None:
+            first = _json_loads(previous["payload_json"]).get("first_observed_at")
+            if first:
+                bar = bar.model_copy(update={
+                    "first_observed_at": min(_parse_datetime(first), bar.first_observed_at),
+                })
+        if previous is None or previous["bar_version"] != bar.bar_version or _json_loads(previous["payload_json"]).get("observation_kind") != bar.observation_kind:
+            self._connection.execute(
+                "INSERT INTO source_bar_history (asset, timeframe, timestamp_utc, bar_version, observed_at_utc, event_type, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (bar.asset, bar.timeframe, _isoformat(bar.timestamp), bar.bar_version, _isoformat(utc_now()),
+                 "first_observation" if previous is None else "revision", _json_dumps(bar.model_dump(mode="json"))),
+            )
+        if commit:
+            self._connection.commit()
+        return bar
 
     def upsert_bars(self, bars: list[MarketBar]) -> None:
         for bar in bars:
@@ -324,7 +381,8 @@ class SQLiteLiveDataStore:
                 symbol,
                 contract_symbol,
                 instrument_id,
-                feature_context_json
+                feature_context_json, source_timestamp_utc, bar_version, is_complete, feed_type,
+                first_observed_at_utc, last_observed_at_utc, observation_kind
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
         """
@@ -356,6 +414,13 @@ class SQLiteLiveDataStore:
                 contract_symbol=row["contract_symbol"],
                 instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
                 feature_context=_json_loads(row["feature_context_json"]),
+                source_timestamp=_parse_datetime(row["source_timestamp_utc"]) if row["source_timestamp_utc"] else None,
+                bar_version=row["bar_version"],
+                is_complete=bool(row["is_complete"]) if row["is_complete"] is not None else None,
+                feed_type=row["feed_type"],
+                first_observed_at=_parse_datetime(row["first_observed_at_utc"]) if row["first_observed_at_utc"] else None,
+                last_observed_at=_parse_datetime(row["last_observed_at_utc"]) if row["last_observed_at_utc"] else None,
+                observation_kind=row["observation_kind"],
             )
             for row in rows
         ]

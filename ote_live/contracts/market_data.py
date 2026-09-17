@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class MarketBar(BaseModel):
@@ -27,6 +27,21 @@ class MarketBar(BaseModel):
     contract_symbol: str | None = None
     instrument_id: int | None = None
     feature_context: dict[str, Any] = Field(default_factory=dict)
+    # Unknown provenance is retained as diagnostic data, never assumed live.
+    source_timestamp: datetime | None = None
+    bar_version: str | None = None
+    is_complete: bool | None = None
+    feed_type: str | None = None
+    first_observed_at: datetime | None = None
+    last_observed_at: datetime | None = None
+    observation_kind: str = "unknown"
+
+    @field_validator("timestamp", "source_timestamp", "first_observed_at", "last_observed_at")
+    @classmethod
+    def _utc_timestamp(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
     @model_validator(mode="after")
     def _validate_ohlc(self) -> "MarketBar":
