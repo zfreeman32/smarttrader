@@ -4,6 +4,8 @@
 
 **Implementation update:** 2026-07-19
 
+**A2 reference correction, 2026-09-14:** the shared historical/live ICT producer now keeps observed prior-session/week references available overnight and publishes current opens only from their actual opening bars. Causal-prefix and live-engine parity checks pass; deployed artifact lineage remains subject to B2 and ICT remains research-only. See [A2 evidence](ES_A2_causal_references_20260914.md) and the [execution journal](ICT_execution_journal.md).
+
 This document is a repo-audit-based design for a new ES-first ICT / Smart Money Concepts meta-labeling pipeline. It is intentionally implementation-guiding, but it does not change code, training scripts, registries, or existing production behavior.
 
 Audit basis for this design included the current FRVP ES stack, the older EURUSD OTE stack, the generic feature/preprocessing/training/testing layers, and the current prototype ICT artifacts. Representative files reviewed include:
@@ -476,6 +478,8 @@ Tracked state:
 - mitigation state
 - invalidation state
 - displacement strength and volume/range intensity
+- failed-OB breaker transition only when a close-through invalidation is accompanied by same-direction displacement, CHoCH/MSS, and a recent opposite-side liquidity sweep
+- breaker direction, source order-block id, source order-block formed index, breaker formed index, breaker age, breaker retest count, and breaker invalidation state
 
 ### 5.3 Liquidity Sweeps
 
@@ -1459,7 +1463,7 @@ Completed so far:
   - on the first refreshed July 23, 2026 Phase 3 sample, `thin_session_window` exclusion dominated the contract and had to be narrowed before the sample was trustworthy
   - after the same-day thin-session refinement and completed full rerun, the refreshed Phase 3 artifacts recovered `14804` usable events, continuation target activations reappeared (`285`, `9.50%` of usable continuation rows), and the next blocking issue shifted back to continuation target-anchor pressure rather than session gating
 - Average-uniqueness weighting is present, and as of July 26, 2026 the leakage-control contract now reaches both the Phase 6 prepared-root path and the actual ICT trainer. The confirmed `ict_es_primary_refresh_20260724_spacing_refit_final_confirm` rebuild resolves target-specific embargos directly from the realized event windows (`36 / 36 / 49 / 47 / 49 / 47`) and passes the follow-up six-target leakage audit with zero boundary failures. The trainer in `model_training/ote_training/ote_xgboost_pipeline.py` now loads those ICT event windows, upgrades fold purge spacing to the realized embargo contract, applies sequential bootstrap directly during fold fitting and final refit, and records the resulting diagnostics in `cv_fold_manifest` plus the saved training metadata. A first leakage-safe smoke retrain on July 26, 2026 under `models/ict_es_primary_xgb_bootstrap_20260726_smoke/long_ict_meta` completed successfully, and the follow-up economics stack under `model_testing/reports/ict_*_bootstrap_20260726_smoke/` also completed end to end for `ict_long_meta_xgb_v1`. The remaining open item is no longer trainer integration; it is the longer full six-target refresh and roster review under this new leakage-safe contract.
-- Setup 4 is implemented as IFVG reversal only, which is intentional. The classic breaker remains deferred until the order-block state machine produces a clean causal definition.
+- Setup 4 is implemented as IFVG reversal only in the current canonical labels, which is intentional. The order-block detector now emits a causal failed-OB / breaker state surface, and the `ict_es_primary_breaker_phase02_audit_20260831` regeneration/audit confirmed `163` later breaker-retest bars across `10` calendar years with clean causal integrity. Move classic breaker from data-blocked to explicit label-design work; keep it out of canonical labels until that Phase 3 branch is implemented and reviewed.
 
 ## 15. Open Questions and Research Risks
 
@@ -1493,7 +1497,7 @@ Completed so far:
 - **New causal primitives added (§5).** Consequent Encroachment (FVG 50%), Inversion FVG (IFVG), OTE retracement band + projection targets, Draw on Liquidity (DOL), and ES reference prices (VWAP, midnight/08:30 ET opens, RTH gap, NWOG/NDOG).
 - **PDH/PDL and prior-session anchors disambiguated (§5.7).** RTH-defined vs full-Globex levels are now specified rather than left implicit.
 - **Setup 6 contradiction resolved (§6).** IB-false-break requires a completed IB, which conflicts with the IB-masking rule; split into a pre-IB (ONH/ONL + PDH/PDL) variant and a post-IB (Initial Balance) variant.
-- **Setup 4 given a causal path (§6).** IFVG substituted as the mechanically-definable reversal-after-failure primitive for v1; the true breaker stays Phase 2.
+- **Setup 4 given a causal path (§6).** IFVG remains the mechanically-definable reversal-after-failure primitive for current labels. The true failed-order-block breaker now has a regenerated and audited causal state surface, so the remaining work is explicit setup/label-branch design rather than detector causality or missing feature columns.
 - **Structure-confirmation lag acknowledged (§5.4).** Causal swing confirmation enters later than hindsight-drawn structure; this tax must be measured (diagnostic belongs in §11).
 
 ---
@@ -1835,7 +1839,7 @@ then emit setup_type = ob_retest_after_mss
 
 - Side hypothesis: reversal after a prior zone fails.
 - **v1 stance (changed):** implement the **Inversion FVG (IFVG)** variant now, not the classic breaker. When an active FVG is fully violated it flips polarity (§5.1) and becomes a clean, causal opposite-direction zone; a retest of the resulting IFVG (CE as the reference) is the v1 signal.
-- **Breaker stance:** the classic breaker (failed order block) remains Phase 2 until a clean causal definition falls out of the order-block state machine. IFVG replaces it as the v1 reversal-after-failure primitive because it is mechanically unambiguous and already tracked.
+- **Breaker stance:** the classic breaker (failed order block) is label-disabled in canonical labels, but it is no longer blocked by missing detector state. The causal state machine is explicit: a prior active order block must close through its invalidation edge, the failure bar must confirm the new direction with displacement plus CHoCH/MSS, the proper opposite-side liquidity sweep must be recent, and the setup can only occur on a later retest of the failed block. The 2026-08-31 breaker audit on `ict_es_primary_breaker_phase02_audit_20260831` found `67` creation bars and `163` later retest bars (`64` bullish, `99` bearish), with `0` same-bar create/retest events and `100%` source-order-block / bounds integrity. IFVG remains the active v1 reversal-after-failure primitive until a separate classic-breaker Phase 3 branch is wired and reviewed.
 - Required conditions (IFVG variant):
   - a previously active FVG is fully violated by a closed bar → IFVG created
   - price retests the IFVG (>= CE) while broader structure supports the reversal direction

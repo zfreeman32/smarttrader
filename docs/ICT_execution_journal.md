@@ -642,3 +642,158 @@ Item: Execute the long ICT paper-signal lifecycle decision.
 - Use the accepted event-markout contract for the dedicated confirmation ledger; do not substitute an unevaluated barrier or one-open-position strategy.
 - Do not enable or launch the active ICT path until healthy authenticated paper-feed readiness passes.
 - Use `model_testing/reports/ict_contract_audits/ICT_LONG_PAPER_SIGNAL_DECISION_20260813.md` as the detailed decision/audit record.
+
+## Step 7
+
+Date: `2026-08-31`
+Item: Execute the short-side pooled-meta versus setup-family split-first experiment from the 2026-08-11 audit queue.
+
+### What We Did
+
+- Used the completed FRVP setup-specific workflow as the template for the ICT short-side overlap problem.
+- Added additive setup-specific ICT target materialization without replacing the six pooled ICT targets.
+- Extended ICT event-window lookup so setup-specific target names preserve leakage-aware purge / sequential-bootstrap support.
+- Materialized a short-only setup prepared root at `artifacts/ict_short_setup_targets_20260811_audit/phase04_prepared/prepared`.
+- Trained the three setup lanes with enough event breadth:
+  - `ict_short_continuation_premium_discount_continuation_xgb_v1`
+  - `ict_short_reversal_ifvg_reversal_xgb_v1`
+  - `ict_short_reversal_sweep_reclaim_xgb_v1`
+- Logged the detailed plan, commands, artifacts, metrics, observations, and decision in `docs/ICT_experiment_journal.md`.
+
+### Why We Did It
+
+- The 2026-08-11 audit showed that `ict_short_meta_xgb_v1` shared `284` exact walk-forward trades with `ict_short_reversal_xgb_v1` and `84` with `ict_short_continuation_xgb_v1`.
+- That overlap looked like the same pooled-vs-family dilution pattern the FRVP split-first work was designed to diagnose.
+- The goal was to test whether setup-specific short ICT models could isolate a cleaner edge than pooled short meta or pooled short reversal.
+
+### Results
+
+- Setup target breadth was highly uneven:
+  - trainable: `premium_discount_continuation`, `ifvg_reversal`, and `sweep_reclaim`
+  - too thin for wave 1: `displacement_continuation_after_raid`, `ob_retest_after_mss`, and both session-open manipulation setup types
+- Strict promotion-quality evaluation completed with requested min folds `7`, available min folds `13`, and no auto-relaxed folds.
+- No qualified non-global policy was selected for any setup-specific model.
+- Walk-forward economics:
+  - `premium_discount_continuation`: `70` trades, `-324.50` ticks, Sharpe `-0.393`, WFE `-0.900`, gate `False`
+  - `ifvg_reversal`: `298` trades, `-65.70` ticks, Sharpe `-0.036`, WFE `0.376`, gate `False`
+  - `sweep_reclaim`: `755` trades, `+3049.25` ticks, Sharpe `0.750`, DSR `0.711`, WFE `1.213`, gate `False`
+- The accepted pooled control `ict_short_reversal_xgb_v1` remained stronger at `791` trades, `+5475.85` ticks, Sharpe `1.048`, DSR `0.915`, WFE `1.306`, and gate `True`.
+
+### Observations
+
+- The overlap concern is real diagnostically, but the setup-specific challengers did not beat the pooled short reversal parent.
+- `sweep_reclaim` is the only setup-specific short branch worth preserving as a research candidate, mainly for possible policy-only slicing around 2023-2026 deterioration and session behavior.
+- `ifvg_reversal` has classifier signal but no realized post-cost edge.
+- `premium_discount_continuation` confirms the weak short-continuation read rather than rescuing it.
+- The tiny setup types should be treated as detector/event-design diagnostics, not model candidates.
+
+### Decision
+
+- Do not promote any ICT setup-specific short model.
+- Keep `ict_short_reversal_xgb_v1` as the accepted short-side family control.
+- Keep `ict_short_meta_xgb_v1` out of accepted deployment unless its concentration problem is solved separately.
+- Do not run a broad full ICT setup/family sweep from this result alone.
+- Move the main queue forward to the next `notes.txt` item after this documentation sync.
+
+## Step 8
+
+Date: `2026-08-31`
+Item: Investigate the deferred classic-breaker version of Setup 4.
+
+### What We Did
+
+- Reviewed the Setup 4 note against public ICT breaker-block definitions: a classic breaker is a failed order block that flips after a liquidity sweep, displacement/CHoCH or MSS, and a later retest of the failed zone.
+- Confirmed the saved Phase 2 ICT surface has active order-block retest columns and IFVG inversion columns, but no failed-order-block / breaker columns.
+- Added a causal breaker state surface to `ict/detectors/order_blocks.py` and wired sweep context into `ict/feature_sets/ict_context.py`.
+- Kept the classic breaker out of labels/default setup selection.
+
+### Why We Did It
+
+- The old implementation could detect an active order-block retest, but it did not preserve invalidated order blocks as flipped breaker zones.
+- Treating any broken OB as a breaker would be too loose for ICT logic; the new state path requires close-through invalidation, same-direction displacement, CHoCH/MSS, recent opposite-side sweep, and a later retest.
+
+### Result
+
+- Future regenerated Phase 2 artifacts will include causal breaker columns such as `dist_to_bull_breaker_atr`, `dist_to_bear_breaker_atr`, `ict_bull_breaker_retest_event`, `ict_bear_breaker_retest_event`, and source order-block ids.
+- Current saved artifacts remain missing those columns, so the classic breaker Setup 4 label stays disabled until regeneration and event-sample diagnostics are complete.
+
+### Decision
+
+- Keep IFVG as the active Setup 4 reversal-after-failure primitive for current labels.
+- Do not train or promote a classic breaker branch from current artifacts.
+- Next valid action is a targeted Phase 2 regeneration/audit of breaker event breadth, not model training.
+
+## Step 9
+
+Date: `2026-08-31`
+Item: Regenerate and audit the causal classic-breaker Phase 2 state surface.
+
+### What We Did
+
+- Added a narrow `features/recipes/ict_setup_surface.json` recipe for setup-surface regeneration with only `ict_context` and no post-feature transforms.
+- Added `ict/reports/breaker_state_audit.py` and `scripts/run_ict_breaker_state_audit.py` to audit breaker-state column presence, event breadth, and causal integrity.
+- Audited the old canonical Phase 2 surface at `artifacts/ict_es_primary/phase02_features/ict_es_features.csv`; it is missing all `24` required breaker-state columns.
+- Regenerated a fresh breaker-aware setup surface at `artifacts/ict_es_primary_breaker_phase02_audit_20260831/phase02_features/ict_es_features.csv`.
+- Optimized FVG and order-block state scans by pruning expired/invalidated zones from active detector lists; the full ES setup-surface build dropped from a 10-minute timeout to about 63 seconds.
+- Ran the breaker audit at `model_testing/reports/ict_breaker_state_audits/ict_es_primary_breaker_phase02_audit_20260831/`.
+
+### Why We Did It
+
+- The classic ICT breaker cannot be reviewed professionally from the old active order-block retest alone; it needs failed order-block state with source order-block lineage, formation bar, later retest event, and direction flip.
+- The saved canonical artifact still predates those columns, so we needed a fresh Phase 2 surface before deciding whether classic breaker was merely theoretical or ready for label design.
+
+### Result
+
+- New surface rows: `666,769`, covering `2017-01-02T23:00:00Z` through `2026-06-19T16:55:00Z`.
+- Breaker event bars: `67` creations and `163` later retests.
+- Side split: `64` bullish breaker retests and `99` bearish breaker retests.
+- Coverage: retests appear across `10` calendar years and `38` months.
+- Integrity: `0` same-bar create/retest events, `100%` retests after breaker formation, `100%` source order-block presence, and `100%` finite breaker bounds.
+- Audit decision: `ready_for_label_design`.
+
+### Observations
+
+- The raw retest sample is real but selective: `163` retest bars map to `45` unique breaker ids on retest rows.
+- Some years are thin (`2018`, `2022`, and partial `2026`), so the first classic-breaker label pass should stay separate from pooled reversal rather than being merged directly into existing reversal labels.
+- The current CSV surface stores nearest breaker ids on event rows, not a full per-bar multi-breaker ledger. That is enough for an initial setup branch but should be remembered if future work needs multiple simultaneous breaker objects per bar.
+
+### Decision
+
+- The blocker in the original note is cleared: classic breaker is no longer missing a clean causal state machine or a basic event-breadth audit.
+- Do not silently add it to canonical labels yet.
+- Next valid action is an explicit classic-breaker setup type / Phase 3 label-design branch, followed by a label/event audit before any model training.
+
+## 2026-09-13 - A1 collection baseline preservation
+
+- `Why:` prevent legacy observations, corrected inputs, and replacement model artifacts from silently sharing performance reports.
+- `What / how:` verified the existing 250-file snapshot and captured a separate 952-file current snapshot spanning all 21 audited ES models, with SHA-256 object verification; expanded collection identity inputs and enforced collection separation in dashboard markout reports.
+- `Result / what worked:` both snapshots have no missing objects; 78 focused collection/dashboard/paper-guard tests pass.
+- `What did not work:` four older operator-tooling tests require a missing local OTE champion manifest. Self-contained collection-report tests pass.
+- `Observations:` the current preservation bytes do not prove September audit-era artifact identity; that remains B2. Full evidence, manifest hash anchors, and report usage are in `docs/ES_A1_collection_baseline_20260913.md`.
+- `Decision:` A1 is complete. Keep ES shadow-only and all existing economics, drawdown, concentration, promotion, and paper-trial readiness restrictions. No scored collection or paper trial was started; no thresholds were tuned. A2 onward and B1-B5 remain separate prerequisites.
+
+## 2026-09-14 - A2 causal session and week references
+
+- `Why:` the original shifted-aggregate lookup needed future current-session/week RTH keys to expose known overnight references, while whole-session open mapping leaked future opening prices into earlier rows.
+- `What / how:` reviewed and retained the existing strictly earlier observed-period lookup and forward-only opening-price correction in the shared ICT producer; excluded unknown timestamp keys from aggregate lookup and removed the unused whole-session open aggregate. Added reference-surface prefix regressions and a real live-builder/cache parity check.
+- `Result / what worked:` 119 tests passed across causal reference/input-contract checks, ICT scaffold/detectors/setups, collection boundaries, and both paper-signal runtime guard suites. Every tested reference prefix stays unchanged as future bars arrive, including missing history, session/week boundaries, both DST changes, and year rollover.
+- `What did not work:` an unknown timestamp previously sorted after all aggregate keys and could select a future reference. The new missing-key guard and regression fix that edge case.
+- `Observations:` last-observed historical aggregates do not attest to complete source coverage. A missing 09:30 bar cannot be substituted with a later RTH open. Live parity retains the unverified-lineage diagnostic restriction; it does not validate deployed training artifacts. Full contract and reproducible commands: `docs/ES_A2_causal_references_20260914.md`.
+- `Decision:` A2 is complete. Keep ICT research-only and preserve all existing economics, drawdown, concentration, promotion, and paper-trial restrictions. B2 still owns artifact lineage and corrective regeneration/retraining; A3 onward and other evaluation prerequisites remain queued. No collector, qualified collection period, or paper trial was started, and no model thresholds or artifacts were changed.
+
+## 2026-09-14 - A3 HTF alignment and live input verification
+
+- `Why:` corrected reference values are insufficient if other required inputs are stale, absent, or substituted by an unverified zero fallback.
+- `What / how:` verified shared HTF publication and live-builder prefix parity; tightened malformed-bucket and transform/history checks, checked all consumed lag/sequence rows, and retained per-model contract metadata through cache, health events, and persisted observations. The contract is now `es-causal-inputs-v2`.
+- `Result:` 156 broad tests passed, followed by all 33 focused contract tests after final multi-row producer-attestation coverage (157 distinct tests). The integration check proves that a fresh bar plus a fallback score stays diagnostic/shadow, with reasons recoverable from SQLite and the health query.
+- `Observations:` all nine non-retired ICT manifests require corrected-lineage review. Long meta selects two confluence helpers and short meta selects one; their training label-output producers are absent from the live feature path. No generic alignment proxy was substituted for those event-specific definitions. Full inventory, findings, and reproduction: `docs/ES_A3_input_contract_20260914.md`.
+- `Decision:` A3 is complete. Keep ICT research-only; B2 owns helper timing/parity, prepared-data and artifact lineage, and any regeneration/retraining. Preserve concentration, economics, promotion, and paper-trial restrictions. No collector, qualified collection period, paper trial, artifact replacement, or threshold change was introduced.
+
+## 2026-09-15 - A11 ICT research-only roster and pending priorities
+
+- `Why:` the A2 live feature correction does not certify training/artifact lineage. All nine packaged ICT models still need B2 review, and dashboard priority must not imply activation or promotion.
+- `What / how:` added `es-ict-research-priorities-v1` with an explicit quarantine for every ICT model, including unknown replacement IDs. The ES processor forces diagnostic shadow evaluation even with passing input checks and an active binding. A6 persists roster metadata and rejection reasons, retains raw/setup/policy diagnostics, and prevents candidate state advancement. Collection identity includes the roster version and implementation hash.
+- `Result / what worked:` 266 tests passed across two suites. All nine roster models plus an unknown replacement retain their scores and persisted rejections with passing synthetic inputs and complete policies. A real processor/SQLite integration case proves that a fresh bar, passing stamped contract and active binding cannot bypass B2. Both ICT Dash tabs retain background diagnostics and show pending focused priorities without active-weight badges.
+- `What did not work / limits:` no artifact has been cleared by this app task. B2 still owns causal regeneration, affected-label review, corrective training/calibration and artifact-specific evidence. UI verification exercised Dash callbacks/layout endpoints, not an interactive browser or running collector.
+- `Observations:` after required contracts/artifacts pass, long continuation and the short premium/discount specialist have focused shadow-comparison priority. Other families, both meta models, IFVG and sweep remain background comparisons. Long continuation's q40 largest-trade share of 13.59% still exceeds the 10% gate. Short meta/reversal concentration, profitable-quarter breadth and shock-day exposure remain unresolved; meta helper producers also require review. Research priority overrides none of these findings.
+- `Decision:` A11 is complete; keep the whole ICT roster research-only. Release requires a branch-specific, evidence-backed B2 review and versioned roster change, followed by the existing input/policy/baseline prerequisites. B5's full promotion contract remains open. No collector restart, artifact/threshold change, qualified collection period, paper-trial activation or broker order was introduced. Evidence and commands: `docs/ES_A11_ICT_research_roster_20260915.md`.

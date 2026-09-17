@@ -153,8 +153,9 @@ ICT logic is less about "fair value" in the auction sense and more about this se
    Stops get run, price launches away, then pulls back into the imbalance for entry.
 3. Order block retest after structure shift.
    Structure changes, then price returns to the origin area before continuing.
-4. IFVG reversal.
+4. IFVG reversal / classic breaker research branch.
    A failed gap zone flips and becomes a reversal area.
+   The classic failed-order-block breaker now has an audited causal state surface, but it is still not part of current labels until an explicit Phase 3 setup/label branch is implemented and reviewed.
 5. Premium/discount continuation pullback.
    The move is already directional; the entry comes from a better-priced retrace, not from chasing the impulse.
 6. Session-open manipulation reversal.

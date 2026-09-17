@@ -5,6 +5,34 @@
 
 This note turns the recent FRVP decisions into one explicit contract for code, shadow ops, and review.
 
+## August 16, 2026 Controlled-Trial Addendum
+
+The July shadow contract below remains historical context, but the controlled
+paper-signal roster is now superseded by `frvp_es_paper_signal_20260816`:
+
+- `frvp_long_reversal_xgb_v1` is the sole active paper-signal model, representing
+  the `frvp_long_reversal_xgb_recent_regime_prune_v2` selective contract.
+- Its packaged global `0.60` policy now restores the accepted
+  `strong_down_high/overlap` abstain pair; all 11 accepted pair filters are present.
+- `frvp_long_continuation_xgb_v1` remains candidate/shadow. Its exact final
+  global-`0.70` sensitivity missed Sharpe, profitable-quarter breadth, and
+  single-trade concentration gates even though the archived adaptive
+  walk-forward snapshot passed all eight gates.
+- The reversal fixed-policy sensitivity stayed strong but missed the `0.10`
+  largest-trade-share limit (`0.1287`). The 28-day window is therefore a
+  concentration-validation trial, not full promotion.
+- Entry is the signal-bar close and settlement is the close after 120 completed
+  `5m` bars. Events may overlap; stop and target are not applicable. No broker
+  order or position path is authorized.
+- Human same-contract TradingView signoff is explicitly deferred only for this
+  controlled no-order trial and remains mandatory for full promotion.
+- The trial is authorized pending the exact readiness audit, but it has not
+  started. Its clock begins only on the final collector's first healthy running
+  heartbeat from an authenticated non-delayed paper feed.
+
+The immutable decision details and validation evidence live in
+`ote_live/runtime_manifests/frvp_es_paper_signal_20260816/`.
+
 ## Documentation Provenance
 
 The operational decisions in this note are the contract-level output of the canonical experiment record in [FRVP_experiment_journal.md](FRVP_experiment_journal.md).
