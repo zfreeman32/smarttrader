@@ -4,7 +4,7 @@
 
 **Implementation update:** 2026-07-19
 
-**A2 reference correction, 2026-09-14:** the shared historical/live ICT producer now keeps observed prior-session/week references available overnight and publishes current opens only from their actual opening bars. Causal-prefix and live-engine parity checks pass; deployed artifact lineage remains subject to B2 and ICT remains research-only. See [A2 evidence](ES_A2_causal_references_20260914.md) and the [execution journal](ICT_execution_journal.md).
+**A2 reference correction, 2026-09-14:** the shared historical/live ICT producer now keeps observed prior-session/week references available overnight and publishes current opens only from their actual opening bars. Causal-prefix and live-engine parity checks pass; deployed artifact lineage remains subject to B2 and ICT remains research-only. See [A2 evidence](live_app_change_journal.md#imported-a2) and the [execution journal](ICT_execution_journal.md).
 
 This document is a repo-audit-based design for a new ES-first ICT / Smart Money Concepts meta-labeling pipeline. It is intentionally implementation-guiding, but it does not change code, training scripts, registries, or existing production behavior.
 
@@ -110,7 +110,7 @@ The FRVP ES stack is the strongest structural template for the new ICT package.
 - `scripts/build_frvp_shadow_live_bundle.py`
   - Current role: assembles FRVP family leaders into a shadow-live bundle with runtime manifests and packaged policies.
   - Reuse decision: reference now, direct adaptation later once ICT reaches post-training bundle stage.
-- `docs/FRVP_ES_primary_audit_report.md`, `docs/FRVP_ES_primary_6E_variant_design.md`, `docs/FRVP_ML_Strategy.md`
+- `docs/FRVP_ES_primary_audit_report.md`, `docs/FRVP_ES_primary_6E_variant_design.md`, `docs/FRVP_ES_primary_6E_variant_design.md#frvp_ml_strategy`
   - Current role: design/reporting precedents for phased ES-first research work.
   - Reuse decision: reference for documentation style and governance.
 
@@ -151,7 +151,7 @@ The older OTE stack is still the main source of reusable label mechanics, featur
 - `scripts/run_ote_regime_slice_report.py`, `scripts/run_ote_threshold_policy_search.py`, `scripts/run_ote_policy_backtest.py`
   - Current role: post-training evaluation entry points.
   - Reuse decision: directly reusable.
-- `docs/end-to-end-README.md`
+- `docs/OTE_journal.md#end-to-end-readme`
   - Current role: canonical OTE workflow runbook.
   - Reuse decision: reference for stage ordering and artifact lineage.
 
@@ -173,7 +173,7 @@ The repo already contains some ICT logic, but it is split between a generic feat
 | `ict_app/ict_detection/pattern_coordinator.py` | Standalone signal aggregator/scorer for prototype app | Mixed and not designed for current ML pipeline contracts | No | No | Replace |
 | `ict_app/tests/test_ict_detectors.py` | Prototype detector tests | N/A | N/A | No | Reference only |
 | `ict_app/README.md` and `ict_app/ict_detection/PHASE1_SUMMARY.md` | Prototype documentation for a separate ICT app track | N/A | N/A | No | Reference only |
-| `docs/PRODUCTION_REALTIME_SIGNAL_SYSTEM_PLAN.md` | Explicitly classifies `ict_app` as prototype and non-canonical for the main pipeline | N/A | N/A | Yes, as design guidance | Directly reuse the caution |
+| `docs/OTE_journal.md#production_realtime_signal_system_plan` | Explicitly classifies `ict_app` as prototype and non-canonical for the main pipeline | N/A | N/A | Yes, as design guidance | Directly reuse the caution |
 
 Key conclusion from the ICT scan:
 

@@ -36,7 +36,7 @@ That could make training features, backtests, and live deployment disagree when 
 - Added label-output metadata sidecars with timezone and source-feed lineage
 - Propagated source-lineage and timezone-contract metadata through preprocessing `summary.json` and target `report.json`
 - Carried timezone/source lineage into training artifacts via `training_summary.json` and `model_config.json`
-- Updated `scripts/run_eurusd_ote_pipeline.bat` and `end-to-end-README.md` to use the explicit contract
+- Updated `scripts/run_eurusd_ote_pipeline.bat` and `../../docs/OTE_journal.md#end-to-end-readme` to use the explicit contract
 - Added focused tests for raw labeling ingress, preprocessing lineage propagation, and training artifact metadata
 
 ## Current Contract

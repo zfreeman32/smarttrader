@@ -21,6 +21,293 @@ Record future live app changes in this document under **New entries**, including
 
 Append future dated changes here.
 
+### 2026-09-18 - B1 complete: independent OTE evaluation rules
+
+**What/why:** complete the remaining included B1 economics rather than treating
+historical OTE training outcomes as executable trades. The user explicitly chose
+1h structural ATR for reversal and 30m for continuation/breakout. Freeze those
+completed Wilder ATR14 definitions in price units with separate family risk:
+reversal stop/target 2/1 ATR, 120 five-minute or 600 native-one-minute bars;
+continuation 0.7/0.8 ATR, 36 five-minute bars; breakout and sustained-breakout
+forecasts 0.7/0.9 ATR, 24 five-minute bars. These are explicit independent
+evaluation decisions using pre-existing geometry, not tuned P&L selections.
+
+**Implementation:** catalogue `b1_v3.json` replaces five unresolved OTE v1 entries
+with v2 contracts. Other 40 contracts/costs, archived v1/v2 catalogues and scope
+v1 remain unchanged. Engine `b1-v4` adds validated causal 30m ATR provenance,
+spot-FX derivation without invented futures roll IDs, native-1m touch diagnostics,
+and rejection of explicitly provisional execution bars. Sources must be fully
+available before the decision; entry is the first independently scheduled open
+strictly afterward. Barriers and timeouts are frozen at actual entry; training
+label timestamps, best entries and realized label horizons never supply exits.
+The four outcome surfaces, explicit cost accounting and model/setup audit
+artifacts remain separate. All pooled predictions stay diagnostic-only even
+when matched; classic breaker stays excluded with detector/research logging retained.
+
+**Completion/artifacts:** 45 entries, 37 defined risk contracts and eight excluded
+placeholders; zero unresolved included bindings. Added a fail-closed completion
+audit, updated registry/source evidence and complete 12-column matrix, current
+and archived JSON schemas, and an executable synthetic OTE Phase 7 example.
+All 120 registry records / 28 target names have bindings. Historical label/model
+sources and summaries were snapshotted read-only; missing original label hashes
+remain UNKNOWN_LEGACY. No source changes to labeling or model retraining.
+
+**Validation:** 398 distinct tests passed (186 B1/OTE plus 212 related regressions).
+The final Phase 7 example and direct replay produced identical manifests and
+run hash `5fd9728b38e23be305451a0aec33718122a5e94787dc060d42967278e9745757`.
+Synthetic example: four named-family paper targets, one pooled diagnostic-only
+observation and one admitted position. Tests include both sides, independent
+labels/returns/sizing, actual-entry duration, missing/provisional paths, causal
+30m/1h ATR units and warmup, gross/net reconciliation, frozen versions and replay.
+
+**Decision/restrictions:** B1 and its OTE subtask are checked in `notes.txt`.
+B2/B3/B4/B5, ICT quarantine, FRVP S4 pause and other promotion restrictions remain
+open. Added OTE HTF source-publication lineage to B2 follow-up. No scored
+collection, paper-trial or broker execution was activated. Old label-close,
+generic-horizon and label-event-exit reports are not a comparable B1 baseline.
+
+Details: [OTE decision/audit](B1_outcome_contracts.md#b1_ote_evaluation_resolution_20260918),
+[complete matrix](B1_outcome_contracts.md#b1_outcome_contract_matrix_complete_20260918),
+[validation](B1_outcome_contracts.md#b1_completion_validation_20260918),
+[machine completion audit](audits/b1_completion_20260918.json).
+
+### 2026-09-18 - B1 scope exclusions, model/setup audit data and structural ATR
+
+**Decision:** explicitly exclude classic breaker from the baseline while
+retaining detector state, research artifacts and diagnostic logging. Following
+the user's clarification, **all pooled-model predictions** remain diagnostic-only,
+including those with matching setups and passing policies. Unmatched predictions
+remain diagnostic-only too. Setup specialists retain their economics subject
+to prerequisites. Full design, limitations and commands:
+[scope/ATR/model-setup audit](B1_outcome_contracts.md#b1_baseline_scope_and_model_setup_audit_20260917).
+
+**Enforcement and versioning:** add immutable `b1_baseline_scope_v1` and lock,
+independently of unchanged v1/v2 risk catalogues. New engine `b1-v3` and artifact
+schema `b1-outcome-artifacts-v2` carry scope ID/hash/status in every surface,
+snapshot scope and source, and replay with saved membership. Valid diagnostic
+rows receive `NOT_EVALUATED` paper status and no barriers or paper exit. The
+position simulator independently rejects pooled/classic-breaker/unmatched
+admission even if imported paper fields or policy flags claim eligibility.
+Excluded rows have separate counts and do not enter baseline win-rate denominators.
+
+**Model/setup data:** live A6 diagnostics now retain trend, volatility,
+composite, session and stress context regardless of enabled policy filters,
+with source/prediction clocks and collection/source identity. Existing raw
+score, threshold, rejection and immutable setup-link logging remains intact.
+New B1 artifacts preserve supplied model observations against all recorded
+setup candidates, including selected/non-selected and opposite sides; no-match
+and missing-coverage are distinct. Expected/observed model coverage, raw/calibrated
+scores, versions, rejection reasons and 1/3/6/12/24/48-bar responses support a
+later audit. Fixed session/hour/regime summaries retain valid and missing counts;
+future-known setup relationships do not contribute response statistics.
+
+`scripts/export_model_setup_audit.py` exports an explicit single collection from
+SQLite in read-only mode: predictions, feature snapshots, manifests/collection
+identity, decisions, setup revisions/links, raw price snapshots and ingestion
+gaps. It keeps low scores and absent links, and includes observed follow-up
+bars across weekends. Latest raw snapshots still require calendar, completeness,
+causality and coordinate evidence before B1 evaluation; no historic score is
+automatically converted into a causal trade. Missing roster/context/history is
+reported rather than inferred. These descriptive slices select no winning model,
+threshold or trading hour and are never called trade P&L.
+
+**ATR finding and correction:** FRVP risk configuration is structural 1-hour
+Wilder ATR14 in **price units**, mapped onto 5-minute decisions. The inherited
+period/smoothing and 1h source were confirmed. However, the historical FRVP
+resampler labels complete hours at their open and then forward maps ATR; a
+late-hour spike can contaminate early rows of that hour. A synthetic regression
+reproduces this defect. Prior B1 auditing had caught the entry-row fallback but
+missed this earlier publication issue.
+
+The new evaluation producer requires complete hourly constituents, publishes
+at close/recorded availability, maps only values available by decision time,
+and resets on corrupt/missing/partial/roll hours. It saves value, price units,
+period, smoothing, source close/history, coordinate and contributing-data hash.
+FRVP paper geometry and ATR-normalized responses now require this provenance;
+missing proof preserves gross diagnostics but cannot supply ATR geometry or
+normalization. `--derive-structural-atr` / manifest `derive_from_tape` computes
+it from saved raw history and expected calendar. ICT deliberately remains
+`signal_bar_atr14`; FRVP feature distances and OTE rules were not silently
+converted to new strategy semantics.
+
+**Validation:** 353 distinct tests passed in the final relevant groups:
+
+```text
+ote_venv/Scripts/python.exe -m pytest tests/test_outcome_contracts.py tests/test_outcome_scope_audit_atr.py -q --tb=short
+141 passed in 9.91s
+ote_venv/Scripts/python.exe -m pytest tests/test_ote_live_setup_history_runtime.py tests/test_es_collection_baseline.py tests/test_es_causal_feature_contract.py tests/test_ote_live_research_execution.py tests/test_ote_live_audit_replay.py tests/test_ote_policy_backtest.py tests/test_ote_threshold_policy.py tests/test_ote_abstain_policy.py -q --tb=short
+124 passed in 73.60s
+ote_venv/Scripts/python.exe -m pytest tests/test_ote_live_setup_event_history.py tests/test_ote_live_shadow_policy.py tests/test_es_primary_phase04_pipeline.py tests/test_frvp_labeling.py tests/test_ict_classic_breaker_phase3_audit.py -q --tb=short
+88 passed in 5.35s
+```
+
+The initial expanded run exposed three multi-position failures caused by a
+local variable collision between baseline scope and position scope; this was
+fixed and all affected core tests passed. Coverage includes scope bypass
+rejection, immutable replay, timestamp/price units, late/partial/missing hourly
+sources, both futures increments, unchanged labels, rejected/opposite-side
+observations, unknown contexts, missing models, mixed-collection rejection,
+read-only database identity and retained weekend follow-up snapshots.
+
+The manifest-driven synthetic run with derived ATR and its replay had identical
+hash `f616fcbe347004c038c699aa7f7554616cb1c58c9f8efd2a488cbe126c622660`:
+one pooled diagnostic, one specialist `TIMEOUT_FLAT`, and one admitted synthetic
+position. Inputs/results are under `tmp/b1_scope_atr_*_20260918`. The registry
+audit still binds 120 registrations with zero failures, now recording scope
+per model/contract. Historical FRVP event/configuration/training metadata and
+v1 contract hashes were rechecked unchanged. Whitespace checks passed.
+
+**Remaining restrictions:** B1 remains unchecked only for its remaining OTE
+economics decision and associated prerequisites. Eight classic-breaker/unmatched
+risk placeholders are explicitly excluded; five OTE risk contracts remain open.
+The scope and ATR-audit subtasks are checked in `notes.txt`. B2 now explicitly
+tracks FRVP historical ATR-publication impact and necessary lineage/corrective
+work. No label/source regeneration, retraining, calibration, threshold fitting,
+detector change, S4 release, collection start or paper/broker activation occurred.
+E17 in the FRVP experiment journal and the ICT experiment journal record these
+decisions; the [current matrix](B1_outcome_contracts.md#b1_outcome_contract_matrix_20260918) and
+[hashed evidence](audits/b1_scope_atr_audit_20260918.json) carry the details.
+
+### 2026-09-17 - B1 FRVP S2/S3/S5 and S4 conflicts resolved
+
+**Decision and evidence:** the original B1 audit missed the Phase03 pipeline's
+overrides when comparing the design proposal with generic labeling defaults.
+The saved control, July refresh and August specialist event configurations all
+record the same per-setup/per-side risk values. Freeze these as independent
+paper contracts; no evaluation-return search or label regeneration was used.
+The [resolution](B1_outcome_contracts.md#b1_frvp_risk_resolution_20260917), hashed
+[configuration evidence](audits/b1_frvp_risk_evidence_20260917.json), and FRVP
+experiment-journal E16 document the three configuration layers and precedence.
+
+| Setup | Stop ATR | Target ATR long / short | Timeout |
+|---|---|---|---|
+| S2 | 1.00 | 1.00 / 1.00 | 96 bars |
+| S3 | 1.00 | 0.95 / 1.00 | 96 bars |
+| S5 | 1.00 | 0.90 / 0.85 | 96 bars |
+| S4 | 0.90 | 1.00 / 1.00 | 48 bars |
+
+**Implementation:** add locked `b1_v2.json`, explicitly selected as the active
+release. Eight unresolved FRVP entries become twelve executable contracts for
+ES and the configured 6E variant; S3/S5 split long/short. The other 33 entries
+retain their hashes. The active [45-row matrix](B1_outcome_contracts.md#b1_outcome_contract_matrix_20260917)
+has 32 resolved and 13 unresolved entries. All 120 registry registrations still
+bind, now respecting model side. The new engine identifier is `b1-v2`; the
+artifact column schema remains compatible.
+
+Side is mandatory when dispatching split contracts, even with a single-side
+archive; direct evaluation also rejects wrong-side contracts. Pooled/meta and
+specialist models share the correct selected-setup/side economics. The
+contract records each setup's close-confirmation semantics, causal completed
+1-hour ATR, strict next scheduled open, and entry-relative 96/48-bar timeout.
+Fixed paper barriers, conservative collision/gap/roll handling, independent
+forward diagnostics and separate futures session costs remain enforced.
+
+**S4:** the old control's 1,002 disabled rows remain untouched; the July refresh
+and August specialist tapes have no such exclusion. E01 records the historical
+re-enablement. Its current A9/A10 qualified-candidacy pause is separate and
+remains in force until a proper model-specific policy is reviewed.
+
+**Compatibility:** v1 catalogue/lock, label files, training metadata and source
+configuration remain unchanged. Saved runs retain their contracts and source;
+replay refuses an engine mismatch. Historical 120-bar markouts and August
+paper-signal contracts retain their original meaning. The 6E contracts reflect
+the shared configured variant, not an independently validated 6E model claim.
+
+**Validation:** 261 tests passed:
+
+```text
+ote_venv/Scripts/python.exe -m pytest tests/test_outcome_contracts.py tests/test_es_primary_phase04_pipeline.py tests/test_frvp_labeling.py -q --tb=short
+136 passed in 11.35s
+ote_venv/Scripts/python.exe -m pytest tests/test_ote_policy_backtest.py tests/test_ote_threshold_policy.py tests/test_ote_abstain_policy.py tests/test_ote_live_shadow_policy.py tests/test_ote_live_research_execution.py -q --tb=short
+125 passed in 10.40s
+```
+
+Coverage includes both instruments and sides for pooled/meta/specialist
+routing, wrong/missing side rejection, entry-relative geometry and timeout,
+immutable v1 hashes, explicit costs, all four artifact surfaces and identical
+replay hashes. A synthetic path reaches S3's target but times out under S2,
+while every standardized forward-return field is identical. Existing pipeline,
+labeler, legacy evaluation and live S4 policy restrictions pass unchanged.
+
+**Remaining:** B1 stays unchecked in `notes.txt`; this FRVP subtask is checked.
+OTE, classic-breaker economics/scope and unmatched pooled predictions remain
+unresolved. S4 policy review, B2/B3/B4/B5 and all current promotion/activation
+restrictions remain. No model was retrained, label replaced, threshold tuned,
+collector started, or paper/broker execution enabled.
+
+### 2026-09-17 — B1: frozen evaluation outcome contracts
+
+**Status correction:** B1 infrastructure is implemented; the prerequisite is
+still **in progress**, not fully finalized. The earlier completion/checklist
+claim was too broad. Twenty-one contract entries retain unresolved family
+economics or scope. Resolve these using intended strategy semantics and
+pre-evaluation evidence, or explicitly document exclusion from the intended
+baseline, before declaring B1 complete. Unresolved families cannot enter scored
+evaluation. Independent B2 work can proceed; a B3 comparison cannot be finalized
+until all families included in that comparison have resolved contracts.
+
+**Scope:** repository audit begun September 16; implementation and validation
+completed September 17. OTE, FRVP, ICT, pooled/meta and setup specialists,
+classic-breaker research, ES/6E cost variants, EURUSD and native 1m research.
+
+**Changed:** added 41 immutable, hash-locked instrument/setup/timeframe contracts
+and JSON schemas; audited 120 registry entries across 28 target names. The new
+evaluator persists original training-label outcomes, independent paper-contract
+outcomes, 1/3/6/12/24/48-bar gross market-response diagnostics, and position-level
+gross/cost/net accounting in separate namespaces. Each evaluated signal retains
+its original anchor and proven decision availability, model/label/contract
+identity, entry/exit geometry, path-quality flags and resolution method.
+
+Entries require the first scheduled open strictly after actual known-at. The
+engine rejects future feature/ATR/geometry timestamps, missing causal evidence,
+missing expected execution bars and invalid roll coordinates. Complete causal
+1m paths can resolve coarse collisions; otherwise stop-first applies. Futures
+barriers round outward to tradable ticks. Timeout sign stays distinct from TP/SL.
+Costs preserve the corrected ES/6E session schedule and its traced per-side vs
+round-trip interpretations; EURUSD explicitly migrates to the existing session
+schedule under a new version. Paper outcomes never read sizing or admission.
+
+**Integration and compatibility:** shared Phase 7 Python and FRVP/ICT PowerShell
+entrypoints accept frozen B1 input manifests. The independent runner also
+supports hash-verified replay with archived inputs/contracts/engine source.
+Legacy threshold/backtest runs require explicit opt-in, retain their numeric
+behavior, add legacy contract hashes and cost components, and cannot qualify a
+B1 baseline or rewrite deployed policies. Saved runs cannot be overwritten.
+Existing trained artifacts, label files and archived reports were not changed.
+
+**Unresolved:** FRVP S2/S3/S5 and S4 design/code barrier conflicts; independent
+OTE evaluation risk rules; classic-breaker production economics; unmatched
+pooled setup geometry. These have explicit UNRESOLVED contracts and conservative
+recommendations, produce no resolved paper result or position, and retain
+forward diagnostics when causal evidence permits. Legacy label versions/hashes
+remain explicitly unknown where not stored. No proposals were selected by P&L.
+
+**Validation:** 192 automated tests passed across two focused runs:
+
+```text
+ote_venv/Scripts/python.exe -m pytest tests/test_outcome_contracts.py tests/test_ote_policy_backtest.py tests/test_ote_threshold_policy.py tests/test_ote_abstain_policy.py -q --disable-warnings --maxfail=3
+88 passed
+ote_venv/Scripts/python.exe -m pytest tests/test_ote_live_research_execution.py tests/test_ote_breakout_event_metadata.py tests/test_frvp_labeling.py tests/test_ict_labeling_phase4.py tests/test_ict_classic_breaker_phase3_audit.py tests/test_es_causal_feature_contract.py -q --disable-warnings --maxfail=3
+104 passed
+```
+
+The synthetic direct CLI and replay produced identical run hashes. The shared
+Phase 7 CLI smoke test also passed: 3 independent paper TARGETs, 1 position,
+and -1.65 ticks net for the admitted position despite its target hit. Original
+training label and forward markouts remain separate. PowerShell wrappers were
+syntax-checked; direct execution was prevented by this machine's script
+execution policy. The underlying Python manifest dispatcher was exercised.
+
+**Restrictions:** B2/B3/B4/B5 and all existing ICT quarantine, readiness,
+concentration, and paper-trial activation restrictions remain. Scored collection
+stays disabled. No training, relabeling, strategy tuning or broker actions.
+
+**Evidence:** [design and runbook](B1_outcome_contracts.md#b1_outcome_contract_design_20260916),
+[audit and non-comparable reports](B1_outcome_contracts.md#b1_outcome_contract_audit_20260916),
+[complete contract matrix](B1_outcome_contracts.md#b1_outcome_contract_matrix_20260916),
+[machine registry inventory](audits/b1_registry_inventory_20260916.json),
+[synthetic replay](../model_testing/examples/outcome_b1/README.md).
+
 ## Imported records: September 13?15, 2026
 
 ---
@@ -159,7 +446,7 @@ The fallback zero is a compatibility value for diagnostic inference. It cannot e
 
 FRVP training helpers originate in `data/labeling/frvp_labeling_engine.py`: the label-output assembly writes event-specific 30-minute/hourly swing-match flags at event indexes. The FRVP Phase 4 feature pipeline deliberately carries these helpers through. ICT helpers originate in `ict/labeling/ict_labeling_engine.py`: output assembly writes the event's HTF-context alignment flag into family/meta columns. Neither label-output assembly is a live feature producer. Replacing these flags with generic trend alignment would introduce a different definition; A3 does not do that.
 
-The reproducible [dependency inventory](../research/es_a3_input_contract_20260914/model_input_dependencies.json) contains manifest paths, hashes, selected HTF/helper names, status, and static blockers. It covers 21 packaged manifests: the September audit's 20-model roster plus the retained deprecated FRVP short reversal. It does not inspect a running collector or load model weights.
+The reproducible [dependency inventory](audits/es_a3_model_input_dependencies_20260914.json) contains manifest paths, hashes, selected HTF/helper names, status, and static blockers. It covers 21 packaged manifests: the September audit's 20-model roster plus the retained deprecated FRVP short reversal. It does not inspect a running collector or load model weights.
 
 Eight non-retired models select helpers without a packaged live producer:
 
@@ -648,3 +935,133 @@ ote_venv/Scripts/python.exe -m pytest tests/test_ote_live_dashboard_app.py tests
 ```
 
 This includes frozen bundle/paper guards, replay, research execution, runtime notifications using test transports, parallel processing and existing FRVP presentation. Dash callbacks and layout endpoints were tested; no interactive browser or running collector was used. Tracked-file whitespace checks passed.
+
+## 2026-09-28 - Opt-in ES expected-move inputs and explicit tick gate
+
+Added a shared causal raw-bar movement producer to ES five-minute policy-frame construction before feature trimming/imputation. The estimator averages 20 absolute close changes in ticks; same-contract completed bars are required and gaps/rolls/invalid inputs reset warmup. Status/count/source timestamp preserve unknown versus valid zero. New explicit LivePolicy contract and tick-spread fields make production shadow and abstention paths enforce the same B1 ES units; legacy serialization and gate behavior remain unchanged without opt-in. Collection identity already hashes these producer/policy sources, so future collector startup receives a changed identity.
+
+Validation: 258 regression tests pass, plus independent arithmetic at 3,254 candidate endpoints and 514 app/offline witnesses across six proposed models. Frozen S3 full-policy v2 replays exactly; both controls and the prior blocked artifact set are preserved. See [contract](B2_model_repair.md#es_expected_move_contract_20260927) and [outcomes](B2_model_repair.md#b2_s3_full_policy_backtest_20260928). No installed manifest/registry changes, collector restart, qualified registration, broker orders or paper-trial activation occurred. Actual live feature/availability and A12/A13 qualification checks remain pending.
+
+## 2026-09-29 - Candidate-specific source history and frozen fills
+
+Completed the September 28 offline repair/retraining and production-runtime artifact review for selected ES IDs 2/1/11/17 and S5 ID 7. Each archived candidate used retained labeled rows as model history; all five required repair. TCN now constructs causal source-bar sequences independently of endpoint sampling, and new XGB/TCN scalers carry frozen missing-value fills. Runtime validates the fitted feature order, backend, history/window contract and source identities. Legacy artifacts and live registry bindings remain unchanged.
+
+All 2,953 replacement test predictions replay through the production backend loader/runner with exact threshold decisions; preflight passes 21,189 exact tensors across 33 window choices. Frozen replacement thresholds are 0.62/0.56/0.56/0.53/0.62 for IDs 2/1/11/17/7. The original 85 checked artifact files, including both S3 versions, retain their hashes. Focused tests: 33 passed; broader pipeline: 37 passed, two skipped and the previously documented unsupported cv_max_folds test failure.
+
+See the [audit report](B2_model_repair.md#b2_candidate_history_audit_20260928), [completion evidence](audits/b2_candidate_history_completion_20260928.json) and [diagnostic-only candidate roster](../configs/b2_candidate_history_roster_20260928.json). No replacement was installed, no collector restarted and no qualified/scored collection, paper trial or broker order activated. Candidate-specific outcomes and actual live feature-producer/availability parity remain open. Background/OTE training is not a collection prerequisite; deferred long reversal retains its 730-day/0.20 weighting contract.
+
+## 2026-09-29 - B1 candidate-specific outcome review and C1 boundary
+
+Completed the candidate-specific historical outcome review for the five remaining proposed branches. Pooled FRVP IDs 1/2 and pooled ICT ID 11 are explicitly excluded from the B1 qualified baseline and remain diagnostic-only. Named FRVP S5 ID 7 was reviewed on 490 common held-out named-setup opportunities: setup-only net **-$8,756.88** over 347 admitted trades and frozen 0.62 threshold net **-$12,358.13** over 101. Named ICT premium/discount ID 17 was reviewed on 185 common opportunities: setup-only net **+$3,901.25** over 86 closed trades and frozen 0.53 threshold net **-$1,678.75** over 52 closed trades, with one unresolved exposure. Exact replacement-version full-policy bindings were not frozen, so those legs are explicitly insufficient evidence rather than zero-trade results.
+
+The comparison uses B1 v3 barriers/costs and row-identical setup-only versus frozen-threshold populations. Artifact replay, AUC, tolerance-based event precision and training completion are not profitability or promotion evidence. The held-out historical rows were technically replay-inspected, so the clean evaluation boundary is now the predeclared C1 sample: first healthy post-B7 collection timestamp under a new immutable identity, with roster, contracts, policy binding or explicit no-policy status, session coverage, costs and review target frozen before observation. Future C1 outcomes are not required to start otherwise eligible research collection. No registry, installed model, collector, paper trial or broker order changed; live feature parity and B5-B7/A12/A13 still gate any collection.
+
+Evidence: [B1 candidate outcome review](B1_outcome_contracts.md#b1_candidate_outcome_review_20260929), [frozen comparison](../configs/b1_candidate_outcome_review_20260929_v1.json), [audit JSON](audits/b1_candidate_outcome_review_20260929.json).
+
+## 2026-09-29 - B5/B6 live feature-producer parity evidence
+
+Completed a versioned six-candidate parity evidence pass against the frozen ES app snapshot and actual runtime contracts. The evidence joins each candidate to its recorded runtime manifest, canonical bars, feature snapshots, model predictions, signal decisions, ingestion gaps and replacement-artifact lineage. Frozen B2 source-history/imputation/scaling/score/threshold replay evidence is preserved and reused; it is not treated as live producer parity. The archive stores post-imputation feature values only, so raw selected-feature producer parity is explicitly insufficient evidence. Completion and availability are unknown for every candidate snapshot, and non-closure gap observations are retained per branch. The broad `IncrementalFeatureEngine` historical rebuild was resource-bounded and recorded as not run, never as a pass.
+
+All six branches remain diagnostic-only; zero parity or promotion passes and no model/registry/policy/collector state changed. B5/B6 are evidence-only. The clean C1 boundary remains the first healthy post-B7 collection timestamp under a new immutable candidate/runtime identity; future C1 outcomes are not required before starting an otherwise eligible research collection. A13 rehearsal is deferred until the live parity and other prerequisites clear.
+
+Evidence: [B5/B6 parity report](B5_B6_live_feature_parity_20260929.md), [machine-readable v2 audit](audits/b5_b6_live_feature_parity_20260929_v2.json), [audit implementation](../scripts/audit_b5_b6_live_feature_parity.py).
+
+## 2026-10-01 - Selected replacement review and broad shadow v1 freeze
+
+Completed the candidate-specific artifact review for all 12 minimum-plus-expanded core replacements. The final OTE reviews cover 309,992 held-out production-runner predictions across IDs 22/26/21/25 with exact threshold decisions; maximum raw/calibrated score errors remain below `5.77e-7`. IDs 21/25 were trained one job at a time in new expanded-core roots with their original 30/48-trial contracts, corrected completed-HTF publication, consecutive source history, frozen-prefix preprocessing, original folds/purge gaps, validation-OOF calibration and threshold selection. No legacy bytes were used as replacements.
+
+Published `configs/broad_full_session_shadow_v1.json` and `configs/b4_broad_full_session_shadow_freeze_v1.json`. They bind actual model, scaler, calibrator, selected-feature, preparation, code-snapshot, fold/purge, OOF prediction, replay-report and threshold bytes for IDs 2/10/12/13/15/16/22/26/3/19/21/25. The independent rebuild verification passed with selection SHA-256 `08729bea6852213d8afdea6c9928c727844bfde7c95a8eb7b73a6e37c5d61808` and freeze SHA-256 `6c25d379e55077981fb2f827c5c3ffb231bdb13d6753f1a6441fd7a6c53966fe`.
+
+This is an immutable research identity freeze, not collection admission or installation. Every full-policy status is explicitly `not_defined_pending_exact_B3_trading_rule_binding`; B5 live parity and B6/B7 readiness remain pending, `scored_collection_eligible=false`, and no paper, alert, or broker-order authority was granted.
+
+## 2026-10-02 - B1 simulator b1-v5: execution-rule enforcement (section 3, R3)
+
+Research simulator only; no `ote_live` code, collection, manifest or authority changed. `model_testing/outcome_engine.py` now carries `ENGINE_VERSION = "b1-v5"` with three additive changes: `EvaluationTape(require_completion=True)` rejects any bar without `is_complete == True` (also when the column is absent); a position still open when the usable path ends keeps `UNRESOLVED` and gains a last-completed-close mark with null closed P&L; `reprice_positions` re-prices the identical admitted trades at the `double_all_costs` case. Defaults reproduce b1-v4 fills and P&L. No frozen B1 contract changed.
+
+The working tree had already drifted from the archived b1-v4 source on 2026-09-29 (pooled-routing scope hook) without a bump; b1-v5 covers it. b1-v4 runs replay only from their own archived `engine_source`.
+
+Evidence: [gap matrix](section3_simulation_rules.md#section3_gap_matrix_20261002), [progress](section3_simulation_rules.md#section3_progress), [tests](../tests/test_section3_execution_rules.py).
+
+## 2026-10-02 - Section 3 surfaces schema and ledgers (R1, R2, R5)
+
+Runtime change is schema wiring only: `ote_live/storage/research_execution.py` `report()` now returns `surface_schema` from the shared module `model_testing/outcome_surfaces.py` (schema `section3-surfaces-v1`, the 14 attribution fields, ledger kinds, the `setup_full_policy` -> `full_policy` alias). The A7 ledger does not write those stores; `scored_collection_enabled` stays `False`; no installed manifest, collection, registration or authority changed.
+
+Research side: the shared module builds, per stream, the markout stores (surface 1 and per-opportunity paper outcomes, pooled counterfactuals flagged non-executable), one independent ledger per model x variant x cost case, and the separately named instrument-capacity ledger, with a fail-closed reporting guard. `simulate_positions` gained the optional D9 `priority` ordering key inside b1-v5 (known_at, frozen selection order, event ID; a gap-open exit does not free its own open); without it behavior is unchanged. A `not_defined` full policy is a persisted status with no ledger and no rows.
+
+Evidence: [gap matrix](section3_simulation_rules.md#section3_gap_matrix_20261002), [progress](section3_simulation_rules.md#section3_progress), [tests](../tests/test_section3_surfaces_ledgers.py). Synthetic fixtures only; nothing was run on the 16 models' real data.
+
+## 2026-10-02 - Section 3 EURUSD smoke replay (no runtime code change)
+
+No `ote_live` code, installed manifest, collection or registration changed. Offline only: a provisional EURUSD 5m expected-open calendar was pinned (`configs/eurusd_5m_expected_open_calendar_v1.json` plus lock) and `scripts/run_section3_smoke_replay.py` gained a `--stream EURUSD` path. IDs 21/25/23 passed; 22/26 stay diagnostic (no setup match). Details in `docs/section3_simulation_rules.md#section3_progress`.
+
+## 2026-10-02 - Section 3 closed for all 16 (no runtime code change)
+
+No `ote_live` code, installed manifest, collection or registration changed. Offline only: `scripts/run_section3_smoke_replay.py --stream EURUSD --pass 2` scored reversal confirmation bars for IDs 22/26 (user-authorized) and rebuilt the EURUSD capacity ledger with all five models; all 16 smoke replays pass. Details in `docs/section3_simulation_rules.md#section3_progress`.
+
+## 2026-10-02 - Section 4 R1: raw pre-imputation snapshots (disabled by default) and opt-in D8 provenance flag
+
+**Runtime change (versioned, off by default, running app not restarted):**
+- `features/builder.py`: `build(..., pre_fill_observer=None)` gets the working frame and a column→producer map after every producer and before numeric fill. It is read-only.
+- New module `ote_live/features/raw_snapshots.py`, schema `s4-raw-preimpute-snapshot-v1`. One producer snapshot per engine group and build, holding the tail rows of the union of selected features with NaN preserved, plus a per-model selected-feature index. Tables:
+  - builds: identity, `collection_version`, fill mode, missing-producer/fallback/skipped-strategy lists;
+  - rows: canonical-row provenance and `source_row_idx`, engine-seen bar fields, gap/closure/roll state;
+  - feature_states: producer, producer-module sha256, explicit group state;
+  - model_states: warmup, contract status, consumed rows;
+  - model_feature_states: every input-contract category, including stale and unverified helpers.
+- `IncrementalFeatureEngine.enable_raw_capture(rows)`: with 0 (the default), `build()` is called exactly as before.
+- `LiveSignalProcessor.attach_raw_snapshot_recorder` and `MultiGroupLiveSignalProcessor.attach_raw_snapshot_recorders`: the API for the parity harness and B6. Recorder failures are caught and logged on the recorder, so they never reach scoring.
+- D8: both store-fetch queries now select the provenance columns. `_bar_from_row(row, carry_provenance=False)` and `LiveSignalProcessor(carry_bar_provenance=False)` keep fetched bars unchanged unless opted in. Neither collector passes the flag.
+
+**Value neutrality:** `scripts/run_section4_r1_value_neutrality.py` runs each group twice on isolated SQLite stores, with snapshotting off and then on, using staged manifests over hash-verified B4 v2 bytes. The groups are ES_FRVP {2,3,5,10}, ES_ICT {12–19} and EURUSD_OTE {21–26}, with 3 endpoints each and 48 predictions in total. Feature frames, scaled inputs, raw and calibrated scores, threshold decisions and persisted snapshots were bit-identical in all three groups. Evidence: `artifacts/s4parity_20261002_v1/r1_value_neutrality/value_neutrality.json` (sha256 `bb7914e7…`); tests in `tests/test_ote_live_raw_snapshots.py`. The EURUSD calendar used for gap state is the provisional v1.
+
+**D8 is not value-neutral, so it stays off pending a decision.** `htf_context` only accepts an HTF bucket whose constituents have `is_complete == True`. The store-fetch path drops completion, so today the app computes every 30m/1h HTF feature as NaN, along with everything that consumes them (`continuation_*`, `interaction_*`).
+
+Carrying provenance on the 6,152 recorded ES bars (1,739 of them complete) changes:
+
+| Group | Features changed | NaN at the endpoint |
+|---|---|---|
+| ES_ICT | 25 of 300 | 27 → 7 |
+| ES_FRVP | 111 of 362 | 77 → 10 |
+
+EURUSD changes 0, because FMP rows carry no completion until D6. Evidence: `docs/audits/section4_d8_effect_{ES_ICT,ES_FRVP,EURUSD_OTE}_20261002.json`.
+
+Every runtime source change alters the A1 `collection_version` hash at the next restart.
+
+## 2026-10-02 - Section 4 Q-D8 approved: protocol v2, D8 on in the parity path, D6 FMP completion rule (opt-in)
+
+The user approved the recommendation. `configs/section4_parity_protocol_v2.json` and its lock are published (`scripts/publish_section4_parity_protocol_v2.py`). v2 is v1 plus a corrected D8 premise, which is value-changing by design for features behind the HTF completion gate, plus D6 and a historical-source completion rule. Tolerances, segments, groups, taxonomy and verdicts are unchanged, and the reason is recorded in `changes_from_v1`.
+
+**Runtime change (opt-in, off by default, running app not restarted):**
+- `ote_live/ingestion/provenance.py`: `apply_fmp_completion_rule` (`fmp-historical-chart-completion-v1`). A bar becomes `is_complete=True` once `last_observed_at` ≥ bar end + 90 s (the app's finalized-bar grace). Earlier observations stay unknown, a provider flag is never overwritten, and `bar_version` is recomputed.
+- `ote_live/ingestion/connector_backfill.py`: `FMPConfig.apply_completion_rule=False` applies the rule to new fetches only when enabled.
+- The section 4 harness runs with `carry_bar_provenance=True`. The collectors still default to off, and B6 must enable both D8 and D6 (v2 `b6_constraint`).
+
+**Before/after (`tests/test_ote_live_section4_provenance_rules.py`):**
+- With D8 on, complete bars give features bit-identical to the gate-absent (offline) build.
+- With D8 off, all HTF features are NaN and the non-HTF features are bit-identical.
+- D6 is opt-in, and OHLCV is unchanged under it.
+
+Archived EURUSD rows stay completion-unknown.
+
+## 2026-10-05 - Section 4 prompt 5: EURUSD HTF semantics and history refresh behind the cursor (opt-in)
+
+**Why:** the section 4 parity run (`docs/section4_progress.md#section4_parity_20261005`) found two app-side defects (`app_producer_bug`) on EURUSD.
+- **(a) HTF timestamp semantics.** `build_runtime_feature_config` never carries `htf_bar_timestamp_semantics`, so `features/feature_sets/htf_context.py:140-142` falls back to `legacy_right_closed` (hours 11:05-12:00, published one bar late). The frozen EURUSD training config uses `bar_open`.
+- **(b) Stale history.** Bars backfilled or revised behind the cursor never enter the EURUSD in-memory history, because the ES setup-revision refresh (`setup_revisions._refresh_live_state`) runs only for ES FRVP/ICT processors.
+
+Causality: both HTF conventions are causal, but the contract is the frozen config (`bar_open`). A backfilled bar is knowable from its observation onward, so including it is the causal behavior; ES already does this.
+
+**Runtime change** (opt-in, off by default; the running app was not restarted and no manifest or registry was edited):
+- `ote_live/features/incremental_engine.py` (`b3bcd636`): `IncrementalFeatureEngine(..., htf_bar_timestamp_semantics=None)`, version `s4-htf-semantics-v1`. When set, it overrides the recipe value. `None` gives a config identical to before.
+- `ote_live/ingestion/signals.py` (`b5f212de`): `LiveSignalProcessor(..., refresh_history_behind_cursor=False, htf_bar_timestamp_semantics=None)`, version `s4-history-refresh-v1`.
+  - When enabled and the ES setup-revision path is inactive, `_reconcile_setup_history` checks `source_bar_history` for first observations or revisions at or before the last processed timestamp since a cursor (initialized at warm-up in both the single- and multi-group paths). If any exist, it rebuilds the retained history from the store through the existing `_refresh_live_state` and records an info health event `history_refreshed_behind_cursor`.
+  - Off: no query, no change.
+
+**Before/after** (`tests/test_ote_live_section4_prompt5_fixes.py`, `10ceee7c`, 3 passed):
+- semantics `None` leaves the engine config bit-for-bit equal to the default, and `bar_open` changes only `htf_*`/`continuation_*` columns;
+- with the refresh on, backfilled bars enter the history and the history and feature frame equal an uninterrupted feed; with it off, they never enter (legacy);
+- with no writes behind the cursor, on and off are bitwise equal (state, scores, frame).
+
+**Not fixed:** window truncation (the app's `runtime_history_bars` = 8,000 vs frozen full-history features). A fix would change the runtime history contract (manifest) or the features (training); see `docs/section4_progress.md#section4_training_side_recommendation_20261005`.
+
+**B6 constraint:** EURUSD must run with `htf_bar_timestamp_semantics="bar_open"` (the frozen dataset config value) and `refresh_history_behind_cursor=True`, the configuration the section 4 EURUSD re-run proves.

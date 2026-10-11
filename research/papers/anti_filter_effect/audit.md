@@ -36,7 +36,7 @@ trade tape), `SUPPORTED INTERPRETATION` (follows from observed numbers plus a st
 
 | # | Artifact | What it is |
 | --- | --- | --- |
-| 1 | `model_testing/reports/ote_threshold_policies/v1_v2_tcn_focus/policy_evaluation.csv` (2026-04-03) | Static held-out test split: four OTE TCN models, four policy variants each. Source of the "hard abstain doubled F0.5 and cut PnL by 69%" finding in `docs/EURUSD_OTE_Framework.docx` and the "anti-filter" diagnosis in `docs/POLICY_LAYER_AND_ARCHITECTURE_RESEARCH.md`. |
+| 1 | `model_testing/reports/ote_threshold_policies/v1_v2_tcn_focus/policy_evaluation.csv` (2026-04-03) | Static held-out test split: four OTE TCN models, four policy variants each. Source of the "hard abstain doubled F0.5 and cut PnL by 69%" finding in `docs/papers/EURUSD_OTE_Framework.docx` and the "anti-filter" diagnosis in `docs/OTE_journal.md#policy_layer_and_architecture_research`. |
 | 2 | `model_testing/reports/ote_policy_backtests/v1_v2_tcn_focus/*/policy_evaluation.csv` | Same four models, 49 walk-forward folds, per-fold test evaluation of all four policies. |
 | 3 | `model_testing/reports/ote_policy_backtests/multifamily_live_v1/*/policy_evaluation.csv` (2026-05-28) | Eight OTE live-registry models, per-fold four-policy evaluation. |
 | 4 | `model_testing/reports/frvp_backtests/frvp_es_primary_refresh_20260701/` | Ten FRVP ES models, walk-forward with per-fold four-policy evaluation and saved trade tapes (journal E01). |
@@ -52,9 +52,9 @@ trade tape), `SUPPORTED INTERPRETATION` (follows from observed numbers plus a st
 | 14 | `model_testing/reports/ict_contract_audits/ICT_SHORT_SIDE_CONCENTRATION_AUDIT_20260728.md`, `ICT_MIN_TRADES_CONTRACT_AUDIT_20260719.md` | Overlap and concentration diagnostics; the cadence audit where admitting the +abstain variant reduced net PnL. |
 | 15 | `model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/` | Label-shuffle placebo: real OOF AP 0.737 vs shuffled 0.500 +- 0.006 (10 shuffles). |
 | 16 | `model_testing/reports/ict_leakage_control_audits/*after_embargo/` | Per-target realized event windows and embargo checks, zero boundary failures. |
-| 17 | `docs/FRVP_ICT_Live_Signal_Output_Audit_20260811.md` | AP-lift-over-base-rate table; identifies the four weak-discrimination branches and recommends the quantile lever. |
+| 17 | `docs/FRVP_ICT_reference_and_audits.md#frvp_ict_live_signal_output_audit_20260811` | AP-lift-over-base-rate table; identifies the four weak-discrimination branches and recommends the quantile lever. |
 | 18 | `*/breakdown_by_confidence_quintile.csv` in items 2, 4, 5 | Expectancy by within-tape confidence quintile. |
-| 19 | `docs/POLICY_LAYER_AND_ARCHITECTURE_RESEARCH.md` | Prior internal diagnosis that used the phrase "anti-filter" for item 1 and proposed (but did not run) a counterfactual attribution table by abstain reason. |
+| 19 | `docs/OTE_journal.md#policy_layer_and_architecture_research` | Prior internal diagnosis that used the phrase "anti-filter" for item 1 and proposed (but did not run) a counterfactual attribution table by abstain reason. |
 
 Items 1 through 12 and 18 were re-read programmatically by `scripts/analyze_attribution.py`; every number quoted from
 them in the paper is recomputed from the saved file and checked against the saved `summary.json` totals

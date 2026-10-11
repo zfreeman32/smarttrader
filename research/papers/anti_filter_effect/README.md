@@ -84,4 +84,4 @@ Pop-Location
 | Breakout-sustained pilot (AP 0.98, negative PnL) | `models\experiment_a_breakout_sustained_pilot_20260621\long_breakout_sustained\training_summary.json`, `model_testing\reports\ote_policy_backtests\experiment_a_breakout_sustained_pilot_20260621\model_summary.csv` |
 | Placebo readout | `model_testing\reports\frvp_placebo_readouts\frvp_long_continuation_xgb_v1_20260717\placebo_readout_summary.json` |
 | Leakage audit | `model_testing\reports\ict_leakage_control_audits\ict_es_primary_refresh_20260724_spacing_refit_final_confirm_leakage_audit_after_embargo\ict_leakage_control_summary.md` |
-| Journals | `docs\FRVP_experiment_journal.md`, `docs\ICT_experiment_journal.md`, `docs\FRVP_ICT_probability_quantile_filter_study_20260830.md`, `docs\POLICY_LAYER_AND_ARCHITECTURE_RESEARCH.md` |
+| Journals | `docs\FRVP_experiment_journal.md`, `docs\ICT_execution_journal.md#ict_experiment_journal`, `docs\FRVP_ICT_reference_and_audits.md#frvp_ict_probability_quantile_filter_study_20260830`, `docs\OTE_journal.md#policy_layer_and_architecture_research` |

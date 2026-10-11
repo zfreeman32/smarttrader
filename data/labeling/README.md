@@ -244,52 +244,18 @@ The swing metadata file contains one row per detected swing and stores:
 - higher-timeframe match flags
 - final quality tier
 
-## Human-in-the-Loop Layer
+## Human-in-the-Loop Layer (retired)
 
-The pipeline is mostly automated, but not fully trust-based. Human review exists in two places.
+Two review tools used to sit beside the automatic engine. Both are retired; neither is part of the current pipeline.
 
-### Manual swing annotation tool
+- **Manual swing annotation tool** (`manual_labeling/manual_data_labeler_v2.py`): a Dash app for drawing entry-to-exit
+  swing lines on raw EURUSD bars, used to calibrate whether the engine was too loose or too strict. Removed in commit
+  `8e47f1a`; recover it from git history.
+- **Reversal review and override app** (`reversal_label_review_app.py`): clicked bars to force labels on or off, kept
+  overrides separately from the base labels and exported a reviewed label file. Removed in the 2026-10-09 cleanup; it
+  is on the `backup/pre-cleanup-20261009` branch.
 
-[`manual_data_labeler_v2.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/manual_labeling/manual_data_labeler_v2.py) is a Dash app for manually drawing swing entry-to-exit lines on price data.
-
-What it does:
-
-- loads raw EURUSD price data
-- lets you inspect large slices of history
-- optionally overlays an EMA-smoothed line for easier visual swing reading
-- snaps all drawn endpoints back to exact raw-price timestamps
-- stores manual swing records with entry, exit, pips, bars, and notes
-
-This tool is best understood as a research and calibration layer, not the main production label generator. It gives you a ground-truth-like manual view of what a meaningful swing looks like and helps validate whether the automatic engine is too loose or too strict.
-
-Manual swings are currently saved to:
-
-- [`swings_5min_manual.csv`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/manual_labeling/swings_5min_manual.csv) for historical manual labels
-- or `swings_5min_smoothed.csv` when using the current app defaults
-
-### Reversal review and override app
-
-[`reversal_label_review_app.py`](/c:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/data/labeling/reversal_label_review_app.py) is the second review layer.
-
-What it does:
-
-- loads the auto-labeled 5-minute dataset
-- displays candlesticks with zone and entry labels
-- lets you click a specific bar
-- lets you force a label on or off
-- stores overrides separately from the base label file
-- exports a reviewed label file when you are satisfied
-
-This means the labeling workflow stays auditable:
-
-- base labels remain reproducible from code
-- human corrections are stored separately
-- final reviewed labels can be exported without losing the original auto-generated dataset
-
-Override outputs live in:
-
-- `data/labeling/review/reversal_label_overrides.csv`
-- `data/labeling/labeled_data/eurusd_5min_all_labels_reversal_reviewed.csv`
+Base labels stay reproducible from `labeling_engine.py` alone.
 
 ## Current Default Parameters
 
@@ -344,18 +310,6 @@ Generate labels and save a representative diagnostic chart:
 
 ```powershell
 python data/labeling/labeling_engine.py --plot
-```
-
-Launch the manual swing labeling tool:
-
-```powershell
-python data/labeling/manual_labeling/manual_data_labeler_v2.py
-```
-
-Launch the review and override app:
-
-```powershell
-python data/labeling/reversal_label_review_app.py
 ```
 
 ## Snapshot of the Current Label Set

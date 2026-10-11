@@ -1,5 +1,10 @@
 # ICT Execution Journal
 
+<a id="ict_experiment_journal"></a>
+
+> Merged 2026-10-09: the former `docs/ICT_experiment_journal.md` (experiments E1-E3 and its dated entries) is interleaved below by date; each moved entry is marked.
+
+
 ## Ordered Plan
 
 Execution order for the remaining ICT work as of `2026-07-21`:
@@ -658,7 +663,7 @@ Item: Execute the short-side pooled-meta versus setup-family split-first experim
   - `ict_short_continuation_premium_discount_continuation_xgb_v1`
   - `ict_short_reversal_ifvg_reversal_xgb_v1`
   - `ict_short_reversal_sweep_reclaim_xgb_v1`
-- Logged the detailed plan, commands, artifacts, metrics, observations, and decision in `docs/ICT_experiment_journal.md`.
+- Logged the detailed plan, commands, artifacts, metrics, observations, and decision in `docs/ICT_execution_journal.md#ict_experiment_journal`.
 
 ### Why We Did It
 
@@ -763,6 +768,259 @@ Item: Regenerate and audit the causal classic-breaker Phase 2 state surface.
 - Do not silently add it to canonical labels yet.
 - Next valid action is an explicit classic-breaker setup type / Phase 3 label-design branch, followed by a label/event audit before any model training.
 
+## E1. Short Setup-Family Split-First Audit Experiment (2026-08-31)
+
+*From the former `ICT_experiment_journal.md`.*
+
+- `Question:` does the pooled short ICT meta branch dilute or overfit family-specific behavior, and can setup-specific short ICT models beat the pooled short meta/reversal/continuation controls after the 2026-08-11 overlap audit found heavy exact-trade sharing?
+- `Control:` July 18 strict ICT pooled controls from `model_testing/reports/ict_backtests/ict_es_primary_20260718T002437Z`: `ict_short_meta_xgb_v1`, `ict_short_reversal_xgb_v1`, and `ict_short_continuation_xgb_v1`. The audit premise was that `ict_short_meta_xgb_v1` shared `284` exact walk-forward trades with `ict_short_reversal_xgb_v1` and `84` with `ict_short_continuation_xgb_v1`, echoing the FRVP pooled-vs-family dilution pattern.
+- `Template:` FRVP E13-E15 split-first workflow: add setup/family-rich targets without replacing pooled controls, preserve pooled-family weighting/leakage controls where possible, materialize a separate prepared root, train only sufficiently broad setup lanes, evaluate with the existing regime/threshold/backtest stack, and judge on post-cost walk-forward economics instead of classifier metrics alone.
+
+### Plan
+
+1. Add additive ICT setup-target plumbing rather than changing the existing six pooled ICT target columns.
+2. Materialize a fresh short-only setup prepared root from the saved leakage-safe ICT root `artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm`.
+3. Preserve event-window leakage/ICT sequential-bootstrap support for setup-specific target names.
+4. Train only setup lanes with sufficient event breadth; log thin setup types as non-trainable in this wave.
+5. Build a standalone registry and run strict ICT post-training evaluation under the usual promotion-quality contract.
+6. Compare setup-specific economics against pooled short meta, reversal, and continuation controls.
+7. Leave live/paper roster unchanged unless a setup-specific branch clears the gate stack and beats its pooled parent.
+
+### Plumbing
+
+- Added `scripts/materialize_ict_setup_prepared_root.py`.
+- Extended `ict.reports.leakage_control.build_ict_event_window_frame` to emit setup-specific aliases such as `short_ict_reversal_sweep_reclaim`, while preserving pooled family and meta rows.
+- Added a focused test to `tests/test_ict_phase6_pipeline.py`.
+- Verification: `ote_venv\Scripts\python.exe -m pytest tests\test_ict_phase6_pipeline.py tests\test_ict_taxonomy.py` passed `5/5`.
+
+### Materialization
+
+- Command target root: `artifacts/ict_short_setup_targets_20260811_audit/phase04_prepared/prepared`.
+- Source root: `artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm`.
+- Usable short event rows: `7405`; missing signal-row joins: `0`.
+- Setup target read:
+  - `short_ict_continuation_premium_discount_continuation`: `1237` usable, `556` positive, green.
+  - `short_ict_reversal_ifvg_reversal`: `2935` usable, `960` positive, green.
+  - `short_ict_reversal_sweep_reclaim`: `3188` usable, `836` positive, green.
+  - `short_ict_continuation_displacement_continuation_after_raid`: `40` usable, `20` positive, too thin for wave 1.
+  - `short_ict_reversal_ob_retest_after_mss`: `2` usable, `1` positive, non-trainable.
+  - `short_ict_reversal_session_open_manipulation_post_ib`: `1` usable, `0` positive, non-trainable.
+  - `short_ict_reversal_session_open_manipulation_pre_ib`: `2` usable, `0` positive, non-trainable.
+
+### Training
+
+- Model root: `models/ict_short_setup_family_xgb_20260811_audit`.
+- Registry: `models/ict_short_setup_family_model_registry_20260811_audit.json`.
+- Trainable targets:
+  - `ict_short_continuation_premium_discount_continuation_xgb_v1`
+  - `ict_short_reversal_ifvg_reversal_xgb_v1`
+  - `ict_short_reversal_sweep_reclaim_xgb_v1`
+- `premium_discount_continuation` and `ifvg_reversal` used the standard ICT setup-lane geometry with `16` XGBoost trials and ICT sequential bootstrap.
+- `sweep_reclaim` required reduced setup-lane geometry because the standard `min_train_positive_rows=115` pruned every trial; rerun used `cv_initial_train_rows=320`, `cv_val_rows=96`, `min_train_positive_rows=80`, `min_val_positive_rows=12`, and `min_val_true_events=8`.
+- Classifier read:
+  - `premium_discount_continuation`: study best `0.628`, CV AP `0.525`, test AP `0.507`, ROC AUC `0.555`, event F0.5 `0.868`.
+  - `ifvg_reversal`: study best `0.548`, CV AP `0.406`, test AP `0.438`, ROC AUC `0.602`, event F0.5 `0.759`.
+  - `sweep_reclaim`: study best `0.550`, CV AP `0.429`, test AP `0.407`, ROC AUC `0.715`, event F0.5 `0.712`.
+
+### Strict Evaluation
+
+- Report roots:
+  - `model_testing/reports/ict_regime_slices/ict_short_setup_family_20260811_audit`
+  - `model_testing/reports/ict_threshold_policies/ict_short_setup_family_20260811_audit`
+  - `model_testing/reports/ict_backtests/ict_short_setup_family_20260811_audit`
+- Contract: promotion-quality, `min_trades_per_week=3.0`, requested min folds `7`, available min folds `13`, no auto-relaxed folds.
+- Threshold selection found no qualified non-global policy for any setup-specific model.
+- Walk-forward economics:
+  - `premium_discount_continuation`: `70` trades, `-324.50` ticks, expectancy `-4.64`, PF `0.716`, Sharpe `-0.393`, DSR `-0.388`, WFE `-0.900`, max DD `5.29%`, gate `False`.
+  - `ifvg_reversal`: `298` trades, `-65.70` ticks, expectancy `-0.22`, PF `0.982`, Sharpe `-0.036`, DSR `-0.036`, WFE `0.376`, max DD `6.60%`, gate `False`.
+  - `sweep_reclaim`: `755` trades, `+3049.25` ticks, expectancy `+4.04`, PF `1.377`, Sharpe `0.750`, DSR `0.711`, WFE `1.213`, max DD `5.84%`, gate `False`.
+
+### Control Comparison
+
+- `ict_short_meta_xgb_v1`: `275` trades, `+3191.25` ticks, expectancy `+11.60`, PF `2.591`, Sharpe `1.664`, DSR `1.051`, WFE `1.932`, max DD `2.00%`, gate `False` only because largest-single-trade concentration failed.
+- `ict_short_reversal_xgb_v1`: `791` trades, `+5475.85` ticks, expectancy `+6.92`, PF `1.795`, Sharpe `1.048`, DSR `0.915`, WFE `1.306`, max DD `3.44%`, gate `True`.
+- `ict_short_continuation_xgb_v1`: `73` trades, `-312.45` ticks, expectancy `-4.28`, PF `0.731`, Sharpe `-0.567`, DSR `-0.547`, WFE `1.210`, max DD `4.58%`, gate `False`.
+
+### Observations
+
+- The dilution concern is real diagnostically: the short meta branch overlaps heavily with short reversal, and setup splitting shows most usable short reversal volume is concentrated in `ifvg_reversal` and `sweep_reclaim`.
+- Setup-specific training did not beat the accepted pooled short reversal parent. `sweep_reclaim` is the only economically positive setup model, but it still trails pooled `ict_short_reversal_xgb_v1` on net PnL, Sharpe, DSR, WFE, drawdown, and the acceptance gate.
+- `sweep_reclaim` is worth preserving as a research read because it posts `+3049.25` ticks with positive WFE and low account drawdown, but it fails Sharpe, profitable-quarter share, and largest-single-trade concentration.
+- `ifvg_reversal` has classifier signal but no realized edge after costs.
+- `premium_discount_continuation` confirms the pooled short continuation weakness rather than rescuing it.
+- The tiny setup types are not model candidates under the current event design. They should stay as event-collection diagnostics unless the detector is broadened.
+
+### Decision
+
+- Do not promote any ICT setup-specific short model.
+- Keep `ict_short_reversal_xgb_v1` as the accepted short-side family control.
+- Keep `ict_short_meta_xgb_v1` out of accepted deployment unless the existing concentration problem is solved separately.
+- Keep `ict_short_continuation_xgb_v1` and the `premium_discount_continuation` setup lane out of promotion work for now.
+- Next useful pass, if budget is allocated, is policy-only research on `ict_short_reversal_sweep_reclaim_xgb_v1` around 2023-2026 deterioration and session filtering, not another blind retrain.
+
+## E2. Short Sweep-Reclaim Policy-Only Deterioration / Session Pass (2026-09-04)
+
+*From the former `ICT_experiment_journal.md`.*
+
+- `Question:` can the positive but non-promotable `ict_short_reversal_sweep_reclaim_xgb_v1` branch be made operationally credible with policy-only session filters, especially after the visible 2023-2026 deterioration?
+- `Scope:` policy-only research. No model retraining, no canonical label change, no live/paper registry write-back, and no acceptance change.
+- `Model / registry:` `ict_short_reversal_sweep_reclaim_xgb_v1` from `models/ict_short_setup_family_model_registry_20260811_audit.json`.
+- `Source reports:` reused the setup-family regime labels and strict walk-forward baseline under `model_testing/reports/ict_regime_slices/ict_short_setup_family_20260811_audit` and `model_testing/reports/ict_backtests/ict_short_setup_family_20260811_audit`.
+
+### Plan
+
+1. Reuse the frozen setup-specific model and existing regime-labeled predictions.
+2. Diagnose the prior selected walk-forward trades by calendar year, session, and year/session.
+3. Run only abstain overlays: no-abstain baseline, cooldown-only, high-stress/off-hours filters, keep-Asia/New-York filters, New-York-only, and Asia-only.
+4. Run each overlay twice: full walk-forward span (`2020-2026`) and deterioration span starting with scheduled test folds on `2023-01-01`.
+5. Evaluate with ES session-schedule costs, the same global threshold (`0.29`), `16` DSR trials, `7` minimum folds, and research-mode gate metadata.
+6. Keep any result as diagnostic unless it survives post-cost expectancy, Sharpe/DSR, WFE, quarter breadth, composite breadth, concentration, and practical cadence review.
+
+### Execution
+
+- Added `scripts/run_ict_sweep_reclaim_policy_research_20260904.py`.
+- Command: `ote_venv\Scripts\python.exe scripts\run_ict_sweep_reclaim_policy_research_20260904.py`.
+- Output root: `model_testing/reports/ict_policy_research/ict_sweep_reclaim_20260904`.
+- Main artifacts:
+  - `model_testing/reports/ict_policy_research/ict_sweep_reclaim_20260904/RESEARCH_SUMMARY.md`
+  - `model_testing/reports/ict_policy_research/ict_sweep_reclaim_20260904/candidate_walk_forward_results.csv`
+  - `model_testing/reports/ict_policy_research/ict_sweep_reclaim_20260904/diagnostics/baseline_by_year_session.csv`
+  - per-candidate walk-forward outputs under `model_testing/reports/ict_policy_research/ict_sweep_reclaim_20260904/wf`
+
+### Results
+
+- Baseline full-span reproduced the prior strict result: `755` trades, `+3049.25` ticks, expectancy `+4.04`, PF `1.377`, Sharpe `0.750`, DSR `0.711`, WFE `1.213`, max DD `5.84%`, profitable-quarter share `0.538`, largest-trade share `12.83%`; gate remains `False`.
+- Calendar-year deterioration is real:
+  - `2020`: `101` trades, `+1186.35` ticks, expectancy `+11.75`.
+  - `2021`: `91` trades, `+70.85` ticks, expectancy `+0.78`.
+  - `2022`: `145` trades, `+2222.75` ticks, expectancy `+15.33`.
+  - `2023`: `113` trades, `-81.45` ticks, expectancy `-0.72`.
+  - `2024`: `105` trades, `-197.25` ticks, expectancy `-1.88`.
+  - `2025`: `144` trades, `+172.40` ticks, expectancy `+1.20`.
+  - `2026`: `56` trades, `-324.40` ticks, expectancy `-5.79`.
+- Full-span session read:
+  - `asia`: `354` trades, `+1601.90` ticks, expectancy `+4.53`.
+  - `new_york`: `191` trades, `+1560.85` ticks, expectancy `+8.17`.
+  - `off_hours`: `203` trades, `-70.95` ticks, expectancy `-0.35`.
+  - `london` and `overlap` were too small to matter materially (`7` trades combined, `-42.55` ticks).
+- 2023-2026 session read:
+  - `new_york`: `114` trades, `+507.90` ticks, expectancy `+4.46`.
+  - `asia`: `187` trades, `-80.55` ticks, expectancy `-0.43`.
+  - `off_hours`: `111` trades, `-764.15` ticks, expectancy `-6.88`.
+  - `london` plus `overlap`: `6` trades, `-93.90` ticks.
+- Best full-span overlay by net ticks was `keep_asia_new_york_no_cooldown`: `545` trades, `+3162.75` ticks, expectancy `+5.80`, PF `1.573`, Sharpe `1.037`, DSR `0.931`, WFE `1.501`, profitable-quarter share `0.654`, positive-composite share `0.667`, max DD `4.31%`, largest-trade share `12.37%`; raw acceptance still `False` because concentration misses the `10%` gate.
+- The operational keep-Asia/New-York version with cooldown was close but slightly lower: `534` trades, `+3129.90` ticks, expectancy `+5.86`, Sharpe `1.021`, DSR `0.920`, WFE `1.480`, largest-trade share `12.50%`; still fails concentration.
+- The 2023+ baseline was poor: `418` trades, `-430.70` ticks, expectancy `-1.03`, PF `0.915`, Sharpe `-0.299`, DSR `-0.296`, WFE `-0.252`, profitable-quarter share `0.429`, positive-composite share `0.333`.
+- Best 2023+ overlay was `new_york_only_recent_2023`: `110` trades, `+496.50` ticks, expectancy `+4.51`, PF `1.399`, Sharpe `0.602`, DSR `0.582`, WFE `0.964`, max DD `2.50%`, profitable-quarter share `0.643`, positive-composite share `0.833`; raw acceptance remains `False` because Sharpe is below `0.80` and largest-trade share is `27.26%`.
+- Off-hours removal helps the recent window but does not make a promotion candidate: `drop_off_hours_no_cooldown_recent_2023` reached `+333.45` ticks over `307` trades, and `drop_off_hours_recent_2023` reached `+253.70` ticks over `302` trades, but Sharpe stayed below `0.31` and WFE below `0.25`.
+
+### Observations
+
+- The branch's full-span profitability is heavily supported by `2020` and `2022`; once the test window starts in `2023`, the unfiltered policy is net negative.
+- The main recent damage is off-hours, not London/overlap. London and overlap are too thin to drive the branch-level result.
+- Asia was useful in the full span, but it is not stable in the recent window. Keeping Asia plus New York still improves the recent baseline, but most of the rescue comes from New York.
+- New-York-only is the cleanest deterioration-window clue, but it is not deployment-quality: only `110` trades across `14` folds, actual cadence about `0.60` trades/week, Sharpe below gate, and largest-trade concentration far above the `10%` limit.
+- Cooldown by itself does not repair the branch; it slightly worsens the 2023+ result (`-510.85` ticks versus `-430.70`).
+- High-stress removal is not the answer here. It worsened recent performance when applied alone and diluted the off-hours filter when both were used.
+
+### Decision
+
+- Keep `ict_short_reversal_sweep_reclaim_xgb_v1` research-only.
+- Do not write a policy back to the setup-family registry and do not add this branch to live/paper accepted slots.
+- Treat `off_hours` exclusion and New-York-only routing as forward-shadow hypotheses, not promotion policies.
+- Do not spend retraining budget on this branch before the broader ICT setup-logic audit and explicit classic-breaker Phase 3 label-design branch are complete.
+
+## E3. Classic-Breaker Phase 3 Label-Design / Expansion Pass (2026-09-05)
+
+*From the former `ICT_experiment_journal.md`.*
+
+- `Question:` can the isolated ICT classic-breaker research lane produce a causally clean, trainable setup target without leaking into canonical ICT family/meta labels?
+- `Scope:` Phase 3 label-design refresh, Phase 3 gate audit, short-side Phase 4 materialization, and prepared-root leakage audit. No model training and no live/paper registry change.
+- `Baseline artifact:` `artifacts/ict_es_classic_breaker_research_20260904/phase03_labeling`.
+- `Expanded artifact:` `artifacts/ict_es_classic_breaker_research_20260904_expanded_firstretest_noreject_v1/phase03_labeling`.
+- `Expanded short prepared root:` `artifacts/ict_es_classic_breaker_research_20260904_expanded_firstretest_noreject_v1_phase4_short/phase04_prepared/prepared`.
+
+### Plan
+
+1. Keep classic breaker isolated as research label family `ict_classic_breaker`.
+2. Audit label causality, breaker lineage, duplicate firing, canonical isolation, and prepared-feature leakage.
+3. Materialize only the short target first because the baseline long side had only `1` positive.
+4. Loosen detector settings only in a new artifact, then gate the expanded sample before considering training.
+5. Stop before model training unless the expanded sample becomes large enough for purged CV geometry.
+
+### Execution
+
+- Added classic-breaker support to the setup-target materializer so canonical feature roots can be paired with a separate classic-breaker Phase 3 source directory.
+- Added `--source-phase03-dir` and `--artifact-base-dir` to `scripts/materialize_ict_setup_prepared_root.py`.
+- Preserved target naming as `short_ict_classic_breaker`, avoiding the bad duplicate form `short_ict_classic_breaker_classic_breaker`.
+- Tightened the classic-breaker prepared-feature audit so it scans actual feature names from `features.json` and `feature_importance.csv`, not benign report metadata fields such as `target_column`.
+- Exposed classic-breaker detector knobs in `scripts/run_ict_classic_breaker_phase3_refresh.py`:
+  - `--classic-breaker-max-age`
+  - `--classic-breaker-allow-later-retests`
+  - `--classic-breaker-allow-non-rejection-close`
+- Verification:
+  - Focused suite after materializer/audit patches: `59 passed`.
+  - Focused suite after refresh knob tests: `40 passed`.
+  - `git diff --check` passed.
+
+### Baseline Results
+
+- Phase 3 gate report: `model_testing/reports/ict_classic_breaker_phase3_audits/ict_es_classic_breaker_research_20260904_phase3_gate`.
+- Status: `PASS WITH CAVEATS`.
+- Events: `33` total, `31` usable, `6` positives, base rate `19.35%`.
+- Direction split:
+  - long: `13` usable, `1` positive, base rate `7.69%`.
+  - short: `18` usable, `5` positives, base rate `27.78%`.
+- Integrity checks passed: breaker/source lineage present, source order block before activation, activation before retest, signal equals retest index, valid zone bounds, first-retest-only, displacement not after signal, and entry/stop/target geometry.
+- Canonical isolation passed: classic labels were present, canonical positives stayed `0` in the classic-only artifact, and classic events did not leak into canonical family/meta labels.
+- Baseline short Phase 4 materialization:
+  - root: `artifacts/ict_es_classic_breaker_research_20260904_phase4_short/phase04_prepared/prepared`.
+  - target: `short_ict_classic_breaker`.
+  - usable rows: `18`; positives: `5`; train/val/test: `12/3/3`; selected features: `346`.
+  - leakage report: `prepared_targets=1`, `failures=0`, matched `18/18`.
+
+### Expansion Results
+
+- Broadest loose run:
+  - settings: `max_age=360`, later retests allowed, rejection close not required.
+  - artifact: `artifacts/ict_es_classic_breaker_research_20260904_expanded_loose_v1`.
+  - produced `59` events and `55` usable rows, but failed the Phase 3 gate.
+  - failures: `first_retest_only_failed`; duplicates: `14` same-breaker-side events.
+  - decision: reject this variant because later retests break the label-design contract.
+- Gate-passing expanded run:
+  - settings: `max_age=360`, first-retest-only preserved, rejection close not required.
+  - artifact: `artifacts/ict_es_classic_breaker_research_20260904_expanded_firstretest_noreject_v1`.
+  - Phase 3 status: `PASS WITH CAVEATS`.
+  - Events: `45` total, `42` usable, `9` positives, base rate `21.43%`.
+  - Direction split:
+    - long: `19` usable.
+    - short: `23` usable, `7` positives, base rate `30.43%`.
+  - No Phase 3 failures; caveats remain `sparse_long_sample` and `sparse_short_sample`.
+  - Duplicate same-breaker-side events: `0`; first-retest-only pct: `100%`.
+- Expanded short Phase 4 materialization:
+  - root: `artifacts/ict_es_classic_breaker_research_20260904_expanded_firstretest_noreject_v1_phase4_short/phase04_prepared/prepared`.
+  - target: `short_ict_classic_breaker`.
+  - usable rows: `23`; positives: `7`; train/val/test: `16/3/4`.
+  - selected features: `373`; readiness: `green`, score `100.0`.
+  - prepared-root leakage gate: `prepared_targets=1`, `failures=0`, matched `23/23`.
+  - final pretraining classic audit inspected `746` prepared feature references and found `0` suspicious features.
+
+### Observations
+
+- Classic breaker is causally clean when first-retest-only is preserved.
+- Allowing later retests expands count but corrupts the event contract by introducing duplicate same-breaker-side events.
+- Dropping the rejection-close requirement is a safer expansion knob than allowing later retests, but it only expands short usable rows from `18` to `23`.
+- The label design is not the blocking issue now; event frequency is. The current expanded short sample is still too small for the trainer's purged CV/final-fit geometry.
+- A direct training attempt against the placeholder `EXPANDED` path failed because that path did not exist. The real expanded root exists, but even it is still too small for meaningful model training.
+
+### Decision
+
+- Keep the gate-passing expanded classic-breaker artifact as a research/plumbing artifact only.
+- Do not train or add `short_ict_classic_breaker` to the live app yet.
+- Reject the later-retest expansion variant.
+- Preserve first-retest-only as a classic-breaker contract invariant unless a future branch explicitly redefines the setup.
+- Next useful ICT work should follow `notes.txt`: audit setup logic before spending training budget on long setup-based models or live integration.
+
 ## 2026-09-13 - A1 collection baseline preservation
 
 - `Why:` prevent legacy observations, corrected inputs, and replacement model artifacts from silently sharing performance reports.
@@ -797,3 +1055,207 @@ Item: Regenerate and audit the causal classic-breaker Phase 2 state surface.
 - `What did not work / limits:` no artifact has been cleared by this app task. B2 still owns causal regeneration, affected-label review, corrective training/calibration and artifact-specific evidence. UI verification exercised Dash callbacks/layout endpoints, not an interactive browser or running collector.
 - `Observations:` after required contracts/artifacts pass, long continuation and the short premium/discount specialist have focused shadow-comparison priority. Other families, both meta models, IFVG and sweep remain background comparisons. Long continuation's q40 largest-trade share of 13.59% still exceeds the 10% gate. Short meta/reversal concentration, profitable-quarter breadth and shock-day exposure remain unresolved; meta helper producers also require review. Research priority overrides none of these findings.
 - `Decision:` A11 is complete; keep the whole ICT roster research-only. Release requires a branch-specific, evidence-backed B2 review and versioned roster change, followed by the existing input/policy/baseline prerequisites. B5's full promotion contract remains open. No collector restart, artifact/threshold change, qualified collection period, paper-trial activation or broker order was introduced. Evidence and commands: `docs/ES_A11_ICT_research_roster_20260915.md`.
+
+## 2026-09-18 - B2 saved lineage inventory and dependency trace
+
+- `Why:` identify which saved datasets and trained artifacts inherited the reference/HTF inconsistencies before deciding on corrective work.
+- `What / how:` inventoried 113 primary trained bundles across ICT/FRVP/OTE, eight auxiliary weight files, 120 registrations and 18 prepared roots; saved dependency edges, selected-feature routes and current-file hashes. Queried the frozen September snapshot in read-only mode and compared bounded historical feature/ATR samples in memory.
+- `Result:` all 17 ICT bundles reference the old base feature tape and select affected reference inputs or transforms. The tape publishes the January 3, 2017 RTH open at the January 2 overnight row. In the 4,000-row witness, 2,694 RTH-open values differ from the causal producer. The refreshed and short-specialist prepared datasets retain the same base feature ancestry. Long/short meta helper values are zero in the frozen live observations while the corresponding prepared training helpers contain nonzero values.
+- `Observations:` reference dependence flows through sweeps, DOL, MSS/breakers, setup geometry and potentially labels/masks/weights; it does not make every ICT-named feature reference-dependent. A witnessed defective parent does not quantify changes among a model's actually consumed rows. Exact historical training input hashes are still missing. See `docs/B2_model_repair.md#b2_lineage_inventory_and_dependency_trace_20260918` and its per-model CSV/JSON evidence.
+- `Decision:` inventory/tracing complete; B2 remains open for full consumed-row impact and minimum repair decisions. No source producer, historical dataset, label, model, calibration, threshold or runtime eligibility was changed. No training or evaluation activation. Keep all nine packaged ICT models research-only and preserve the existing concentration/promotion restrictions.
+
+## 2026-09-18 - B1 classic-breaker exclusion and all-pooled diagnostics
+
+*From the former `ICT_experiment_journal.md`.*
+
+- `Question:` settle classic-breaker's baseline scope without inventing economics for its sparse research branch, and retain pooled-model versus setup evidence.
+- `Decision:` explicitly exclude classic breaker from the baseline while keeping detector state, existing research/prepared artifacts and diagnostic logging. All ICT pooled reversal/continuation/meta predictions remain diagnostics-only even when a setup matches. Named specialists retain their own contracts subject to current restrictions.
+- `Implementation:` locked `b1_baseline_scope_v1`, enforced by paper evaluation and independently by the position simulator; no paper barrier outcome or P&L for excluded rows. Preserve causal gross forward responses, raw/calibrated scores, thresholds, all setup relationships, regimes, sample counts and missingness. Add read-only single-collection exports and model/setup audit artifacts.
+- `ATR distinction:` ICT's existing contract uses signal-bar ATR14, not FRVP's structural hourly ATR. The confirmed FRVP hour-open publication defect is documented for B2; this change does not silently alter ICT risk geometry or any historical labels.
+- `Evidence:` [scope, ATR and audit design](B1_outcome_contracts.md#b1_baseline_scope_and_model_setup_audit_20260917), [current matrix](B1_outcome_contracts.md#b1_outcome_contract_matrix_20260918), and live change journal validation.
+- `Restrictions:` no classic-breaker training/promotion, pooled baseline positions, threshold tuning or activation. Existing ICT quarantine and economics/concentration gates remain. Prior research results and decisions below remain historical records.
+
+## 2026-09-19 - B2 measured impact and proposed minimum repair
+
+- Compared the full 666,769-row reference tape and all available ICT prepared splits. Every one of the 17 saved ICT bundles has changed selected reference inputs; applying the train-only missing-value rule to corrected references changes 99.27-99.95% of each bundle's training rows. Finite saved reference values reproduce the prepared values. Counts describe prepared inputs, not reconstructed individual bootstrap draws or new prediction performance.
+- Proposed repair: rebuild shared causal references and their dependent features; compare setup/event/label/weight paths and retain unchanged label products; rebuild prepared inputs and retrain only retained affected models. Remove retrospective confluence predictors or supply a proven identical causal producer offline and live. Complete corrected ICT label counts remain pending.
+- Evidence: `docs/B2_model_repair.md#b2_minimum_repairs_20260919`, per-model repair CSV and `docs/audits/b2_impact_20260918/`. This is a review proposal. No production code, historical data, model, calibration, threshold or runtime was changed; no training or baseline release. B2 stays open and all existing ICT restrictions remain.
+
+## 2026-09-21 - B2 retained shared-data repair
+
+- Corrected ICT references, FRVP completed-hour ATR/confirmed-swing gates and OTE completed-HTF publication. Historical label controls reproduced before correction; label-derived helper predictors are excluded from new preparation.
+- Rebuilt and checked 25 prepared datasets for 27 retained models; preserved independent FRVP profiles/setup inputs and the existing long-reversal recency recipe. The nine missing-history bundles remain quarantined.
+- Validation: 127 tests passed; chronological split gaps, finite features/weights and target coverage checked. 1,489 historical model/companion files, the OTE registry and 12 key data parents are unchanged. No trading model was trained or activated; existing research/shadow/diagnostic restrictions remain.
+- Report and replacement-data paths: [B2 shared-data repair](B2_model_repair.md#b2_shared_data_repair_20260921). B2 remains open for selected-model retraining/calibration, versioning and B1 evaluation.
+
+## 2026-09-28 - Proposed ICT candidates: ES movement-gate input audit
+
+- `Why:` verify the same expected-move/spread inputs needed by the S3 repair for proposed ICT long continuation and short premium/discount candidates.
+- `What / how:` shared raw-bar es_abs_close_move_20x5m_v1 estimates next-five-minute absolute movement from 20 trailing returns in ES ticks; missing/gap/roll/incomplete contexts remain unavailable. New opt-in policies use the existing B1 ES tick-spread schedule. No labels/outcomes fit the calculation. Audit uses held-out identities only as witnesses, without model fitting or policy installation.
+- `Result:` ID 11 has 134 ready / 107 warmup observations among 241 endpoints, with 123 app witnesses; ID 17 has 104 ready / 81 warmup among 185 endpoints, with 96 app witnesses. Offline/app movement and checked session/stress inputs match. The six-candidate audit totals 3,254 endpoints / 514 witnesses; 258 regression tests pass.
+- `Observations / limits:` frequent ICT warmup is preserved rather than imputed. ID 11's examined legacy policy already disables abstention with multiplier zero; its proposed unit binding does not implicitly activate filtering. No ICT economics, all-feature parity or lag/history certification is supplied by this input audit.
+- `Decision:` retain all ICT lineage/concentration/promotion restrictions and pending model-history/qualification work. No installed policy, model, registry, collector or paper trial changed. Evidence: [ES expected-move contract and candidate audit](B2_model_repair.md#es_expected_move_contract_20260927).
+
+## 2026-09-29 - Selected ICT candidate history repair and retraining
+
+- `What / why:` independently audited IDs 11 and 17. Every held-out lag history differed between retained labeled rows and consecutive source bars, changing 36/241 and 9/185 archived threshold decisions with frozen training fills. Raw missing-value inference also differed from training imputation.
+- `How:` rebuilt full source-history views and carried frozen prefix fills with each scaler. Retrained only these two selected XGB branches, preserving features, labels, weights, corrected ICT event windows, sequential bootstrap, seeds, search budgets, purged folds/holdout and validation-free final refits.
+- `Result:` all 26 trials attempted: 18 complete, eight pruned, zero failed. Production backend/runner replay passes all 426 held-out predictions with exact threshold decisions and maximum score error below 8.92e-8. New OOF-only thresholds are 0.56 for ID 11 and 0.53 for ID 17; archived thresholds/weights remain frozen. All model, source, preparation and code snapshot pins pass review.
+- `Observations:` the corrected history contract does not establish net economics, resolve concentration findings or certify actual live feature producers. The technical suite passes 33 focused tests; the broader pipeline has 37 passes, two skips and the known unsupported cv_max_folds failure. No test outcomes selected thresholds or trading hours.
+- `Decision:` retain diagnostic-only status and all ICT readiness/concentration/promotion restrictions. Freeze new B1/B3/B4 bindings before candidate outcome review; live parity and prospective eligibility remain open. Background/OTE training is not a blanket prerequisite for selected ES collection. No runtime installation, registry change, collector restart, paper trial, scored collection or broker order. Evidence: [candidate history audit](B2_model_repair.md#b2_candidate_history_audit_20260928), [diagnostic-only roster](../configs/b2_candidate_history_roster_20260928.json).
+
+## 2026-09-29 - B1 named-candidate historical outcome review
+
+- `Question:` test whether the corrected ICT premium/discount specialist has candidate-specific post-cost evidence under its frozen B1 contract, with common matching opportunities and no outcome-based threshold selection.
+- `Control / method:` bind ID 17 to `es_ict_premium_discount_continuation_eval_v1`, use its exact replacement-model held-out named events, one ES position, full B1 costs and the predeclared B3/B4 comparison. The offline historical clock is completed signal bar plus one second; live producer parity remains a separate gate.
+- `Result:` 185 common opportunities. Setup-only admitted 87 and closed 86 for **+$3,901.25** net; frozen 0.53 threshold admitted 53 and closed 52 for **-$1,678.75** net, with one unresolved exposure. The full-policy leg is insufficient evidence because no exact replacement-version policy binding was frozen.
+- `What did not work / limits:` the model-filtered leg did not beat the unchanged setup control. This is not a reason to tune the inspected sample, and it is not a promotion pass. ID 11 is a pooled ICT model and is explicitly excluded from the B1 qualified baseline even when matched.
+- `Decision / repo change:` ID 17 is reviewed but not promotion-cleared. It may be considered for prospective research after live parity and B5-B7/A12/A13 gates; future C1 outcomes are not required to start an otherwise eligible research collection. Evidence: [B1 candidate outcome review](B1_outcome_contracts.md#b1_candidate_outcome_review_20260929), [audit JSON](audits/b1_candidate_outcome_review_20260929.json), [frozen comparison](../configs/b1_candidate_outcome_review_20260929_v1.json).
+
+## 2026-09-29 - B5 baseline eligibility, ICT priorities, and promotion contract
+
+- `Question:` which ICT branches may enter the next prospective scored shadow period, and what evidence is required before an ICT result can be called promotion-ready?
+- `Control / evidence:` B4's frozen named baseline `17` in `configs/b4_baseline_freeze_20260929.json`, the B1 candidate outcome review, the B5/B6 parity audit in `docs/B5_B6_live_feature_parity_20260929.md`, and the prior ICT execution and setup-family findings. The B4 binding is for research comparison only; it does not authorize installation, promotion, or a paper trial.
+- `Result:` no ICT branch is currently eligible for prospective scored shadow research. B5/B6 reviewed six branches and recorded zero full-parity passes and zero promotion passes. The recorded app archive contains post-imputation values rather than raw producer features; completion, availability, source identity and full causal gap state are not proven, and the actual incremental producer rebuild was resource-bounded and not run.
+
+### ICT eligibility and research-priority roster
+
+| Branch | Collection status now | Research priority | Binding reason / unresolved gate |
+|---|---|---|---|
+| ID 11, pooled long continuation XGB | Diagnostic-only; excluded from qualified baseline | Background comparison | Pooled-model scope restriction; B5 raw producer parity and completion/availability evidence are missing. The earlier long-continuation q40 pocket reached only `70` trades and `13.59%` largest-trade share, above the `10%` gate. |
+| ID 17, short premium/discount continuation specialist | Diagnostic-only; not promotion-cleared | Highest ICT named-candidate priority, conditional on clearing gates | B4 frozen at threshold `0.53`, but B1 setup-only was `+$3,901.25` while the frozen-threshold branch was `-$1,678.75` with one unresolved exposure; the exact replacement full-policy leg is insufficient evidence and B5 parity is not proven. |
+| Other ICT continuation, reversal, meta, IFVG and sweep branches | Background/diagnostic-only or deferred per prior roster | Preserve for comparison; no activation priority | Prior full-contract evidence remains binding: short-meta and short-reversal were concentrated in the same `284` exact events; short continuation remained weak/extremely concentrated; setup-specific sweep-reclaim was positive but failed the promotion gate. |
+| Classic breaker | Excluded; diagnostics retained | Deferred until a separate label/model contract | Baseline scope explicitly excludes it; sparse first-retest-only artifacts do not establish trainable or promotion-quality economics. |
+
+There are currently zero rows in the `eligible for prospective scored shadow research` category. ID 17 is a conditional research priority, not a promotion candidate. Pooled ICT models remain diagnostic-only even when a setup matches, and all earlier ICT concentration, overlap, economics and readiness restrictions continue to apply.
+
+### Promotion criteria retained for ICT
+
+The ICT promotion decision uses the same conjunctive contract as FRVP and is evaluated against the same named-setup opportunities: setup-only, setup plus the frozen threshold, and setup plus the intended full policy. No model-only metric, target-hit count, empty/full-policy zero-trade result, or classifier replay can stand in for a complete position-level comparison.
+
+1. **Contract and readiness:** exact replacement artifact, scaler/history, selected-feature order, setup matcher, threshold/calibration, policy, signal-bar ATR14 geometry, instrument and B1 outcome-contract hashes must be bound. Raw live producer parity, causal history, completion/availability, warmup, gaps, closures, rolls and fallback state must pass, followed by B7/A12/A13.
+2. **Intended exits and realistic costs:** use the frozen ICT stop/target/timeout/continuation-management contract and its causal entry clock, with one-position/concurrency rules and realistic ES scheduled costs. A positive label, target touch, gross markout, or setup-only economics is not a net-profitable trade. Missing or unresolved exits remain unresolved, not wins or zero trades.
+3. **Incremental economics:** the full-policy branch must be positive after costs and add value over the unchanged setup-only benchmark on the same opportunities, with no unjustified worsening of expectancy, drawdown or exposure concentration. ID 17 currently fails this comparison because model filtering turns a positive setup control negative.
+4. **Time stability and discrimination:** require strict chronological/leakage-safe folds, the existing minimum fold/cadence requirements, configured Sharpe/DSR, positive WFE, profitable-quarter breadth, positive-composite-expectancy breadth, and discrimination above the setup/base-rate control. The full-span result must support the claim; a recent or one-hour pocket cannot substitute for it.
+5. **Concentration and drawdown:** largest-single-trade share must meet the existing `10%` gate, with exact-event overlap, day/session/regime concentration and shock-day dependence reported. The declared drawdown advisory/risk limit must be respected or the branch remains non-promoted pending explicit risk review. Retained older findings include short-meta largest-trade share `10.017%` with `16/27` positive quarters, short-reversal largest-trade share `11.118%` with `15/27` positive quarters, and the q40 long-continuation pocket at `13.59%` concentration.
+
+The September one-hour audit, tiny hourly buckets, retrospective profitable-hour filters and any small positive pocket are descriptive diagnostics only. They cannot change the frozen threshold, setup, exit, cost, session or concentration gates. Any session restriction must be a separately frozen prospective experiment with full-session control.
+
+### Prospective collection boundary
+
+If an ICT branch later clears the prerequisites, its clean C1 sample starts at the first healthy post-B7 timestamp under a new immutable candidate/runtime identity, with full eligible session coverage and all matching/rejected named setup opportunities retained. Review after approximately 20 fully collected sessions and 50-100 resolved matches as a practical target; rare specialists may need longer. Any model, threshold, calibration, setup matcher, policy, cost, session scope or exit change creates a new version and a new clean boundary.
+
+- `Decision / repo change:` B5 is recorded as a gate-setting decision, not a clearance. ICT keeps no scored-shadow-eligible branch, keeps ID 17 as the conditional named research priority, and preserves pooled diagnostic-only scope, classic-breaker exclusion, prior overlap/concentration findings, and all economics/readiness restrictions. No model, registry, threshold, collector, paper trial or order state changed.
+
+## 2026-09-29 - B5 eligibility and promotion-contract cross-reference
+
+*From the former `ICT_experiment_journal.md`.*
+
+- The canonical B5 roster, retained full-contract economics/concentration/readiness findings, promotion gates, and clean prospective-collection boundary are recorded in [ICT execution journal B5](ICT_execution_journal.md#2026-09-29---b5-baseline-eligibility-ict-priorities-and-promotion-contract).
+- Current disposition is unchanged for this experiment journal: zero ICT branches are eligible for scored shadow research; ID 17 is only a conditional named-candidate research priority, pooled branches remain diagnostic-only, classic breaker remains excluded, and no one-hour or small positive pocket can override the full contract, cost, time-stability, drawdown, or concentration gates.
+
+## 2026-10-01 - B2 catch-up: ID 14 source-history backfill
+
+- `What:` brought ID 14 (`ict_short_continuation_xgb_v1`) to the same B2 source-history stage as the 12-model core: new prepared root from the 09-21 repaired ICT data (666,769 consecutive bars, 96 frozen features, frozen-prefix fills), window preflight, retraining into a new versioned model root, technical review.
+- `Why:` the broad full-session shadow roster needs IDs 5/23/14/18 at the B2-reviewed stage before the 16-model B4 freeze and route manifest.
+- `Result:` preflight 1,035 exact training-vs-runtime tensor comparisons across windows 8-24; 10 trials = 7 complete / 3 pruned / 0 failed; 6 purged folds (purge 47) and purged holdout reproduced; calibration none; OOF-only threshold 0.53 reproduced; production-runner replay of all 191 test predictions within 8.04e-8 with identical decisions; legacy bundles and frozen configs unchanged. Technical review passed.
+- `Observations:` advisory only - OOF AP 0.442, test AP 0.456, test ROC AUC 0.456 on a small sample; not a gate and not used for any selection. Original recipe, folds, purge, seeds and search budget unchanged.
+- `Decision:` ID 14 is `reviewed_pass`, diagnostic-only (`collection_eligible=false`); no registry, app, collection, paper, alert or broker change. ID 18 backfill is next. Evidence: [catch-up report](B2_model_repair.md#b2_candidate_history_catchup_5_14_18_23_20261001), [review](audits/b2_catchup_14_review_20261001.json).
+
+## 2026-10-01 - B2 catch-up: ID 18 source-history backfill
+
+- `What:` brought ID 18 (`ict_short_reversal_ifvg_reversal_xgb_v1`) to the same B2 source-history stage as the 12-model core: new prepared root from the 09-21 repaired ICT specialists data (666,769 consecutive bars, 96 frozen features, frozen-prefix fills), window preflight, retraining into a new versioned model root, technical review.
+- `Why:` last of IDs 5/23/14/18 needed at the B2-reviewed stage before the 16-model B4 freeze and route manifest.
+- `Result:` preflight 2,280 exact training-vs-runtime tensor comparisons across windows 8-24; 16 trials = 5 complete / 11 pruned / 0 failed; 21 purged folds (purge 36) and purged holdout reproduced; calibration platt; OOF-only threshold 0.32 reproduced; production-runner replay of all 440 test predictions within 8.48e-8 with identical decisions; legacy bundles and frozen configs unchanged. Technical review passed.
+- `Observations:` advisory only - OOF AP 0.372, test AP 0.414, test ROC AUC 0.573; not a gate and not used for any selection. Original recipe, folds, purge, seeds and search budget unchanged.
+- `Decision:` ID 18 is `reviewed_pass`, diagnostic-only (`collection_eligible=false`); no registry, app, collection, paper, alert or broker change. All four catch-up IDs are now B2-reviewed; the 16-model selection, B4 freeze and route manifest follow as new versions. Evidence: [catch-up report](B2_model_repair.md#b2_candidate_history_catchup_5_14_18_23_20261001), [review](audits/b2_catchup_18_review_20261001.json).
+
+## 2026-10-01 - IDs 14/18 in the 16-model B4 freeze v2 and route bindings v2
+
+- `What:` froze IDs 14 and 18 in `broad_full_session_shadow_v2` / B4 freeze v2 and bound their outcome routes in route bindings v2. ID 14 (short continuation, detector-selected): `premium_discount_continuation` and `displacement_continuation_after_raid` v1 contracts. ID 18 (short IFVG specialist, exact match): `es_ict_ifvg_reversal_eval_v1`. Both use `es_session_cost_v1`.
+- `Why:` bring both to the same stage (section 3, item 1) as the 12 core models so the remaining gates run for all 16 together.
+- `Result:` the 12 v1 freeze entries re-hashed from disk and carried forward identical; v1 routes identical in v2; both manifests load and resolve; 175 focused tests pass. v0/v1 selection, v1 freeze, v1 routes and B1 v3 unchanged.
+- `Observations:` thresholds frozen at the OOF values (ID 14 0.53, no calibrator; ID 18 0.32, platt). Full policy stays `not_defined` for both.
+- `Decision:` identity and route freeze only; no collection, registry, paper, alert or broker authority. Evidence: [route bindings v2](B3_B4_freeze_and_routes.md#broad_full_session_shadow_route_bindings_v2_20261001), [freeze v2](B3_B4_freeze_and_routes.md#b4_broad_full_session_shadow_freeze_v2_20261001).
+
+## 2026-10-02 - Section 3 surfaces, ledgers and session coverage (shared, ES ICT models)
+
+- `What:` the shared surfaces and ledger module `model_testing/outcome_surfaces.py` (schema `section3-surfaces-v1`) and the D9 instrument-capacity ordering key in the b1-v5 simulator now cover every ES route, ICT included.
+- `Why:` bind the four surfaces, independent and instrument-capacity ledgers, and full-session coverage before the smoke replay.
+- `Result:` `tests/test_section3_surfaces_ledgers.py` 16 passed on synthetic FRVP and OTE fixtures; no ICT-specific fixture and no ICT model run on real data.
+- `Observations:` ICT models share the single ES instrument-capacity ledger with FRVP in frozen selection order; all ICT full policies stay `not_defined`. No P&L was produced or inspected.
+- `Decision:` infrastructure only; no collection, registry, paper, alert or broker authority. Details in [progress](section3_simulation_rules.md#section3_progress).
+
+## 2026-10-02 - Section 3 deterministic smoke replay (ICT IDs 12, 13, 15, 16, 19, 18, 14)
+
+- `What:` ran the roster-driven smoke replay `scripts/run_section3_smoke_replay.py` (engine b1-v5, B4 v2, route bindings v2, B3 v3) for the seven ICT models, with the shared ES instrument-capacity ledger.
+- `Why:` prove setup routing, entries/exits, costs, ledger accounting and replay hashes per exact frozen version.
+- `Result:` all seven passed: identical hashes across two independent runs, accounting checks clean, capacity and independent ledgers reconcile by trade identity with 0 mismatches.
+- `Observations:` routes with no held-out fired event are unexercised: IDs 12 and 15 (4 of 8 each), 13 and 16 (4 of 6 each). Every held-out ICT event opens outside 09:30-16:00 New York, so the RTH element is unexercised for all seven. No open position and no counterfactual markout occurred. Full policy `not_defined` for all. P&L recorded as advisory, not interpreted.
+- `Decision:` contract verification only; no collection, registry, paper, alert or broker authority. Details in [smoke replay](section3_simulation_rules.md#section3_smoke_replay_20261002).
+
+## 2026-10-02 - Section 4 R1 raw snapshots and the D8 HTF finding (ICT IDs 12–19)
+
+- `What:` a copy-only raw pre-imputation snapshot (`s4-raw-preimpute-snapshot-v1`) for the ES_ICT group, run on/off with B4 v2 bytes on isolated stores.
+- `Why:` B5 parity needs raw values with explicit provenance, warmup, missing-producer and fallback state.
+- `Result:` all seven models scored. Features, scaled inputs, scores and threshold decisions were bit-identical with snapshotting on and off.
+- `Observations:` with completion dropped on the store-fetch path, the app's 30m/1h HTF features are NaN. Carrying provenance (D8) changes 25 of 300 group features on recorded bars (HTF and interactions), and endpoint NaN falls from 27 to 7.
+- `Decision:` D8 stays opt-in and off pending the user decision recorded in `docs/section4_progress.md`.
+- `Update (2026-10-02, Q-D8 approved):` protocol v2 locked. The parity app path runs with D8 on, historical parity bars are copied as complete, and B6 must enable D8.
+
+## 2026-10-05 - Section 4 full live-parity run (ICT IDs 12–19)
+
+- `What:` protocol v2 matrix (classified under v3) over 15 ES windows, plus composition, as one shared ES_ICT producer pass per window. Reports: `docs/audits/section4_parity_*_20261005.json`; summary: `docs/section4_progress.md#section4_parity_20261005`.
+- `Why:` B5 must prove that the real app path reproduces each frozen model's features, preprocessing, scores and threshold decisions.
+- `Result:`
+  - `fail:training_side_noncausal`:
+    - 14 and 16: positional row-index predictors (`*_formed_index`, `*_inversion_index`, `*_displacement_id`; Q-T1);
+    - 18: both positional and `ict_raw_swing_*`;
+    - 13 and 19: `ict_raw_swing_high/low`, a centered pivot that needs the next bars (`ict/structure/swings.py:66-82`).
+  - `fail:app_producer_bug` (window truncation only): 12 and 15.
+  - Declared under protocol v3 (Q-P1): float32 tree-split score differences at 14 endpoints (12, 13, 15), with no decision flips.
+- `Observations:`
+  - recorded ESU6 windows differ only through the HTF completion gate (declared; not known-completion evidence);
+  - restart, chunk resume and composition are bitwise equal;
+  - S2: every reference ICT event matched with exact geometry; app-only events are outside the fired-event reference;
+  - source parity incomplete (IBKR down).
+- `Decision:` all seven branches stay diagnostic and unscored.
+  - Repair options for the user: retrain with causal forms (bars-since instead of row indexes; `ict_confirmed_swing_*` instead of `ict_raw_swing_*`) for 13, 14, 16, 18, 19.
+  - A versioned truncation fix is a prompt 5 candidate for 12 and 15.
+
+## 2026-10-07 - Follow-up proposal: training-data sufficiency, hard negatives and an every-bar model (ICT)
+
+*From the former `ICT_experiment_journal.md`.*
+
+### Status
+
+- Proposed, not started. Runs after the v2 retrain (R3), B3 and B4; out of section 4 scope. It changes labels, so it needs new versioned label roots and its own retrain.
+
+### Why
+
+- Each ICT model is a meta-label filter trained only on setup events. 9.5 years of ES history (2017-01-02 to 2026-06-19, 666,769 5-minute bars) yields few events per target. The excluded ~660k bars (`exclude_<target>`) carry no label for "did this setup win".
+- The question raised (user, 2026-10-07): would training on every bar teach the model where to trade and where not to?
+
+### Evidence (v2 validation views, R2c)
+
+- Events (usable rows) per target: long_ict_meta (ID 12) 7,406 (train 5,184 / 1,839 wins); short_ict_meta (15) 7,438; short_ict_reversal (16) 6,170; long_ict_reversal (13) 5,800; short_ict_reversal_sweep_reclaim (19) 3,226 (train 2,258 / 593 wins); short_ict_reversal_ifvg_reversal (18) 2,939; short_ict_continuation (14) 1,268 (train 887 / 380 wins, test 191 / 90 wins).
+- ID 14 loads 96 features; with lags and deltas that is several hundred inputs against 887 training rows (overfitting risk). Its R3 pilot made 60 positive test calls, so a 95% interval on its win rate is about +/-12 pp.
+- Treat IDs 14 and, to a lesser degree, 18/19 as low-confidence until B3/B4 shows fold-stable results. The meta models (12, 15) have reasonable sample sizes. This matches the earlier classic-breaker finding that event frequency, not label design, is the binding constraint.
+
+### Why not simply add the excluded bars as 0s
+
+- An ICT label means "this setup hit target before stop". A non-setup bar has no entry, stop or target, so 0 there means "no setup", not "bad trade". It teaches setup recognition (which the rules already do exactly) and buries the ~0.4% positives.
+- Adjacent 5-minute bars are nearly identical with overlapping outcomes, so the effective sample is far below the row count.
+
+### Proposed experiments
+
+- E-A hard negatives: add near-miss bars (an ICT setup partly formed but did not trigger, e.g. a liquidity sweep without displacement or FVG, or a breaker without a qualifying retest) labelled with the same entry/stop/target geometry as if entered. Needs a per-setup near-miss definition, first-retest-only kept where it is a contract invariant, and the causal-prefix and leakage audits.
+- E-B every-bar model: a fixed triple-barrier label from every bar (family horizon, ATR-scaled target/stop), setup flags as features, uniqueness weights / sequential bootstrap and purged, embargoed walk-forward CV. This is the design the EURUSD OTE models already use (180k-540k rows).
+
+### How to compare
+
+- Same walk-forward windows, costs and exit contract as the meta models. Score on the meta model's setup opportunities (post-cost expectancy per trade, AP lift over base rate, concentration, shock-day exclusion, time stability), and separately report any off-setup trades E-B adds and their own post-cost expectancy. Promotion still follows the existing contract.
+
+### Decision
+
+- None yet. The R3 retrain keeps the event-conditioned (meta-label) design unchanged. Cross-reference: `docs/FRVP_experiment_journal.md` (same proposal for FRVP), `notes.txt` backlog.

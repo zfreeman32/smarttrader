@@ -327,7 +327,7 @@ This ledger is the cleanup layer for the FRVP experiment tree. Each saved run be
 
 The compact table below is now paired with the canonical detailed write-up in [FRVP_experiment_journal.md](FRVP_experiment_journal.md), which records the full `question / control / change / method / artifacts / result / what worked / what did not / observations / decision / repo change` story for each major FRVP experiment.
 
-Future FRVP experiments should use [FRVP_experiment_record_template.md](FRVP_experiment_record_template.md) so the audit can trace not just what happened, but why it was run, what changed in repo status, and which artifacts prove it.
+Future FRVP experiments should use [FRVP_experiment_journal.md#frvp_experiment_record_template](FRVP_experiment_journal.md#frvp_experiment_record_template) so the audit can trace not just what happened, but why it was run, what changed in repo status, and which artifacts prove it.
 
 | Date | Experiment root | Why we ran it | What changed | Direct result | Main observation |
 |---|---|---|---|---|---|
@@ -362,7 +362,7 @@ The three highest-EV fixes are therefore different now: first, run regime-gated 
 
 ### Audit scope note
 
-The design paper was read first in full from [docs/FRVP_ES_primary_6E_variant_design.md](/abs/path/C:/Users/zebfr/Documents/All_Files/TRADING/trade_bot/docs/FRVP_ES_primary_6E_variant_design.md). The user-tab artifact path `artifacts/frvp_es_primary_phase04_full_reuse/...` is missing in this repo, so this audit uses `artifacts/frvp_es_primary_current/...` throughout and flags places where that blocks exact reproduction.
+The design paper was read first in full from [docs/FRVP_ES_primary_6E_variant_design.md](FRVP_ES_primary_6E_variant_design.md). The user-tab artifact path `artifacts/frvp_es_primary_phase04_full_reuse/...` is missing in this repo, so this audit uses `artifacts/frvp_es_primary_current/...` throughout and flags places where that blocks exact reproduction.
 
 ### Phase 0: Continuity
 
@@ -683,7 +683,7 @@ This is now the highest-value FRVP follow-up, because the friction A/B did not e
 
 In plain terms, this workstream should answer a simple question: "Are the saved reversal profits broad enough to trust, or are they coming from too few trades and too few pockets?" The policy layer already has the slice dimensions needed to test that, but the repo still needs a cleaner pass that turns those slices into explicit abstain lists rather than leaving them as descriptive reports.
 
-The concrete order for this work is captured in `docs/FRVP_regime_gated_deployment_roadmap_20260721.md`. The short version is:
+The concrete order for this work is captured in `docs/FRVP_experiment_journal.md#frvp_regime_gated_deployment_roadmap_20260721`. The short version is:
 
 1. freeze the saved long-continuation and reversal controls
 2. measure concentration by quarter, trade, session, and composite regime

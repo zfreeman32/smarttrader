@@ -1,0 +1,27 @@
+strategy,family,long,short
+FRVP,Continuation,ID 2: repaired XGB,ID 1: repaired TCN
+FRVP,Reversal,ID 10: legacy XGB,Retired XGB; no eligible replacement
+FRVP,Meta (pooled),ID 3: legacy XGB,ID 4: legacy XGB
+FRVP,Setup S1,ID 8: legacy XGB,No retained dedicated specialist
+FRVP,Setup S2,ID 5: legacy XGB,No retained dedicated specialist
+FRVP,Setup S3,ID 6: repaired XGB,No retained dedicated specialist
+FRVP,Setup S4,Paused XGB,No retained dedicated specialist
+FRVP,Setup S5,ID 7: repaired XGB,No retained dedicated specialist
+FRVP,Setup S6,ID 9: legacy XGB,No retained dedicated specialist
+ICT,Continuation,ID 11: repaired XGB,ID 14: legacy XGB
+ICT,Reversal,ID 13: legacy XGB,ID 16: legacy XGB
+ICT,Meta (pooled),ID 12: legacy XGB,ID 15: legacy XGB
+ICT,Premium/discount,No retained specialist,ID 17: repaired XGB
+ICT,IFVG reversal,No retained specialist,ID 18: legacy XGB
+ICT,Sweep/reclaim,No retained specialist,ID 19: legacy XGB
+ICT,Sweep + displacement + FVG,No retained specialist,No retained specialist
+ICT,OB retest after MSS,No retained specialist,No retained specialist
+ICT,Session-open pre-IB,No retained specialist,No retained specialist
+ICT,Session-open post-IB,No retained specialist,No retained specialist
+ICT,Displacement continuation after raid,No retained specialist,No retained specialist
+ICT,Classic breaker,Excluded research branch,Excluded research branch
+OTE,Reversal,ID 22: legacy,ID 26: legacy
+OTE,Breakout,ID 20: legacy,ID 24: legacy
+OTE,Meta (pooled),ID 21: legacy,ID 25: legacy
+OTE,Union (pooled),ID 23: legacy,ID 27: legacy
+OTE,Continuation pullback / entry,Archived experiments; no selected representative,Archived experiments; no selected representative

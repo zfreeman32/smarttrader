@@ -21,12 +21,10 @@ Current snapshot of the package:
 ```text
 features/
 |-- __init__.py
-|-- all_indicators.py
 |-- all_strategies.py
 |-- builder.py
 |-- cli.py
 |-- config.py
-|-- feature_list.txt
 |-- fx_calendar.py
 |-- io.py
 |-- preprocessing.py
@@ -59,8 +57,7 @@ features/
 |   |-- ote_base.json
 |   `-- ote_extended.json
 |-- strategies/
-|   |-- *.py
-|   `-- misc/
+|   `-- *.py
 `-- docs/
     `-- TIMEZONE_CALENDAR_PLAN.md
 ```
@@ -226,7 +223,6 @@ python -m features.cli build input.csv `
 ## Standalone Strategy Integration
 
 - strategy discovery currently scans top-level `features/strategies/*.py`
-- `features/strategies/misc/` is present in the repo, but it is not auto-registered by the current discovery pass
 - if a strategy module exposes one top-level function, its file stem becomes the strategy id
 - if a strategy module exposes multiple top-level functions, entries are registered as `file_stem.function_name`
 - strategy outputs are renamed with a `strategy__<strategy_id>__...` prefix before being merged into the dataset
@@ -262,8 +258,6 @@ See `features/docs/TIMEZONE_CALENDAR_PLAN.md` for the migration notes and recomm
 These files still matter, but they are no longer the main path for new work:
 
 - `features/all_strategies.py`: legacy monolith and comparison reference
-- `features/all_indicators.py`: older indicator reference code
-- `features/feature_list.txt`: historical inventory/reference list
 
 New feature work should usually go into:
 
