@@ -1,0 +1,248 @@
+{
+  "binding_id": "broad_full_session_shadow_route_bindings_v2",
+  "version": 2,
+  "selected_collection_id": "broad_full_session_shadow_v2",
+  "selection_path": "configs/broad_full_session_shadow_v2.json",
+  "selection_sha256": "a89e8d2622d9f6cf915eb80b1044a1e8af7dacd7cb99cca1fc6e2b9e23e6a430",
+  "catalog_path": "configs/outcome_contracts/b1_v3.json",
+  "catalog_sha256": "a995a09d012ba36038d41f297495d467ca9e6a3ae0e72b32e7b21d813d7d8b63",
+  "catalog_lock_sha256": "22b1b9b9184ea8f7ea0e8cc539ce24f6d63efc4c5ca6c85f590ba151aac94a86",
+  "pooled_routing_contract": "pooled_detector_selected_same_side_v1",
+  "bindings": [
+    {
+      "queue_id": 2,
+      "model_id": "frvp_long_continuation_xgb_v1",
+      "instrument": "ES",
+      "strategy": "frvp",
+      "side": "long",
+      "model_family": "continuation",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "setup2": "es_frvp_setup2_eval_v2",
+        "setup3": "es_frvp_setup3_long_eval_v2",
+        "setup5": "es_frvp_setup5_long_eval_v2"
+      }
+    },
+    {
+      "queue_id": 10,
+      "model_id": "frvp_long_reversal_xgb_v1",
+      "instrument": "ES",
+      "strategy": "frvp",
+      "side": "long",
+      "model_family": "reversal",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "setup1": "es_frvp_setup1_eval_v1",
+        "setup4": "es_frvp_setup4_eval_v2",
+        "setup6": "es_frvp_setup6_eval_v1"
+      }
+    },
+    {
+      "queue_id": 12,
+      "model_id": "ict_long_meta_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "long",
+      "model_family": "meta",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "sweep_reclaim": "es_ict_sweep_reclaim_eval_v1",
+        "sweep_displacement_fvg": "es_ict_sweep_displacement_fvg_eval_v1",
+        "ob_retest_after_mss": "es_ict_ob_retest_after_mss_eval_v1",
+        "ifvg_reversal": "es_ict_ifvg_reversal_eval_v1",
+        "premium_discount_continuation": "es_ict_premium_discount_continuation_eval_v1",
+        "session_open_manipulation_pre_ib": "es_ict_session_open_manipulation_pre_ib_eval_v1",
+        "session_open_manipulation_post_ib": "es_ict_session_open_manipulation_post_ib_eval_v1",
+        "displacement_continuation_after_raid": "es_ict_displacement_continuation_after_raid_eval_v1"
+      }
+    },
+    {
+      "queue_id": 13,
+      "model_id": "ict_long_reversal_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "long",
+      "model_family": "reversal",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "sweep_reclaim": "es_ict_sweep_reclaim_eval_v1",
+        "sweep_displacement_fvg": "es_ict_sweep_displacement_fvg_eval_v1",
+        "ob_retest_after_mss": "es_ict_ob_retest_after_mss_eval_v1",
+        "ifvg_reversal": "es_ict_ifvg_reversal_eval_v1",
+        "session_open_manipulation_pre_ib": "es_ict_session_open_manipulation_pre_ib_eval_v1",
+        "session_open_manipulation_post_ib": "es_ict_session_open_manipulation_post_ib_eval_v1"
+      }
+    },
+    {
+      "queue_id": 15,
+      "model_id": "ict_short_meta_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "short",
+      "model_family": "meta",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "sweep_reclaim": "es_ict_sweep_reclaim_eval_v1",
+        "sweep_displacement_fvg": "es_ict_sweep_displacement_fvg_eval_v1",
+        "ob_retest_after_mss": "es_ict_ob_retest_after_mss_eval_v1",
+        "ifvg_reversal": "es_ict_ifvg_reversal_eval_v1",
+        "premium_discount_continuation": "es_ict_premium_discount_continuation_eval_v1",
+        "session_open_manipulation_pre_ib": "es_ict_session_open_manipulation_pre_ib_eval_v1",
+        "session_open_manipulation_post_ib": "es_ict_session_open_manipulation_post_ib_eval_v1",
+        "displacement_continuation_after_raid": "es_ict_displacement_continuation_after_raid_eval_v1"
+      }
+    },
+    {
+      "queue_id": 16,
+      "model_id": "ict_short_reversal_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "short",
+      "model_family": "reversal",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "sweep_reclaim": "es_ict_sweep_reclaim_eval_v1",
+        "sweep_displacement_fvg": "es_ict_sweep_displacement_fvg_eval_v1",
+        "ob_retest_after_mss": "es_ict_ob_retest_after_mss_eval_v1",
+        "ifvg_reversal": "es_ict_ifvg_reversal_eval_v1",
+        "session_open_manipulation_pre_ib": "es_ict_session_open_manipulation_pre_ib_eval_v1",
+        "session_open_manipulation_post_ib": "es_ict_session_open_manipulation_post_ib_eval_v1"
+      }
+    },
+    {
+      "queue_id": 22,
+      "model_id": "long_reversal_tcn_v2_20260525_narrow48",
+      "instrument": "EURUSD",
+      "strategy": "ote",
+      "side": "long",
+      "model_family": "reversal",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "reversal": "eurusd_ote_reversal_eval_v2"
+      }
+    },
+    {
+      "queue_id": 26,
+      "model_id": "short_reversal_xgb_v2_20260525",
+      "instrument": "EURUSD",
+      "strategy": "ote",
+      "side": "short",
+      "model_family": "reversal",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "reversal": "eurusd_ote_reversal_eval_v2"
+      }
+    },
+    {
+      "queue_id": 3,
+      "model_id": "frvp_long_meta_xgb_v1",
+      "instrument": "ES",
+      "strategy": "frvp",
+      "side": "long",
+      "model_family": "meta",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "setup1": "es_frvp_setup1_eval_v1",
+        "setup2": "es_frvp_setup2_eval_v2",
+        "setup3": "es_frvp_setup3_long_eval_v2",
+        "setup4": "es_frvp_setup4_eval_v2",
+        "setup5": "es_frvp_setup5_long_eval_v2",
+        "setup6": "es_frvp_setup6_eval_v1"
+      }
+    },
+    {
+      "queue_id": 19,
+      "model_id": "ict_short_reversal_sweep_reclaim_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "short",
+      "model_family": "reversal_sweep_reclaim",
+      "route_selection": "exact_contemporaneous_same_side",
+      "setup_bindings": {
+        "sweep_reclaim": "es_ict_sweep_reclaim_eval_v1"
+      }
+    },
+    {
+      "queue_id": 21,
+      "model_id": "long_ote_meta_tcn_champion",
+      "instrument": "EURUSD",
+      "strategy": "ote",
+      "side": "long",
+      "model_family": "meta",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "reversal": "eurusd_ote_reversal_eval_v2",
+        "continuation": "eurusd_ote_continuation_eval_v2",
+        "breakout": "eurusd_ote_breakout_eval_v2",
+        "breakout_sustained": "eurusd_ote_breakout_sustained_eval_v2"
+      }
+    },
+    {
+      "queue_id": 25,
+      "model_id": "short_ote_meta_tcn_champion",
+      "instrument": "EURUSD",
+      "strategy": "ote",
+      "side": "short",
+      "model_family": "meta",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "reversal": "eurusd_ote_reversal_eval_v2",
+        "continuation": "eurusd_ote_continuation_eval_v2",
+        "breakout": "eurusd_ote_breakout_eval_v2",
+        "breakout_sustained": "eurusd_ote_breakout_sustained_eval_v2"
+      }
+    },
+    {
+      "queue_id": 5,
+      "model_id": "frvp_long_continuation_setup2_xgb_v1",
+      "instrument": "ES",
+      "strategy": "frvp",
+      "side": "long",
+      "model_family": "continuation_setup2",
+      "route_selection": "exact_contemporaneous_same_side",
+      "setup_bindings": {
+        "setup2": "es_frvp_setup2_eval_v2"
+      }
+    },
+    {
+      "queue_id": 23,
+      "model_id": "long_union_tcn_champion",
+      "instrument": "EURUSD",
+      "strategy": "ote",
+      "side": "long",
+      "model_family": "union",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "reversal": "eurusd_ote_reversal_eval_v2",
+        "continuation": "eurusd_ote_continuation_eval_v2",
+        "breakout": "eurusd_ote_breakout_eval_v2",
+        "breakout_sustained": "eurusd_ote_breakout_sustained_eval_v2"
+      }
+    },
+    {
+      "queue_id": 18,
+      "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "short",
+      "model_family": "reversal_ifvg_reversal",
+      "route_selection": "exact_contemporaneous_same_side",
+      "setup_bindings": {
+        "ifvg_reversal": "es_ict_ifvg_reversal_eval_v1"
+      }
+    },
+    {
+      "queue_id": 14,
+      "model_id": "ict_short_continuation_xgb_v1",
+      "instrument": "ES",
+      "strategy": "ict",
+      "side": "short",
+      "model_family": "continuation",
+      "route_selection": "detector_selected_contemporaneous_same_side",
+      "setup_bindings": {
+        "premium_discount_continuation": "es_ict_premium_discount_continuation_eval_v1",
+        "displacement_continuation_after_raid": "es_ict_displacement_continuation_after_raid_eval_v1"
+      }
+    }
+  ]
+}

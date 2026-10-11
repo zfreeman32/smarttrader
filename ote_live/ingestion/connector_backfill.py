@@ -10,6 +10,7 @@ from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt,
 
 from ote_live.contracts.market_data import MarketBar
 from ote_live.ingestion.base import AbstractBackfillConnector, BackfillWindow, ensure_utc
+from ote_live.ingestion.provenance import apply_fmp_completion_rule
 from ote_live.ingestion.normalizer import (
     canonical_asset_to_fmp_symbol,
     canonical_timeframe_to_fmp_interval,
@@ -31,6 +32,8 @@ class FMPConfig(BaseModel):
     default_timezone: str = "UTC"
     timeout_seconds: float = 15.0
     max_retries: int = 3
+    # Section 4 D6 (opt-in): stamp completion with fmp-historical-chart-completion-v1 on new fetches.
+    apply_completion_rule: bool = False
 
     @model_validator(mode="after")
     def _validate_api_key(self) -> "FMPConfig":
@@ -85,6 +88,8 @@ class FMPRESTClient:
             interval=interval,
             source_timezone=self.config.default_timezone,
         )
+        if self.config.apply_completion_rule:
+            bars = [apply_fmp_completion_rule(bar) for bar in bars]
         if start_date is not None:
             start_utc = ensure_utc(start_date)
             bars = [bar for bar in bars if bar.timestamp >= start_utc]

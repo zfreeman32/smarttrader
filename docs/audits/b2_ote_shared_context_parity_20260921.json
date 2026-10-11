@@ -1,0 +1,18 @@
+{
+  "rows": 543441,
+  "changed_rows": {
+    "continuation_ema_fast_30m": 0,
+    "continuation_ema_slow_30m": 0,
+    "continuation_trend_spread_30m_atr": 0,
+    "continuation_close_vs_slow_30m_atr": 0,
+    "continuation_trend_up_30m": 0,
+    "continuation_trend_down_30m": 0,
+    "continuation_ema_fast_1h": 0,
+    "continuation_ema_slow_1h": 0,
+    "continuation_trend_spread_1h_atr": 0,
+    "continuation_close_vs_slow_1h_atr": 0,
+    "continuation_trend_up_1h": 0,
+    "continuation_trend_down_1h": 0
+  },
+  "all_match": true
+}

@@ -1,0 +1,8 @@
+{
+  "signals": "ote_signals.jsonl",
+  "bars": "ote_bars.csv",
+  "schedule": "ote_schedule.csv",
+  "calendar": "ote_calendar.json",
+  "position_contract": "ote_position_contract.json",
+  "structural_atr_mode": "derive_from_tape"
+}

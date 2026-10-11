@@ -1,0 +1,49 @@
+{
+  "status": "source_history_repair_verified_pending_S3_retraining",
+  "prepared_manifest_sha256": "e4a899800f6c1081c1cf4e628ab57b46be1a8bdb9750ae9969383b08163a5c6e",
+  "preflight_sha256": "e2ca19088e8c6f1990a888ad62522bc69acb2049337ceaac33ab1d1d6a451b2d",
+  "source_rows": 666769,
+  "tensor_parity_comparisons": 2536,
+  "original_model_artifacts": [
+    {
+      "model_id": 1,
+      "manifest_sha256": "f4977cf9f9fd93aa821e9eea588b9c3df30e5be1da09cdf46e1f2d89f744d178",
+      "verified_outputs": 13
+    },
+    {
+      "model_id": 2,
+      "manifest_sha256": "a514432789881828327c98fe0beba123d471fd953a133740ff24f54debf53e63",
+      "verified_outputs": 12
+    },
+    {
+      "model_id": 6,
+      "manifest_sha256": "800d149ac0b95da3edbace70c1c05935a28e27e0ff03ac02de349e719b0d51d7",
+      "verified_outputs": 12
+    },
+    {
+      "model_id": 7,
+      "manifest_sha256": "14524568382a83abdc7007526ac68cb87042b84b6dee367cf7e18b0da09fc1c9",
+      "verified_outputs": 12
+    },
+    {
+      "model_id": 11,
+      "manifest_sha256": "fc09e15fec01e607c42dac3c0b049c77e154f52caec452bbbaa31ea5f0282e38",
+      "verified_outputs": 12
+    },
+    {
+      "model_id": 17,
+      "manifest_sha256": "bfdf64d82ed1bcdee3585fddddd4c0db44c9896c7c8ee50d212f647e59664cd8",
+      "verified_outputs": 12
+    }
+  ],
+  "new_trading_model_trained": false,
+  "promotion_eligible": false,
+  "full_live_feature_parity_certified": false,
+  "tests": {
+    "passed": 107,
+    "skipped": 2,
+    "preexisting_failures": [
+      "test_cross_validate_trial_respects_cv_max_folds: unsupported cv_max_folds config; documented before this repair"
+    ]
+  }
+}

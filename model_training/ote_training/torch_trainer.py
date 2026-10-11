@@ -447,6 +447,10 @@ def train_torch_model(
     w_eval: np.ndarray,
     trainer_config: Mapping[str, Any],
 ) -> TorchTrainingResult:
+    fixed_schedule = trainer_config.get("fixed_epoch_schedule")
+    fixed_refit = fixed_schedule is not None
+    if fixed_refit and (not fixed_schedule or len(y_eval) or len(X_eval) or len(w_eval)):
+        raise ValueError("Fixed-duration refitting requires a nonempty frozen schedule and no evaluation rows.")
     torch.manual_seed(int(trainer_config["seed"]))
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(int(trainer_config["seed"]))
@@ -515,6 +519,11 @@ def train_torch_model(
         tail_lr_scale=float(trainer_config.get("tail_lr_scale", 0.10)),
     )
     patience = max(3, min(8, int(trainer_config["epochs"]) // 3 if int(trainer_config["epochs"]) > 3 else 3))
+    if fixed_refit:
+        schedule = [dict(name=epoch["phase"], epochs=1,
+                         train_fraction=float(epoch["train_fraction"]),
+                         lr_scale=float(epoch["learning_rate"]) / learning_rate)
+                    for epoch in fixed_schedule]
 
     history: List[Dict[str, Any]] = []
     best_score = -np.inf
@@ -552,6 +561,7 @@ def train_torch_model(
 
         for _ in range(phase_epochs):
             global_epoch += 1
+            epoch_learning_rate = float(optimizer.param_groups[0]["lr"])
             model.train()
             running_loss = 0.0
             sample_count = 0
@@ -585,6 +595,16 @@ def train_torch_model(
                 sample_count += batch_size_actual
 
             train_loss = running_loss / max(sample_count, 1)
+            if fixed_refit:
+                if non_finite_batches or not np.isfinite(train_loss):
+                    raise RuntimeError("Fixed-duration refit diverged before completing the frozen schedule.")
+                best_state = checkpoint_state_dict(model)
+                best_epoch = global_epoch
+                history.append(dict(epoch=float(global_epoch), phase=phase_name,
+                                    train_rows=float(train_rows), train_fraction=train_fraction,
+                                    train_loss=float(train_loss), learning_rate=epoch_learning_rate,
+                                    checkpoint_selection=False, stop_reason=None))
+                continue
             if non_finite_batches > 0:
                 history.append(
                     {
@@ -653,10 +673,11 @@ def train_torch_model(
                     "epoch": float(global_epoch),
                     "phase": phase_name,
                     "train_rows": float(train_rows),
+                    "train_fraction": train_fraction,
                     "train_loss": float(train_loss),
                     "val_auprc": float(val_auprc),
                     "best_val_auprc": float(best_score),
-                    "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                    "learning_rate": epoch_learning_rate,
                     "improved": bool(improved),
                     "non_finite_batches": 0.0,
                     "stop_reason": None,
@@ -705,8 +726,9 @@ def train_torch_model(
             "num_layers": int(trainer_config["num_layers"]),
             "dropout": float(trainer_config["dropout"]),
         },
-        "best_val_auprc": float(best_score),
+        "best_val_auprc": None if fixed_refit else float(best_score),
         "best_epoch": int(best_epoch),
+        "selection_mode": "fixed_duration_refit" if fixed_refit else "held_out_validation",
         "history": history,
         "stop_reason": stop_reason,
         "amp_enabled": bool(use_amp),

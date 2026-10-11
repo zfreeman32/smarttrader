@@ -89,6 +89,8 @@ def build_frvp_context_features(
     )
 
     session_open_context = _build_session_open_context(market)
+    swing_timestamp_unit = (pd.DatetimeIndex(anchor_engine._bars["timestamp"]).unit
+                            if int(getattr(config, "feature_version", 1) or 1) >= 2 else None)
     session_prior_rth_summary_indices = _build_session_prior_rth_summary_indices(anchor_engine.rth_sessions)
     profile_cache: dict[tuple[str, str, pd.Timestamp, pd.Timestamp], Any] = {}
     anchor_window_cache: dict[tuple[str, object], Any] = {}
@@ -203,6 +205,7 @@ def build_frvp_context_features(
             anchor_engine=anchor_engine,
             cache=anchor_window_cache,
             current_ts=current_ts,
+            timestamp_unit=swing_timestamp_unit,
         )
         composite_window = _resolve_composite_window(
             anchor_engine=anchor_engine,
@@ -830,11 +833,19 @@ def _resolve_swing_window(
     anchor_engine,
     cache: dict[tuple[str, object], Any],
     current_ts: pd.Timestamp,
+    timestamp_unit: str | None = None,
 ) -> Any:
     from ..continuity.types import ProfileSlice
     from ..profiles.anchors import AnchorWindow
 
-    current_position = np.searchsorted(anchor_engine._timestamp_ns, pd.Timestamp(current_ts).value, side="left")
+    # Feature v2 passes the anchor engine's datetime unit: `_timestamp_ns` holds `asi8` in that unit (often "us"),
+    # while `Timestamp.value` is always nanoseconds. v1 keeps the original comparison, which places every bar after
+    # all swings in the frame (look-ahead); see features/causal_contract.py.
+    if timestamp_unit is None:
+        current_value = pd.Timestamp(current_ts).value
+    else:
+        current_value = pd.DatetimeIndex([pd.Timestamp(current_ts)]).as_unit(timestamp_unit).asi8[0]
+    current_position = np.searchsorted(anchor_engine._timestamp_ns, current_value, side="left")
     cutoff = np.searchsorted(np.asarray(anchor_engine._swing_confirmed_indices, dtype=int), current_position, side="left")
     key = ("swing_to_swing", int(cutoff))
     if key in cache:

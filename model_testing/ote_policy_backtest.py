@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from model_testing.ote_abstain_policy import HardAbstainConfig, apply_abstain_policy
+from model_testing.outcome_compatibility import annotate_legacy, legacy_snapshot
 from model_testing.ote_policy_metrics import (
     add_unit_alias_columns,
     add_unit_aliases,
@@ -499,7 +500,9 @@ def run_walk_forward_backtest(
         }
     )
 
-    return {
+    outcome_snapshot = legacy_snapshot(threshold_config, direction=direction)
+    summary["outcome_contract"] = outcome_snapshot
+    results = {
         "fold_summary": fold_summary,
         "policy_table": policy_table_frame,
         "policy_evaluation": policy_evaluation_frame,
@@ -509,6 +512,8 @@ def run_walk_forward_backtest(
         "summary": sanitize_for_json(summary),
         **breakdowns,
     }
+    return {key: annotate_legacy(value, outcome_snapshot) if isinstance(value, pd.DataFrame) else value
+            for key, value in results.items()}
 
 
 def select_walk_forward_policy(
@@ -608,6 +613,11 @@ def extract_emitted_trades(
         emitted.get(threshold_config.total_cost_column, pd.Series(np.nan, index=emitted.index)),
         errors="coerce",
     )
+    for component in ("spread", "slippage", "commission"):
+        emitted[f"{component}_cost_units"] = pd.to_numeric(
+            emitted.get(f"policy_{component}_cost_units", pd.Series(np.nan, index=emitted.index)),
+            errors="coerce",
+        )
     emitted["entry_price"] = pd.to_numeric(
         emitted.get(
             threshold_config.trade_entry_price_column,
@@ -665,6 +675,9 @@ def extract_emitted_trades(
         "exit_price",
         "gross_pnl_pips",
         "total_cost_pips",
+        "spread_cost_units",
+        "slippage_cost_units",
+        "commission_cost_units",
         "net_pnl_pips",
         "trade_timing_source",
         "trade_outcome",

@@ -1,0 +1,390 @@
+{
+  "$defs": {
+    "CostContract": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_model_id": {
+          "title": "Cost Model Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "instrument": {
+          "enum": [
+            "ES",
+            "6E",
+            "EURUSD"
+          ],
+          "title": "Instrument",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "ticks",
+            "pips"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "price_increment": {
+          "exclusiveMinimum": 0,
+          "title": "Price Increment",
+          "type": "number"
+        },
+        "cash_per_unit": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cash Per Unit"
+        },
+        "spread_mode": {
+          "const": "session_schedule",
+          "default": "session_schedule",
+          "title": "Spread Mode",
+          "type": "string"
+        },
+        "session_spreads": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Session Spreads",
+          "type": "array"
+        },
+        "spread_interpretation": {
+          "const": "full_configured_spread_per_side",
+          "default": "full_configured_spread_per_side",
+          "title": "Spread Interpretation",
+          "type": "string"
+        },
+        "fixed_slippage_round_trip": {
+          "minimum": 0,
+          "title": "Fixed Slippage Round Trip",
+          "type": "number"
+        },
+        "commission_round_trip": {
+          "minimum": 0,
+          "title": "Commission Round Trip",
+          "type": "number"
+        },
+        "spread_slippage_multiplier": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Spread Slippage Multiplier",
+          "type": "number"
+        },
+        "session_clock": {
+          "const": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+          "default": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+          "title": "Session Clock",
+          "type": "string"
+        },
+        "adjustments": {
+          "const": "none",
+          "default": "none",
+          "title": "Adjustments",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cost_model_id",
+        "version",
+        "instrument",
+        "unit",
+        "price_increment",
+        "session_spreads",
+        "fixed_slippage_round_trip",
+        "commission_round_trip"
+      ],
+      "title": "CostContract",
+      "type": "object"
+    },
+    "RiskContract": {
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "enum": [
+            "atr",
+            "structural",
+            "UNRESOLVED"
+          ],
+          "title": "Rule",
+          "type": "string"
+        },
+        "stop_atr": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Atr"
+        },
+        "target_atr": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Atr"
+        },
+        "min_stop_ticks": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "title": "Min Stop Ticks",
+          "type": "number"
+        },
+        "min_target_rr": {
+          "default": 1.25,
+          "exclusiveMinimum": 0,
+          "title": "Min Target Rr",
+          "type": "number"
+        },
+        "timeout_bars": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Bars"
+        },
+        "atr_definition": {
+          "title": "Atr Definition",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "unresolved_reason": {
+          "default": "",
+          "title": "Unresolved Reason",
+          "type": "string"
+        },
+        "recommendation": {
+          "default": "",
+          "title": "Recommendation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "atr_definition",
+        "source"
+      ],
+      "title": "RiskContract",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_id": {
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_version": {
+      "minimum": 1,
+      "title": "Contract Version",
+      "type": "integer"
+    },
+    "instrument": {
+      "enum": [
+        "ES",
+        "6E",
+        "EURUSD"
+      ],
+      "title": "Instrument",
+      "type": "string"
+    },
+    "timeframe_minutes": {
+      "enum": [
+        1,
+        5
+      ],
+      "title": "Timeframe Minutes",
+      "type": "integer"
+    },
+    "strategy": {
+      "enum": [
+        "ote",
+        "frvp",
+        "ict"
+      ],
+      "title": "Strategy",
+      "type": "string"
+    },
+    "setup_family": {
+      "title": "Setup Family",
+      "type": "string"
+    },
+    "model_families": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Model Families",
+      "type": "array"
+    },
+    "side": {
+      "default": "long_or_short",
+      "enum": [
+        "long_or_short",
+        "long",
+        "short"
+      ],
+      "title": "Side",
+      "type": "string"
+    },
+    "anchor_definition": {
+      "title": "Anchor Definition",
+      "type": "string"
+    },
+    "known_at_definition": {
+      "title": "Known At Definition",
+      "type": "string"
+    },
+    "entry_rule": {
+      "const": "first_scheduled_open_strictly_after_known_at",
+      "default": "first_scheduled_open_strictly_after_known_at",
+      "title": "Entry Rule",
+      "type": "string"
+    },
+    "max_entry_delay_bars": {
+      "const": 1,
+      "default": 1,
+      "title": "Max Entry Delay Bars",
+      "type": "integer"
+    },
+    "entry_price": {
+      "const": "unadjusted_open",
+      "default": "unadjusted_open",
+      "title": "Entry Price",
+      "type": "string"
+    },
+    "barrier_price_grid": {
+      "const": "futures_outward_tick_fx_unrounded",
+      "default": "futures_outward_tick_fx_unrounded",
+      "title": "Barrier Price Grid",
+      "type": "string"
+    },
+    "risk": {
+      "$ref": "#/$defs/RiskContract"
+    },
+    "paper_management": {
+      "const": "fixed_barriers",
+      "default": "fixed_barriers",
+      "title": "Paper Management",
+      "type": "string"
+    },
+    "concurrency": {
+      "const": "independent_every_signal",
+      "default": "independent_every_signal",
+      "title": "Concurrency",
+      "type": "string"
+    },
+    "barrier_resolution": {
+      "const": "complete_causal_1m_else_adverse_first",
+      "default": "complete_causal_1m_else_adverse_first",
+      "title": "Barrier Resolution",
+      "type": "string"
+    },
+    "exit_price": {
+      "const": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "default": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "title": "Exit Price",
+      "type": "string"
+    },
+    "missing_entry": {
+      "const": "DATA_GAP_no_search",
+      "default": "DATA_GAP_no_search",
+      "title": "Missing Entry",
+      "type": "string"
+    },
+    "missing_holding": {
+      "const": "DATA_GAP",
+      "default": "DATA_GAP",
+      "title": "Missing Holding",
+      "type": "string"
+    },
+    "overnight": {
+      "enum": [
+        "hold",
+        "exit_before_session_boundary"
+      ],
+      "title": "Overnight",
+      "type": "string"
+    },
+    "roll_rule": {
+      "const": "censor_coordinate_change",
+      "default": "censor_coordinate_change",
+      "title": "Roll Rule",
+      "type": "string"
+    },
+    "forward_horizons": {
+      "default": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "items": {
+        "type": "integer"
+      },
+      "title": "Forward Horizons",
+      "type": "array"
+    },
+    "costs": {
+      "$ref": "#/$defs/CostContract"
+    }
+  },
+  "required": [
+    "contract_id",
+    "contract_version",
+    "instrument",
+    "timeframe_minutes",
+    "strategy",
+    "setup_family",
+    "model_families",
+    "anchor_definition",
+    "known_at_definition",
+    "risk",
+    "overnight",
+    "costs"
+  ],
+  "title": "OutcomeContract",
+  "type": "object"
+}

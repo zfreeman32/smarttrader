@@ -1,0 +1,37 @@
+{
+  "scope_id": "b1_baseline_scope_v1",
+  "version": 1,
+  "excluded_setups": [
+    "classic_breaker"
+  ],
+  "diagnostic_setups": [
+    "unmatched"
+  ],
+  "pooled_families": [
+    [
+      "frvp",
+      [
+        "reversal",
+        "continuation",
+        "meta"
+      ]
+    ],
+    [
+      "ict",
+      [
+        "reversal",
+        "continuation",
+        "meta"
+      ]
+    ],
+    [
+      "ote",
+      [
+        "ote",
+        "meta",
+        "union"
+      ]
+    ]
+  ],
+  "decision_source": "User decision 2026-09-17: exclude classic breaker; ALL pooled models diagnostic-only, including setup matches; retain detector/artifacts/logging. Named setup specialists retain economics. docs/B1_baseline_scope_and_model_setup_audit_20260917.md"
+}

@@ -1,0 +1,49 @@
+{
+  "scope_kind": "research",
+  "scope_id": "b2_research_scope_v1",
+  "version": 1,
+  "excluded_setups": [
+    "classic_breaker"
+  ],
+  "diagnostic_setups": [
+    "unmatched"
+  ],
+  "pooled_families": [
+    [
+      "frvp",
+      [
+        "reversal",
+        "continuation",
+        "meta"
+      ]
+    ],
+    [
+      "ict",
+      [
+        "reversal",
+        "continuation",
+        "meta"
+      ]
+    ],
+    [
+      "ote",
+      [
+        "ote",
+        "meta",
+        "union"
+      ]
+    ]
+  ],
+  "pooled_admission": "selected_same_side_causal_setup",
+  "pooled_counterfactual": "other_same_side_markout_only",
+  "pooled_routing_contract": "pooled_detector_selected_same_side_v1",
+  "pooled_primary_route": "detector_selected_contemporaneous_same_side",
+  "pooled_counterfactual_route": "all_other_contemporaneous_same_side_model_by_setup_markouts",
+  "pooled_hindsight_rule": "never_attach_later_or_select_after_outcome",
+  "required_context_coverage": "all_model_observations",
+  "required_setup_coverage": "complete",
+  "causal_clock": "setup_known_at_decision_time",
+  "simulated_outcomes_only": true,
+  "broker_order_authority": false,
+  "decision_source": "Research-only collection decision 2026-09-29: pooled models may produce simulated outcomes only for the detector-selected contemporaneous same-side setup known by the model decision clock. Other same-side matches remain non-executable counterfactual markouts; later, missing, incomplete, or unverified setup context is fail-closed. baseline_scope_v1 remains unchanged. notes.txt and configs/broad_full_session_shadow_selection_v0.json"
+}

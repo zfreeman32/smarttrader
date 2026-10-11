@@ -1,0 +1,1153 @@
+{
+  "checked_at_utc": "2026-09-22T04:43:21.822362+00:00",
+  "files_verified": 259,
+  "hash_mismatches": [],
+  "priority_models": [
+    {
+      "id": 2,
+      "target": "long_frvp_continuation",
+      "backend": "xgboost",
+      "training_rows": 4625,
+      "development_rows": 5604,
+      "final_refit_on_dev": true,
+      "corrected_ict_event_windows": 0,
+      "windows": [
+        {
+          "window": 8,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 15,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 839
+        },
+        {
+          "window": 12,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 55,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 838
+        },
+        {
+          "window": 16,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 55,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 838
+        },
+        {
+          "window": 20,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 10,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 837
+        },
+        {
+          "window": 24,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 10,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 837
+        },
+        {
+          "window": 28,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 55,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 836
+        },
+        {
+          "window": 32,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 148,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 835
+        },
+        {
+          "window": 36,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 148,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 835
+        },
+        {
+          "window": 40,
+          "folds": 15,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 9,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 10,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 11,
+              "validation_rows_inside_feature_selection_fit_span": 300
+            },
+            {
+              "fold": 12,
+              "validation_rows_inside_feature_selection_fit_span": 293
+            }
+          ],
+          "first_final_fit_source_gap": 0,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 834
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "target": "short_frvp_continuation",
+      "backend": "torch",
+      "training_rows": 4941,
+      "development_rows": 5981,
+      "final_refit_on_dev": true,
+      "corrected_ict_event_windows": 0,
+      "windows": [
+        {
+          "window": 16,
+          "folds": 8,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 9
+            }
+          ],
+          "first_final_fit_source_gap": 117,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 894
+        },
+        {
+          "window": 20,
+          "folds": 8,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 9
+            }
+          ],
+          "first_final_fit_source_gap": 117,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 894
+        },
+        {
+          "window": 24,
+          "folds": 8,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 9
+            }
+          ],
+          "first_final_fit_source_gap": 15,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 893
+        },
+        {
+          "window": 28,
+          "folds": 8,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 9
+            }
+          ],
+          "first_final_fit_source_gap": 15,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 893
+        },
+        {
+          "window": 32,
+          "folds": 8,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 500
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 9
+            }
+          ],
+          "first_final_fit_source_gap": 267,
+          "required_source_gap": 1071,
+          "refit_eval_rows_in_training": 892
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "target": "long_ict_continuation",
+      "backend": "xgboost",
+      "training_rows": 1124,
+      "development_rows": 1365,
+      "final_refit_on_dev": true,
+      "corrected_ict_event_windows": 1606,
+      "windows": [
+        {
+          "window": 8,
+          "folds": 9,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 99
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 3
+            }
+          ],
+          "first_final_fit_source_gap": 12,
+          "required_source_gap": 49,
+          "refit_eval_rows_in_training": 203
+        },
+        {
+          "window": 12,
+          "folds": 9,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 99
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 3
+            }
+          ],
+          "first_final_fit_source_gap": 12,
+          "required_source_gap": 49,
+          "refit_eval_rows_in_training": 203
+        },
+        {
+          "window": 16,
+          "folds": 9,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 99
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 3
+            }
+          ],
+          "first_final_fit_source_gap": 830,
+          "required_source_gap": 49,
+          "refit_eval_rows_in_training": 202
+        },
+        {
+          "window": 20,
+          "folds": 9,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 99
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 3
+            }
+          ],
+          "first_final_fit_source_gap": 261,
+          "required_source_gap": 49,
+          "refit_eval_rows_in_training": 201
+        },
+        {
+          "window": 24,
+          "folds": 9,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 6,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 7,
+              "validation_rows_inside_feature_selection_fit_span": 99
+            },
+            {
+              "fold": 8,
+              "validation_rows_inside_feature_selection_fit_span": 3
+            }
+          ],
+          "first_final_fit_source_gap": 261,
+          "required_source_gap": 49,
+          "refit_eval_rows_in_training": 201
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "target": "short_ict_continuation_premium_discount_continuation",
+      "backend": "xgboost",
+      "training_rows": 861,
+      "development_rows": 1046,
+      "final_refit_on_dev": true,
+      "corrected_ict_event_windows": 1231,
+      "windows": [
+        {
+          "window": 8,
+          "folds": 5,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 126
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 30
+            }
+          ],
+          "first_final_fit_source_gap": 851,
+          "required_source_gap": 47,
+          "refit_eval_rows_in_training": 167
+        },
+        {
+          "window": 12,
+          "folds": 5,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 126
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 30
+            }
+          ],
+          "first_final_fit_source_gap": 315,
+          "required_source_gap": 47,
+          "refit_eval_rows_in_training": 171
+        },
+        {
+          "window": 16,
+          "folds": 5,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 126
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 30
+            }
+          ],
+          "first_final_fit_source_gap": 3,
+          "required_source_gap": 47,
+          "refit_eval_rows_in_training": 175
+        },
+        {
+          "window": 20,
+          "folds": 5,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 126
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 30
+            }
+          ],
+          "first_final_fit_source_gap": 29,
+          "required_source_gap": 47,
+          "refit_eval_rows_in_training": 179
+        },
+        {
+          "window": 24,
+          "folds": 5,
+          "gate_failures": [],
+          "feature_selection_overlap": [
+            {
+              "fold": 1,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 2,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 3,
+              "validation_rows_inside_feature_selection_fit_span": 128
+            },
+            {
+              "fold": 4,
+              "validation_rows_inside_feature_selection_fit_span": 126
+            },
+            {
+              "fold": 5,
+              "validation_rows_inside_feature_selection_fit_span": 30
+            }
+          ],
+          "first_final_fit_source_gap": 812,
+          "required_source_gap": 47,
+          "refit_eval_rows_in_training": 183
+        }
+      ]
+    }
+  ],
+  "model_training_executed": false,
+  "retraining_output_exists": false,
+  "no_fit_tcn_refit_probe": {
+    "backend_fits_executed": 0,
+    "calls": [
+      {
+        "call": 1,
+        "training_rows": 810,
+        "evaluation_rows": 175,
+        "evaluation_rows_also_trained": 0
+      },
+      {
+        "call": 2,
+        "training_rows": 985,
+        "evaluation_rows": 175,
+        "evaluation_rows_also_trained": 175
+      }
+    ]
+  },
+  "verdict": "hold_retraining_plan_pending_training_validation_repairs",
+  "blockers": [
+    "Feature selection and pruning use labels inside subsequent cross-validation folds.",
+    "Final TCN refit uses its evaluation rows as training rows; initial final fit lacks the required gap and held-out scaler fit."
+  ],
+  "fresh_regression_tests": {
+    "tests": 237,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

@@ -1,0 +1,584 @@
+{
+  "status": "six_candidate_expected_move_input_audit_passed",
+  "contract": "es_abs_close_move_20x5m_v1",
+  "historical_completion_assumed": true,
+  "source_rows": 666769,
+  "models": [
+    {
+      "queue_id": 1,
+      "model_id": "frvp_short_continuation_tcn_v1",
+      "test_endpoints": 1053,
+      "app_parity_witnesses": 104,
+      "estimator_status_counts": {
+        "ready": 1004,
+        "warmup_after_gap_roll_or_invalid_bar": 49
+      },
+      "spread_gate_status_counts": {
+        "passed": 1004,
+        "unverified": 49
+      },
+      "gate_rejection_counts": {
+        "expected_move_not_ready": 49,
+        "expected_move_missing_or_invalid": 49
+      },
+      "source_policy": "ote_live\\runtime_manifests\\frvp_es_paper_signal_20260816\\frvp_short_continuation_tcn_v1\\live_policy.json",
+      "inherited_multiplier": 0.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "frvp_short_continuation_tcn_v1",
+        "direction": "short",
+        "backend": "tcn",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.55,
+          "regime_thresholds": {
+            "ranging_high": 0.55,
+            "ranging_low": 0.55,
+            "ranging_medium": 0.4,
+            "strong_down_high": 0.55,
+            "strong_down_low": 0.4,
+            "strong_down_medium": 0.62,
+            "strong_up_high": 0.55,
+            "strong_up_low": 0.5,
+            "strong_up_medium": 0.55
+          }
+        },
+        "abstain_policy": {
+          "enabled": false,
+          "abstain_high_stress": false,
+          "abstain_off_hours": false,
+          "cooldown_bars": 0,
+          "minimum_expected_move_to_spread": 0.0,
+          "abstain_session_regimes": [],
+          "abstain_composite_regimes": [],
+          "abstain_composite_session_pairs": [],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": 0.25,
+          "commission_pips_per_trade": 0.4,
+          "session_spread_pips": {},
+          "targeted_filter_preset": null
+        },
+        "lineage": {
+          "threshold_registry_path": "models/frvp_es_paper_signal_registry_20260816.json",
+          "policy_source_type": "frvp_paper_signal_shadow_challenger",
+          "policy_backtest_summary_path": "model_testing/reports/frvp_paper_signal_bundles/frvp_es_paper_signal_20260816/run_summary.json",
+          "policy_search_summary_path": "model_testing/reports/frvp_threshold_policies/frvp_es_primary_refresh_20260701/run_summary.json",
+          "policy_table_path": "model_testing/reports/frvp_threshold_policies/frvp_es_primary_refresh_20260701/frvp_short_continuation_tcn_v1/policy_table.csv",
+          "policy_evaluation_path": "model_testing/reports/frvp_threshold_policies/frvp_es_primary_refresh_20260701/frvp_short_continuation_tcn_v1/policy_evaluation.csv",
+          "active_registry_path": "models/frvp_es_shadow_live_registry_20260721.json",
+          "source_model_id": "frvp_short_continuation_tcn_v1",
+          "selected_policy_name": "regime_threshold",
+          "qualified_policy_names": [
+            "regime_threshold",
+            "regime_threshold_plus_abstain"
+          ],
+          "source_match_type": "artifact_path",
+          "notes": [
+            "FRVP ES shadow family leader for continuation/short.",
+            "Source backtest contract: model_testing/reports/frvp_backtests/frvp_short_family_leaders_refresh_20260715_accountdd/run_summary.json.",
+            "Source threshold contract: model_testing/reports/frvp_threshold_policies/frvp_es_primary_refresh_20260701/run_summary.json.",
+            "Least-bad short continuation family leader. The refreshed 2026-07-15 family-leader rerun confirms it stays economics-negative with 109.17% account drawdown, but it is still materially better than the short continuation XGBoost baseline and remains the right shadow-only sentinel for that branch.",
+            "This branch remains candidate in the 2026-08-16 controlled paper-signal bundle.",
+            "Broker order submission is not authorized."
+          ]
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    },
+    {
+      "queue_id": 2,
+      "model_id": "frvp_long_continuation_xgb_v1",
+      "test_endpoints": 982,
+      "app_parity_witnesses": 98,
+      "estimator_status_counts": {
+        "ready": 942,
+        "warmup_after_gap_roll_or_invalid_bar": 40
+      },
+      "spread_gate_status_counts": {
+        "passed": 886,
+        "rejected": 56,
+        "unverified": 40
+      },
+      "gate_rejection_counts": {
+        "expected_move_below_spread": 56,
+        "expected_move_not_ready": 40,
+        "expected_move_missing_or_invalid": 40
+      },
+      "source_policy": "ote_live\\runtime_manifests\\frvp_es_paper_signal_20260816\\frvp_long_continuation_xgb_v1\\live_policy.json",
+      "inherited_multiplier": 2.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "frvp_long_continuation_xgb_v1",
+        "direction": "long",
+        "backend": "xgboost",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.7,
+          "regime_thresholds": null
+        },
+        "abstain_policy": {
+          "enabled": true,
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "abstain_session_regimes": [
+            "overlap"
+          ],
+          "abstain_composite_regimes": [
+            "strong_down_medium",
+            "strong_up_high"
+          ],
+          "abstain_composite_session_pairs": [
+            [
+              "strong_up_medium",
+              "london"
+            ],
+            [
+              "strong_up_high",
+              "london"
+            ],
+            [
+              "strong_down_medium",
+              "london"
+            ],
+            [
+              "ranging_low",
+              "london"
+            ],
+            [
+              "ranging_medium",
+              "london"
+            ],
+            [
+              "ranging_medium",
+              "new_york"
+            ],
+            [
+              "strong_up_low",
+              "asia"
+            ]
+          ],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": 0.25,
+          "commission_pips_per_trade": 0.4,
+          "session_spread_pips": {},
+          "targeted_filter_preset": "frvp_long_continuation_xgb_overlap_composite_prune_v3"
+        },
+        "lineage": {
+          "threshold_registry_path": "models/frvp_es_paper_signal_registry_20260816.json",
+          "policy_source_type": "frvp_paper_signal_fixed_policy_shadow_contract",
+          "policy_backtest_summary_path": "model_testing/reports/frvp_paper_signal_bundles/frvp_es_paper_signal_20260816/run_summary.json",
+          "policy_search_summary_path": "model_testing/reports/frvp_regime_gated_deployment/frvp_regime_gated_deployment_20260721/threshold/long_continuation_v3_baseline/run_summary.json",
+          "policy_table_path": "model_testing/reports/frvp_regime_gated_deployment/frvp_regime_gated_deployment_20260721/backtest/long_continuation_v3_baseline/frvp_long_continuation_xgb_v1/policy_table.csv",
+          "policy_evaluation_path": "model_testing/reports/frvp_regime_gated_deployment/frvp_regime_gated_deployment_20260721/backtest/long_continuation_v3_baseline/frvp_long_continuation_xgb_v1/policy_evaluation.csv",
+          "active_registry_path": "models/frvp_es_shadow_live_registry_20260721.json",
+          "source_model_id": "frvp_long_continuation_xgb_v1",
+          "selected_policy_name": "global_threshold",
+          "qualified_policy_names": [],
+          "source_match_type": "artifact_path",
+          "notes": [
+            "Controlled FRVP paper-signal branch decision recorded on 2026-08-16; status is candidate.",
+            "Exact accepted source backtest: model_testing/reports/frvp_regime_gated_deployment/frvp_regime_gated_deployment_20260721/backtest/long_continuation_v3_baseline/run_summary.json.",
+            "Exact policy contract is global threshold 0.70 with the accepted targeted-filter payload.",
+            "Broker order submission and broker position tracking remain unauthorized.",
+            "This continuation branch is candidate/shadow, not active, because its fixed-live-policy sensitivity fails Sharpe, quarter-share, and concentration gates.",
+            "The July 21 runtime source contains 512 selected walk-forward trades and is authoritative for this runtime bundle.",
+            "The canonical July 17 promotion snapshot with 524 trades remains cited separately and is not silently substituted for the runtime evidence."
+          ]
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    },
+    {
+      "queue_id": 6,
+      "model_id": "frvp_long_continuation_setup3_xgb_v1",
+      "test_endpoints": 301,
+      "app_parity_witnesses": 7,
+      "estimator_status_counts": {
+        "ready": 301
+      },
+      "spread_gate_status_counts": {
+        "passed": 288,
+        "rejected": 13
+      },
+      "gate_rejection_counts": {
+        "expected_move_below_spread": 13
+      },
+      "source_policy": "ote_live\\runtime_manifests\\frvp_es_setup_family_20260829\\frvp_long_continuation_setup3_xgb_v1\\live_policy.json",
+      "inherited_multiplier": 2.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "direction": "long",
+        "backend": "xgboost",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.6499999999999999,
+          "regime_thresholds": null
+        },
+        "abstain_policy": {
+          "enabled": true,
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "abstain_session_regimes": [],
+          "abstain_composite_regimes": [],
+          "abstain_composite_session_pairs": [],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": null,
+          "commission_pips_per_trade": null,
+          "session_spread_pips": {},
+          "targeted_filter_preset": null
+        },
+        "lineage": {
+          "threshold_registry_path": "models/frvp_es_primary_model_registry_long_setup_fullspan_20260829.json",
+          "policy_source_type": "active_backtest_fallback",
+          "policy_backtest_summary_path": "model_testing/reports/frvp_backtests/frvp_long_setup_fullspan_20260829/run_summary.json",
+          "policy_search_summary_path": null,
+          "policy_table_path": null,
+          "policy_evaluation_path": null,
+          "active_registry_path": "models/ote_model_registry_live_multifamily.json",
+          "source_model_id": "frvp_long_continuation_setup3_xgb_v1",
+          "selected_policy_name": null,
+          "qualified_policy_names": [],
+          "source_match_type": "artifact_path",
+          "notes": []
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    },
+    {
+      "queue_id": 7,
+      "model_id": "frvp_long_continuation_setup5_xgb_v1",
+      "test_endpoints": 492,
+      "app_parity_witnesses": 86,
+      "estimator_status_counts": {
+        "ready": 454,
+        "warmup_after_gap_roll_or_invalid_bar": 38
+      },
+      "spread_gate_status_counts": {
+        "passed": 429,
+        "unverified": 38,
+        "rejected": 25
+      },
+      "gate_rejection_counts": {
+        "expected_move_not_ready": 38,
+        "expected_move_missing_or_invalid": 38,
+        "expected_move_below_spread": 25
+      },
+      "source_policy": "ote_live\\runtime_manifests\\frvp_es_setup_family_20260829\\frvp_long_continuation_setup5_xgb_v1\\live_policy.json",
+      "inherited_multiplier": 2.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "direction": "long",
+        "backend": "xgboost",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.6499999999999999,
+          "regime_thresholds": null
+        },
+        "abstain_policy": {
+          "enabled": true,
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "abstain_session_regimes": [],
+          "abstain_composite_regimes": [],
+          "abstain_composite_session_pairs": [],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": null,
+          "commission_pips_per_trade": null,
+          "session_spread_pips": {},
+          "targeted_filter_preset": null
+        },
+        "lineage": {
+          "threshold_registry_path": "models/frvp_es_primary_model_registry_long_setup_fullspan_20260829.json",
+          "policy_source_type": "active_backtest_fallback",
+          "policy_backtest_summary_path": "model_testing/reports/frvp_backtests/frvp_long_setup_fullspan_20260829/run_summary.json",
+          "policy_search_summary_path": null,
+          "policy_table_path": null,
+          "policy_evaluation_path": null,
+          "active_registry_path": "models/ote_model_registry_live_multifamily.json",
+          "source_model_id": "frvp_long_continuation_setup5_xgb_v1",
+          "selected_policy_name": null,
+          "qualified_policy_names": [],
+          "source_match_type": "artifact_path",
+          "notes": []
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    },
+    {
+      "queue_id": 11,
+      "model_id": "ict_long_continuation_xgb_v1",
+      "test_endpoints": 241,
+      "app_parity_witnesses": 123,
+      "estimator_status_counts": {
+        "ready": 134,
+        "warmup_after_gap_roll_or_invalid_bar": 107
+      },
+      "spread_gate_status_counts": {
+        "passed": 134,
+        "unverified": 107
+      },
+      "gate_rejection_counts": {
+        "expected_move_not_ready": 107,
+        "expected_move_missing_or_invalid": 107
+      },
+      "source_policy": "ote_live\\runtime_manifests\\ict_es_paper_signal_20260813\\ict_long_continuation_xgb_v1\\live_policy.json",
+      "inherited_multiplier": 0.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "ict_long_continuation_xgb_v1",
+        "direction": "long",
+        "backend": "xgboost",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.65,
+          "regime_thresholds": null
+        },
+        "abstain_policy": {
+          "enabled": false,
+          "abstain_high_stress": false,
+          "abstain_off_hours": false,
+          "cooldown_bars": 0,
+          "minimum_expected_move_to_spread": 0.0,
+          "abstain_session_regimes": [],
+          "abstain_composite_regimes": [],
+          "abstain_composite_session_pairs": [],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": 0.25,
+          "commission_pips_per_trade": 0.4,
+          "session_spread_pips": {},
+          "targeted_filter_preset": null
+        },
+        "lineage": {
+          "threshold_registry_path": "models/ict_es_paper_signal_registry_20260813.json",
+          "policy_source_type": "ict_paper_signal_shadow_challenger",
+          "policy_backtest_summary_path": "model_testing/reports/ict_paper_signal_bundles/ict_es_paper_signal_20260813/run_summary.json",
+          "policy_search_summary_path": "model_testing/reports/ict_threshold_policies/ict_es_primary_bootstrap_20260726_full/run_summary.json",
+          "policy_table_path": "model_testing/reports/ict_threshold_policies/ict_es_primary_bootstrap_20260726_full/ict_long_continuation_xgb_v1/policy_table.csv",
+          "policy_evaluation_path": "model_testing/reports/ict_threshold_policies/ict_es_primary_bootstrap_20260726_full/ict_long_continuation_xgb_v1/policy_evaluation.csv",
+          "active_registry_path": "models/ict_es_shadow_live_registry_20260730.json",
+          "source_model_id": "ict_long_continuation_xgb_v1",
+          "selected_policy_name": "global_threshold",
+          "qualified_policy_names": [],
+          "source_match_type": "artifact_path",
+          "notes": [
+            "ICT ES shadow dashboard branch for continuation/long.",
+            "Source backtest contract: model_testing/reports/ict_backtests/ict_es_primary_bootstrap_20260726_full/run_summary.json.",
+            "Source threshold contract: model_testing/reports/ict_threshold_policies/ict_es_primary_bootstrap_20260726_full/run_summary.json.",
+            "Latest long continuation branch retained for complete family coverage; it remains shadow-only because post-cost economics are effectively flat.",
+            "Threshold-search selector note: no_non_global_policy_met_test_expectancy_frequency_and_robustness_requirements.",
+            "This branch remains candidate/shadow in the 2026-08-13 paper-signal bundle."
+          ]
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    },
+    {
+      "queue_id": 17,
+      "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+      "test_endpoints": 185,
+      "app_parity_witnesses": 96,
+      "estimator_status_counts": {
+        "ready": 104,
+        "warmup_after_gap_roll_or_invalid_bar": 81
+      },
+      "spread_gate_status_counts": {
+        "passed": 103,
+        "unverified": 81,
+        "rejected": 1
+      },
+      "gate_rejection_counts": {
+        "expected_move_not_ready": 81,
+        "expected_move_missing_or_invalid": 81,
+        "expected_move_below_spread": 1
+      },
+      "source_policy": "ote_live\\runtime_manifests\\ict_short_setup_family_20260811_audit\\ict_short_continuation_premium_discount_continuation_xgb_v1\\live_policy.json",
+      "inherited_multiplier": 2.0,
+      "legacy_policy_uses_new_contract": false,
+      "proposed_policy": {
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "schema_version": "1.0.0",
+        "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+        "direction": "short",
+        "backend": "xgboost",
+        "calibration_method": "none",
+        "policy_status": "complete",
+        "thresholds": {
+          "global_threshold": 0.43999999999999995,
+          "regime_thresholds": null
+        },
+        "abstain_policy": {
+          "enabled": true,
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "abstain_session_regimes": [],
+          "abstain_composite_regimes": [],
+          "abstain_composite_session_pairs": [],
+          "abstain_composite_stress_pairs": [],
+          "minimum_probability_quantile": null
+        },
+        "cost_assumptions": {
+          "session_spread_ticks": {
+            "overlap": 1.0,
+            "london": 1.0,
+            "new_york": 1.0,
+            "asia": 1.5,
+            "off_hours": 2.0
+          },
+          "fixed_slippage_pips_per_trade": null,
+          "commission_pips_per_trade": null,
+          "session_spread_pips": {},
+          "targeted_filter_preset": null
+        },
+        "lineage": {
+          "threshold_registry_path": "models/ict_short_setup_family_model_registry_20260811_audit.json",
+          "policy_source_type": "active_backtest_fallback",
+          "policy_backtest_summary_path": "model_testing/reports/ict_backtests/ict_short_setup_family_20260811_audit/run_summary.json",
+          "policy_search_summary_path": null,
+          "policy_table_path": null,
+          "policy_evaluation_path": null,
+          "active_registry_path": "models/ote_model_registry_live_multifamily.json",
+          "source_model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+          "selected_policy_name": null,
+          "qualified_policy_names": [],
+          "source_match_type": "artifact_path",
+          "notes": []
+        }
+      },
+      "all_endpoint_arithmetic_verified": true,
+      "app_offline_input_parity_verified": true,
+      "model_history_parity_certified_by_this_audit": false,
+      "live_policy_installed": false,
+      "qualified_collection_eligible": false
+    }
+  ],
+  "inputs_sha256": {
+    "data/futures_data/ES-5m-tagged.csv": "747c9a85e5450e9b252080d1fced5debde51264da2e254c42a29a96988ee328b",
+    "configs\\es_expected_move_20260927_v1.json": "ddf6feceb92e04fd7c25a1fc8d4c4ed989526224bd68216d5cfdb3b64f79f2ee",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_frvp_july_prepared_20260921_v1\\prepared\\short_frvp_continuation\\test.csv": "658deef46d668547acdbef93bd2ba140b2b308e68f83b77df5284ff395dc0270",
+    "artifacts\\b2_frvp_july_prepared_20260921_v1\\dataset.parquet": "ef90b475a5180ddf8f9fd1a9fb4d7838a434775b89004aa255e18f2b3e4210d6",
+    "ote_live\\runtime_manifests\\frvp_es_paper_signal_20260816\\frvp_short_continuation_tcn_v1\\live_policy.json": "c27235b6023f32865445f6fe779dbbea0b211f44b3592ef6ff35aff64ce23ba4",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_frvp_july_prepared_20260921_v1\\prepared\\summary.json": "11774bf2ca5ff0437031a693389ae0b325dc01638f855262b53804740c929c00",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_frvp_july_prepared_20260921_v1\\prepared\\long_frvp_continuation\\test.csv": "e9a7ee0cf4d65507726b9d2c5d06ee5fe8b42042c110716b6880edd8b96d59b6",
+    "ote_live\\runtime_manifests\\frvp_es_paper_signal_20260816\\frvp_long_continuation_xgb_v1\\live_policy.json": "4fe43b4c8023fec774032f431d2b9e284f9e86e97a94ee3d8b537fea64fc4e95",
+    "artifacts\\b2_validation_prepared_20260922_v2\\b2_frvp_setups_prepared_20260921_v1\\prepared\\long_frvp_continuation_setup3\\test.csv": "1feaaaf661bac6687b8a79ebdbe99ef6dd7bc3518cbef60358ecc9308b55cd16",
+    "artifacts\\b2_frvp_setups_prepared_20260921_v1\\dataset.parquet": "63d5ecf1789c170b46e17b231aa96cae76e3e9074e59cf25840a99e573aba9d1",
+    "ote_live\\runtime_manifests\\frvp_es_setup_family_20260829\\frvp_long_continuation_setup3_xgb_v1\\live_policy.json": "caa78632989799572cad69d2e0c1e891a60d07c7bf2663c7d37f31fee70c13c3",
+    "artifacts\\b2_validation_prepared_20260922_v2\\b2_frvp_setups_prepared_20260921_v1\\prepared\\summary.json": "ac676b15cabe6710f120e78b2df71c9db95cf548e8d47eeedfb74af4bcefc174",
+    "artifacts\\b2_validation_prepared_20260922_v2\\b2_frvp_setups_prepared_20260921_v1\\prepared\\long_frvp_continuation_setup5\\test.csv": "bfa3a9fd44653f84f59d5e8a104a9c858f89f037430ff265cd40a14e66aa6964",
+    "ote_live\\runtime_manifests\\frvp_es_setup_family_20260829\\frvp_long_continuation_setup5_xgb_v1\\live_policy.json": "7c0f32ef63d252b181528bdc65c7beb61849306bd6b0e6b0272eda1368c04b42",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_ict_prepared_20260921_v1\\prepared\\long_ict_continuation\\test.csv": "bd51b0dd0b6d2968800adeec2cd69ae591da70ed1a6b6318930c6e8a6425ce9c",
+    "artifacts\\b2_ict_prepared_20260921_v1\\dataset.parquet": "6e9b8d83e22e799d86371adb02a64f71cfb40e5f84e63c009e7cefb53fa1d52c",
+    "ote_live\\runtime_manifests\\ict_es_paper_signal_20260813\\ict_long_continuation_xgb_v1\\live_policy.json": "7508ad3b577dd23d1cbaae43f255d0cf693a930fa9e94b7bba10e958804e548a",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_ict_prepared_20260921_v1\\prepared\\summary.json": "b2d47112616a0b8e575301553e958182e12ae5429b5ac97b739d0c56eaeaf087",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_ict_specialists_prepared_20260921_v1\\prepared\\short_ict_continuation_premium_discount_continuation\\test.csv": "abc0981a0e0ea1578422b3b63923c58d2e666272260f00dd4ff63bc48260b066",
+    "artifacts\\b2_ict_specialists_prepared_20260921_v1\\dataset.parquet": "559563e1e4fc6de2a8e7f92d24764b43e33b15c6434cd783a7af53952297e40e",
+    "ote_live\\runtime_manifests\\ict_short_setup_family_20260811_audit\\ict_short_continuation_premium_discount_continuation_xgb_v1\\live_policy.json": "4e544be8a11cf7192413ea8733463f40909bdb2d2f478113f665e37c580046c9",
+    "artifacts\\b2_validation_prepared_20260922_v1\\b2_ict_specialists_prepared_20260921_v1\\prepared\\summary.json": "89f944de7bf2cb8c8572d461f660b5dfabcea5681d866db07843d46fdaffb9d5"
+  },
+  "code_sha256": {
+    "ote_live/policies/expected_move.py": "4923bba9a0e694facbc3142bf53886e7f6472f12907bc20ec8202a4f8bd7d2c9",
+    "ote_live/policies/abstain.py": "b36a0e59287843982350f435b0bb0df0008a699fd04b70fa534f7194947ec30a",
+    "ote_live/policies/shadow.py": "32ff16dd0dee73132799f98103d7a25fae1c8821caefeccee999f0f29505ad1e",
+    "ote_live/ingestion/signals.py": "988b1563b91bb7476915592f61905cb7cdec5f8c6396cf5d890b58fefc9242d8",
+    "ote_live/features/manifest.py": "645086d5719565e76ee06c1973fc2c15a42b39a94995d205cd0556f67627932b",
+    "scripts/audit_es_expected_move.py": "3fcd081abbf429b5a2353e9564c971b6691d55dfffc51310017964c6b484600b"
+  },
+  "installs_performed": false,
+  "models_trained": false,
+  "limits": "Gate input audit only. Legacy policies remain opt-out; other model-history and live qualification gates remain open."
+}

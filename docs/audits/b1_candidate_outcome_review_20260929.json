@@ -1,0 +1,122 @@
+{
+  "status": "b1_candidate_outcome_review_complete",
+  "comparison_id": "b3_b4_candidate_review_v1_20260929",
+  "predeclaration_sha256": "b5c656d609741e0bb3c1f467c560e55f356f150cd9c94f2f6d8e4c3c748b24ec",
+  "pooled_exclusions": {
+    "1": {
+      "target": "short_frvp_continuation",
+      "status": "excluded",
+      "reason": "B1 baseline_scope_v1: pooled FRVP model diagnostics-only, including setup matches."
+    },
+    "2": {
+      "target": "long_frvp_continuation",
+      "status": "excluded",
+      "reason": "B1 baseline_scope_v1: pooled FRVP model diagnostics-only, including setup matches."
+    },
+    "11": {
+      "target": "long_ict_continuation",
+      "status": "excluded",
+      "reason": "B1 baseline_scope_v1: pooled ICT model diagnostics-only, including setup matches."
+    }
+  },
+  "specialist_reviews": {
+    "7": {
+      "model_id": "frvp_long_continuation_setup5_candidate_20260928_v1",
+      "target": "long_frvp_continuation_setup5",
+      "status": "reviewed_not_promotion",
+      "common_opportunities": 490,
+      "excluded_endpoint_rows": 2,
+      "excluded_reasons": "named specialist event mismatch: test endpoint is not contemporaneous setup5",
+      "setup_only": {
+        "opportunities": 490,
+        "threshold_passes": 116,
+        "admitted": 347,
+        "closed": 347,
+        "unresolved": 0,
+        "net_pnl": -8756.875,
+        "gross_pnl": 4262.5,
+        "cost": 13019.375,
+        "win_rate": 0.5187319884726225,
+        "profit_factor": 0.9380430793177708,
+        "max_drawdown": 27320.625
+      },
+      "model_threshold": {
+        "opportunities": 490,
+        "threshold_passes": 116,
+        "admitted": 101,
+        "closed": 101,
+        "unresolved": 0,
+        "net_pnl": -12358.125,
+        "gross_pnl": -8775.0,
+        "cost": 3583.125,
+        "win_rate": 0.46534653465346537,
+        "profit_factor": 0.7549571209041789,
+        "max_drawdown": 13758.75
+      },
+      "full_policy": {
+        "status": "insufficient_evidence",
+        "reason": "No exact replacement-version full-policy binding was frozen; no full-policy P&L is reported."
+      },
+      "replay_identical": true,
+      "setup_run_hash": "24e16c9c8adf4f8a34cdf5961ea9ca624440b76da18aa617163c47191c28e1fd",
+      "model_run_hash": "9ae4b88c9c9bf6a54c88cf75c8b9fa5857560aff826c067dfa5fb395c7d4b70f",
+      "clean_evaluation": "historical held-out endpoint review; prospective C1 remains separately reserved"
+    },
+    "17": {
+      "model_id": "ict_short_continuation_premium_discount_continuation_candidate_20260928_v1",
+      "target": "short_ict_continuation_premium_discount_continuation",
+      "status": "reviewed_not_promotion",
+      "common_opportunities": 185,
+      "excluded_endpoint_rows": 0,
+      "excluded_reasons": "no matching named ICT event record",
+      "setup_only": {
+        "opportunities": 185,
+        "threshold_passes": 111,
+        "admitted": 87,
+        "closed": 86,
+        "unresolved": 1,
+        "net_pnl": 3901.25,
+        "gross_pnl": 7850.0,
+        "cost": 3948.75,
+        "win_rate": 0.4069767441860465,
+        "profit_factor": 1.2087415978329934,
+        "max_drawdown": 4896.25
+      },
+      "model_threshold": {
+        "opportunities": 185,
+        "threshold_passes": 111,
+        "admitted": 53,
+        "closed": 52,
+        "unresolved": 1,
+        "net_pnl": -1678.75,
+        "gross_pnl": 762.5,
+        "cost": 2441.25,
+        "win_rate": 0.3269230769230769,
+        "profit_factor": 0.8695166383288803,
+        "max_drawdown": 5785.625
+      },
+      "full_policy": {
+        "status": "insufficient_evidence",
+        "reason": "No exact replacement-version full-policy binding was frozen; no full-policy P&L is reported."
+      },
+      "replay_identical": true,
+      "setup_run_hash": "4691f402ec6c0b3aa49776d925b85a3b75ebe59a0c5014bf5cb464d0b0e6b03e",
+      "model_run_hash": "3c9422f457db66c3be609e294034a5e69dab98665a4b134ae0b5f8519e2bf471",
+      "clean_evaluation": "historical held-out endpoint review; prospective C1 remains separately reserved"
+    }
+  },
+  "not_evidence": [
+    "artifact replay",
+    "AUC",
+    "tolerance-based event precision",
+    "training completion",
+    "future C1 outcomes"
+  ],
+  "research_collection_rule": "An otherwise eligible named specialist does not wait for future C1 outcomes; it still requires live feature parity, B5-B7, A12/A13 and all existing restrictions.",
+  "clean_evaluation_boundary": {
+    "historical_sample": "Held out from fitting, but technical replay inspection occurred before this economic review; it is not claimed as untouched from all inspection.",
+    "prospective_sample": "C1 is predeclared from the first healthy post-B7 collection timestamp under a new immutable collection identity.",
+    "future_outcomes_required_to_start": false
+  },
+  "promotion_eligible": false
+}

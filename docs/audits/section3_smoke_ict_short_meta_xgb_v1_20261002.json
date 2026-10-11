@@ -1,0 +1,403 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 15,
+  "model_id": "ict_short_meta_xgb_v1",
+  "stream": "ES",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "9db6421a06bcf04b9e83b0453204ef0d13f3f029773509da0e8e0f4d66f0956b",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 15,
+    "model_id": "ict_short_meta_xgb_v1",
+    "status": "selected",
+    "held_out_period": [
+      "2025-01-22T02:15:00+00:00",
+      "2026-06-17T23:40:00+00:00"
+    ],
+    "candidate_weeks": 66,
+    "weeks": [
+      {
+        "week": "2025-03-10",
+        "first_open": "2025-03-09T22:00:00+00:00",
+        "last_open": "2025-03-14T20:55:00+00:00",
+        "sessions": [
+          "2025-03-10",
+          "2025-03-11",
+          "2025-03-12",
+          "2025-03-13",
+          "2025-03-14"
+        ]
+      },
+      {
+        "week": "2025-05-05",
+        "first_open": "2025-05-04T22:00:00+00:00",
+        "last_open": "2025-05-09T20:55:00+00:00",
+        "sessions": [
+          "2025-05-05",
+          "2025-05-06",
+          "2025-05-07",
+          "2025-05-08",
+          "2025-05-09"
+        ]
+      },
+      {
+        "week": "2025-06-16",
+        "first_open": "2025-06-15T22:00:00+00:00",
+        "last_open": "2025-06-20T20:55:00+00:00",
+        "sessions": [
+          "2025-06-16",
+          "2025-06-17",
+          "2025-06-18",
+          "2025-06-19",
+          "2025-06-20"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:15:sweep_reclaim:es_ict_sweep_reclaim_eval_v1": [
+        "2025-03-10",
+        "2025-05-05",
+        "2025-06-16"
+      ],
+      "route:15:ifvg_reversal:es_ict_ifvg_reversal_eval_v1": [
+        "2025-03-10",
+        "2025-05-05",
+        "2025-06-16"
+      ],
+      "route:15:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1": [
+        "2025-03-10",
+        "2025-05-05",
+        "2025-06-16"
+      ],
+      "route:15:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1": [
+        "2025-05-05"
+      ],
+      "overnight_segment": [
+        "2025-03-10",
+        "2025-05-05",
+        "2025-06-16"
+      ],
+      "planned_closure": [
+        "2025-06-16"
+      ],
+      "dst_transition": [
+        "2025-03-10"
+      ],
+      "es_roll": [
+        "2025-06-16"
+      ]
+    },
+    "routes_exercised": [
+      "15:sweep_reclaim:es_ict_sweep_reclaim_eval_v1",
+      "15:ifvg_reversal:es_ict_ifvg_reversal_eval_v1",
+      "15:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1",
+      "15:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1"
+    ],
+    "routes_unexercised": {
+      "15:sweep_displacement_fvg:es_ict_sweep_displacement_fvg_eval_v1": "no_eligible_week_in_held_out_period",
+      "15:ob_retest_after_mss:es_ict_ob_retest_after_mss_eval_v1": "no_eligible_week_in_held_out_period",
+      "15:session_open_manipulation_pre_ib:es_ict_session_open_manipulation_pre_ib_eval_v1": "no_eligible_week_in_held_out_period",
+      "15:session_open_manipulation_post_ib:es_ict_session_open_manipulation_post_ib_eval_v1": "no_eligible_week_in_held_out_period"
+    },
+    "calendar_elements_unexercised": {
+      "rth_segment": "no_eligible_week_in_held_out_period"
+    },
+    "held_out_predictions": 1115,
+    "held_out_setup_matches": 1115
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "ticks",
+  "calendar_id": "pmc_5_1_3_cme_globex_equity_plus_carter_v1",
+  "calendar_hash": "dc4545ba66b691b59451bd9d468bdbd2613035da28354f02f21f320c89ff90c3",
+  "canonical_hash_run_a": "7872651421ec8ad8ad978ad7a2a0d180303bda68d540c556cf03debb1f27d78b",
+  "canonical_hash_run_b": "7872651421ec8ad8ad978ad7a2a0d180303bda68d540c556cf03debb1f27d78b",
+  "surface_hash": "8319869d0a4d2fe754fdb930719f095ba2b83457ae5b21dce43dd0170bb8d0c5",
+  "reviewed_artifact_set_sha256": "9f98a6eabce071655843fdfe5e33188f8e79e45f980465497a94f602a6e744cd",
+  "b4_freeze_files_verified": {
+    "model.json": "0fd19ea888d9191bb3726fd8c2001506cb6f8660ea9d32da513a6ec28d027226",
+    "scaler.joblib": "4af9d2a906ba90b452dc99e2eeea3e2538f5b904e606f0f23af4c4e0c5489c24",
+    "calibrator.joblib": "7aa21268562352774e498f3bc9b33b0c212fd3be220d64d575886984f0003e3f",
+    "model_config.json": "1c6ded32109869c4b858d50b9b51408b570cbcab40594419b7e7dec172c11b56",
+    "training_summary.json": "44aa1e89b491fb8c7211f634376a91ecb65a893e51b8a2fe50925c9c7dcd3ddb",
+    "oof_predictions.csv": "2dac4fe6b56f75abaa9ab4472c6bac43596adea737d527ce957a5da4885ed4f6",
+    "test_predictions.csv": "e59aeccf2560acddb32986e4079ca2d6277a20eec2b8a438fd4f8844632e85a7",
+    "cv_fold_manifest.json": "a7a3eca8428e02995abf819ef8ca683820b2b902a4b6cf3bf4d88e1204c4edd0",
+    "cv_fold_manifest.csv": "abaebcfe16b42312e235cbd5d947bbd80dda22d2649b88be19a4bb27c85e9185"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 46,
+    "raw_score_max_abs_error": 8.555526731512941e-08,
+    "threshold": 0.31999999999999995,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "selected_same_side_setup": 46
+  },
+  "signals": 46,
+  "open_positions_rows": 0,
+  "route_coverage": [
+    {
+      "route_id": "15:sweep_reclaim:es_ict_sweep_reclaim_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 19,
+      "executable_routes": 19,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 16,
+        "setup_threshold": 7,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "DATA_GAP": 1,
+        "STOP": 11,
+        "TARGET": 3,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 3
+      },
+      "data_gap_and_censor_reasons": {
+        "entry_roll_coordinate_change_or_unknown": 1
+      },
+      "unresolved": 1
+    },
+    {
+      "route_id": "15:sweep_displacement_fvg:es_ict_sweep_displacement_fvg_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:ob_retest_after_mss:es_ict_ob_retest_after_mss_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:ifvg_reversal:es_ict_ifvg_reversal_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 14,
+      "executable_routes": 14,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 10,
+        "setup_threshold": 3,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 8,
+        "TARGET": 4,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 1
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 12,
+      "executable_routes": 12,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 8,
+        "setup_threshold": 6,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 4,
+        "TARGET": 1,
+        "TIMEOUT_FLAT": 1,
+        "TIMEOUT_LOSS": 3,
+        "TIMEOUT_WIN": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:session_open_manipulation_pre_ib:es_ict_session_open_manipulation_pre_ib_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:session_open_manipulation_post_ib:es_ict_session_open_manipulation_post_ib_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "15:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 1,
+      "executable_routes": 1,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 1,
+        "setup_threshold": 1,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 1
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 46,
+    "capacity_admitted": 14,
+    "independent_admitted": 17,
+    "trades_in_both": 14,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "c8b820719b5859d066956944e4d1599b4d89cd0be893833f0946b67a89c020e7",
+  "advisory_ledger_summaries": {
+    "ind.ES.15.setup_only.base": {
+      "ledger_id": "ind.ES.15.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 46,
+      "admitted": 35,
+      "closed": 35,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -118.0,
+      "total_cost": 133.25000000000003,
+      "net_pnl": -251.25,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 10,
+        "entry_roll_coordinate_change_or_unknown": 1
+      }
+    },
+    "ind.ES.15.setup_only.double_all_costs": {
+      "ledger_id": "ind.ES.15.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 46,
+      "admitted": 35,
+      "closed": 35,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -118.0,
+      "total_cost": 266.50000000000006,
+      "net_pnl": -384.5,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 10,
+        "entry_roll_coordinate_change_or_unknown": 1
+      }
+    },
+    "ind.ES.15.setup_threshold.base": {
+      "ledger_id": "ind.ES.15.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 46,
+      "admitted": 17,
+      "closed": 17,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 89.0,
+      "total_cost": 64.55000000000001,
+      "net_pnl": 24.45000000000001,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 1,
+        "probability_below_frozen_threshold": 28
+      }
+    },
+    "ind.ES.15.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.ES.15.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 46,
+      "admitted": 17,
+      "closed": 17,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 89.0,
+      "total_cost": 129.10000000000002,
+      "net_pnl": -40.09999999999998,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 1,
+        "probability_below_frozen_threshold": 28
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.ES.15.raw_score_gross_forward_response/forward_response.csv": "2f0270ca586cd61868707f9195f299feabdec5b7e877e2d4db6f948017b39fee",
+    "markouts/mk.ES.15.raw_score_gross_forward_response/paper_contract_outcome.csv": "510d109158f52d0a4d125357a3760550d4136c1c558093fa841fe4a93557c4d4",
+    "ledgers/ind.ES.15.setup_only.base.csv": "325112f7d2127a596121c8717b132d40c71e84905c77b841c877dc9be65cc3a3",
+    "ledgers/ind.ES.15.setup_only.double_all_costs.csv": "bc71677dba2720ce20a8e492a619b8c3019be64877f4a30fb9a088feab2ca0d8",
+    "ledgers/ind.ES.15.setup_threshold.base.csv": "351f8ba0f9376655c35c1c92bc6b415dc8fb93f3d5b28f20255f579753ab9006",
+    "ledgers/ind.ES.15.setup_threshold.double_all_costs.csv": "bc60c9b44a44ae68096426f9cc3f4d638d1d1729a1596e9bd798040b9749b1f8"
+  },
+  "output_root": "artifacts/s3smoke_20261002_v1/a/m15"
+}

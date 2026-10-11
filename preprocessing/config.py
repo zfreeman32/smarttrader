@@ -74,6 +74,8 @@ class PreprocessingConfig:
     use_time_based_split: bool = True
     split_embargo_bars: int = 0
     target_split_embargo_bars: Dict[str, int] = field(default_factory=dict)
+    # Freeze all learned preparation on an initial development segment, before CV.
+    target_selection_fit_rows: Dict[str, int] = field(default_factory=dict)
 
     similarity_threshold: float = 0.995
     correlation_threshold: float = 0.98

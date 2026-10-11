@@ -1,0 +1,3630 @@
+{
+ "id": "section4-parity-report-v1",
+ "date": "20261005",
+ "model": {
+  "queue_id": 25,
+  "model_id": "short_ote_meta_tcn_champion",
+  "stream": "EURUSD",
+  "reviewed_artifact_set_sha256": "09d774f2d67366303fd4b97ce869953fe1118f7a37eda4a156d56eab150b4ebf",
+  "artifact_sha256": {
+   "model.pt": "267c235872a19ce8d0a99f01df8607f4f09ed2602bd3191774e48bc296c8661d",
+   "scaler.joblib": "a2dfcf0b83da8f5b0fdb32acd0c18396851f66f778f55e00cd01ec4d25a534c5",
+   "calibrator.joblib": "3bdb044e3b24abdf499e7fd12a2bd2a0cebf36058a88baf6efca0d0cd6828214",
+   "model_config.json": "37014d164efa395e1809dfe4879c887ce69c3581e441cebe3e7929676db8acbc",
+   "training_summary.json": "69c2b79a3fb5f02688aac62478c3235ae0cac5d544e077c8d438605e6397b13c",
+   "oof_predictions.csv": "e8594fe6627773aca23a6de24b354fd2a21a7c40e586d8b35b2fc335c6bba97a",
+   "test_predictions.csv": "ca374cf8a3f6488e6351309ffe20811d1ecf9a827b90a7aa07bca1377bb9bde8",
+   "cv_fold_manifest.json": "850847c3d5d798caa69658ba45f97b2a7a61a969dff2c3571637ea89fe6bd157",
+   "cv_fold_manifest.csv": "7a48e59ed706b98e607371cad9a605352687943109572e9a69b849cf8c50e509"
+  },
+  "staged_manifest_sha256": "49f7655f5f8a81c75f4cd942f473076693f79277095a0c8f711685aaffb6c61c",
+  "prepared_manifest_sha256": "11b3b7fa9abcea96a6ae3514cbac510515a12bf62ccf8e89ed9d73a17a9e2cad",
+  "threshold": 0.62,
+  "consumed_rows": 24
+ },
+ "protocol": {
+  "version": 3,
+  "sha256": "7ece6bbfa9f5bdf96d4adfa7c55052a31f41fde4968eccd0a8704d29e57cc939",
+  "lock_sha256": "914647a99ad071aa9567ea7117c5b91acceb87076bc64a6b2ec8e0b13ed7e6ce",
+  "executed_under": {
+   "version": 2,
+   "sha256": "e25b5e48905d44de5d6c4369a5ac24b49bf711074722710b149494fccb34eff5",
+   "lock_sha256": "f9b65ced680b65e46ca8f84167c4abd5de15a9372d3d88f98369d2304acbff38"
+  },
+  "note": "run executed under v2 (tolerances identical); classified under v3, which adds only the float32_tree_split declared-behavior clause (Q-P1, user-approved 2026-10-05)"
+ },
+ "run": {
+  "id": "s4parity_20261002_v1",
+  "dates": [
+   "2026-10-02",
+   "2026-10-03",
+   "2026-10-04",
+   "2026-10-05"
+  ],
+  "windows_sha256": "60a5dc5bea265525a748e706be52fe46acf6b4497b327ca1439a3d1e3a287e17",
+  "code_sha256_sets": [
+   {
+    "code_sha256": {
+     "features/builder.py": "060fc6b45660885a92a3e1ee42ab652105b5eed1e02b244427f8126445bdb46c",
+     "model_training/source_history.py": "a3dc2b6cc432fd9901d925f3e8367c977aa07a553d685f1ce22065ea0f6d33dd",
+     "ote_live/features/incremental_engine.py": "76b5c8159d92333b3aa9a611ec727f07f1f23f9f34de0991040e20bdc1db90ce",
+     "ote_live/features/raw_snapshots.py": "9f506cde58dce38b3cd3637a780b7e9bedb6e9298430ae8d7977727093cdf9c5",
+     "ote_live/ingestion/provenance.py": "af60afa3240e01a675d7fc953d15661f450c3c13e8f6af13c958701fb047528b",
+     "ote_live/ingestion/signals.py": "d0839157b17bc9485df1451fda8b4d52faa88bc36bd9de865216d3dd8ae3546e",
+     "ote_live/models/loaders.py": "dd94919e4db91a34592acab146539bbe6d68d4da609ad51984f41142d238add8",
+     "ote_live/models/runners.py": "d97a8cec5ae936b452dc872e022573f9996787bf0384cf78a1fb1393a2e3ecc2",
+     "ote_live/storage/db.py": "e933ff168e3972db56485feb15e81e7960f60c8fb6171f0d5f859835e0a69ebc",
+     "scripts/run_section3_smoke_replay.py": "3b001ba7b353e34faa361018496497d5d4e54236daa9a1e30933eb065d57362c",
+     "scripts/run_section4_r1_value_neutrality.py": "430bd20885ee1f773484c364cf3413af15cf43781d0ed6238b12eb068701ebe8",
+     "scripts/section4_parity_compare.py": "c8868b3c43e478cf1a3f360c80e036e5377c4ead36678d47fafaacce3b0a397b",
+     "scripts/section4_parity_harness.py": "f583a3d80ed7d4374f108e5e10f5077c64a571e60181c2b1c2c29986b3050294"
+    },
+    "segments": [
+     "EU_F_cold_start",
+     "EU_F_faults",
+     "EU_F_restart_session",
+     "EU_F_restart_weekend",
+     "EU_F_strategy_timeout",
+     "EU_H_holiday",
+     "EU_H_session_dst",
+     "EU_H_weekend_dst",
+     "EU_R_outage_edge",
+     "EU_R_session",
+     "EU_R_weekend"
+    ]
+   }
+  ],
+  "logs": [
+   "logs/section4_matrix_20261002.log",
+   "logs/section4_matrix_20261003.log",
+   "logs/section4_diagnostics_20261005.log"
+  ]
+ },
+ "windows": [
+  {
+   "segment_id": "EU_F_cold_start",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "F cold start: 200 prefix bars (< minimum_runtime_history_bars 250); reference on the same bars",
+   "start": "2026-09-15T09:20:00+00:00",
+   "end": "2026-09-15T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 24,
+   "endpoint_status": {
+    "warmup_not_ready": 49,
+    "ref_missing": 24,
+    "comparable": 24
+   },
+   "parity_db_sha256": "5744d75c1e3ce45a2a5c17423c656f25bb65b87339a3bded88e23aa7e6de40c2",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\summary.json"
+  },
+  {
+   "segment_id": "EU_F_faults",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "F on EU_R_session bars; reference recomputed on the final delivered series; dropped 1/3/12 bars, backfill behind the cursor, revision latest+earlier, reconnect batch",
+   "start": "2026-09-15T09:20:00+00:00",
+   "end": "2026-09-15T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 78,
+   "endpoint_status": {
+    "comparable": 78,
+    "not_delivered": 16,
+    "not_evaluated": 3
+   },
+   "parity_db_sha256": "c4e23238ed96054270145d0b812e5a9381ff7afc35feacc1f2e904b4e54fd142",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\summary.json"
+  },
+  {
+   "segment_id": "EU_F_restart_session",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "F on EU_R_session bars; reference recomputed on the final delivered series; restart at every chunk boundary plus London, inside a TCN window, New York",
+   "start": "2026-09-15T09:20:00+00:00",
+   "end": "2026-09-15T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "3c3c39764573402b86f6f06de1a696b22735b3b37f69887bcb4b71e7f715242a",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\summary.json"
+  },
+  {
+   "segment_id": "EU_F_restart_weekend",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "F on EU_R_weekend bars; restart at every chunk boundary plus after the weekend reopen",
+   "start": "2026-09-18T18:20:00+00:00",
+   "end": "2026-09-21T02:25:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "8b559aba3f8a9e139fef723c39e120d605c2725788eb2cefd98ca62c6ea729bb",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\summary.json"
+  },
+  {
+   "segment_id": "EU_F_strategy_timeout",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "F on EU_R_session bars; reference recomputed on the final delivered series; strategy_signals runs with a near-zero strategy timeout for endpoints 40-45",
+   "start": "2026-09-15T09:20:00+00:00",
+   "end": "2026-09-15T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 91,
+   "endpoint_status": {
+    "comparable": 91,
+    "not_evaluated": 6
+   },
+   "parity_db_sha256": "dd710a2b59814c38e90d98b852812f1f49130def1c338342a5ed236e7266f5a1",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_strategy_timeout\\summary.json"
+  },
+  {
+   "segment_id": "EU_H_holiday",
+   "group": "EURUSD_OTE",
+   "source": "H",
+   "rule": "first bar after the Christmas closure (12-24 18:00 -> 12-25 23:00 UTC)",
+   "start": "2025-12-24T15:25:00+00:00",
+   "end": "2025-12-26T04:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "a19d20bd4c2ccab18613088ec2cbededdfe95abec18b21e2570d9a2044d85ed9",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_holiday\\summary.json"
+  },
+  {
+   "segment_id": "EU_H_session_dst",
+   "group": "EURUSD_OTE",
+   "source": "H",
+   "rule": "12:00 UTC New York open under EDT while London is on GMT; the 32 bars before are London",
+   "start": "2026-03-10T09:20:00+00:00",
+   "end": "2026-03-10T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "832f39b0436628b8a4d0afda06a25061c76fca58b6b3931827b91791dcdf065d",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_session_dst\\summary.json"
+  },
+  {
+   "segment_id": "EU_H_weekend_dst",
+   "group": "EURUSD_OTE",
+   "source": "H",
+   "rule": "first bar after the weekend in the US/EU DST mismatch weeks (US DST began 2026-03-08)",
+   "start": "2026-03-06T19:20:00+00:00",
+   "end": "2026-03-09T02:50:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "11610499817c8a0d2ce1c8b5026a9c3f5004f5e3bc23ad1ce281cfb470ee6fe6",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_weekend_dst\\summary.json"
+  },
+  {
+   "segment_id": "EU_R_outage_edge",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "R outage edge 2026-05-14 22:10 (first bar after a recording gap); recorded bars; prefix up to 8000 (protocol segments.prefix); EURUSD completion unknown; calendar v1 provisional",
+   "start": "2026-05-14T19:30:00+00:00",
+   "end": "2026-05-18T02:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "e77c5398725eb8ec7ec2ba25a01aa5a096f151a07fbbfd05b5b67e3c4dbb7a68",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_R_outage_edge\\summary.json"
+  },
+  {
+   "segment_id": "EU_R_session",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "R week 2026-09-15: London -> New York at 12:00 UTC; recorded bars; prefix up to 8000 (protocol segments.prefix); EURUSD completion unknown; calendar v1 provisional",
+   "start": "2026-09-15T09:20:00+00:00",
+   "end": "2026-09-15T17:20:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "f8218df767fcd6b7f6f5c55be8a315752bb11482b683348816f483332f435da3",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_R_session\\summary.json"
+  },
+  {
+   "segment_id": "EU_R_weekend",
+   "group": "EURUSD_OTE",
+   "source": "R",
+   "rule": "R weekend 2026-09-18 -> 09-20 (first recorded bar after the weekend); recorded bars; prefix up to 8000 (protocol segments.prefix); EURUSD completion unknown; calendar v1 provisional",
+   "start": "2026-09-18T18:20:00+00:00",
+   "end": "2026-09-21T02:25:00+00:00",
+   "endpoints": 97,
+   "comparable_endpoints": 97,
+   "endpoint_status": {
+    "comparable": 97
+   },
+   "parity_db_sha256": "657393cd6a45de893aff79f901dbb5dc27b1ad9093695cac73d913d5de3667c3",
+   "summary": "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_R_weekend\\summary.json"
+  }
+ ],
+ "coverage": {
+  "weekend_close_open": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_H_weekend_dst",
+    "EU_R_weekend"
+   ]
+  },
+  "session_transitions_asia_london_ny": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_H_session_dst",
+    "EU_R_session"
+   ]
+  },
+  "us_eu_dst_mismatch": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_H_session_dst",
+    "EU_H_weekend_dst"
+   ]
+  },
+  "completed_30m_1h_atr_publication": {
+   "status": "exercised",
+   "reason": "3 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_session"
+   ]
+  },
+  "holiday_closure_calendar_v1": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_H_holiday"
+   ]
+  },
+  "missing_bars": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_F_faults",
+    "EU_R_outage_edge"
+   ]
+  },
+  "reconnect_backfill": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_F_faults",
+    "EU_R_outage_edge"
+   ]
+  },
+  "revision": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_F_faults"
+   ]
+  },
+  "restart": {
+   "status": "exercised",
+   "reason": "restart gate passed (2/2 bitwise equal)",
+   "segments": [
+    "EU_F_restart_session",
+    "EU_F_restart_weekend"
+   ]
+  },
+  "cold_start_warmup": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "EU_F_cold_start"
+   ]
+  },
+  "strategy_timeout_producer_failure": {
+   "status": "exercised",
+   "reason": "surfaced as feature_build_failed error; affected endpoints skipped (never a silent fill)",
+   "segments": [
+    "EU_F_strategy_timeout"
+   ]
+  }
+ },
+ "stages": {
+  "S1": {
+   "compared": 302328,
+   "matched": 301314,
+   "mismatched": 1014,
+   "not_compared": 0,
+   "max_abs": 14997.0,
+   "max_rel": 3.0,
+   "first_offending_ts": "2026-09-15T11:15:00+00:00"
+  },
+  "S3": {
+   "compared": 2212956,
+   "matched": 2063742,
+   "mismatched": 149214,
+   "not_compared": 19620,
+   "max_abs": 103.99999999999052,
+   "max_rel": 1950.7603632949417,
+   "first_offending_ts": "2025-12-24T15:25:00+00:00"
+  },
+  "S4_mask": {
+   "compared": 2232576,
+   "matched": 2232576,
+   "mismatched": 0,
+   "not_compared": 0,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "first_offending_ts": null
+  },
+  "S4": {
+   "compared": 2232576,
+   "matched": 2080314,
+   "mismatched": 152262,
+   "not_compared": 0,
+   "max_abs": 104.0,
+   "max_rel": 1950.7604305016625,
+   "first_offending_ts": "2025-12-24T15:25:00+00:00"
+  },
+  "S5": {
+   "compared": 2232576,
+   "matched": 2080695,
+   "mismatched": 151881,
+   "not_compared": 0,
+   "max_abs": 1.2090110916911856,
+   "max_rel": 35711667.00107466,
+   "first_offending_ts": "2025-12-24T15:25:00+00:00"
+  },
+  "S3_state": {
+   "compared": 93024,
+   "matched": 93024,
+   "mismatched": 0,
+   "not_compared": 0,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "first_offending_ts": null
+  },
+  "S6": {
+   "compared": 1938,
+   "matched": 2,
+   "mismatched": 1936,
+   "not_compared": 0,
+   "max_abs": 0.6141863986849785,
+   "max_rel": 136.20173028287977,
+   "first_offending_ts": "2025-12-24T15:25:00+00:00"
+  },
+  "S7": {
+   "compared": 969,
+   "matched": 969,
+   "mismatched": 0,
+   "not_compared": 0,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "first_offending_ts": null
+  }
+ },
+ "features": {
+  "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__short": {
+   "mismatches": 3601,
+   "classes": [
+    "training_side_noncausal/lookahead"
+   ]
+  },
+  "htf_1h_ema_spread_21_50_atr": {
+   "mismatches": 23256,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "continuation_bear_wick_rejection_score_roll_std_50": {
+   "mismatches": 5585,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "htf_30m_ema_spread_21_50_atr": {
+   "mismatches": 23256,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "continuation_bear_wick_rejection_score_roll_std_100": {
+   "mismatches": 6360,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "continuation_bear_retest_quality_roll_std_50": {
+   "mismatches": 13262,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "continuation_bear_retest_quality_roll_mean_50": {
+   "mismatches": 13262,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "strategy__breakout_trading_signals_the_internal_bar_strength_ibs_indicator_strategy__signal__neutral": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__bollinger_band_signals__bb_signal__long": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__bollinger_band_mean_reversion_signals__signal__neutral": {
+   "mismatches": 50,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__bollinger_band_signals__bb_signal__neutral": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__breakout_trading_signals_the_internal_bar_strength_ibs_indicator_strategy__signal__short": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__breakout_trading_signals__final_signal__neutral": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__bollinger_bands_le_signals__bollinger_bands_le_buy_signal": {
+   "mismatches": 5,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__starc_signals__starc_signal__neutral": {
+   "mismatches": 26,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__brazil_day_swing_signals__signal__neutral": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__bollinger_band_mean_reversion_signals__signal__long": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__neutral": {
+   "mismatches": 157,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "breakout_low_20": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__cci_signals__cci_bullish_signal": {
+   "mismatches": 25,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__breakout_trading_signals__final_signal__short": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__trend_reversal_signals__signal__neutral": {
+   "mismatches": 59,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__rubber_band_strategy__signal__neutral": {
+   "mismatches": 85,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__quantified_strategy_signals__strategy_signal__neutral": {
+   "mismatches": 159,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__long": {
+   "mismatches": 5454,
+   "classes": [
+    "training_side_noncausal/lookahead"
+   ]
+  },
+  "interaction_trend_momentum": {
+   "mismatches": 463,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_vs_ema_8_atr": {
+   "mismatches": 1443,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__acc_dist_strat__acc_dist_sell_signal": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "structure_pressure": {
+   "mismatches": 37,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__standard_error_bands_signals__signal__neutral": {
+   "mismatches": 115,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__membership_based_trading_signals__mean_reversion": {
+   "mismatches": 828,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "interaction_trend_rsi": {
+   "mismatches": 1283,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_vs_ema_8_atr_zscore_100": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "ema_slope_8_3": {
+   "mismatches": 1452,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__standard_error_bands_signals__signal__long": {
+   "mismatches": 66,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "breakout_high_20": {
+   "mismatches": 35,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "ict_dist_to_swing_low_atr": {
+   "mismatches": 852,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__vols_switch_signals__vols_switch_sell_signal": {
+   "mismatches": 73,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "dist_to_prior_low_20_atr_lag_1": {
+   "mismatches": 876,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__starc_signals__starc_signal__long": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "dist_to_prior_low_20_atr": {
+   "mismatches": 852,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "momentum_atr_5": {
+   "mismatches": 852,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__dynamic_zone_rsi_signals__rsi_signal__neutral": {
+   "mismatches": 74,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_vs_ema_21_atr": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "true_range_atr_norm": {
+   "mismatches": 852,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__dynamic_zone_rsi_signals__rsi_signal__long": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short": {
+   "mismatches": 30,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_vs_ema_8_atr_lag_1": {
+   "mismatches": 1452,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "return_slope_3_sigma_norm_60": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__calculate_pzo_calculate_pzo__0": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_vs_sma_20_atr": {
+   "mismatches": 972,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "rsi_slope_3_sigma_norm_60": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__smi_signals__smi": {
+   "mismatches": 636,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "rsi_14_roll_std_5": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "price_position_50_roll_std_5": {
+   "mismatches": 1164,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__high_volume_points__high_volume_pivot": {
+   "mismatches": 470,
+   "classes": [
+    "training_side_noncausal/lookahead"
+   ]
+  },
+  "dist_to_prior_low_20_atr_lag_2": {
+   "mismatches": 900,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__rei_signals__rei": {
+   "mismatches": 588,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "rsi_14_zscore_100": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__quantified_strategy_signals__strategy_signal__long": {
+   "mismatches": 30,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "bars_since_last_displacement": {
+   "mismatches": 708,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "range_atr_14_zscore_100": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "range_expansion_shock_10": {
+   "mismatches": 732,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__keltner_channel_strategy__kc_sell_signal": {
+   "mismatches": 29,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__trend_reversal_signals__signal__short": {
+   "mismatches": 2,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_lag_1": {
+   "mismatches": 876,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "range_shock_20": {
+   "mismatches": 972,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "close_return_5_zscore_100": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__aroon_strategy__aroon_trend_strength__missing": {
+   "mismatches": 81,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "dist_to_prior_high_20_atr": {
+   "mismatches": 852,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "interaction_vol_adjusted_momentum": {
+   "mismatches": 1345,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "rsi_14": {
+   "mismatches": 1464,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "return_slope_3_winsor_100": {
+   "mismatches": 444,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "range_atr_14_roll_mean_5": {
+   "mismatches": 948,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "interaction_orderflow_return": {
+   "mismatches": 683,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "volume_relative_20_zscore_100": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "stoch_position_14": {
+   "mismatches": 404,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "price_position_50": {
+   "mismatches": 882,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "rsi_slope_8_sigma_norm_60": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "return_slope_3": {
+   "mismatches": 396,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "return_slope_decay_3_8_sigma_norm_60": {
+   "mismatches": 1488,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "exhaustion_score": {
+   "mismatches": 1356,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "failed_continuation_bear": {
+   "mismatches": 3,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "volume_relative_20_pct_rank_60": {
+   "mismatches": 1077,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "sweep_high_20": {
+   "mismatches": 35,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "strategy__rsi_adx_signals__signal__neutral": {
+   "mismatches": 24,
+   "classes": [
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "return_slope_decay_3_8_winsor_100": {
+   "mismatches": 612,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "candle_range": {
+   "mismatches": 282,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "range_atr_14_pct_rank_60": {
+   "mismatches": 1199,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/stale_history_after_backfill"
+   ]
+  },
+  "continuation_bull_retest_quality_zscore_100": {
+   "mismatches": 3636,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  },
+  "continuation_bull_retest_quality": {
+   "mismatches": 1273,
+   "classes": [
+    "app_producer_bug/htf_timestamp_semantics"
+   ]
+  }
+ },
+ "mismatches": [
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "htf_1h_ema_spread_21_50_atr",
+   "count": 23256,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "htf_30m_ema_spread_21_50_atr",
+   "count": 23256,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bear_retest_quality_roll_std_50",
+   "count": 13262,
+   "first_ts": "2026-03-06T17:25:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_weekend_dst",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bear_retest_quality_roll_mean_50",
+   "count": 13262,
+   "first_ts": "2026-03-06T17:25:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_weekend_dst",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bear_wick_rejection_score_roll_std_100",
+   "count": 6360,
+   "first_ts": "2026-03-06T17:25:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_weekend_dst",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bear_wick_rejection_score_roll_std_50",
+   "count": 5585,
+   "first_ts": "2026-03-06T17:25:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_strategy_timeout",
+    "EU_H_weekend_dst",
+    "EU_R_session"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment EU_R_session"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bull_retest_quality_zscore_100",
+   "count": 3636,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_H_holiday",
+    "EU_H_session_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_holiday\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_session_dst\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "ote_live/features/incremental_engine.py:313-336 build_runtime_feature_config never sets htf_bar_timestamp_semantics, so features/feature_sets/htf_context.py:140-142 falls back to legacy_right_closed for EURUSD; the frozen dataset config (artifacts/b2_ote_prepared_20260921_v1/dataset.metadata.json) uses bar_open (evidence classification/variant_htflegacy_EU_H_holiday.json)"
+  },
+  {
+   "cls": "app_producer_bug/htf_timestamp_semantics",
+   "stage": "S3",
+   "feature": "continuation_bull_retest_quality",
+   "count": 1273,
+   "first_ts": "2026-03-10T11:30:00+00:00",
+   "segments": [
+    "EU_H_session_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_H_session_dst\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "ote_live/features/incremental_engine.py:313-336 build_runtime_feature_config never sets htf_bar_timestamp_semantics, so features/feature_sets/htf_context.py:140-142 falls back to legacy_right_closed for EURUSD; the frozen dataset config (artifacts/b2_ote_prepared_20260921_v1/dataset.metadata.json) uses bar_open (evidence classification/variant_htflegacy_EU_H_session_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr_zscore_100",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_vs_ema_21_atr",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "return_slope_3_sigma_norm_60",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__calculate_pzo_calculate_pzo__0",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "rsi_slope_3_sigma_norm_60",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "rsi_14_roll_std_5",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "rsi_14_zscore_100",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_atr_14_zscore_100",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_return_5_zscore_100",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "volume_relative_20_zscore_100",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "rsi_slope_8_sigma_norm_60",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8_sigma_norm_60",
+   "count": 1344,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "rsi_14",
+   "count": 1320,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "ema_slope_8_3",
+   "count": 1308,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr_lag_1",
+   "count": 1308,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr",
+   "count": 1299,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "exhaustion_score",
+   "count": 1212,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "interaction_vol_adjusted_momentum",
+   "count": 1205,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "interaction_trend_rsi",
+   "count": 1151,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_atr_14_pct_rank_60",
+   "count": 1056,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "price_position_50_roll_std_5",
+   "count": 1020,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "volume_relative_20_pct_rank_60",
+   "count": 940,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "close_vs_sma_20_atr",
+   "count": 828,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_shock_20",
+   "count": 828,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_5",
+   "count": 804,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr_lag_2",
+   "count": 756,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "price_position_50",
+   "count": 749,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr_lag_1",
+   "count": 732,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_atr_14_lag_1",
+   "count": 732,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "ict_dist_to_swing_low_atr",
+   "count": 708,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr",
+   "count": 708,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "momentum_atr_5",
+   "count": 708,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "true_range_atr_norm",
+   "count": 708,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "dist_to_prior_high_20_atr",
+   "count": 708,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__membership_based_trading_signals__mean_reversion",
+   "count": 684,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "range_expansion_shock_10",
+   "count": 588,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "bars_since_last_displacement",
+   "count": 564,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "interaction_orderflow_return",
+   "count": 540,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__smi_signals__smi",
+   "count": 492,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8_winsor_100",
+   "count": 470,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__rei_signals__rei",
+   "count": 444,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "interaction_trend_momentum",
+   "count": 340,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "return_slope_3_winsor_100",
+   "count": 318,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "stoch_position_14",
+   "count": 299,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "return_slope_3",
+   "count": 270,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "candle_range",
+   "count": 180,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategy_signals__strategy_signal__neutral",
+   "count": 108,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__neutral",
+   "count": 93,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__standard_error_bands_signals__signal__neutral",
+   "count": 83,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__dynamic_zone_rsi_signals__rsi_signal__neutral",
+   "count": 63,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__rubber_band_strategy__signal__neutral",
+   "count": 58,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__aroon_strategy__aroon_trend_strength__missing",
+   "count": 51,
+   "first_ts": "2026-09-15T09:10:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__standard_error_bands_signals__signal__long",
+   "count": 46,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__vols_switch_signals__vols_switch_sell_signal",
+   "count": 45,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__bollinger_band_mean_reversion_signals__signal__neutral",
+   "count": 39,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__trend_reversal_signals__signal__neutral",
+   "count": 33,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__starc_signals__starc_signal__neutral",
+   "count": 24,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__rsi_adx_signals__signal__neutral",
+   "count": 24,
+   "first_ts": "2026-09-15T12:45:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "structure_pressure",
+   "count": 23,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "breakout_high_20",
+   "count": 23,
+   "first_ts": "2026-09-15T10:35:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "sweep_high_20",
+   "count": 23,
+   "first_ts": "2026-09-15T10:35:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__brazil_day_swing_signals__signal__neutral",
+   "count": 20,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short",
+   "count": 14,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategy_signals__strategy_signal__long",
+   "count": 14,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__keltner_channel_strategy__kc_sell_signal",
+   "count": 14,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__cci_signals__cci_bullish_signal",
+   "count": 12,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "strategy__bollinger_bands_le_signals__bollinger_bands_le_buy_signal",
+   "count": 1,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "app_producer_bug/stale_history_after_backfill",
+   "stage": "S3",
+   "feature": "failed_continuation_bear",
+   "count": 1,
+   "first_ts": "2026-09-15T09:10:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "after the backfill was upserted behind the cursor (endpoint index 25) the app's consumed rows still lack the 3 backfilled bars (gap rows at endpoint indexes 26, 32, 50; ES_F_faults holds all 4); ote_live/ingestion/signals.py:997 _reconcile_setup_history returns unless asset == 'ES', so ote_live/ingestion/setup_revisions.py:149-178 (engine.state clear + extend from the store) never refreshes the EURUSD history; the same path leaves the earlier-revision provisional bar in place"
+  },
+  {
+   "cls": "declared_contract_behavior/producer_failure_surfaced",
+   "stage": "check",
+   "feature": "health_errors",
+   "count": 6,
+   "first_ts": null,
+   "segments": [
+    "EU_F_strategy_timeout"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_strategy_timeout\\summary.json"
+   ],
+   "causal_note": "protocol v2 scenarios.F_injections.producer_failure: feature_build_failed error, endpoint skipped, never a silent fill"
+  },
+  {
+   "cls": "declared_contract_behavior/producer_failure_surfaced",
+   "stage": "check",
+   "feature": "not_evaluated",
+   "count": 6,
+   "first_ts": null,
+   "segments": [
+    "EU_F_strategy_timeout"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_strategy_timeout\\summary.json"
+   ],
+   "causal_note": "protocol v2 scenarios.F_injections.producer_failure: feature_build_failed error, endpoint skipped, never a silent fill"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+app_producer_bug/stale_history_after_backfill+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 60969,
+   "first_ts": "2026-09-15T07:25:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+app_producer_bug/stale_history_after_backfill+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 60588,
+   "first_ts": "2026-09-15T07:25:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+app_producer_bug/stale_history_after_backfill+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S6",
+   "feature": "*",
+   "count": 156,
+   "first_ts": "2026-09-15T09:20:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S6.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 91293,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\diff\\short_ote_meta_tcn_champion.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 91293,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\diff\\short_ote_meta_tcn_champion.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/htf_timestamp_semantics+training_side_noncausal/lookahead",
+   "stage": "S6",
+   "feature": "*",
+   "count": 1780,
+   "first_ts": "2025-12-24T15:25:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\diff\\short_ote_meta_tcn_champion.S6.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "bar_version",
+   "count": 280,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "source_row_idx_offset",
+   "count": 279,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "timestamp",
+   "count": 276,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "observation_kind",
+   "count": 70,
+   "first_ts": "2026-09-15T11:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "engine_vs_store:observation_kind",
+   "count": 44,
+   "first_ts": "2026-09-15T11:45:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "engine_vs_store:bar_version",
+   "count": 44,
+   "first_ts": "2026-09-15T11:45:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "source_row_idx_consecutive",
+   "count": 21,
+   "first_ts": "2026-09-15T11:15:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__membership_based_trading_signals__mean_reversion",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr_zscore_100",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "ema_slope_8_3",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "ict_dist_to_swing_low_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr_lag_1",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "momentum_atr_5",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_21_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "true_range_atr_norm",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr_lag_1",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3_sigma_norm_60",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__calculate_pzo_calculate_pzo__0",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_sma_20_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_slope_3_sigma_norm_60",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__smi_signals__smi",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_roll_std_5",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_roll_std_5",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_20_atr_lag_2",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__rei_signals__rei",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_zscore_100",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "bars_since_last_displacement",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_zscore_100",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_expansion_shock_10",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_lag_1",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_shock_20",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_zscore_100",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_high_20_atr",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_5",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_zscore_100",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_slope_8_sigma_norm_60",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8_sigma_norm_60",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "exhaustion_score",
+   "count": 144,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_orderflow_return",
+   "count": 143,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_pct_rank_60",
+   "count": 143,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8_winsor_100",
+   "count": 142,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_vol_adjusted_momentum",
+   "count": 140,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_pct_rank_60",
+   "count": 137,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50",
+   "count": 133,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_trend_rsi",
+   "count": 132,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3_winsor_100",
+   "count": 126,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3",
+   "count": 126,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_trend_momentum",
+   "count": 123,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "stoch_position_14",
+   "count": 105,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "candle_range",
+   "count": 102,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__neutral",
+   "count": 64,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategy_signals__strategy_signal__neutral",
+   "count": 51,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__standard_error_bands_signals__signal__neutral",
+   "count": 32,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__aroon_strategy__aroon_trend_strength__missing",
+   "count": 30,
+   "first_ts": "2026-09-15T09:10:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__vols_switch_signals__vols_switch_sell_signal",
+   "count": 28,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__rubber_band_strategy__signal__neutral",
+   "count": 27,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__trend_reversal_signals__signal__neutral",
+   "count": 26,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__standard_error_bands_signals__signal__long",
+   "count": 20,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategies_signals_the_overnight_edge_is_it_still_working_strategy__strategy_signal__short",
+   "count": 16,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__quantified_strategy_signals__strategy_signal__long",
+   "count": 16,
+   "first_ts": "2026-09-15T09:00:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__keltner_channel_strategy__kc_sell_signal",
+   "count": 15,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "structure_pressure",
+   "count": 14,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__cci_signals__cci_bullish_signal",
+   "count": 13,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "breakout_high_20",
+   "count": 12,
+   "first_ts": "2026-09-15T10:35:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "sweep_high_20",
+   "count": 12,
+   "first_ts": "2026-09-15T10:35:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__bollinger_band_mean_reversion_signals__signal__neutral",
+   "count": 11,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__dynamic_zone_rsi_signals__rsi_signal__neutral",
+   "count": 11,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__bollinger_bands_le_signals__bollinger_bands_le_buy_signal",
+   "count": 4,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__brazil_day_swing_signals__signal__neutral",
+   "count": 4,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__breakout_trading_signals_the_internal_bar_strength_ibs_indicator_strategy__signal__neutral",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__bollinger_band_signals__bb_signal__long",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__bollinger_band_signals__bb_signal__neutral",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__breakout_trading_signals_the_internal_bar_strength_ibs_indicator_strategy__signal__short",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__breakout_trading_signals__final_signal__neutral",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__starc_signals__starc_signal__neutral",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__bollinger_band_mean_reversion_signals__signal__long",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "breakout_low_20",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__breakout_trading_signals__final_signal__short",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__acc_dist_strat__acc_dist_sell_signal",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__starc_signals__starc_signal__long",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__dynamic_zone_rsi_signals__rsi_signal__long",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "strategy__trend_reversal_signals__signal__short",
+   "count": 2,
+   "first_ts": "2026-09-15T09:05:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "failed_continuation_bear",
+   "count": 2,
+   "first_ts": "2026-09-15T09:10:00+00:00",
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "check",
+   "feature": "not_evaluated",
+   "count": 3,
+   "first_ts": null,
+   "segments": [
+    "EU_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\summary.json"
+   ],
+   "causal_note": "withheld backfill bars are delivered behind the cursor and not re-scored"
+  },
+  {
+   "cls": "training_side_noncausal/lookahead",
+   "stage": "S3",
+   "feature": "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__long",
+   "count": 5454,
+   "first_ts": "2025-12-24T17:10:00+00:00",
+   "segments": [
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "mismatches only at row offsets -25..0 (26-bar displacement) with no app repaint; value at t depends on bars t+1..t+25"
+  },
+  {
+   "cls": "training_side_noncausal/lookahead",
+   "stage": "S3",
+   "feature": "strategy__ichimoku_signals_ichimoku_strategy_strategy__signal__short",
+   "count": 3601,
+   "first_ts": "2025-12-24T13:30:00+00:00",
+   "segments": [
+    "EU_F_cold_start",
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_cold_start\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "mismatches only at row offsets -25..0 (26-bar displacement) with no app repaint; value at t depends on bars t+1..t+25"
+  },
+  {
+   "cls": "training_side_noncausal/lookahead",
+   "stage": "S3",
+   "feature": "strategy__high_volume_points__high_volume_pivot",
+   "count": 470,
+   "first_ts": "2025-12-24T16:25:00+00:00",
+   "segments": [
+    "EU_F_faults",
+    "EU_F_restart_session",
+    "EU_F_restart_weekend",
+    "EU_F_strategy_timeout",
+    "EU_H_holiday",
+    "EU_H_session_dst",
+    "EU_H_weekend_dst",
+    "EU_R_outage_edge",
+    "EU_R_session",
+    "EU_R_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_faults\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_session\\diff\\short_ote_meta_tcn_champion.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\EURUSD\\EURUSD_OTE\\EU_F_restart_weekend\\diff\\short_ote_meta_tcn_champion.S3.parquet"
+   ],
+   "causal_note": "features/strategies/high_volume_points.py:24-25 rolling(center=True) pivots; mismatches only at row offsets -14..0"
+  }
+ ],
+ "near_threshold": [],
+ "decision_flips": [],
+ "restart": {
+  "EU_F_restart_session|EURUSD_OTE": {
+   "equal": true,
+   "base": "EU_R_session"
+  },
+  "EU_F_restart_weekend|EURUSD_OTE": {
+   "equal": true,
+   "base": "EU_R_weekend"
+  }
+ },
+ "setup_events": {
+  "status": "incomplete",
+  "reason": "no live OTE setup-event producer (protocol setup_events / D5)"
+ },
+ "source_parity": {
+  "status": "incomplete",
+  "reason": "protocol source_parity.fallback: IBKR not running (no listener on 4001) for ES 2026-06-01..06-19; the app's FMP connector (FMPRESTClient.fetch_historical_chart) sends no from/to and filters the latest response, so EURUSD 2026-03-02..03-24 is unreachable through the app's own connector. No outward fetch was made."
+ },
+ "verdict": "fail:training_side_noncausal",
+ "reasons": [
+  "training_side_noncausal: 9525 cells/checks",
+  "app_producer_bug: 132807 cells/checks",
+  "source parity incomplete (protocol fallback)",
+  "S2 incomplete (D5)"
+ ],
+ "scored_eligibility": "not granted: a parity verdict is not scored eligibility; B6, A12, A13 and B7 are still required",
+ "eurusd_calendar": {
+  "id": "eurusd_5m_feed_clock_week_v1",
+  "path": "configs/eurusd_5m_expected_open_calendar_v1.json",
+  "sha256": "5db00e42d5513af92943184a7c566a5f44782700258a72a1f889c2d9d884d139",
+  "status": "provisional"
+ },
+ "report_sha256": "71a1e450278d0a715e4682c5a3925c8cca895e6a146073cf6e103efa84070d61"
+}

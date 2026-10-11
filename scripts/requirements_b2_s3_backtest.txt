@@ -1,0 +1,7 @@
+# Install with --target tmp/b2_s3_calendar_dependencies --no-deps.
+# Uses the repository's existing pandas/numpy/dateutil/tzdata environment.
+pandas_market_calendars==5.1.3
+exchange_calendars==4.11.1
+pyluach==2.2.0
+toolz==1.0.0
+korean-lunar-calendar==0.3.1

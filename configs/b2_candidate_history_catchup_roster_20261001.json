@@ -1,0 +1,38 @@
+{
+  "roster_id": "b2_candidate_history_catchup_roster_20261001",
+  "roster_version": 1,
+  "declared_at": "2026-10-01",
+  "status": "admission_only_pending_preparation_training_review",
+  "scope": "Offline B2 candidate-history/source-history catch-up for latency-approved extension IDs 5/23/14/18; no registry, app, manifest, collection, broker, paper, alert or promotion authority",
+  "selection_source": "configs/broad_full_session_shadow_selection_v0.json",
+  "selection_source_sha256": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+  "predecessor_rosters_unchanged": [
+    "configs/b2_candidate_history_roster_20260928.json",
+    "docs/audits/b2_candidate_history_minimum_core_es_20260929.json",
+    "docs/audits/b2_candidate_history_expanded_core_es_20260930.json"
+  ],
+  "rules": [
+    "One training job at a time into new versioned roots; never overwrite; preserve failed or partial manifests.",
+    "Original recipe, history, purge gaps, event minimums, folds, seeds and search budgets are unchanged; no geometry expansion is pinned for these IDs in docs/audits/b2_queue_preflight_20260924.json.",
+    "Threshold and calibration selection is OOF/validation-only; historical quality metrics are advisory; technical-review failures are blocking.",
+    "Legacy bundle bytes are never a replacement source."
+  ],
+  "es_runner": {
+    "runner": "scripts/run_b2_candidate_history.py",
+    "source_audit": "scripts/audit_b2_candidate_history.py --source-history-only",
+    "root_prefix": "b2_candidate_history_catchup_es_",
+    "audit_prefix": "b2_candidate_history_catchup_es_",
+    "candidates": [
+      {"id": 5, "target": "long_frvp_continuation_setup2", "model_id": "frvp_long_continuation_setup2_xgb_v1", "backend": "xgboost", "instrument": "ES", "trials": 32, "calibration_method": "none", "collection_eligible": false},
+      {"id": 14, "target": "short_ict_continuation", "model_id": "ict_short_continuation_xgb_v1", "backend": "xgboost", "instrument": "ES", "trials": 10, "calibration_method": "none", "collection_eligible": false},
+      {"id": 18, "target": "short_ict_reversal_ifvg_reversal", "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1", "backend": "xgboost", "instrument": "ES", "trials": 16, "calibration_method": "platt", "collection_eligible": false}
+    ]
+  },
+  "ote_runner": {
+    "runner": "scripts/run_b2_ote_candidate_history.py --promote-reserve",
+    "root_prefix": "b2_candidate_history_promoted_reserve_ote_",
+    "candidates": [
+      {"id": 23, "target": "long_ote", "model_id": "long_union_tcn_champion", "backend": "tcn", "instrument": "EURUSD", "trials": 48, "calibration_method": "platt", "units": "pips; never ES ticks/USD", "collection_eligible": false}
+    ]
+  }
+}

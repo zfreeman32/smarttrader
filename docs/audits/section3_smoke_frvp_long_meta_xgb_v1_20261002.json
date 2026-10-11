@@ -1,0 +1,379 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 3,
+  "model_id": "frvp_long_meta_xgb_v1",
+  "stream": "ES",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "9db6421a06bcf04b9e83b0453204ef0d13f3f029773509da0e8e0f4d66f0956b",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 3,
+    "model_id": "frvp_long_meta_xgb_v1",
+    "status": "selected",
+    "held_out_period": [
+      "2024-11-29T08:50:00+00:00",
+      "2026-06-18T19:35:00+00:00"
+    ],
+    "candidate_weeks": 74,
+    "weeks": [
+      {
+        "week": "2024-12-16",
+        "first_open": "2024-12-15T23:00:00+00:00",
+        "last_open": "2024-12-20T21:55:00+00:00",
+        "sessions": [
+          "2024-12-16",
+          "2024-12-17",
+          "2024-12-18",
+          "2024-12-19",
+          "2024-12-20"
+        ]
+      },
+      {
+        "week": "2024-12-30",
+        "first_open": "2024-12-29T23:00:00+00:00",
+        "last_open": "2025-01-03T21:55:00+00:00",
+        "sessions": [
+          "2024-12-30",
+          "2024-12-31",
+          "2025-01-02",
+          "2025-01-03"
+        ]
+      },
+      {
+        "week": "2025-03-10",
+        "first_open": "2025-03-09T22:00:00+00:00",
+        "last_open": "2025-03-14T20:55:00+00:00",
+        "sessions": [
+          "2025-03-10",
+          "2025-03-11",
+          "2025-03-12",
+          "2025-03-13",
+          "2025-03-14"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:3:setup1:es_frvp_setup1_eval_v1": [
+        "2024-12-16",
+        "2024-12-30"
+      ],
+      "route:3:setup2:es_frvp_setup2_eval_v2": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "route:3:setup3:es_frvp_setup3_long_eval_v2": [
+        "2024-12-16",
+        "2024-12-30"
+      ],
+      "route:3:setup4:es_frvp_setup4_eval_v2": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "route:3:setup5:es_frvp_setup5_long_eval_v2": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "route:3:setup6:es_frvp_setup6_eval_v1": [
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "overnight_segment": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "rth_segment": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "planned_closure": [
+        "2024-12-30"
+      ],
+      "dst_transition": [
+        "2025-03-10"
+      ],
+      "es_roll": [
+        "2024-12-16"
+      ]
+    },
+    "routes_exercised": [
+      "3:setup1:es_frvp_setup1_eval_v1",
+      "3:setup2:es_frvp_setup2_eval_v2",
+      "3:setup3:es_frvp_setup3_long_eval_v2",
+      "3:setup4:es_frvp_setup4_eval_v2",
+      "3:setup5:es_frvp_setup5_long_eval_v2",
+      "3:setup6:es_frvp_setup6_eval_v1"
+    ],
+    "routes_unexercised": {},
+    "calendar_elements_unexercised": {},
+    "held_out_predictions": 1340,
+    "held_out_setup_matches": 1340
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "ticks",
+  "calendar_id": "pmc_5_1_3_cme_globex_equity_plus_carter_v1",
+  "calendar_hash": "dc4545ba66b691b59451bd9d468bdbd2613035da28354f02f21f320c89ff90c3",
+  "canonical_hash_run_a": "a5a99838ce59db3048cbf65db1d84f3c5ed3744ef4335f1d94bf53c3f3aad6f7",
+  "canonical_hash_run_b": "a5a99838ce59db3048cbf65db1d84f3c5ed3744ef4335f1d94bf53c3f3aad6f7",
+  "surface_hash": "fc95727aa8fbd75af89ccce68c5f201dd3f39447e93bd28181cacfdd98b55190",
+  "reviewed_artifact_set_sha256": "e1aec2ed2200a24198224cabf5d3ba240628b2576e3d030b03df561dfc1053ec",
+  "b4_freeze_files_verified": {
+    "model.json": "51e4e1115df57362a77377aeaea297158658861838a51f38abf38bdf2750b14a",
+    "scaler.joblib": "268056337edc9714022be134734723f2f3ec50196388da3d9de7a01931962c9b",
+    "calibrator.joblib": "cc8880912a0cbbc124f992d589380714848bb48689bf5e30e7d3b69284a0acc2",
+    "model_config.json": "2e05595ef18f565fabef05c62663af2e26beb1fdfaaab3dfee31427703f7ed80",
+    "training_summary.json": "c7516696228be6ff8b9b346bfd5ede0a938b73e52c4ec1832a9da93fdd5c6900",
+    "oof_predictions.csv": "50a852628e069b181751978d3b0a704f42dc6f8efd16962e0b4f9ed8625d3e42",
+    "test_predictions.csv": "4468f12b26f3fc349add691220eb2cc07d072262537975e27d3b968d4cd21db0",
+    "cv_fold_manifest.json": "c03d4e3a97a1c75eff15d0ac178648884be00f4830b218d36bb8c36418cebea8",
+    "cv_fold_manifest.csv": "0d25c3ce8483c6699d55fc39cbfbc70373ba883e4957c2cdfd42a36b7872d7c3"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 53,
+    "raw_score_max_abs_error": 8.00926208688324e-08,
+    "threshold": 0.49999999999999994,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "selected_same_side_setup": 53
+  },
+  "signals": 53,
+  "open_positions_rows": 0,
+  "route_coverage": [
+    {
+      "route_id": "3:setup1:es_frvp_setup1_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 3,
+      "executable_routes": 3,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 3,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "TARGET": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "3:setup2:es_frvp_setup2_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 6,
+      "executable_routes": 6,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 4,
+        "setup_threshold": 3,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 2,
+        "TARGET": 4
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "3:setup3:es_frvp_setup3_long_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 4,
+      "executable_routes": 4,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 3,
+        "setup_threshold": 1,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 3,
+        "TIMEOUT_WIN": 1
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "3:setup4:es_frvp_setup4_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 9,
+      "executable_routes": 9,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 7,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 2,
+        "TARGET": 3,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "3:setup5:es_frvp_setup5_long_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 28,
+      "executable_routes": 28,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 17,
+        "setup_threshold": 2,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 10,
+        "TARGET": 15,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 2
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "3:setup6:es_frvp_setup6_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 3,
+      "executable_routes": 3,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 2,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 1,
+        "TIMEOUT_LOSS": 2
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 53,
+    "capacity_admitted": 2,
+    "independent_admitted": 6,
+    "trades_in_both": 2,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "c8b820719b5859d066956944e4d1599b4d89cd0be893833f0946b67a89c020e7",
+  "advisory_ledger_summaries": {
+    "ind.ES.3.setup_only.base": {
+      "ledger_id": "ind.ES.3.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 53,
+      "admitted": 36,
+      "closed": 36,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 589.0,
+      "total_cost": 107.40000000000002,
+      "net_pnl": 481.6,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 17
+      }
+    },
+    "ind.ES.3.setup_only.double_all_costs": {
+      "ledger_id": "ind.ES.3.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 53,
+      "admitted": 36,
+      "closed": 36,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 589.0,
+      "total_cost": 214.80000000000004,
+      "net_pnl": 374.20000000000005,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 17
+      }
+    },
+    "ind.ES.3.setup_threshold.base": {
+      "ledger_id": "ind.ES.3.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 53,
+      "admitted": 6,
+      "closed": 6,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -134.0,
+      "total_cost": 15.9,
+      "net_pnl": -149.9,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 2,
+        "probability_below_frozen_threshold": 45
+      }
+    },
+    "ind.ES.3.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.ES.3.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 53,
+      "admitted": 6,
+      "closed": 6,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -134.0,
+      "total_cost": 31.8,
+      "net_pnl": -165.8,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 2,
+        "probability_below_frozen_threshold": 45
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.ES.3.raw_score_gross_forward_response/forward_response.csv": "fddfd027785355107776355a33e3f590b6636024db6441b9ee83bbd4734511d3",
+    "markouts/mk.ES.3.raw_score_gross_forward_response/paper_contract_outcome.csv": "ccb489b31a26f15508168de6b5ae00f6c7d309995e332b105c94b214aebde7b3",
+    "ledgers/ind.ES.3.setup_only.base.csv": "cf915fc9ebbaa2bc848cb22207cc4cdc0d4f763f6c9f6c7c147d8a38690d8509",
+    "ledgers/ind.ES.3.setup_only.double_all_costs.csv": "18f656bc579f80ca5f56c0354e067f534a0cc3d626873ea25a03f18293f34cc7",
+    "ledgers/ind.ES.3.setup_threshold.base.csv": "7e6d2b8cece7c7c3216261a67ca151ca89858f028fd4abf683eddd932942def5",
+    "ledgers/ind.ES.3.setup_threshold.double_all_costs.csv": "bd2351be81785ef082a59b72f9ff0e16e57a33e75d2477131cee86431023d244"
+  },
+  "output_root": "artifacts/s3smoke_20261002_v1/a/m3"
+}

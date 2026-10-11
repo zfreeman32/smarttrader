@@ -1,0 +1,393 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 12,
+  "model_id": "ict_long_meta_xgb_v1",
+  "stream": "ES",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "9db6421a06bcf04b9e83b0453204ef0d13f3f029773509da0e8e0f4d66f0956b",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 12,
+    "model_id": "ict_long_meta_xgb_v1",
+    "status": "selected",
+    "held_out_period": [
+      "2025-01-16T21:35:00+00:00",
+      "2026-06-18T01:40:00+00:00"
+    ],
+    "candidate_weeks": 67,
+    "weeks": [
+      {
+        "week": "2025-03-10",
+        "first_open": "2025-03-09T22:00:00+00:00",
+        "last_open": "2025-03-14T20:55:00+00:00",
+        "sessions": [
+          "2025-03-10",
+          "2025-03-11",
+          "2025-03-12",
+          "2025-03-13",
+          "2025-03-14"
+        ]
+      },
+      {
+        "week": "2025-03-17",
+        "first_open": "2025-03-16T22:00:00+00:00",
+        "last_open": "2025-03-21T20:55:00+00:00",
+        "sessions": [
+          "2025-03-17",
+          "2025-03-18",
+          "2025-03-19",
+          "2025-03-20",
+          "2025-03-21"
+        ]
+      },
+      {
+        "week": "2025-05-26",
+        "first_open": "2025-05-25T22:00:00+00:00",
+        "last_open": "2025-05-30T20:55:00+00:00",
+        "sessions": [
+          "2025-05-26",
+          "2025-05-27",
+          "2025-05-28",
+          "2025-05-29",
+          "2025-05-30"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:12:sweep_reclaim:es_ict_sweep_reclaim_eval_v1": [
+        "2025-03-10",
+        "2025-03-17",
+        "2025-05-26"
+      ],
+      "route:12:ifvg_reversal:es_ict_ifvg_reversal_eval_v1": [
+        "2025-03-10",
+        "2025-03-17",
+        "2025-05-26"
+      ],
+      "route:12:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1": [
+        "2025-03-10",
+        "2025-03-17",
+        "2025-05-26"
+      ],
+      "route:12:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1": [
+        "2025-05-26"
+      ],
+      "overnight_segment": [
+        "2025-03-10",
+        "2025-03-17",
+        "2025-05-26"
+      ],
+      "planned_closure": [
+        "2025-05-26"
+      ],
+      "dst_transition": [
+        "2025-03-10"
+      ],
+      "es_roll": [
+        "2025-03-17"
+      ]
+    },
+    "routes_exercised": [
+      "12:sweep_reclaim:es_ict_sweep_reclaim_eval_v1",
+      "12:ifvg_reversal:es_ict_ifvg_reversal_eval_v1",
+      "12:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1",
+      "12:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1"
+    ],
+    "routes_unexercised": {
+      "12:sweep_displacement_fvg:es_ict_sweep_displacement_fvg_eval_v1": "no_eligible_week_in_held_out_period",
+      "12:ob_retest_after_mss:es_ict_ob_retest_after_mss_eval_v1": "no_eligible_week_in_held_out_period",
+      "12:session_open_manipulation_pre_ib:es_ict_session_open_manipulation_pre_ib_eval_v1": "no_eligible_week_in_held_out_period",
+      "12:session_open_manipulation_post_ib:es_ict_session_open_manipulation_post_ib_eval_v1": "no_eligible_week_in_held_out_period"
+    },
+    "calendar_elements_unexercised": {
+      "rth_segment": "no_eligible_week_in_held_out_period"
+    },
+    "held_out_predictions": 1109,
+    "held_out_setup_matches": 1109
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "ticks",
+  "calendar_id": "pmc_5_1_3_cme_globex_equity_plus_carter_v1",
+  "calendar_hash": "dc4545ba66b691b59451bd9d468bdbd2613035da28354f02f21f320c89ff90c3",
+  "canonical_hash_run_a": "1b68bcb2e60f37aecb35eec2077fe8e5a9f8de943dab6113994850efdf669ca0",
+  "canonical_hash_run_b": "1b68bcb2e60f37aecb35eec2077fe8e5a9f8de943dab6113994850efdf669ca0",
+  "surface_hash": "bdb6c40a3c22aca7203d5a0ce1e012609242764c60ed2e0d9a22a045fea16f2e",
+  "reviewed_artifact_set_sha256": "3e412022d5b2510fb2bda5234b259c29ce79e89715c0d5eec9399fe383aab24f",
+  "b4_freeze_files_verified": {
+    "model.json": "076024ea07e9ab59903d4f7ff23d9bbd984c790297c56b0a4f9d0a546eb8af46",
+    "scaler.joblib": "b275b222963332bfeca7afd3edc0eb00e8402d2383d3e6a28572436354097e35",
+    "calibrator.joblib": "db8ae3289ed4a736df864c9d55525d7418e8cfe9cae2eb4c1a40bc4568bae261",
+    "model_config.json": "fd7dab8f036cc15e0dabf2283022312659be2ab11e6bf184db10d52447301575",
+    "training_summary.json": "0b31979529e2a9e6220bca313b974570845297e4df8e4483e83858c336ca0a18",
+    "oof_predictions.csv": "f9ad9861209a6db378a3522ed7fbcc67129720a7d2820117122411a1aa9fbfe5",
+    "test_predictions.csv": "4ea9605bbcf0407fd60db61facaa83bc90ce0570ed80e608f063fb42cc9e5259",
+    "cv_fold_manifest.json": "469112bc631d360fd69a9071c5532e8c57654a59d1ce45d406af7a8222d2e938",
+    "cv_fold_manifest.csv": "200f5317a8b03439c3a44a073f1c46e8cb14f52bf5b61bfd9229a0ae240866c9"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 46,
+    "raw_score_max_abs_error": 8.307571408572301e-08,
+    "threshold": 0.3499999999999999,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "selected_same_side_setup": 46
+  },
+  "signals": 46,
+  "open_positions_rows": 0,
+  "route_coverage": [
+    {
+      "route_id": "12:sweep_reclaim:es_ict_sweep_reclaim_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 20,
+      "executable_routes": 20,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 16,
+        "setup_threshold": 3,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 19,
+        "TARGET": 1
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:sweep_displacement_fvg:es_ict_sweep_displacement_fvg_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:ob_retest_after_mss:es_ict_ob_retest_after_mss_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:ifvg_reversal:es_ict_ifvg_reversal_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 15,
+      "executable_routes": 15,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 14,
+        "setup_threshold": 9,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 9,
+        "TARGET": 3,
+        "TIMEOUT_WIN": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:premium_discount_continuation:es_ict_premium_discount_continuation_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 9,
+      "executable_routes": 9,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 7,
+        "setup_threshold": 5,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 3,
+        "TIMEOUT_WIN": 6
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:session_open_manipulation_pre_ib:es_ict_session_open_manipulation_pre_ib_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:session_open_manipulation_post_ib:es_ict_session_open_manipulation_post_ib_eval_v1",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "12:displacement_continuation_after_raid:es_ict_displacement_continuation_after_raid_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 2,
+      "executable_routes": 2,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 1,
+        "setup_threshold": 1,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 1
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 46,
+    "capacity_admitted": 16,
+    "independent_admitted": 18,
+    "trades_in_both": 16,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "c8b820719b5859d066956944e4d1599b4d89cd0be893833f0946b67a89c020e7",
+  "advisory_ledger_summaries": {
+    "ind.ES.12.setup_only.base": {
+      "ledger_id": "ind.ES.12.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 46,
+      "admitted": 38,
+      "closed": 38,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -96.0,
+      "total_cost": 142.70000000000005,
+      "net_pnl": -238.7,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 8
+      }
+    },
+    "ind.ES.12.setup_only.double_all_costs": {
+      "ledger_id": "ind.ES.12.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 46,
+      "admitted": 38,
+      "closed": 38,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -96.0,
+      "total_cost": 285.4000000000001,
+      "net_pnl": -381.40000000000003,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 8
+      }
+    },
+    "ind.ES.12.setup_threshold.base": {
+      "ledger_id": "ind.ES.12.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 46,
+      "admitted": 18,
+      "closed": 18,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -96.0,
+      "total_cost": 66.2,
+      "net_pnl": -162.2,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 4,
+        "probability_below_frozen_threshold": 24
+      }
+    },
+    "ind.ES.12.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.ES.12.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 46,
+      "admitted": 18,
+      "closed": 18,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": -96.0,
+      "total_cost": 132.4,
+      "net_pnl": -228.39999999999998,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 4,
+        "probability_below_frozen_threshold": 24
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.ES.12.raw_score_gross_forward_response/forward_response.csv": "d34261ef00f866f9eb7d586584a91667a461eb1908417dc16bf31ff1781afe67",
+    "markouts/mk.ES.12.raw_score_gross_forward_response/paper_contract_outcome.csv": "8e57a35eea19f3a608127e58ad45ed508cabd2f2e6ebe521216fc83324598468",
+    "ledgers/ind.ES.12.setup_only.base.csv": "092f0409a3382d5deb745e341a50eadd9bdea3a5e4b238814f55ea14cb59ee67",
+    "ledgers/ind.ES.12.setup_only.double_all_costs.csv": "531bb15fb5ed4c342897bd09f8ae9d77ac32110fe5a12fb31566394bb534d035",
+    "ledgers/ind.ES.12.setup_threshold.base.csv": "8d7eccf769384b56a3a5021f607b57253f12e7968cac331f7ed7929aecd3ff4d",
+    "ledgers/ind.ES.12.setup_threshold.double_all_costs.csv": "4785d60d57855c1ad3126239bb36abf244aad229d508463ac9fd4e3df46c97a2"
+  },
+  "output_root": "artifacts/s3smoke_20261002_v1/a/m12"
+}

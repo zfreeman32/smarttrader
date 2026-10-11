@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "scope_id": {
+      "title": "Scope Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "integer"
+    },
+    "excluded_setups": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Excluded Setups",
+      "type": "array"
+    },
+    "diagnostic_setups": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Diagnostic Setups",
+      "type": "array"
+    },
+    "pooled_families": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Pooled Families",
+      "type": "array"
+    },
+    "decision_source": {
+      "title": "Decision Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scope_id",
+    "version",
+    "excluded_setups",
+    "diagnostic_setups",
+    "pooled_families",
+    "decision_source"
+  ],
+  "title": "BaselineScope",
+  "type": "object"
+}

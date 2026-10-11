@@ -1,0 +1,523 @@
+{
+  "contract_version": "es-causal-inputs-v2",
+  "scope": "Configured ES family and specialist bundles; static dependency inventory, not artifact parity or live qualification.",
+  "models": [
+    {
+      "model_id": "frvp_long_reversal_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_long.json",
+      "manifest_sha256": "c10c833e0377dfa14a9c57cb6516b33992ae72fca71a8e3c1ce88503574138b4",
+      "input_contract_version": null,
+      "selected_feature_count": 16,
+      "htf_features": [
+        "htf_dist_to_rolling_weekly_high_atr",
+        "htf_rolling_weekly_high"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 2,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_continuation_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_long.json",
+      "manifest_sha256": "c10c833e0377dfa14a9c57cb6516b33992ae72fca71a8e3c1ce88503574138b4",
+      "input_contract_version": null,
+      "selected_feature_count": 8,
+      "htf_features": [
+        "htf_confluence_long_frvp_continuation",
+        "htf_rolling_daily_low"
+      ],
+      "external_helper_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "corrected_feature_count": 2,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_meta_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_long.json",
+      "manifest_sha256": "c10c833e0377dfa14a9c57cb6516b33992ae72fca71a8e3c1ce88503574138b4",
+      "input_contract_version": null,
+      "selected_feature_count": 9,
+      "htf_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "external_helper_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "corrected_feature_count": 1,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_short_meta_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_short.json",
+      "manifest_sha256": "7ac1e8b847c740f8aaa5706d85c38a24892dd924b924cc11d26a50ef58985cd4",
+      "input_contract_version": null,
+      "selected_feature_count": 21,
+      "htf_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_dist_to_rolling_daily_high_atr",
+        "htf_dist_to_prev_day_high_atr",
+        "htf_1h_bars_since_swing_high_event",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_confluence_short_frvp_continuation",
+        "htf_confluence_short_frvp_reversal"
+      ],
+      "external_helper_features": [
+        "htf_confluence_short_frvp_continuation",
+        "htf_confluence_short_frvp_reversal"
+      ],
+      "corrected_feature_count": 7,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_short_continuation_tcn_v1",
+      "backend": "tcn",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_short.json",
+      "manifest_sha256": "7ac1e8b847c740f8aaa5706d85c38a24892dd924b924cc11d26a50ef58985cd4",
+      "input_contract_version": null,
+      "selected_feature_count": 42,
+      "htf_features": [
+        "htf_rolling_weekly_high",
+        "htf_dist_to_rolling_weekly_high_atr",
+        "htf_confluence_short_frvp_continuation",
+        "htf_dist_to_prev_day_low_atr"
+      ],
+      "external_helper_features": [
+        "htf_confluence_short_frvp_continuation"
+      ],
+      "corrected_feature_count": 4,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_short_reversal_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "deprecated",
+      "retired": true,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_shadow_20260721/live_runtime_manifest_short.json",
+      "manifest_sha256": "7ac1e8b847c740f8aaa5706d85c38a24892dd924b924cc11d26a50ef58985cd4",
+      "input_contract_version": null,
+      "selected_feature_count": 13,
+      "htf_features": [
+        "htf_1h_ema_spread_8_21_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 1,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_continuation_setup2_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 15,
+      "htf_features": [
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_rolling_daily_low"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 2,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_continuation_setup5_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 10,
+      "htf_features": [
+        "htf_confluence_long_frvp_continuation",
+        "htf_1h_bars_since_swing_low_event"
+      ],
+      "external_helper_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "corrected_feature_count": 2,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_reversal_setup1_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 5,
+      "htf_features": [],
+      "external_helper_features": [],
+      "corrected_feature_count": 0,
+      "static_blockers": [],
+      "status": "requires_runtime_input_check"
+    },
+    {
+      "model_id": "frvp_long_continuation_setup3_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 15,
+      "htf_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "external_helper_features": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "corrected_feature_count": 2,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_reversal_setup6_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 17,
+      "htf_features": [
+        "htf_dist_to_rolling_weekly_high_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 3,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "frvp_long_reversal_setup4_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/live_runtime_manifest_long.json",
+      "manifest_sha256": "f8ffa7ce8daf1f8f5f2bedad50b696ba29b95bd61a6977d31051b0a88a3b05a3",
+      "input_contract_version": null,
+      "selected_feature_count": 13,
+      "htf_features": [],
+      "external_helper_features": [],
+      "corrected_feature_count": 0,
+      "static_blockers": [],
+      "status": "requires_runtime_input_check"
+    },
+    {
+      "model_id": "ict_long_meta_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "active",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_long.json",
+      "manifest_sha256": "ec0365d29fc1b37a2d81a8b377e42f83fffb4529723bd9273305c6d49636c457",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_confluence_long_ict_continuation",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_8_21_atr",
+        "htf_dist_to_rolling_weekly_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_bars_since_swing_high_event",
+        "htf_confluence_long_ict_reversal",
+        "htf_prev_day_low",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_rolling_weekly_high"
+      ],
+      "external_helper_features": [
+        "htf_confluence_long_ict_continuation",
+        "htf_confluence_long_ict_reversal"
+      ],
+      "corrected_feature_count": 50,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_long_reversal_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_long.json",
+      "manifest_sha256": "ec0365d29fc1b37a2d81a8b377e42f83fffb4529723bd9273305c6d49636c457",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_1h_latest_swing_low",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_1h_bars_since_swing_high_event",
+        "htf_1h_ema_spread_21_50_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 41,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_long_continuation_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_long.json",
+      "manifest_sha256": "ec0365d29fc1b37a2d81a8b377e42f83fffb4529723bd9273305c6d49636c457",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_rolling_weekly_high",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_dist_to_rolling_weekly_low_atr",
+        "htf_dist_to_rolling_weekly_high_atr",
+        "htf_dist_to_rolling_daily_low_atr",
+        "htf_dist_to_rolling_daily_high_atr",
+        "htf_30m_bars_since_swing_high_event",
+        "htf_dist_to_prev_day_high_atr",
+        "htf_30m_bars_since_swing_low_event"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 40,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_reversal_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_short.json",
+      "manifest_sha256": "39b0c63888cdb371ff086a40b95a68656c1f2bf5878323d807e730253ae1ebf2",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_rolling_weekly_high",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_bars_since_swing_low_event",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_dist_to_prev_day_low_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_prev_day_high",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_dist_to_prev_day_high_atr",
+        "htf_dist_to_rolling_weekly_low_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 46,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_meta_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_short.json",
+      "manifest_sha256": "39b0c63888cdb371ff086a40b95a68656c1f2bf5878323d807e730253ae1ebf2",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_confluence_short_ict_continuation",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_dist_to_prev_day_low_atr",
+        "htf_30m_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_dist_to_prev_day_high_atr",
+        "htf_dist_to_rolling_daily_high_atr",
+        "htf_rolling_weekly_high",
+        "htf_dist_to_rolling_weekly_high_atr",
+        "htf_1h_bars_since_swing_low_event",
+        "htf_1h_bars_since_swing_high_event",
+        "htf_dist_to_rolling_daily_low_atr"
+      ],
+      "external_helper_features": [
+        "htf_confluence_short_ict_continuation"
+      ],
+      "corrected_feature_count": 48,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified",
+        "live_helper_producer_not_packaged"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_continuation_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/live_runtime_manifest_short.json",
+      "manifest_sha256": "39b0c63888cdb371ff086a40b95a68656c1f2bf5878323d807e730253ae1ebf2",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_dist_to_rolling_daily_low_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_rolling_weekly_low",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 29,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_reversal_sweep_reclaim_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_short_setup_family_20260811_audit/live_runtime_manifest_short.json",
+      "manifest_sha256": "bfd927d416a798b928996f89368a7607c074045183aec8b208d44ac1ecb0c5c8",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_rolling_weekly_high",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_dist_to_prev_day_high_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_dist_to_prev_day_low_atr",
+        "htf_dist_to_rolling_daily_high_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 31,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_short_setup_family_20260811_audit/live_runtime_manifest_short.json",
+      "manifest_sha256": "bfd927d416a798b928996f89368a7607c074045183aec8b208d44ac1ecb0c5c8",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_30m_bars_since_swing_high_event",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_1h_bars_since_swing_low_event",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 35,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    },
+    {
+      "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+      "backend": "xgboost",
+      "manifest_status": "candidate",
+      "retired": false,
+      "manifest_path": "ote_live/runtime_manifests/ict_short_setup_family_20260811_audit/live_runtime_manifest_short.json",
+      "manifest_sha256": "bfd927d416a798b928996f89368a7607c074045183aec8b208d44ac1ecb0c5c8",
+      "input_contract_version": null,
+      "selected_feature_count": 96,
+      "htf_features": [
+        "htf_dist_to_rolling_daily_low_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_rolling_weekly_low",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_ema_spread_8_21_atr",
+        "htf_1h_bars_since_swing_high_event",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "external_helper_features": [],
+      "corrected_feature_count": 34,
+      "static_blockers": [
+        "corrected_feature_lineage_unverified"
+      ],
+      "status": "diagnostic_only"
+    }
+  ]
+}

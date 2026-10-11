@@ -1,0 +1,24 @@
+{
+  "status": "source_history_artifact_review_passed",
+  "prediction_rows": 301,
+  "prediction_max_abs_error": 8.840332033077658e-08,
+  "threshold_decisions_equal": true,
+  "threshold": 0.6499999999999999,
+  "OOF_threshold_reproduced": true,
+  "model_outputs_sha256": {
+    "cv_fold_manifest.csv": "15f72a9a63ab87babfe05c1b019d7ff1890de5d7950e5aeb75125c0534c5b663",
+    "cv_fold_manifest.json": "bcb5b9491c7add48c0217161003371515acc08b79ce556e52501612c4d79b601",
+    "model.json": "4ed6f8730180c6873e9d6a25860edfe8a15ba20145ae995e7cfe0d272ef1815d",
+    "model_config.json": "6c67bab5aebc4aaad05efbe08fc9d34c73272f2029be4929dcb0c74833815505",
+    "oof_predictions.csv": "764c516ab57b99549ffd0188ff0c989f372ed22b54aa9ac3c5afc77183df5f0c",
+    "optuna_trials.csv": "e3aa31bd4c38baaab34ac04b9d0afd17c472159c457689c279629262f9faf2cb",
+    "scaler.joblib": "2097636f1d9ae70bbf1a7f867e8e4a485710273031bf2d8733e1a7d73b6b7325",
+    "test_predictions.csv": "4f64cff4238087287360d864a7328da19f7860c5ba1c366bfcb00e52eee7c17c",
+    "training_history.csv": "0bc21894cc62da4dfbd5d78e7ae7d4c6e6c40107ce0fdd1580eee7e95bdc9bd8",
+    "training_history.json": "ccaf29b6f85406a51cd2fc9fac4866e2070700256a9094e60a626c82ccfa412d",
+    "training_summary.json": "3a4c652d9d9b690aa4d2bbd9395d6b8dccc26fe2ac9c010fd5b0477e4198fb09",
+    "window_feature_importance.csv": "47f9f899cf1506cd8d178c1a766638e9e30a0573a584f0f3328c7c6b573f6b1f"
+  },
+  "B1_evaluation_complete": false,
+  "promotion_eligible": false
+}

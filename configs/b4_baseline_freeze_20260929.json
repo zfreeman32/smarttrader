@@ -1,0 +1,157 @@
+{
+  "freeze_id": "b4_baseline_freeze_v1_20260929",
+  "freeze_version": 1,
+  "declared_at": "2026-09-29",
+  "status": "frozen_for_prospective_research",
+  "comparison_protocol": "configs/b3_b4_candidate_review_v1_20260929.json",
+  "comparison_protocol_sha256": "1d93bc2150b78c387fce53c6321063c9a3d74f66a6cfba176843fa1ff658479f",
+  "purpose": "Freeze each B3-approved named baseline before C1 collection. This record is a research binding, not a promotion, installation, or paper-trial authorization.",
+  "approved_baselines": [
+    {
+      "candidate_id": 7,
+      "target": "long_frvp_continuation_setup5",
+      "model_id": "frvp_long_continuation_setup5_xgb_v1",
+      "backend": "xgboost",
+      "model_artifacts": {
+        "root": "models/b2_candidate_history_20260928_v1/07_long_frvp_continuation_setup5/long_frvp_continuation_setup5",
+        "model.json": "1512e2dc12e686f260d60304769705f0359f16f4bf5d65556f17618459b87504",
+        "scaler.joblib": "05d360a11d7e3ee5617a32a598764accbadfcabafc35064d76a1605660d3ed84",
+        "model_config.json": "34351e82adfabe18886da80453c888580d43c8d82cb6f45bfb385cc682d8656b",
+        "training_summary.json": "394fb8d940bf3fb4354faa8730fc8b49ff897f737f0d21e6ade1964eed63df5d",
+        "test_predictions.csv": "352f90465fac2c1b61a73f2ab4465fa542d4f47e09367c25682b4e5c17a88f36"
+      },
+      "calibration": {
+        "method": "none",
+        "calibrator_artifact": null,
+        "calibration_source": "B2 continuation policy; raw score is the frozen score.",
+        "change_owner": "B2 only; any corrective calibration requires development/validation data and a new model/policy version."
+      },
+      "thresholds": {
+        "global": 0.62,
+        "regime": null,
+        "source": "B2 development out-of-fold threshold for this exact replacement artifact.",
+        "audit_override_allowed": false
+      },
+      "setup_definition": {
+        "contract_id": "es_frvp_setup5_long_eval_v2",
+        "setup_type": "setup5",
+        "setup_family": "continuation",
+        "side": "long",
+        "definition": "FRVP S5 LVN Burst: bullish displacement with the nearest LVN within 0.30 ATR; the detector fires only on a newly eligible condition and the selected candidate is retained by the frozen detector priority/confidence rule.",
+        "detector_identity": "frvp.setups.detector.detect_frvp_setups",
+        "detector_source_sha256": "cd9c8a55f5e092db82558259218c43b6d6733b2dc144f7393a300bd4f905f21",
+        "setup_gate_identity": "ote_live.models.setup_family.resolve_setup_family_gate",
+        "setup_gate_source_sha256": "13434ea7920cb0f92efc6dc60c09a7593967645c89f7acd27d1b745b594e360"
+      },
+      "policy": {
+        "policy_id": "b3_b4_candidate_review_v1_20260929:full_policy:candidate_7",
+        "policy_version": 1,
+        "policy_schema_version": "1.0.0",
+        "policy_sha256": "1d93bc2150b78c387fce53c6321063c9a3d74f66a6cfba176843fa1ff658479f",
+        "threshold_binding": "candidate_threshold_0.62",
+        "regime_thresholds": null,
+        "calibration": "none",
+        "gates": {
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "expected_move_contract": "es_abs_close_move_20x5m_v1",
+          "quantile_filter": null,
+          "explicit_session_restriction": false
+        },
+        "installation": "research binding only; do not install or rewrite the deployed policy."
+      }
+    },
+    {
+      "candidate_id": 17,
+      "target": "short_ict_continuation_premium_discount_continuation",
+      "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+      "backend": "xgboost",
+      "model_artifacts": {
+        "root": "models/b2_candidate_history_20260928_v1/17_short_ict_continuation_premium_discount_continuation/short_ict_continuation_premium_discount_continuation",
+        "model.json": "e54cf35b903a0ca4f2cd1886b74275491fb4163621594ff806df31b0bae487ce",
+        "scaler.joblib": "106442571cabdc8b2f079a3d964d1e348948522f0a324c74b4f8f647b45c6fe7",
+        "model_config.json": "d6485ec894f990cc57907ca0b73377051280446f36b1025c3c428fd3ee1d02c6",
+        "training_summary.json": "5dbff815587b4d8502bb622c9de8486393e8b9a5478f702ef169f62fbb9346fb",
+        "test_predictions.csv": "ed8c3376c2b8d2cd67d476edbd75c69dea702cac6e23a0e45bd79e86a165a351"
+      },
+      "calibration": {
+        "method": "none",
+        "calibrator_artifact": null,
+        "calibration_source": "B2 continuation policy; raw score is the frozen score.",
+        "change_owner": "B2 only; any corrective calibration requires development/validation data and a new model/policy version."
+      },
+      "thresholds": {
+        "global": 0.53,
+        "regime": null,
+        "source": "B2 development out-of-fold threshold for this exact replacement artifact.",
+        "audit_override_allowed": false
+      },
+      "setup_definition": {
+        "contract_id": "es_ict_premium_discount_continuation_eval_v1",
+        "setup_type": "premium_discount_continuation",
+        "setup_family": "continuation",
+        "side": "short",
+        "definition": "ICT premium/discount continuation: trend-aligned short pullback into the premium/discount structure with a supportive FVG or order block within 0.75 ATR, no disqualifying recent opposite structure flip within three bars, and the selected causal detector event.",
+        "detector_identity": "ict.setups.detector.detect_ict_setups",
+        "detector_source_sha256": "89b96bfacbe92224391c6781f058fd2890ae5f75f2e38fa6faf1f6287a2e5b3",
+        "setup_gate_identity": "ote_live.models.setup_family.resolve_setup_family_gate",
+        "setup_gate_source_sha256": "13434ea7920cb0f92efc6dc60c09a7593967645c89f7acd27d1b745b594e360"
+      },
+      "policy": {
+        "policy_id": "b3_b4_candidate_review_v1_20260929:full_policy:candidate_17",
+        "policy_version": 1,
+        "policy_schema_version": "1.0.0",
+        "policy_sha256": "1d93bc2150b78c387fce53c6321063c9a3d74f66a6cfba176843fa1ff658479f",
+        "threshold_binding": "candidate_threshold_0.53",
+        "regime_thresholds": null,
+        "calibration": "none",
+        "gates": {
+          "abstain_high_stress": true,
+          "abstain_off_hours": true,
+          "cooldown_bars": 4,
+          "minimum_expected_move_to_spread": 2.0,
+          "expected_move_contract": "es_abs_close_move_20x5m_v1",
+          "quantile_filter": null,
+          "explicit_session_restriction": false
+        },
+        "installation": "research binding only; do not install or rewrite the deployed policy."
+      }
+    }
+  ],
+  "collection_rules": {
+    "session_scope": "full_session_data_collection",
+    "primary_session_restriction": false,
+    "session_clock": "london_07_16_ny_08_17_asia_ny_v1",
+    "hourly_filter": "prohibited_in_primary_collection",
+    "audit_evidence_treatment": "September audit near-misses and tiny hourly samples remain descriptive diagnostics. They cannot alter thresholds, setup definitions, calibration, policy gates, or the primary collection window.",
+    "session_restriction_experiment": {
+      "variant_id": "session_restriction_experiment_v1",
+      "status": "separate_prospective_experiment_only",
+      "primary_collection_effect": "none",
+      "freeze_before_outcomes": true,
+      "must_retain_full_session_control": true,
+      "no_hour_selection_from_audit": true
+    }
+  },
+  "calibration_controls": {
+    "primary_calibration": "Use each baseline's frozen B2 method; both approved continuation baselines are uncalibrated (none).",
+    "corrective_calibration_owner": "B2",
+    "allowed_data": "development/validation or out-of-fold data only, with a new artifact, calibration hash, policy version, and replay evidence.",
+    "forbidden_data": "C1/new evaluation outcomes, September audit markouts, hourly buckets, near-misses, or any prospective result.",
+    "promotion_effect": "A calibration change creates a new candidate version and does not silently modify this freeze."
+  },
+  "non_approved_scope": {
+    "pooled_frvp_and_ict_models": "diagnostic_only",
+    "classic_breaker": "excluded",
+    "new_family_model_setup_gate": "separate experimental variant only; not part of either approved baseline or its historical deployed policy"
+  },
+  "change_control": {
+    "no_audit_threshold_tuning": true,
+    "no_profitable_hours_filter_installation": true,
+    "no_deployed_policy_change": true,
+    "new_version_required_for_any_change": true,
+    "required_replay": "A changed model, calibrator, threshold, setup matcher, detector, or policy requires a new B2/B4 version and must not be compared as the frozen baseline."
+  }
+}

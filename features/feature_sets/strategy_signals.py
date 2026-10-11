@@ -41,6 +41,10 @@ def build_strategy_signals(
     strategy_input = prepare_strategy_input(df, config=config)
     input_columns = set(strategy_input.columns)
     requested_strategy_ids = list(dict.fromkeys(config.strategy_ids))
+    if int(getattr(config, "feature_version", 1) or 1) >= 2:
+        from ..causal_contract import v2_strategy_ids
+
+        requested_strategy_ids = v2_strategy_ids(requested_strategy_ids)
     worker_count = min(max(1, config.transform_workers), len(requested_strategy_ids))
     report_progress(
         stage="strategy_batch",

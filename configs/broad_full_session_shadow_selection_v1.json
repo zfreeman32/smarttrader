@@ -1,0 +1,821 @@
+{
+  "selection_id": "broad_full_session_shadow_selection_v1",
+  "selection_version": 1,
+  "declared_at": "2026-10-01",
+  "status": "selection_with_reviewed_replacement_artifacts_pending_B3_through_B7",
+  "parent_selection": "configs/broad_full_session_shadow_selection_v0.json",
+  "parent_selection_sha256": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+  "purpose": "Extend the research-only broad full-session shadow roster from the 12 core models to 16 by adding the latency-approved extension IDs 5/23/14/18 after their B2 backfill reviews passed.",
+  "order": {
+    "core_order": [
+      2,
+      10,
+      12,
+      13,
+      15,
+      16,
+      22,
+      26,
+      3,
+      19,
+      21,
+      25
+    ],
+    "latency_approved_extension_order": [
+      5,
+      23,
+      18,
+      14
+    ],
+    "selected_order": [
+      2,
+      10,
+      12,
+      13,
+      15,
+      16,
+      22,
+      26,
+      3,
+      19,
+      21,
+      25,
+      5,
+      23,
+      18,
+      14
+    ]
+  },
+  "instrument_separation": {
+    "es_stream": {
+      "instrument": "ES",
+      "timeframe": "5m",
+      "strategies": [
+        "FRVP",
+        "ICT"
+      ],
+      "units": [
+        "ES ticks",
+        "USD"
+      ],
+      "ledger": "independent ES score, setup, outcome, and position ledgers"
+    },
+    "eurusd_stream": {
+      "instrument": "EURUSD",
+      "timeframe": "5m",
+      "strategies": [
+        "OTE"
+      ],
+      "units": [
+        "pips",
+        "USD"
+      ],
+      "ledger": "independent EURUSD score, setup, outcome, and position ledgers"
+    },
+    "cross_stream_rule": "Never run OTE models on ES bars, and never sum or rank ES ticks/USD and EURUSD pips as one P&L series."
+  },
+  "comparison_protocol_intent": {
+    "common_opportunity_universe": "Construct before threshold, policy, cost, capacity, or outcome inspection from every causally available prediction with an exact same-side contemporaneous setup match under the frozen matcher and source identity.",
+    "branches": {
+      "setup_only": "Every common opportunity; no probability filter or full-policy gate.",
+      "model_threshold": "The same common opportunities with the later replacement's development/OOF-frozen threshold applied; no C1 retuning.",
+      "full_policy": "The same common opportunities after the exact candidate-specific policy binding is frozen. If no exact binding exists, record full_policy as not_defined/insufficient_evidence and do not report zero P&L."
+    },
+    "retention": "Retain raw below-threshold scores, both/A-only/B-only/neither pair states, exact overlap identity, independent outcomes, rejected opportunities, capacity rejections, and unresolved/open exposure.",
+    "pooled_routing": "Use the detector-selected contemporaneous same-side setup as the primary executable contract; retain non-executable counterfactual model-by-setup markouts without attaching later setups or selecting the best setup after outcomes."
+  },
+  "collection_controls": {
+    "ledgers": "One independent position ledger per model/variant plus a separately named one-position-per-instrument policy ledger; never mix them in ranking.",
+    "cost_bindings": {
+      "ES": "es_session_cost_v1",
+      "EURUSD": "eurusd_session_cost_v1"
+    },
+    "promotion": "No selected entry is promotion-cleared, installed, paper-authorized, or order-authorized by v0."
+  },
+  "candidates": [
+    {
+      "order_group": "minimum_core",
+      "order": 1,
+      "queue_id": 2,
+      "target": "long_frvp_continuation",
+      "model_id": "frvp_long_continuation_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "FRVP continuation",
+      "setup_role": {
+        "scope": "pooled_family",
+        "setup_scope": [
+          "S2",
+          "S3",
+          "S5"
+        ],
+        "matching": "same-side contemporaneous continuation setup; no specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_continuation/training_summary.json",
+        "recipe_sha256": "867d58ec8af2fad4da694f2cbd7d61d26be953c9a96100b6f0e59e999436919c",
+        "data_parent_id": "frvp_july",
+        "original_prepared_view": "artifacts/b2_frvp_july_prepared_20260921_v1/prepared/long_frvp_continuation",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v1/b2_frvp_july_prepared_20260921_v1/prepared/long_frvp_continuation",
+        "validation_parent": "v1",
+        "selection_fit_rows": 900
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Strongest FRVP continuation control; repaired pooled/family model.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_02_20260928.json",
+        "review_sha256": "ab4615a240b297793c82ed0036ea0dbf8f4146998983ec9095520c75197a35dc",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_20260928_v1/02_long_frvp_continuation/long_frvp_continuation",
+        "prepared_manifest": "artifacts/b2_candidate_history_20260928_v1/2/manifest.json",
+        "prepared_manifest_sha256": "03351d1584d5156264bef637763eee8fe619927c9b7c47320c8c7f51462b5ac5",
+        "reviewed_artifact_set_sha256": "fd447592e305a13ace8e3c5cb4148d76e2374b8dfcdf9540047f8ca8e0ca2976"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 2,
+      "queue_id": 10,
+      "target": "long_frvp_reversal",
+      "model_id": "frvp_long_reversal_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "FRVP reversal",
+      "setup_role": {
+        "scope": "pooled_family",
+        "setup_scope": [
+          "S1",
+          "S4",
+          "S6"
+        ],
+        "matching": "same-side contemporaneous reversal setup; no specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/frvp_long_reversal_xgb_recency_trial1_20260703/long_frvp_reversal/training_summary.json",
+        "recipe_sha256": "db671f9c050df316d89dc22efc2b75129ad01a3ba0462ea8868172ad9ff6e218",
+        "data_parent_id": "frvp_recency",
+        "original_prepared_view": "artifacts/b2_frvp_recency_prepared_20260921_v1/prepared/long_frvp_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_frvp_recency_prepared_20260921_v1/prepared/long_frvp_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 900,
+        "preserved_constraints": "730-day recency half-life, 0.20 floor, train/validation weighting, unchanged test weights"
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Strong selective-reversal economics and zero exact overlap with the old continuation control.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_10_20260929.json",
+        "review_sha256": "a76b15add3292f202e112c01b160903cd484de3e74320a08e355a25220856bff",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/10_long_frvp_reversal/long_frvp_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/10/manifest.json",
+        "prepared_manifest_sha256": "6c3cd2608aac2010c38f5ad5a5955e8f337c71d7ff8ea50dc32b5af0cbee37d4",
+        "reviewed_artifact_set_sha256": "189a7bd7a9ec1fab7c215fcf428ecc3f16e40c5046559f4f4f58c44dcd70e1ac"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 3,
+      "queue_id": 12,
+      "target": "long_ict_meta",
+      "model_id": "ict_long_meta_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "ICT meta",
+      "setup_role": {
+        "scope": "pooled_meta",
+        "setup_scope": [
+          "reversal",
+          "continuation"
+        ],
+        "matching": "same-side contemporaneous setup retained; no exact specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_meta/training_summary.json",
+        "recipe_sha256": "42ef64a879ac2a6a29249fb968d6c373caabd544551219643486ffd548f98e20",
+        "data_parent_id": "ict",
+        "original_prepared_view": "artifacts/b2_ict_prepared_20260921_v1/prepared/long_ict_meta",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_prepared_20260921_v1/prepared/long_ict_meta",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Prior ICT long paper-signal leader; strongest long pooled control.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_12_20260929.json",
+        "review_sha256": "1b5d6092af69402b88aa77d53a7c5959cebc9b07c4f6d8177dc73122d57c5619",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/12_long_ict_meta/long_ict_meta",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/12/manifest.json",
+        "prepared_manifest_sha256": "280aae547f095c30b2faa0d80ed88a277678b558e1574da615ea247d32c03395",
+        "reviewed_artifact_set_sha256": "3e412022d5b2510fb2bda5234b259c29ce79e89715c0d5eec9399fe383aab24f"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 4,
+      "queue_id": 13,
+      "target": "long_ict_reversal",
+      "model_id": "ict_long_reversal_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "ICT reversal",
+      "setup_role": {
+        "scope": "pooled_family",
+        "setup_scope": [
+          "sweep_reclaim",
+          "sweep_displacement_fvg",
+          "ob_retest_after_mss",
+          "ifvg_reversal",
+          "session_open_manipulation_pre_ib",
+          "session_open_manipulation_post_ib"
+        ],
+        "matching": "same-side contemporaneous reversal setup; no specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_reversal/training_summary.json",
+        "recipe_sha256": "d1a0d6fb2fd638fa46247d1565edefdae65051190c5676e9cd64a10829636906",
+        "data_parent_id": "ict",
+        "original_prepared_view": "artifacts/b2_ict_prepared_20260921_v1/prepared/long_ict_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_prepared_20260921_v1/prepared/long_ict_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Strong challenger with known overlap to long meta, valuable for correlation/additivity analysis.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_13_20260929.json",
+        "review_sha256": "feedb3f4d56270d042dfabc1d224e4b7e55dd61e73ebdfdd2c54b4eaf4ccf728",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/13_long_ict_reversal/long_ict_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/13/manifest.json",
+        "prepared_manifest_sha256": "89d9edbd6b9f64062663bfa2b77e8645d0fe14a69bc418a8c85a9db127d371a7",
+        "reviewed_artifact_set_sha256": "9ade681182c7c14ab77e981e7c1e4acc8d5a6107793446e0a40a3e86a26cc870"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 5,
+      "queue_id": 15,
+      "target": "short_ict_meta",
+      "model_id": "ict_short_meta_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "short",
+      "family": "ICT meta",
+      "setup_role": {
+        "scope": "pooled_meta",
+        "setup_scope": [
+          "reversal",
+          "continuation"
+        ],
+        "matching": "same-side contemporaneous setup retained; no exact specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_meta/training_summary.json",
+        "recipe_sha256": "132a5d3c208e2d5120d7bca572ce06b51aea9865858ec58129c164b49d501acf",
+        "data_parent_id": "ict",
+        "original_prepared_view": "artifacts/b2_ict_prepared_20260921_v1/prepared/short_ict_meta",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_prepared_20260921_v1/prepared/short_ict_meta",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Positive pooled short control and known overlap case.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_15_20260929.json",
+        "review_sha256": "e7954b61e8b0706fdb5c34bc0a6130d70b316f47c66c43b93bb4226e3924998b",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/15_short_ict_meta/short_ict_meta",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/15/manifest.json",
+        "prepared_manifest_sha256": "43054ff36fd8959cee681115b5e73f4e670ae3d175608e6f9a10b9a2b719ba28",
+        "reviewed_artifact_set_sha256": "9f98a6eabce071655843fdfe5e33188f8e79e45f980465497a94f602a6e744cd"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 6,
+      "queue_id": 16,
+      "target": "short_ict_reversal",
+      "model_id": "ict_short_reversal_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "short",
+      "family": "ICT reversal",
+      "setup_role": {
+        "scope": "pooled_family",
+        "setup_scope": [
+          "sweep_reclaim",
+          "sweep_displacement_fvg",
+          "ob_retest_after_mss",
+          "ifvg_reversal",
+          "session_open_manipulation_pre_ib",
+          "session_open_manipulation_post_ib"
+        ],
+        "matching": "same-side contemporaneous reversal setup; no specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_reversal/training_summary.json",
+        "recipe_sha256": "23daa22f3a16056edf90014deb01a5ae0edbfa6a14eb41d289899df3afec1518",
+        "data_parent_id": "ict",
+        "original_prepared_view": "artifacts/b2_ict_prepared_20260921_v1/prepared/short_ict_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_prepared_20260921_v1/prepared/short_ict_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Accepted historical short family control; stage independently from short meta so overlap can be measured.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_16_20260929.json",
+        "review_sha256": "d173045a0ee988ab5dd45a86a9c60316180b1f2417da8496f09fc857266991e0",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/16_short_ict_reversal/short_ict_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/16/manifest.json",
+        "prepared_manifest_sha256": "44117cb69bb63a2edff1dd940acfa03d37b7dcc02caad9303fbafc08392dbefd",
+        "reviewed_artifact_set_sha256": "51216268c07552d3ccb632d87cda441778a1bd91c9dd4165d8b1e84a29d29cb4"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 7,
+      "queue_id": 22,
+      "target": "long_reversal",
+      "model_id": "long_reversal_tcn_v2_20260525_narrow48",
+      "backend": "tcn",
+      "instrument": "EURUSD",
+      "side": "long",
+      "family": "OTE reversal",
+      "setup_role": {
+        "scope": "pooled_ote_family",
+        "setup_scope": [
+          "causal_contemporaneous_ote_setup"
+        ],
+        "matching": "EURUSD-only causal OTE setup known at decision time; no later or best-setup substitution"
+      },
+      "b2": {
+        "recipe_parent": "models/live/long_reversal_tcn/training_summary.json",
+        "recipe_sha256": "dc4387c9f43ce1a8e9ba957b4fc1d159b0bc5d1b72e68f80a798d3f8449d601d",
+        "data_parent_id": "ote",
+        "original_prepared_view": "artifacts/b2_ote_prepared_20260921_v1/prepared/long_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ote_prepared_20260921_v1/prepared/long_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 225000
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Best long OTE reversal representative; preserves a separate EURUSD stream and reversal control.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_22_20260930.json",
+        "review_sha256": "6bcb0eee16101815db8f9d85e9134108a70e4a279a9c7f5c3a43d33ce406f1be",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_ote_20260930_v3/22_long_reversal/long_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_ote_20260930_v3/22/manifest.json",
+        "prepared_manifest_sha256": "0b0f2103a06c87c15b5a7e00fdd630f3986c25ca530adcb0f77910a06bf95d3e",
+        "reviewed_artifact_set_sha256": "89572192c393b4d73a5db5700c7605660858a81a2051b5e088d9dee87b5da888"
+      }
+    },
+    {
+      "order_group": "minimum_core",
+      "order": 8,
+      "queue_id": 26,
+      "target": "short_reversal",
+      "model_id": "short_reversal_xgb_v2_20260525",
+      "backend": "xgboost",
+      "instrument": "EURUSD",
+      "side": "short",
+      "family": "OTE reversal",
+      "setup_role": {
+        "scope": "pooled_ote_family",
+        "setup_scope": [
+          "causal_contemporaneous_ote_setup"
+        ],
+        "matching": "EURUSD-only causal OTE setup known at decision time; no later or best-setup substitution"
+      },
+      "b2": {
+        "recipe_parent": "models/live/short_reversal_xgb/training_summary.json",
+        "recipe_sha256": "86b04afd8014124c0de89e227ee6a5879a837b39df4ae1552c9e24270641e3e1",
+        "data_parent_id": "ote",
+        "original_prepared_view": "artifacts/b2_ote_prepared_20260921_v1/prepared/short_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ote_prepared_20260921_v1/prepared/short_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 225000
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Best short OTE reversal representative; preserves a separate EURUSD stream and reversal control.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_26_20261001.json",
+        "review_sha256": "d1736827726e79659670fba538986dbacdb8152d9e00bafc4bcd915c22634803",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_ote_20260930_v3/26_short_reversal/short_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_ote_20260930_v3/26/manifest.json",
+        "prepared_manifest_sha256": "5af651689f9d814a5f1dc6553ed9cf7489a9f47154a6f1bf6a80d8f982d2aec4",
+        "reviewed_artifact_set_sha256": "a012f3f24990aaf6e9597df6fce8508a8123f77b6f3add50b2453382424d6a55"
+      }
+    },
+    {
+      "order_group": "expanded_core_if_latency_permits",
+      "order": 9,
+      "queue_id": 3,
+      "target": "long_frvp_meta",
+      "model_id": "frvp_long_meta_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "FRVP meta",
+      "setup_role": {
+        "scope": "pooled_meta",
+        "setup_scope": [
+          "reversal",
+          "continuation"
+        ],
+        "matching": "same-side contemporaneous setup retained; no exact specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_meta/training_summary.json",
+        "recipe_sha256": "c944ab62ed6ece2b63583bd19031539bfecb9476b49634075025825b43494134",
+        "data_parent_id": "frvp_july",
+        "original_prepared_view": "artifacts/b2_frvp_july_prepared_20260921_v1/prepared/long_frvp_meta",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_frvp_july_prepared_20260921_v1/prepared/long_frvp_meta",
+        "validation_parent": "v2",
+        "selection_fit_rows": 900
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "High legacy net P&L pooled comparison; useful ensemble/correlation input despite drawdown.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_03_20260930.json",
+        "review_sha256": "35d54bc7a8bafb55e173a3c802617803a36dd391fc3562d58ef87025619ddb59",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/03_long_frvp_meta/long_frvp_meta",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/3/manifest.json",
+        "prepared_manifest_sha256": "82feacc9557678c3242fd1262e1ddd4245da8c0e441f16bb0a48dad7b4d55baa",
+        "reviewed_artifact_set_sha256": "e1aec2ed2200a24198224cabf5d3ba240628b2576e3d030b03df561dfc1053ec"
+      }
+    },
+    {
+      "order_group": "expanded_core_if_latency_permits",
+      "order": 10,
+      "queue_id": 19,
+      "target": "short_ict_reversal_sweep_reclaim",
+      "model_id": "ict_short_reversal_sweep_reclaim_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "short",
+      "family": "ICT reversal",
+      "setup_role": {
+        "scope": "specialist",
+        "setup_scope": [
+          "sweep_reclaim"
+        ],
+        "matching": "exact same-side contemporaneous sweep_reclaim setup"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_sweep_reclaim/training_summary.json",
+        "recipe_sha256": "5dfe4ec1d4996701bf1b33f672c7fa965d1b3ca132f19178a5a4883cc24097a4",
+        "data_parent_id": "ict_specialists",
+        "original_prepared_view": "artifacts/b2_ict_specialists_prepared_20260921_v1/prepared/short_ict_reversal_sweep_reclaim",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_specialists_prepared_20260921_v1/prepared/short_ict_reversal_sweep_reclaim",
+        "validation_parent": "v2",
+        "selection_fit_rows": 320
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Best setup-specific ICT discriminator and useful family-versus-pooled comparison; keep recent deterioration and session instability visible.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_19_20260930.json",
+        "review_sha256": "f2d465579f2b0c487dd2c751ae8a45f43ea6d748b205b8327f3a52d33d798df4",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_minimum_core_es_20260929_v1/19_short_ict_reversal_sweep_reclaim/short_ict_reversal_sweep_reclaim",
+        "prepared_manifest": "artifacts/b2_candidate_history_minimum_core_es_20260929_v1/19/manifest.json",
+        "prepared_manifest_sha256": "ac9e8f7fca0bdf4e7d67f5cbb15705007b8c01e7db67b4966c453af0f4d756b1",
+        "reviewed_artifact_set_sha256": "81eee1be0671115fc9334542453025d7d64d82c3c4fa063d88ffed2a9a375d2e"
+      }
+    },
+    {
+      "order_group": "expanded_core_if_latency_permits",
+      "order": 11,
+      "queue_id": 21,
+      "target": "long_ote",
+      "model_id": "long_ote_meta_tcn_champion",
+      "backend": "tcn",
+      "instrument": "EURUSD",
+      "side": "long",
+      "family": "OTE meta",
+      "setup_role": {
+        "scope": "pooled_meta",
+        "setup_scope": [
+          "causal_contemporaneous_ote_setup"
+        ],
+        "matching": "EURUSD-only causal OTE setup known at decision time; no later or best-setup substitution"
+      },
+      "b2": {
+        "recipe_parent": "models/live/long_meta_tcn/training_summary.json",
+        "recipe_sha256": "93479a9bfcedbbe28b4287d2f166d6a321f5b565fecd1a3b069633c6dcda4818",
+        "data_parent_id": "ote",
+        "original_prepared_view": "artifacts/b2_ote_prepared_20260921_v1/prepared/long_ote",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ote_prepared_20260921_v1/prepared/long_ote",
+        "validation_parent": "v2",
+        "selection_fit_rows": 180000
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Long pooled OTE comparison; admit only on a contemporaneous causal OTE setup under the new pooled research scope.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_21_20261001.json",
+        "review_sha256": "91a9c8432bfffa6eac24f4c86bb53d4ff584541a3788e4c01a9b7eac534005ce",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_expanded_core_ote_20261001_v1/21_long_ote/long_ote",
+        "prepared_manifest": "artifacts/b2_candidate_history_expanded_core_ote_20261001_v1/21/manifest.json",
+        "prepared_manifest_sha256": "8fa667de0a7555138c57e669e8969943450345418ecce7c0d5f0bbcda1162044",
+        "reviewed_artifact_set_sha256": "f212db11c90fc047d14d8780062909841f6e71ef8cdfa6972177f5ddefced812"
+      }
+    },
+    {
+      "order_group": "expanded_core_if_latency_permits",
+      "order": 12,
+      "queue_id": 25,
+      "target": "short_ote",
+      "model_id": "short_ote_meta_tcn_champion",
+      "backend": "tcn",
+      "instrument": "EURUSD",
+      "side": "short",
+      "family": "OTE meta",
+      "setup_role": {
+        "scope": "pooled_meta",
+        "setup_scope": [
+          "causal_contemporaneous_ote_setup"
+        ],
+        "matching": "EURUSD-only causal OTE setup known at decision time; no later or best-setup substitution"
+      },
+      "b2": {
+        "recipe_parent": "models/live/short_meta_tcn/training_summary.json",
+        "recipe_sha256": "2d99c4aa458dc199096c2894ad9b913af52e4528ea51192d774ebc593cbba288",
+        "data_parent_id": "ote",
+        "original_prepared_view": "artifacts/b2_ote_prepared_20260921_v1/prepared/short_ote",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ote_prepared_20260921_v1/prepared/short_ote",
+        "validation_parent": "v2",
+        "selection_fit_rows": 180000
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Short pooled OTE comparison; admit only on a contemporaneous causal OTE setup under the new pooled research scope.",
+      "selection_role": "core",
+      "review_evidence": {
+        "review": "docs/audits/b2_candidate_history_review_25_20261001.json",
+        "review_sha256": "d1d04bd9a8ef04ffc0ed343db7d8915500f704cf69472d66849b804bdbb4bc03",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_expanded_core_ote_20261001_v1/25_short_ote/short_ote",
+        "prepared_manifest": "artifacts/b2_candidate_history_expanded_core_ote_20261001_v1/25/manifest.json",
+        "prepared_manifest_sha256": "11b3b7fa9abcea96a6ae3514cbac510515a12bf62ccf8e89ed9d73a17a9e2cad",
+        "reviewed_artifact_set_sha256": "09d774f2d67366303fd4b97ce869953fe1118f7a37eda4a156d56eab150b4ebf"
+      }
+    },
+    {
+      "order_group": "reserve",
+      "reserve_tier": 1,
+      "queue_id": 5,
+      "target": "long_frvp_continuation_setup2",
+      "model_id": "frvp_long_continuation_setup2_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "long",
+      "family": "FRVP continuation",
+      "setup_role": {
+        "scope": "specialist",
+        "setup_scope": [
+          "S2"
+        ],
+        "matching": "exact same-side contemporaneous S2 setup"
+      },
+      "b2": {
+        "recipe_parent": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2/training_summary.json",
+        "recipe_sha256": "ebe50bf91734174f2016a0e6ed1d12fe5f47a66d51c88a0f7db66ce3f9281fc0",
+        "data_parent_id": "frvp_setups",
+        "original_prepared_view": "artifacts/b2_frvp_setups_prepared_20260921_v1/prepared/long_frvp_continuation_setup2",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_frvp_setups_prepared_20260921_v1/prepared/long_frvp_continuation_setup2",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "First reserve: attractive expectancy/PF and lower drawdown, but failed WFE and concentration; collect for setup-diversity comparison.",
+      "selection_role": "latency_approved_extension",
+      "review_evidence": {
+        "review": "docs/audits/b2_catchup_5_review_20261001.json",
+        "review_sha256": "160dfe5adff057b18089aa783acf0e1bb43c75390d4b2ecd91a79cc7517e16ab",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_catchup_es_20261001_v1/05_long_frvp_continuation_setup2/long_frvp_continuation_setup2",
+        "prepared_manifest": "artifacts/b2_candidate_history_catchup_es_20261001_v1/5/manifest.json",
+        "prepared_manifest_sha256": "fba907fc3fb5e018444719ae02020db4f5583185eb84918e5ac9b5252b8f2bf6",
+        "reviewed_artifact_set_sha256": "9c2d9597f46153092ba15482e28246b22c311f1084ba343dc3d397bca5566eb7"
+      }
+    },
+    {
+      "order_group": "reserve",
+      "reserve_tier": 2,
+      "queue_id": 23,
+      "target": "long_ote",
+      "model_id": "long_union_tcn_champion",
+      "backend": "tcn",
+      "instrument": "EURUSD",
+      "side": "long",
+      "family": "OTE union",
+      "setup_role": {
+        "scope": "pooled_union",
+        "setup_scope": [
+          "causal_contemporaneous_ote_setup"
+        ],
+        "matching": "EURUSD-only causal OTE setup known at decision time; retain as diagnostic comparison to reversal/meta"
+      },
+      "b2": {
+        "recipe_parent": "models/live/long_union_tcn/training_summary.json",
+        "recipe_sha256": "e596b8f92fc62be2253d4e0fa1366d17c2fa28f12c4f91b642c0bd8404028bcf",
+        "data_parent_id": "ote",
+        "original_prepared_view": "artifacts/b2_ote_prepared_20260921_v1/prepared/long_ote",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ote_prepared_20260921_v1/prepared/long_ote",
+        "validation_parent": "v2",
+        "selection_fit_rows": 180000
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Positive legacy OTE union comparison partner against reversal/meta; keep EURUSD-only and diagnostic because pooled/union outputs are not promotion candidates.",
+      "selection_role": "latency_approved_extension",
+      "review_evidence": {
+        "review": "docs/audits/b2_catchup_23_review_20261001.json",
+        "review_sha256": "5daac741b55c8ffc7e79e4a94c1ed3fcb966fdc8536e71586fb12ec610c7b16d",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_promoted_reserve_ote_20261001_v1/23_long_ote/long_ote",
+        "prepared_manifest": "artifacts/b2_candidate_history_promoted_reserve_ote_20261001_v1/23/manifest.json",
+        "prepared_manifest_sha256": "3a937c7197343a548a0cdd63cc4e34da2cf135e44f41cc262fc8ba434e5816f1",
+        "reviewed_artifact_set_sha256": "4a72b654d01676412c8390312ce0a84c2a2673bd7004e32fa14998f3a60fbf29"
+      }
+    },
+    {
+      "order_group": "diagnostic_companion",
+      "companion_order": 1,
+      "queue_id": 18,
+      "target": "short_ict_reversal_ifvg_reversal",
+      "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "short",
+      "family": "ICT reversal",
+      "setup_role": {
+        "scope": "specialist",
+        "setup_scope": [
+          "ifvg_reversal"
+        ],
+        "matching": "exact same-side contemporaneous ifvg_reversal setup"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal/training_summary.json",
+        "recipe_sha256": "2e6910e03d488fff34db8e05b35763e7617b1956ca10f907d20a04e64028333c",
+        "data_parent_id": "ict_specialists",
+        "original_prepared_view": "artifacts/b2_ict_specialists_prepared_20260921_v1/prepared/short_ict_reversal_ifvg_reversal",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_specialists_prepared_20260921_v1/prepared/short_ict_reversal_ifvg_reversal",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Paired diagnostic with sweep/reclaim and short reversal: classifier signal without realized edge can test whether apparent edge is additive or a shared subset.",
+      "selection_role": "latency_approved_extension",
+      "review_evidence": {
+        "review": "docs/audits/b2_catchup_18_review_20261001.json",
+        "review_sha256": "88443ad07c4ff2d034652e63fb10f8a9262d5f1392a327fa4e528d55a887649e",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_catchup_es_20261001_v1/18_short_ict_reversal_ifvg_reversal/short_ict_reversal_ifvg_reversal",
+        "prepared_manifest": "artifacts/b2_candidate_history_catchup_es_20261001_v1/18/manifest.json",
+        "prepared_manifest_sha256": "24cac7a6678e1cdbfcbf463546db2a75399d3261e1d8b931893eaa2897f1b78f",
+        "reviewed_artifact_set_sha256": "3e4fa72a4638a53cd44155366f1e44c8344b363311f7a77f3aa248076c9a2eaf"
+      }
+    },
+    {
+      "order_group": "diagnostic_companion",
+      "companion_order": 2,
+      "queue_id": 14,
+      "target": "short_ict_continuation",
+      "model_id": "ict_short_continuation_xgb_v1",
+      "backend": "xgboost",
+      "instrument": "ES",
+      "side": "short",
+      "family": "ICT continuation",
+      "setup_role": {
+        "scope": "pooled_family",
+        "setup_scope": [
+          "premium_discount_continuation",
+          "displacement_continuation_after_raid"
+        ],
+        "matching": "same-side contemporaneous continuation setup; no specialist setup gate"
+      },
+      "b2": {
+        "recipe_parent": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation/training_summary.json",
+        "recipe_sha256": "279cab521fab2a906441b747577fcd42f0896705b4ab90c437c7f0a7c76cad8b",
+        "data_parent_id": "ict",
+        "original_prepared_view": "artifacts/b2_ict_prepared_20260921_v1/prepared/short_ict_continuation",
+        "validation_prepared_view": "artifacts/b2_validation_prepared_20260922_v2/b2_ict_prepared_20260921_v1/prepared/short_ict_continuation",
+        "validation_parent": "v2",
+        "selection_fit_rows": 400
+      },
+      "intended_comparison_branches": [
+        "setup_only",
+        "model_threshold",
+        "full_policy"
+      ],
+      "full_policy_binding_at_v0": "not_defined_until_candidate_specific_B3_B4_binding",
+      "reason_for_inclusion": "Lowest-priority cheap companion for short meta/reversal. It shares exact events with short meta while its unique remainder was negative, making it useful to test conditional information rather than as an independent strategy.",
+      "selection_role": "latency_approved_extension",
+      "review_evidence": {
+        "review": "docs/audits/b2_catchup_14_review_20261001.json",
+        "review_sha256": "9f2559b6b2abe3c5d2360056701c8bf361cd79afc3756a508a2bc327fd96163b",
+        "status": "reviewed_pass",
+        "artifact_root": "models/b2_candidate_history_catchup_es_20261001_v1/14_short_ict_continuation/short_ict_continuation",
+        "prepared_manifest": "artifacts/b2_candidate_history_catchup_es_20261001_v1/14/manifest.json",
+        "prepared_manifest_sha256": "c80dd69b3524955e9b55559e1aafdf1e3e8b2366986db6f804a92e98c29194e8",
+        "reviewed_artifact_set_sha256": "8c43638b70885402fa23deaf1209f62ddb5d6f88e291c0a69f6f5ff622b5fd13"
+      }
+    }
+  ],
+  "authority": "Selection only. No collection, registry, paper, alert, broker, or promotion authority."
+}

@@ -97,6 +97,8 @@ class FRVPLabelingParams(ReversalParams):
 
     enabled: bool = True
     instrument: Optional[str] = None
+    # Historical reproduction must explicitly request the legacy convention.
+    completed_htf_publication: bool = True
 
     tb_profit_atr: float = 0.8
     tb_stop_atr: float = 1.0
@@ -339,18 +341,27 @@ def _detect_htf_swings(
     path_5m: pd.DataFrame,
     params: FRVPLabelingParams,
 ) -> tuple[pd.Series, pd.Series, pd.Series, list[SwingPoint], list[SwingPoint], pd.DataFrame, pd.DataFrame]:
-    path_30m = _resample_ohlcv(path_5m, "30min")
-    path_1hr = _resample_ohlcv(path_5m, "1h")
+    if params.completed_htf_publication:
+        from features.feature_sets.htf_context import _resample_ohlcv as completed_resample
+        minutes = infer_bar_minutes(path_5m.index)
+        path_30m = completed_resample(path_5m, "30min", bar_minutes=minutes)
+        path_1hr = completed_resample(path_5m, "1h", bar_minutes=minutes)
+        decision_index = path_5m.index + pd.Timedelta(minutes=minutes)
+    else:
+        path_30m = _resample_ohlcv(path_5m, "30min")
+        path_1hr = _resample_ohlcv(path_5m, "1h")
+        decision_index = path_5m.index
 
     atr_5m = compute_atr(path_5m, params.atr_period, params.atr_smoothing)
     atr_30m = compute_atr(path_30m, params.atr_period, params.atr_smoothing)
     atr_1hr = compute_atr(path_1hr, params.atr_period, params.atr_smoothing)
     if params.structural_atr_tf == "1hr":
-        structural_atr_5m = map_htf_atr_to_ltf(atr_1hr, path_5m.index)
+        structural_atr_5m = map_htf_atr_to_ltf(atr_1hr, decision_index)
         structural_atr_30m = map_htf_atr_to_ltf(atr_1hr, path_30m.index)
     else:
-        structural_atr_5m = map_htf_atr_to_ltf(atr_30m, path_5m.index)
+        structural_atr_5m = map_htf_atr_to_ltf(atr_30m, decision_index)
         structural_atr_30m = atr_30m
+    structural_atr_5m.index = path_5m.index
 
     htf_warmup_bars = max(int(params.warmup_bars), int(params.atr_period) * 2)
     sw30 = detect_swings_zigzag(
@@ -376,6 +387,27 @@ def _detect_htf_swings(
         "1hr",
     )
     return atr_5m, atr_30m, structural_atr_5m, sw30, sw1h, path_30m, path_1hr
+
+
+def annotate_confirmed_htf_spacing(events, swings_30m, swings_1h, *, base_bar_minutes):
+    """Only confirmed HTF swings may satisfy a setup's past-confluence gate."""
+    for swings, attribute in ((swings_30m, "bars_since_prev_30m_same"),
+                              (swings_1h, "bars_since_prev_1h_same")):
+        available = sorted((s for s in swings if s.confirm_time is not None), key=lambda s: s.confirm_time)
+        latest = {}
+        cursor = 0
+        for event in sorted(events, key=lambda e: e.swing_time):
+            decision = event.swing_time + pd.Timedelta(minutes=base_bar_minutes)
+            while cursor < len(available) and available[cursor].confirm_time <= decision:
+                swing = available[cursor]
+                previous = latest.get(swing.swing_type)
+                if previous is None or swing.swing_time > previous:
+                    latest[swing.swing_type] = swing.swing_time
+                cursor += 1
+            anchor = latest.get(event.swing_type)
+            value = int((decision - anchor) / pd.Timedelta(minutes=base_bar_minutes)) if anchor is not None else None
+            setattr(event, attribute, value)
+    return events
 
 
 def _build_event_candidates(
@@ -1186,6 +1218,8 @@ def build_frvp_labels(
         htf_match_1h,
         base_bar_minutes=base_bar_minutes,
     )
+    if params.completed_htf_publication:
+        events = annotate_confirmed_htf_spacing(events, sw30, sw1h, base_bar_minutes=base_bar_minutes)
     events = trend_scan_swings(path_5m, events, params)
     events = _evaluate_event_barriers(market.loc[:, ["open", "high", "low", "close"]], structural_atr_5m.reindex(market.index), events, params)
     events = _score_event_entries(market.loc[:, ["open", "high", "low", "close"]], structural_atr_5m.reindex(market.index), events)

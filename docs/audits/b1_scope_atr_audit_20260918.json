@@ -1,0 +1,27 @@
+{
+  "audit_id": "b1_scope_atr_audit_20260918",
+  "source_hashes": {
+    "configs/outcome_contracts/b1_v1.json": "b5683fd64c8afb04e541b9c68524232996c8e7a4ee11666156f420f2892db618",
+    "configs/outcome_contracts/b1_v1.lock.json": "b91c8a84125bd568da7a471816103e9b7e507b6c93fff243ac11e36b9c212e80",
+    "configs/outcome_contracts/b1_v2.json": "0a5c434e8693d919d80fcb0f78fdc838a51d86c3c09ace956705bac07c0e70a7",
+    "configs/outcome_contracts/b1_v2.lock.json": "74bf8182633f8d7e0ceaa03b6f4e130532d1157bb0f19017af296bbd613844b8",
+    "configs/outcome_contracts/baseline_scope_v1.json": "510e6bc809b395026e6125996d4e42545da375a475348a2561869a6d46facff3",
+    "configs/outcome_contracts/baseline_scope_v1.lock.json": "713fb386a035cb1aad8731a1f4c4836ce4de3aa3828e5b2017738ba6b822f3d7",
+    "data/labeling/frvp_labeling_engine.py": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8",
+    "data/labeling/reversal_labeling_engine.py": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f",
+    "ict/labeling/ict_labeling_engine.py": "b4f7627015160683b04fa2fd4e89b6dbcfa0105af44141b7d958c136d9bfaefd",
+    "frvp/setups/detector.py": "cd9c8a55f5e092db82558259218c43b6d6733b2dc144f7393a300bd4f905f21d",
+    "ict/setups/detector.py": "89b96bfacbe92224391c6781f058fd2890ae5f75f2e38fa6faaf1f6287a2e5b3",
+    "model_testing/outcome_atr.py": "5850bc1c2d875f56ede35e902edf3fd2ad346acdaecfce74255701bb69515e8d",
+    "model_testing/outcome_scope.py": "bcc3a3d6d8536fbff66fc6420510a6e5a92ab1bd1cadc1eebf900de18aecfdcc"
+  },
+  "historical_frvp_evidence_unchanged": true,
+  "prior_evidence_hash": "73643f443aaa2d508a49f2f97b1a975cdd87b117f0a9730122cc759064186fae",
+  "findings": [
+    "FRVP inherited structural_atr_tf=1hr, period=14, Wilder alpha=1/14, price units.",
+    "Historical FRVP resample hour-open publication leaks later constituents into earlier 5m values.",
+    "B1 producer publishes complete hourly ATR at source close and recorded availability; archived labeling source unchanged.",
+    "ICT risk remains signal_bar_atr14; no silent conversion to structural hourly ATR."
+  ],
+  "scope_hash": "bc232c2355237933becaa8a8262d8e6fe0be0be3042fb18b82358b5497ba98c9"
+}

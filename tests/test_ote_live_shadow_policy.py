@@ -81,6 +81,9 @@ def test_four_stages_and_all_rejections_are_persisted(manifest, tmp_path):
         engine = LiveDecisionEngine(audit_repository=audit)
         first = evaluate(engine, manifest)
         result = first.signal.shadow_evaluation
+        context = result["model_setup_audit_context"]
+        assert context["contract_version"] == "model_setup_context_v1"
+        assert context["regimes"]["session_regime"] == CONTEXT["session_regime"]
         assert result["threshold_crossed"] and result["setup_matched_decision"] and result["full_policy_passed"]
         assert result["policy_candidate_eligible"] and not result["qualified_shadow_entry"]
         assert result["executable_entry_at"] is None and first.signal.decision == "shadow"

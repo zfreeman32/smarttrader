@@ -1,0 +1,137 @@
+{
+ "status": "catchup_supplementary_review_passed",
+ "model_id": 14,
+ "recorded_on": "2026-10-01",
+ "runner_review": "docs/audits/b2_catchup_14_review_20261001.json",
+ "runner_review_sha256": "9f2559b6b2abe3c5d2360056701c8bf361cd79afc3756a508a2bc327fd96163b",
+ "runner_review_status": "candidate_history_artifact_review_passed",
+ "checks": {
+  "trials_total_equals_budget": true,
+  "no_failed_trials": true,
+  "best_trial_is_max_complete": true,
+  "runner_review_passed": true,
+  "decisions_equal": true,
+  "legacy_unchanged": true,
+  "selected_features_96": true,
+  "calibration_none": true,
+  "holdout_gap_ok": true
+ },
+ "trial_counts": {
+  "budget": 10,
+  "total": 10,
+  "complete": 7,
+  "pruned": 3,
+  "failed": 0
+ },
+ "study_best_trial": 5,
+ "study_best_value": 0.5937074300595773,
+ "selected_features": 96,
+ "window_size": 24,
+ "context_rows": 23,
+ "resolved_purge_bars": 47,
+ "cv_folds": 6,
+ "final_holdout": {
+  "fit_end": 847,
+  "val_start": 894,
+  "val_end": 1077,
+  "context_rows": 23,
+  "purge_rows": 47,
+  "required_source_gap": 47,
+  "source_gap": 25233,
+  "scaler_fit_rows": 847,
+  "checkpoint_selection_rows": 183
+ },
+ "calibration": {
+  "requested_method": "platt",
+  "resolved_method": "none",
+  "disabled_for_continuation_target": true
+ },
+ "gaps": {
+  "raw_bar_gap": 47,
+  "retained_row_gap": 3
+ },
+ "environment_omp_num_threads": null,
+ "history_driven_threshold_disagreements": 0,
+ "history_driven_threshold_disagreements_note": "Production-runner replay over the consecutive source tape reproduced every saved test decision (runner review threshold_decisions_equal)",
+ "test_rows": 191,
+ "test_signals": 103,
+ "advisory_only": {
+  "note": "Historical quality metrics; not a gate and not used for any selection",
+  "oof_summary": {
+   "dev_rows": 1077,
+   "oof_rows": 608,
+   "missing_oof_rows": 469,
+   "covered_folds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "raw_average_precision": 0.4416236057864865,
+   "calibrated_average_precision": 0.4416236057864865
+  },
+  "threshold_metrics": {
+   "event_precision": 0.945054945054945,
+   "event_recall": 0.6515151515151515,
+   "event_f1": 0.7713004484304932,
+   "event_fbeta_0_5": 0.8669354838709679,
+   "predicted_events": 91.0,
+   "true_events": 132.0,
+   "matched_events": 86.0,
+   "predicted_to_true_event_ratio": 0.6893939393939394,
+   "event_count_gap_ratio": 0.3106060606060606,
+   "turnover_excess_ratio": 0.0,
+   "threshold_score": 0.9020892414037576
+  },
+  "test_metrics": {
+   "average_precision": 0.4563566140013263,
+   "roc_auc": 0.4555259293871349,
+   "brier": 0.2590765953063965,
+   "threshold": 0.5299999999999999,
+   "event_precision": 0.90625,
+   "event_recall": 0.6444444444444445,
+   "event_f1": 0.7532467532467533,
+   "event_fbeta_0_5": 0.8381502890173411,
+   "predicted_events": 32.0,
+   "true_events": 45.0,
+   "matched_events": 29.0,
+   "predicted_to_true_event_ratio": 0.7111111111111111,
+   "event_count_gap_ratio": 0.28888888888888886
+  }
+ },
+ "legacy_bundles_unchanged_vs_progress_file": {
+  "5": {
+   "bundle": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+   "files": 12,
+   "tree_sha256": "67451c8573533221bd608726aa0ca45b740f776196f9b9eddd758280a83f1769",
+   "unchanged": true
+  },
+  "23": {
+   "bundle": "models/live/long_union_tcn",
+   "files": 14,
+   "tree_sha256": "6c39458797d3045b8561983704aed97581aab2e93cf79bb665ef887d6f0fc2e4",
+   "unchanged": true
+  },
+  "14": {
+   "bundle": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+   "files": 12,
+   "tree_sha256": "734de76ecec1965242ffc8ac3abb089d457bd4ff71d9b731221302a5dac7f55f",
+   "unchanged": true
+  },
+  "18": {
+   "bundle": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+   "files": 13,
+   "tree_sha256": "74282285772b431c4feead607c908dfda49129c4f86fffbad3dc8a2b85c9ac69",
+   "unchanged": true
+  }
+ },
+ "pinned_inputs_sha256": {
+  "configs/broad_full_session_shadow_selection_v0.json": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+  "configs/broad_full_session_shadow_route_bindings_v1.json": "d53af7931605e625842f350a6719465f161be7c8a356c5e166587e40e53b1868",
+  "docs/audits/b2_candidate_history_catchup_es_20261001.json": "6aa97117a7435963a66b5a31387f85080ad39dbe21a280822c1ae29150163c43",
+  "docs/audits/b2_queue_preflight_20260924.json": "61e35370f4e41683ab6cc662e6cb16d2ec2bb38d8207dc3a78a3d1218402c72d"
+ },
+ "collection_eligible": false
+}

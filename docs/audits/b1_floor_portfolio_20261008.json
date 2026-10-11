@@ -1,0 +1,547 @@
+{
+  "status": "research_only_nothing_frozen_or_activated",
+  "per_model_floor": 1.0,
+  "portfolio_floor": 6.0,
+  "rule": "most trades/week among thresholds with >= 1/week, net > 0, PF > 1, positive in >= half the buckets (dev only)",
+  "models": {
+    "roster_2": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 329.72519841269843,
+      "choice": null,
+      "positive_thresholds": 1,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 1915,
+        "trades_per_week": 5.8078666999635935,
+        "closed": 1815,
+        "net_total": -4833.75,
+        "net_per_trade": -2.6632231404958677,
+        "gross_per_trade": 0.16914600550964187,
+        "win_rate": 0.5201101928374655,
+        "profit_factor": 0.8728367114199016,
+        "positive_bucket_share": 0.14285714285714285,
+        "feasible": false
+      }
+    },
+    "roster_3": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 352.9558531746032,
+      "choice": null,
+      "positive_thresholds": 2,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 2579,
+        "trades_per_week": 7.306862818121898,
+        "closed": 2458,
+        "net_total": -8003.700000000002,
+        "net_per_trade": -3.256183889340928,
+        "gross_per_trade": -0.41985353946297804,
+        "win_rate": 0.5199349064279902,
+        "profit_factor": 0.8442056702385472,
+        "positive_bucket_share": 0.14285714285714285,
+        "feasible": false
+      }
+    },
+    "roster_5": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 132.10863095238096,
+      "choice": null,
+      "positive_thresholds": 8,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 175,
+        "trades_per_week": 1.3246674251213715,
+        "closed": 174,
+        "net_total": -143.60000000000005,
+        "net_per_trade": -0.8252873563218394,
+        "gross_per_trade": 1.896551724137931,
+        "win_rate": 0.5287356321839081,
+        "profit_factor": 0.9628969330542856,
+        "positive_bucket_share": 0.3333333333333333,
+        "feasible": false
+      }
+    },
+    "roster_10": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 177.13541666666666,
+      "choice": null,
+      "positive_thresholds": 3,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 544,
+        "trades_per_week": 3.071096736254043,
+        "closed": 542,
+        "net_total": -3767.3000000000006,
+        "net_per_trade": -6.950738007380075,
+        "gross_per_trade": -4.031365313653136,
+        "win_rate": 0.503690036900369,
+        "profit_factor": 0.7088156069207789,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "roster_21": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 166.92857142857142,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 4381,
+        "trades_per_week": 26.244758237056057,
+        "closed": 4332,
+        "net_total": -19453.095265819116,
+        "net_per_trade": -4.49055754058613,
+        "gross_per_trade": -0.39191949811152244,
+        "win_rate": 0.40166204986149584,
+        "profit_factor": 0.3705904474554486,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "roster_22": {
+      "stream": "EURUSD",
+      "bucket": "quarter",
+      "dev_weeks": 28.08234126984127,
+      "choice": null,
+      "positive_thresholds": 9,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 259,
+        "trades_per_week": 9.222877733422829,
+        "closed": 246,
+        "net_total": -1043.4825541338325,
+        "net_per_trade": -4.2417990005440345,
+        "gross_per_trade": -0.3072461550155802,
+        "win_rate": 0.6138211382113821,
+        "profit_factor": 0.6309554839224429,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "roster_23": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 174.23363095238096,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 4612,
+        "trades_per_week": 26.470205406328734,
+        "closed": 4558,
+        "net_total": -20279.095933165452,
+        "net_per_trade": -4.449121529873947,
+        "gross_per_trade": -0.3413549655913673,
+        "win_rate": 0.4030276437033787,
+        "profit_factor": 0.3739527657277034,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "roster_25": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 166.9484126984127,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 4504,
+        "trades_per_week": 26.978393667847207,
+        "closed": 4432,
+        "net_total": -19113.709617520755,
+        "net_per_trade": -4.312660112256488,
+        "gross_per_trade": -0.22211408337562136,
+        "win_rate": 0.4101985559566787,
+        "profit_factor": 0.37623468742513116,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "roster_26": {
+      "stream": "EURUSD",
+      "bucket": "quarter",
+      "dev_weeks": 28.078869047619047,
+      "choice": {
+        "threshold": 0.0011581161594949663,
+        "trades": 50,
+        "trades_per_week": 1.7806985001854894,
+        "closed": 48,
+        "net_total": 69.35868327813836,
+        "net_per_trade": 1.4449725682945491,
+        "gross_per_trade": 4.969972568294549,
+        "win_rate": 0.7291666666666666,
+        "profit_factor": 1.1888797893795762,
+        "positive_bucket_share": 0.6666666666666666,
+        "feasible": true
+      },
+      "positive_thresholds": 31,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 242,
+        "trades_per_week": 8.61858074089777,
+        "closed": 232,
+        "net_total": -1064.709395161861,
+        "net_per_trade": -4.589264634318367,
+        "gross_per_trade": -0.6978853239735388,
+        "win_rate": 0.6206896551724138,
+        "profit_factor": 0.6009073761310507,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      },
+      "inspected_at_choice": {
+        "trades": 66,
+        "trades_per_week": 2.339199381164185,
+        "closed": 61,
+        "net_total": -390.8054822775424,
+        "net_per_trade": -6.406647250451515,
+        "gross_per_trade": -3.0599259389761047,
+        "win_rate": 0.5737704918032787,
+        "profit_factor": 0.4432599233423215,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K0_binary": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.1031746031746,
+      "choice": null,
+      "positive_thresholds": 2,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 4797,
+        "trades_per_week": 19.813866579249304,
+        "closed": 4721,
+        "net_total": -15250.150000000005,
+        "net_per_trade": -3.230279601779285,
+        "gross_per_trade": -0.4073289557297183,
+        "win_rate": 0.5136623596695615,
+        "profit_factor": 0.8540297910301472,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K0_net": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.1031746031746,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 4797,
+        "trades_per_week": 19.813866579249304,
+        "closed": 4721,
+        "net_total": -15250.150000000005,
+        "net_per_trade": -3.230279601779285,
+        "gross_per_trade": -0.4073289557297183,
+        "win_rate": 0.5136623596695615,
+        "profit_factor": 0.8540297910301472,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K1_binary": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.10367063492063,
+      "choice": null,
+      "positive_thresholds": 1,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 5045,
+        "trades_per_week": 20.838180547900862,
+        "closed": 4969,
+        "net_total": -15572.350000000004,
+        "net_per_trade": -3.133900181122963,
+        "gross_per_trade": -0.3163614409337895,
+        "win_rate": 0.5164016904809821,
+        "profit_factor": 0.8583320180001265,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K1_net": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.10367063492063,
+      "choice": null,
+      "positive_thresholds": 2,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 5045,
+        "trades_per_week": 20.838180547900862,
+        "closed": 4969,
+        "net_total": -15572.350000000004,
+        "net_per_trade": -3.133900181122963,
+        "gross_per_trade": -0.3163614409337895,
+        "win_rate": 0.5164016904809821,
+        "profit_factor": 0.8583320180001265,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K3_binary": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.1046626984127,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 5412,
+        "trades_per_week": 22.35396848486835,
+        "closed": 5333,
+        "net_total": -14851.950000000003,
+        "net_per_trade": -2.784914682167636,
+        "gross_per_trade": 0.026814175885992875,
+        "win_rate": 0.5209075567222952,
+        "profit_factor": 0.8731889641923264,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_ES_K3_net": {
+      "stream": "ES",
+      "bucket": "year",
+      "dev_weeks": 242.1046626984127,
+      "choice": {
+        "threshold": 30.47874185562127,
+        "trades": 335,
+        "trades_per_week": 1.383699083967276,
+        "closed": 328,
+        "net_total": 50.2999999999995,
+        "net_per_trade": 0.15335365853658384,
+        "gross_per_trade": 3.0,
+        "win_rate": 0.5548780487804879,
+        "profit_factor": 1.0050386160334177,
+        "positive_bucket_share": 0.6,
+        "feasible": true
+      },
+      "positive_thresholds": 4,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 5412,
+        "trades_per_week": 22.35396848486835,
+        "closed": 5333,
+        "net_total": -14851.950000000003,
+        "net_per_trade": -2.784914682167636,
+        "gross_per_trade": 0.026814175885992875,
+        "win_rate": 0.5209075567222952,
+        "profit_factor": 0.8731889641923264,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      },
+      "inspected_at_choice": {
+        "trades": 173,
+        "trades_per_week": 1.9345584442238037,
+        "closed": 173,
+        "net_total": 761.5499999999993,
+        "net_per_trade": 4.402023121387279,
+        "gross_per_trade": 7.22543352601156,
+        "win_rate": 0.4913294797687861,
+        "profit_factor": 1.1147223644964002,
+        "positive_bucket_share": 0.3333333333333333,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K0_binary": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.0530753968254,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 8067,
+        "trades_per_week": 42.00401364743439,
+        "closed": 7952,
+        "net_total": -35350.41619579215,
+        "net_per_trade": -4.445474873716317,
+        "gross_per_trade": -0.35168714735816836,
+        "win_rate": 0.40518108651911466,
+        "profit_factor": 0.37307099112694436,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K0_net": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.0530753968254,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 8067,
+        "trades_per_week": 42.00401364743439,
+        "closed": 7952,
+        "net_total": -35350.41619579215,
+        "net_per_trade": -4.445474873716317,
+        "gross_per_trade": -0.35168714735816836,
+        "win_rate": 0.40518108651911466,
+        "profit_factor": 0.37307099112694436,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K1_binary": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.05357142857142,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 8547,
+        "trades_per_week": 44.50320781032078,
+        "closed": 8428,
+        "net_total": -37372.46212763521,
+        "net_per_trade": -4.434321562367728,
+        "gross_per_trade": -0.35640272041234095,
+        "win_rate": 0.4030612244897959,
+        "profit_factor": 0.3681520299975497,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K1_net": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.05357142857142,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 8547,
+        "trades_per_week": 44.50320781032078,
+        "closed": 8428,
+        "net_total": -37372.46212763521,
+        "net_per_trade": -4.434321562367728,
+        "gross_per_trade": -0.35640272041234095,
+        "win_rate": 0.4030612244897959,
+        "profit_factor": 0.3681520299975497,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K3_binary": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.0545634920635,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 9514,
+        "trades_per_week": 49.53800538248162,
+        "closed": 9396,
+        "net_total": -41244.418011906935,
+        "net_per_trade": -4.389571946775962,
+        "gross_per_trade": -0.33392060577979316,
+        "win_rate": 0.4001702852277565,
+        "profit_factor": 0.3639741233021654,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "research_EURUSD_K3_net": {
+      "stream": "EURUSD",
+      "bucket": "year",
+      "dev_weeks": 192.0545634920635,
+      "choice": null,
+      "positive_thresholds": 0,
+      "no_threshold": {
+        "threshold": null,
+        "trades": 9514,
+        "trades_per_week": 49.53800538248162,
+        "closed": 9396,
+        "net_total": -41244.418011906935,
+        "net_per_trade": -4.389571946775962,
+        "gross_per_trade": -0.33392060577979316,
+        "win_rate": 0.4001702852277565,
+        "profit_factor": 0.3639741233021654,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    }
+  },
+  "selected": {
+    "roster_26": {
+      "stream": "EURUSD",
+      "threshold": 0.0011581161594949663,
+      "dev_net_per_trade_rank": 0
+    },
+    "research_ES_K3_net": {
+      "stream": "ES",
+      "threshold": 30.47874185562127,
+      "dev_net_per_trade_rank": 1
+    }
+  },
+  "models_meeting_floor": 2,
+  "dev_sum_of_selected_rates": 3.1643975841527654,
+  "dev_portfolio_meets_6": false,
+  "inspected_portfolio": {
+    "ES": {
+      "models": [
+        "research_ES_K3_net"
+      ],
+      "weeks": 88.9811507936508,
+      "one_position_per_model": {
+        "trades": 173,
+        "trades_per_week": 1.9442319913482657,
+        "net_total": 761.5499999999993,
+        "net_per_trade": 4.402023121387279,
+        "gross_per_trade": 7.22543352601156
+      },
+      "one_position_per_instrument": {
+        "trades": 173,
+        "trades_per_week": 1.9442319913482657,
+        "closed": 173,
+        "net_total": 761.5499999999993,
+        "net_per_trade": 4.402023121387279,
+        "gross_per_trade": 7.22543352601156,
+        "win_rate": 0.4913294797687861,
+        "profit_factor": 1.1147223644964002,
+        "positive_bucket_share": 0.3333333333333333,
+        "feasible": false
+      }
+    },
+    "EURUSD": {
+      "models": [
+        "roster_26"
+      ],
+      "weeks": 27.7609126984127,
+      "one_position_per_model": {
+        "trades": 66,
+        "trades_per_week": 2.377443447807597,
+        "net_total": -390.8054822775424,
+        "net_per_trade": -6.406647250451515,
+        "gross_per_trade": -3.0599259389761047
+      },
+      "one_position_per_instrument": {
+        "trades": 66,
+        "trades_per_week": 2.377443447807597,
+        "closed": 61,
+        "net_total": -390.8054822775424,
+        "net_per_trade": -6.406647250451515,
+        "gross_per_trade": -3.0599259389761047,
+        "win_rate": 0.5737704918032787,
+        "profit_factor": 0.4432599233423215,
+        "positive_bucket_share": 0.0,
+        "feasible": false
+      }
+    },
+    "combined_trades_per_week_per_model_scope": 4.321675439155863,
+    "combined_trades_per_week_per_instrument_scope": 4.321675439155863,
+    "combined_net_per_model_scope": 370.74451772245686
+  },
+  "note": "research variants of one stream share candidates; identical trades are counted once in the portfolio"
+}

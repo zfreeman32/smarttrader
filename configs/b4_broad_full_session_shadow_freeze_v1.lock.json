@@ -1,0 +1,8 @@
+{
+  "lock_id": "b4_broad_full_session_shadow_freeze_v1_lock",
+  "selection": "configs/broad_full_session_shadow_v1.json",
+  "selection_file_sha256": "08729bea6852213d8afdea6c9928c727844bfde7c95a8eb7b73a6e37c5d61808",
+  "freeze": "configs/b4_broad_full_session_shadow_freeze_v1.json",
+  "freeze_file_sha256": "6c25d379e55077981fb2f827c5c3ffb231bdb13d6753f1a6441fd7a6c53966fe",
+  "replacement_count": 12
+}

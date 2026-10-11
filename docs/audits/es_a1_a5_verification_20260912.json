@@ -1,0 +1,42 @@
+{
+  "baseline_files_verified": 250,
+  "original_snapshot_unchanged": true,
+  "snapshot_sha256": "ddfb75c82a241d378d4fe46ab7ea39b068ec06f31815b8731cea3b88be8f5b74",
+  "cases": [
+    {
+      "timestamp": "2026-09-10T20:00:00Z",
+      "prefix_rows": 4126,
+      "all_reference_columns_prefix_equal": true,
+      "ict_rth_open": null,
+      "ict_prior_rth_high": 7620.0,
+      "ict_prior_rth_low": 7585.5,
+      "ict_prior_rth_close": 7598.75,
+      "ict_prior_week_high": 7766.5,
+      "ict_prior_week_low": 7621.5
+    },
+    {
+      "timestamp": "2026-09-11T12:00:00Z",
+      "prefix_rows": 4306,
+      "all_reference_columns_prefix_equal": true,
+      "ict_rth_open": null,
+      "ict_prior_rth_high": 7620.0,
+      "ict_prior_rth_low": 7585.5,
+      "ict_prior_rth_close": 7598.75,
+      "ict_prior_week_high": 7766.5,
+      "ict_prior_week_low": 7621.5
+    },
+    {
+      "timestamp": "2026-09-11T13:25:00Z",
+      "prefix_rows": 4323,
+      "all_reference_columns_prefix_equal": true,
+      "ict_rth_open": null,
+      "ict_prior_rth_high": 7620.0,
+      "ict_prior_rth_low": 7585.5,
+      "ict_prior_rth_close": 7598.75,
+      "ict_prior_week_high": 7766.5,
+      "ict_prior_week_low": 7621.5
+    }
+  ],
+  "qualified_collection_started": false,
+  "paper_trial_started": false
+}

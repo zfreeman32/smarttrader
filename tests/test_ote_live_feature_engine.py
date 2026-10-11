@@ -365,7 +365,7 @@ def test_runtime_feature_config_enables_ict_context_derived_transforms() -> None
     assert config.zscore_window == 60
 
 
-def test_live_feature_defaults_materialize_sparse_htf_confluence_helpers() -> None:
+def test_live_feature_defaults_leave_label_helpers_explicitly_missing() -> None:
     source = pd.DataFrame({"close": [6000.0, 6001.0]})
 
     materialized = _materialize_live_default_features(
@@ -377,8 +377,8 @@ def test_live_feature_defaults_materialize_sparse_htf_confluence_helpers() -> No
         ),
     )
 
-    assert materialized["htf_confluence_long_frvp_continuation"].tolist() == [0, 0]
-    assert materialized["htf_confluence_short_ict_reversal"].tolist() == [0, 0]
+    assert materialized["htf_confluence_long_frvp_continuation"].isna().all()
+    assert materialized["htf_confluence_short_ict_reversal"].isna().all()
 
 
 def test_infer_required_history_bars_expands_for_htf_context_features() -> None:

@@ -1,0 +1,38 @@
+{
+  "inventory_sha256": "483dd27adf4be403036fd6db0600cf4d43210e97e1f3c096adae756d96b97cfd",
+  "source_stat_checks": 5442,
+  "source_stat_changes": [],
+  "protected_files_rehashed": 1680,
+  "protected_hash_changes": [],
+  "tests": {
+    "distinct_passed": 63,
+    "combined_run_passed": 62,
+    "new_impact_tests_final_run_passed": 6,
+    "overlap": 5
+  },
+  "training_run": false,
+  "historical_artifacts_replaced": false,
+  "runtime_changes": false,
+  "baseline_releases": 0,
+  "audit_output_sha256": {
+    "docs/B2_minimum_repairs_20260919.md": "e2b9deacc69eb567a17b30d969f94eba22c35a8d1b4e7cf2600b9ba98211b6c4",
+    "docs/audits/b2_ote_publication_impact_20260918.json": "eff1ba692f3e35550af4f09a321079621f3bbae4c2bf502deb564a813ddafe3d",
+    "docs/audits/b2_model_minimum_repairs_20260918.csv": "692e3fb187d9f2337d4306be18f27c6ee4fe5868c688bca95961d80e4dfcc2cd",
+    "scripts/summarize_b2_minimum_repairs.py": "8b64c224f9a47baf415e797d62c361f885c7b294233e5b5b0587ca47698d6857",
+    "tests/test_b2_impact_measurement.py": "9b7a5a6691781d5af3d663b1026e008af5cd46fba99933368a5ecfae8a50f74b",
+    "docs/audits/b2_impact_20260918/audit_files.sha256.json": "205cd9faf7761acabe9614371e85ae98b8665188ac69e6ea9983657c6bdc203b",
+    "docs/audits/b2_impact_20260918/frvp_fixed_event_replay.csv": "95b953428eef2b5df46c90a9827e09be13dec74116914a2f4b36eb729e7d10f4",
+    "docs/audits/b2_impact_20260918/impact.json": "5dcbd087061667e44dd03a8867f3434326f41672d06e2f5e6267f51179b0fbd5",
+    "docs/audits/b2_impact_20260918/model_split_impact.csv": "c764c0f8faacd114bc65aa7cdc4da31d8bd65e476954d7ca0aca5f8fa4582beb",
+    "docs/audits/b2_impact_20260918/README.md": "837b520d2b0fc2b989311a6d6eef5ff44fd7a8ef3f73969a80b458c9b3359d88"
+  },
+  "output_checks": {
+    "113_unique_model_versions": true,
+    "17_ict_changed": true,
+    "34_frvp_changed_training_targets": true,
+    "37_ote_conditional_selected_htf_changes": true,
+    "9_missing_lineages": true,
+    "markdown_links_valid": true,
+    "original_impact_checksums_valid": true
+  }
+}

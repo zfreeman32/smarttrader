@@ -1,0 +1,1412 @@
+{
+  "schema_version": "b2-ote-publication-impact-v1",
+  "source": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+  "saved_features": "data/features/eurusd_5min_ote_full.csv",
+  "assumption": "Open-stamped 5m bars, prediction at bar close. Original vendor convention remains unverified.",
+  "limits": [
+    "HTF feature control changes bucket membership/publication and rejects partial buckets; it is not a pure timestamp shift.",
+    "Label-context comparison only shifts publication. Stateful continuation-derived features are not rebuilt here.",
+    "Model counts measure selected raw predictor rows before model scaling, lags and stochastic sampling; no new predictions or labels."
+  ],
+  "htf_features": {
+    "htf_1h_bars_since_swing_high_event": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      }
+    },
+    "htf_1h_bars_since_swing_low_event": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      }
+    },
+    "htf_1h_close_vs_ema_21_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      }
+    },
+    "htf_1h_dist_to_swing_high_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543114,
+        "denominator": 543191,
+        "percent": 99.98582450740163
+      }
+    },
+    "htf_1h_dist_to_swing_low_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543114,
+        "denominator": 543191,
+        "percent": 99.98582450740163
+      }
+    },
+    "htf_1h_ema_alignment": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 18812,
+        "denominator": 543191,
+        "percent": 3.463238529357077
+      }
+    },
+    "htf_1h_ema_spread_21_50_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543180,
+        "denominator": 543191,
+        "percent": 99.99797492962881
+      }
+    },
+    "htf_1h_ema_spread_8_21_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543190,
+        "denominator": 543191,
+        "percent": 99.99981590269353
+      }
+    },
+    "htf_30m_bars_since_swing_high_event": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      }
+    },
+    "htf_30m_bars_since_swing_low_event": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      }
+    },
+    "htf_30m_close_vs_ema_21_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543190,
+        "denominator": 543191,
+        "percent": 99.99981590269353
+      }
+    },
+    "htf_30m_dist_to_swing_high_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543069,
+        "denominator": 543191,
+        "percent": 99.97754012861037
+      }
+    },
+    "htf_30m_dist_to_swing_low_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543107,
+        "denominator": 543191,
+        "percent": 99.98453582625632
+      }
+    },
+    "htf_30m_ema_alignment": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 22805,
+        "denominator": 543191,
+        "percent": 4.198339074101007
+      }
+    },
+    "htf_30m_ema_spread_21_50_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543173,
+        "denominator": 543191,
+        "percent": 99.9966862484835
+      }
+    },
+    "htf_30m_ema_spread_8_21_atr": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 543180,
+        "denominator": 543191,
+        "percent": 99.99797492962881
+      }
+    },
+    "htf_alignment_score": {
+      "legacy_reproduced": {
+        "rows": 543191,
+        "denominator": 543191,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 38964,
+        "denominator": 543191,
+        "percent": 7.173167449387048
+      }
+    }
+  },
+  "continuation_trend_inputs": {
+    "continuation_trend_up_30m": {
+      "legacy_reproduced": {
+        "rows": 543441,
+        "denominator": 543441,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 8658,
+        "denominator": 543441,
+        "percent": 1.5931812285050264
+      }
+    },
+    "continuation_trend_down_30m": {
+      "legacy_reproduced": {
+        "rows": 543441,
+        "denominator": 543441,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 8476,
+        "denominator": 543441,
+        "percent": 1.559690932410326
+      }
+    },
+    "continuation_trend_up_1h": {
+      "legacy_reproduced": {
+        "rows": 543441,
+        "denominator": 543441,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 8871,
+        "denominator": 543441,
+        "percent": 1.63237591569278
+      }
+    },
+    "continuation_trend_down_1h": {
+      "legacy_reproduced": {
+        "rows": 543441,
+        "denominator": 543441,
+        "percent": 100.0
+      },
+      "changed_where_reproduced": {
+        "rows": 8984,
+        "denominator": 543441,
+        "percent": 1.6531693412900388
+      }
+    }
+  },
+  "models": [
+    {
+      "artifact_path": "models/challenger_models/reversal_models/long_reversal_tcn_v3_20260526_overlap_ny_dd_repair/long_reversal",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 352775,
+          "denominator": 352775,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_challenger",
+      "measured_selected_features": [
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343211,
+          "denominator": 343226,
+          "percent": 99.99562970171257
+        },
+        "val": {
+          "rows": 73548,
+          "denominator": 73549,
+          "percent": 99.99864036220751
+        },
+        "test": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_champion/long_breakout",
+      "measured_selected_features": [
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343226,
+          "denominator": 343226,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_repair_20260511_v1/long_breakout",
+      "measured_selected_features": [
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343226,
+          "denominator": 343226,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/short_breakout_tcn_champion",
+      "measured_selected_features": [
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343938,
+          "denominator": 343995,
+          "percent": 99.983429991715
+        },
+        "val": {
+          "rows": 73711,
+          "denominator": 73713,
+          "percent": 99.99728677438172
+        },
+        "test": {
+          "rows": 73701,
+          "denominator": 73714,
+          "percent": 99.98236427272974
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/meta_models/short_tcn_champion",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/long_reversal_tcn_challenger",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 352775,
+          "denominator": 352775,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/long_reversal_tcn_champion",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 352775,
+          "denominator": 352775,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_tcn_challenger/short_reversal",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 353278,
+          "denominator": 353278,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75702,
+          "denominator": 75702,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75703,
+          "denominator": 75703,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_tcn_champion",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_bars_since_swing_high_event",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 353278,
+          "denominator": 353278,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75702,
+          "denominator": 75702,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75703,
+          "denominator": 75703,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_xgb_v1",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 353278,
+          "denominator": 353278,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75702,
+          "denominator": 75702,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75703,
+          "denominator": 75703,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/legacy_models/short_breakout_v2",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 343995,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 73713,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 73714,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/long_breakout_tcn",
+      "measured_selected_features": [
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343226,
+          "denominator": 343226,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 73549,
+          "denominator": 73549,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/long_breakout_xgb",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 343226,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 73549,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 73549,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/long_meta_tcn",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/long_reversal_tcn",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 352775,
+          "denominator": 352775,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/long_union_tcn",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/short_breakout_tcn",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 343995,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 73713,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 73714,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/short_breakout_tcn_backup_20260530",
+      "measured_selected_features": [
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 343938,
+          "denominator": 343995,
+          "percent": 99.983429991715
+        },
+        "val": {
+          "rows": 73711,
+          "denominator": 73713,
+          "percent": 99.99728677438172
+        },
+        "test": {
+          "rows": 73701,
+          "denominator": 73714,
+          "percent": 99.98236427272974
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/short_meta_tcn",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/short_reversal_xgb",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 353278,
+          "denominator": 353278,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75702,
+          "denominator": 75702,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75703,
+          "denominator": 75703,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/live/short_union_tcn",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_lstm_v1/long_ote",
+      "measured_selected_features": [
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_lstm_v2/long_ote",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 310748,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 66589,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 66589,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v1/long_ote",
+      "measured_selected_features": [
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v1/short_ote",
+      "measured_selected_features": [
+        "htf_1h_bars_since_swing_high_event",
+        "htf_1h_bars_since_swing_low_event",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_bars_since_swing_high_event",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v2/long_ote",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v2/short_ote",
+      "measured_selected_features": [
+        "htf_1h_bars_since_swing_high_event",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_bars_since_swing_high_event",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v1/long_ote",
+      "measured_selected_features": [
+        "htf_1h_bars_since_swing_high_event",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v1/short_ote",
+      "measured_selected_features": [
+        "htf_1h_bars_since_swing_high_event",
+        "htf_1h_bars_since_swing_low_event",
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_bars_since_swing_high_event",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v2/long_ote",
+      "measured_selected_features": [
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310733,
+          "denominator": 310748,
+          "percent": 99.99517293755711
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v2/short_ote",
+      "measured_selected_features": [
+        "htf_30m_dist_to_swing_low_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311499,
+          "denominator": 311552,
+          "percent": 99.9829883935908
+        },
+        "val": {
+          "rows": 66760,
+          "denominator": 66761,
+          "percent": 99.99850211950091
+        },
+        "test": {
+          "rows": 66751,
+          "denominator": 66762,
+          "percent": 99.98352356130734
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_refresh_20260530/short_breakout",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 343995,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 73713,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 73714,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v1/long_continuation_pullback",
+      "measured_selected_features": [
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_bars_since_swing_low_event",
+        "htf_30m_ema_alignment",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 368926,
+          "denominator": 368926,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 79056,
+          "denominator": 79056,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 79056,
+          "denominator": 79056,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v1/short_continuation_pullback",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_alignment",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 368251,
+          "denominator": 368251,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 78911,
+          "denominator": 78911,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 78911,
+          "denominator": 78911,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v2/long_continuation_pullback",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_alignment",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 368926,
+          "denominator": 368926,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 79056,
+          "denominator": 79056,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 79056,
+          "denominator": 79056,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v2/short_continuation_pullback",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_ema_alignment",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 368251,
+          "denominator": 368251,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 78911,
+          "denominator": 78911,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 78911,
+          "denominator": 78911,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_continuation_entry",
+      "measured_selected_features": [
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_alignment_score"
+      ],
+      "splits": {
+        "train": {
+          "rows": 367020,
+          "denominator": 367020,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 78647,
+          "denominator": 78647,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 78648,
+          "denominator": 78648,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_ote",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 310748,
+          "denominator": 310748,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66589,
+          "denominator": 66589,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_reversal",
+      "measured_selected_features": [
+        "htf_1h_dist_to_swing_high_atr",
+        "htf_1h_dist_to_swing_low_atr",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_close_vs_ema_21_atr",
+        "htf_30m_dist_to_swing_high_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr",
+        "htf_30m_ema_spread_8_21_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 352775,
+          "denominator": 352775,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 75595,
+          "denominator": 75595,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_breakout",
+      "measured_selected_features": [],
+      "splits": {
+        "train": {
+          "rows": 0,
+          "denominator": 343995,
+          "percent": 0.0
+        },
+        "val": {
+          "rows": 0,
+          "denominator": 73713,
+          "percent": 0.0
+        },
+        "test": {
+          "rows": 0,
+          "denominator": 73714,
+          "percent": 0.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_continuation_entry",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_21_50_atr",
+        "htf_30m_dist_to_swing_low_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 366190,
+          "denominator": 366190,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 78469,
+          "denominator": 78469,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 78470,
+          "denominator": 78470,
+          "percent": 100.0
+        }
+      }
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_ote",
+      "measured_selected_features": [
+        "htf_1h_close_vs_ema_21_atr",
+        "htf_1h_ema_alignment",
+        "htf_1h_ema_spread_8_21_atr",
+        "htf_30m_ema_spread_21_50_atr"
+      ],
+      "splits": {
+        "train": {
+          "rows": 311552,
+          "denominator": 311552,
+          "percent": 100.0
+        },
+        "val": {
+          "rows": 66761,
+          "denominator": 66761,
+          "percent": 100.0
+        },
+        "test": {
+          "rows": 66762,
+          "denominator": 66762,
+          "percent": 100.0
+        }
+      }
+    }
+  ],
+  "source_code_sha256": {
+    "scripts/measure_b2_ote_publication.py": "07051f4e6766cc0d7aaffc82ebba04f7d247520b4e153e96f533afd05adf1f58",
+    "features/feature_sets/htf_context.py": "5f3d04ffbfed97e24348bfb8e2661f1a68fa70e46d3554f2957ebb117402ed8c",
+    "data/labeling/ote_continuation_pullback_labeling_engine.py": "d946dd34d9e9a578faf73cc207b35d0cfa1cc21cfc8538da83b8922d7af15a3e"
+  }
+}

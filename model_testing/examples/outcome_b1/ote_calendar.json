@@ -1,0 +1,7 @@
+{
+  "calendar_id": "synthetic_ote_calendar_v1",
+  "calendar_source": "explicit synthetic fixture; continuous test session",
+  "coverage_start": "2026-09-14T00:00:00+00:00",
+  "coverage_end": "2026-09-15T06:00:00+00:00",
+  "timeframe_minutes": 5
+}

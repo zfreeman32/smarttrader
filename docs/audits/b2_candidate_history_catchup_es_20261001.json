@@ -1,0 +1,88 @@
+{
+  "status": "candidate_history_audit_complete",
+  "models": [
+    {
+      "id": 5,
+      "target": "long_frvp_continuation_setup2",
+      "backend": "xgboost",
+      "status": "source_history_repair_required",
+      "disposition": "legacy_diagnostic_only",
+      "collection_eligible": false,
+      "selected_for_collection_review": true,
+      "selected_feature_order_verified": true,
+      "selected_features": 160,
+      "source_dataset": "artifacts\\b2_frvp_setups_prepared_20260921_v1\\dataset.parquet",
+      "source_dataset_sha256": "63d5ecf1789c170b46e17b231aa96cae76e3e9074e59cf25840a99e573aba9d1",
+      "source_rows": 666769,
+      "selection_fit_rows": 400,
+      "frozen_fill_reconstruction_matches_prepared": true,
+      "legacy_bundle_present": false,
+      "legacy_bundle_used_for_replacement": false,
+      "required_original_bar_gaps": {
+        "raw_bar_gap": 1071,
+        "retained_row_gap": 14
+      },
+      "limitation": "Pinned source tape and frozen fills only; replacement training and runtime replay are required"
+    },
+    {
+      "id": 14,
+      "target": "short_ict_continuation",
+      "backend": "xgboost",
+      "status": "source_history_repair_required",
+      "disposition": "legacy_diagnostic_only",
+      "collection_eligible": false,
+      "selected_for_collection_review": true,
+      "selected_feature_order_verified": true,
+      "selected_features": 96,
+      "source_dataset": "artifacts\\b2_ict_prepared_20260921_v1\\dataset.parquet",
+      "source_dataset_sha256": "6e9b8d83e22e799d86371adb02a64f71cfb40e5f84e63c009e7cefb53fa1d52c",
+      "source_rows": 666769,
+      "selection_fit_rows": 400,
+      "frozen_fill_reconstruction_matches_prepared": true,
+      "legacy_bundle_present": false,
+      "legacy_bundle_used_for_replacement": false,
+      "required_original_bar_gaps": {
+        "raw_bar_gap": 47,
+        "retained_row_gap": 3
+      },
+      "limitation": "Pinned source tape and frozen fills only; replacement training and runtime replay are required"
+    },
+    {
+      "id": 18,
+      "target": "short_ict_reversal_ifvg_reversal",
+      "backend": "xgboost",
+      "status": "source_history_repair_required",
+      "disposition": "legacy_diagnostic_only",
+      "collection_eligible": false,
+      "selected_for_collection_review": true,
+      "selected_feature_order_verified": true,
+      "selected_features": 96,
+      "source_dataset": "artifacts\\b2_ict_specialists_prepared_20260921_v1\\dataset.parquet",
+      "source_dataset_sha256": "559563e1e4fc6de2a8e7f92d24764b43e33b15c6434cd783a7af53952297e40e",
+      "source_rows": 666769,
+      "selection_fit_rows": 400,
+      "frozen_fill_reconstruction_matches_prepared": true,
+      "legacy_bundle_present": false,
+      "legacy_bundle_used_for_replacement": false,
+      "required_original_bar_gaps": {
+        "raw_bar_gap": 36,
+        "retained_row_gap": 4
+      },
+      "limitation": "Pinned source tape and frozen fills only; replacement training and runtime replay are required"
+    }
+  ],
+  "model_ids": [
+    5,
+    14,
+    18
+  ],
+  "source_history_only": true,
+  "validation_manifest_sha256": "e99d03f09d543efdf809e3c0a315e85bc1c0be6ae463223f821327cd2e2b1936",
+  "trading_model_training_run": false,
+  "collection_eligible": false,
+  "background_and_ote_prerequisite": false,
+  "deferred_long_reversal_recency": {
+    "half_life_days": 730,
+    "floor": 0.2
+  }
+}

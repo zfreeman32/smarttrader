@@ -1,0 +1,32 @@
+{
+  "frvp": {
+    "htf_future_context_bars": 960,
+    "maximum_label_horizon_bars": 960,
+    "recommended_embargo_bars": 1071,
+    "basis": "measured HTF confirmation plus match window; longest trend/outcome/entry horizon; one overlapping-event horizon; pre-label/exclusion window"
+  },
+  "ote": {
+    "families": {
+      "reversal": {
+        "htf_future_context_bars": 936,
+        "base_confirmation_bars": 108,
+        "horizon_bars": 936,
+        "embargo_bars": 1071
+      },
+      "continuation": {
+        "htf_future_context_bars": 672,
+        "base_confirmation_bars": 42,
+        "horizon_bars": 672,
+        "embargo_bars": 718
+      },
+      "breakout": {
+        "htf_future_context_bars": 672,
+        "base_confirmation_bars": 1,
+        "horizon_bars": 672,
+        "embargo_bars": 704
+      }
+    },
+    "recommended_embargo_bars": 1071,
+    "basis": "measured HTF confirmation plus match window; longest trend/outcome/entry horizon; one overlapping-event horizon; pre-label/exclusion window"
+  }
+}

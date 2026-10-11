@@ -12,14 +12,16 @@ from collections import deque
 from numbers import Number
 
 from model_testing.ote_abstain_policy import DEFAULT_SESSION_SPREAD_PIPS
+from model_testing.outcome_diagnostics import POOLED_ROUTING_CONTRACT
 from ote_live.models.setup_family import infer_setup_model_route
 from ote_live.models.frvp_research import frvp_research_priority
 from ote_live.models.ict_research import ict_research_priority
 from ote_live.policies.abstain import LiveAbstainState, evaluate_live_abstain
+from ote_live.policies.expected_move import expected_move_spread_check
 from ote_live.storage.collection import canonical_json
 
 SHADOW_POLICY_CONTRACT = "es-selected-setup-full-policy-v1"
-SETUP_MATCH_CONTRACT = "selected-same-bar-side-family-or-specialist-v1"
+SETUP_MATCH_CONTRACT = "selected-same-bar-side-family-or-specialist-v2"
 PREREQUISITE_REASONS = ["outcome_contract_B1_pending", "artifact_baseline_B2_unverified",
                         "comparison_contract_B3_pending", "research_ledger_A7_pending"]
 _POOLED = re.compile(r"^(frvp|ict)_(long|short)_(meta|reversal|continuation)_(xgb|tcn|lstm)_v\d+$")
@@ -32,13 +34,17 @@ def match_shadow_setups(prediction, snapshot, events) -> dict:
     family = specialist.family if specialist else pooled[3] if pooled else None
     direction = specialist.direction if specialist else pooled[2] if pooled else None
     candidates = []
+    route_candidates = []
+    markout_candidates = []
+    selected_route_candidates = []
+    expected_side = 1 if prediction.direction == "long" else -1
     for event in events:
         if event.strategy != strategy:
             continue
         reasons = []
         if not event.selected or event.payload.get("research") or event.event_kind == "invalidated":
             reasons.append("setup_not_selected")
-        if event.setup_side != (1 if prediction.direction == "long" else -1):
+        if event.setup_side != expected_side:
             reasons.append("setup_side_mismatch")
         if event.setup_family not in {"reversal", "continuation"} or (family != "meta" and event.setup_family != family):
             reasons.append("setup_family_mismatch")
@@ -51,19 +57,81 @@ def match_shadow_setups(prediction, snapshot, events) -> dict:
                 or not event.source_bar_version
                 or event.source_bar_version != snapshot.observation_metadata.get("source_bar", {}).get("bar_version")):
             reasons.append("setup_source_mismatch")
-        if prediction.prediction_recorded_at_utc is None or event.observed_at > prediction.prediction_recorded_at_utc:
+        contemporaneous = (prediction.prediction_recorded_at_utc is not None
+                           and event.observed_at <= prediction.prediction_recorded_at_utc)
+        if not contemporaneous:
             reasons.append("setup_not_known_at_prediction")
-        candidates.append({"event_id": event.event_id, "matched": not reasons, "reasons": reasons})
-    matched_ids = [item["event_id"] for item in candidates if item["matched"]]
+        route_eligible = not any(reason in reasons for reason in (
+            "setup_side_mismatch", "setup_family_mismatch", "setup_type_mismatch",
+            "setup_source_mismatch",
+        )) and event.event_kind != "invalidated" and not event.payload.get("research")
+        candidate = {
+            "event_id": event.event_id,
+            "matched": False,
+            "reasons": reasons,
+            "route_eligible": route_eligible,
+            "same_side": event.setup_side == expected_side,
+            "contemporaneous": contemporaneous,
+            "routing_role": "out_of_declared_route",
+        }
+        markout_eligible = (
+            event.setup_side == expected_side
+            and event.setup_family in {"reversal", "continuation"}
+            and "setup_source_mismatch" not in reasons
+            and event.event_kind != "invalidated"
+            and not event.payload.get("research")
+        )
+        candidate["markout_eligible"] = markout_eligible
+        candidates.append(candidate)
+        if markout_eligible:
+            markout_candidates.append(candidate)
+        if route_eligible:
+            route_candidates.append(candidate)
+            if event.selected and contemporaneous:
+                selected_route_candidates.append(candidate)
+
+    # The detector's selected contemporaneous candidate is the only primary
+    # route.  More than one selected candidate is an ambiguous detector
+    # result, never a reason to choose by confidence, recency, or outcome.
+    ambiguous = len(selected_route_candidates) > 1
+    matched_ids = []
+    primary_id = None
+    if not ambiguous and len(selected_route_candidates) == 1:
+        primary_id = selected_route_candidates[0]["event_id"]
+        selected_route_candidates[0]["matched"] = True
+        selected_route_candidates[0]["routing_role"] = "primary_executable"
+        matched_ids = [primary_id]
+    for candidate in markout_candidates:
+        if candidate["event_id"] == primary_id:
+            continue
+        candidate["routing_role"] = (
+            "not_known_at_decision" if not candidate["contemporaneous"]
+            else "counterfactual_same_side"
+        )
+        if ambiguous:
+            candidate["reasons"].append("setup_selection_ambiguous")
+
+    counterfactual_ids = [candidate["event_id"] for candidate in markout_candidates
+                          if candidate["routing_role"] == "counterfactual_same_side"]
+    later_ids = [candidate["event_id"] for candidate in markout_candidates
+                 if candidate["routing_role"] == "not_known_at_decision"]
     reasons = []
     if strategy is None or direction != prediction.direction:
         reasons.append("setup_model_route_unverified")
         matched_ids = []
+    elif ambiguous:
+        reasons.append("setup_selection_ambiguous")
     elif not matched_ids:
         reasons.append("setup_no_selected_match")
-    return {"contract_version": SETUP_MATCH_CONTRACT, "matched": bool(matched_ids),
+    return {"contract_version": SETUP_MATCH_CONTRACT, "routing_contract": POOLED_ROUTING_CONTRACT,
+            "matched": bool(matched_ids), "primary_event_id": primary_id,
             "matched_event_ids": matched_ids, "candidates": candidates, "reasons": reasons,
-            "historical_execution_requirement": "specialist_exact_setup" if specialist else "no_pooled_setup_gate",
+            "counterfactual_event_ids": counterfactual_ids,
+            "later_event_ids": later_ids,
+            "counterfactual_markout_contract": "same_opportunity_same_side_forward_markout_only",
+            "hindsight_selection_forbidden": True,
+            "historical_execution_requirement": "specialist_exact_setup" if specialist
+            else "pooled_selected_contemporaneous_same_side",
             "experimental_pooled_requirement": specialist is None}
 
 
@@ -131,6 +199,13 @@ def evaluate_shadow_policy(*, prediction, live_policy, policy_context, snapshot,
         ("cooldown", True, [], ["cooldown_bars"]),
     ]
     for name, enabled, columns, settings in specs:
+        if name == "expected_move_spread" and live_policy.expected_move_contract is not None:
+            check = expected_move_spread_check(live_policy, row)
+            if not abstain.enabled:
+                check.update(status="disabled", reasons=[])
+            checks[name] = check
+            rejection_reasons.extend(check["reasons"])
+            continue
         values = {key: _scalar(row.get(key)) for key in columns}
         check = {"status": "disabled", "reasons": [], "inputs": values}
         checks[name] = check
@@ -145,7 +220,7 @@ def evaluate_shadow_policy(*, prediction, live_policy, policy_context, snapshot,
         else:
             isolated = abstain.model_copy(update={**blank, **{key: getattr(abstain, key) for key in settings}})
             result = evaluate_live_abstain(
-                live_policy.model_copy(update={"abstain_policy": isolated}),
+                live_policy.model_copy(update={"abstain_policy": isolated, "expected_move_contract": None}),
                 probability=prediction.calibrated_probability,
                 source_row_idx=prediction.source_row_idx if name == "cooldown" else None,
                 policy_context=values, state=state if name in {"cooldown", "probability_quantile"} else None,
@@ -195,6 +270,17 @@ def evaluate_shadow_policy(*, prediction, live_policy, policy_context, snapshot,
     if not threshold_passed:
         reasons.append("probability_below_threshold")
     return {"contract_version": SHADOW_POLICY_CONTRACT, "policy_sha256": policy_identity(live_policy),
+            "model_setup_audit_context": {
+                "contract_version": "model_setup_context_v1",
+                "collection_version": prediction.collection_version,
+                "source_timestamp": prediction.timestamp.isoformat(),
+                "prediction_recorded_at": (prediction.prediction_recorded_at_utc.isoformat()
+                                           if prediction.prediction_recorded_at_utc else None),
+                "source_bar_version": metadata.get("source_bar", {}).get("bar_version"),
+                "regimes": {key: _scalar(row.get(key)) for key in (
+                    "trend_regime", "volatility_regime", "composite_regime", "session_regime", "stress_regime")},
+                "semantics": "all_persisted_predictions_including_rejected; missing_context_is_unknown",
+            },
             "raw_score": _scalar(prediction.raw_score), "calibrated_probability": _scalar(prediction.calibrated_probability),
             "threshold": prediction.threshold_applied, "threshold_source": prediction.threshold_source,
             "threshold_crossed": bool(threshold_passed), "setup_match": setup_match,

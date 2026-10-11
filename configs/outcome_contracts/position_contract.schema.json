@@ -1,0 +1,87 @@
+{
+  "additionalProperties": false,
+  "description": "A deliberately separate fixed-barrier simulator. No production policy defaults.",
+  "properties": {
+    "simulator_id": {
+      "title": "Simulator Id",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "management": {
+      "const": "fixed_barriers",
+      "default": "fixed_barriers",
+      "title": "Management",
+      "type": "string"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "policy_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "max_positions": {
+      "exclusiveMinimum": 0,
+      "title": "Max Positions",
+      "type": "integer"
+    },
+    "max_quantity": {
+      "exclusiveMinimum": 0,
+      "title": "Max Quantity",
+      "type": "number"
+    },
+    "concurrency_scope": {
+      "enum": [
+        "instrument",
+        "model"
+      ],
+      "title": "Concurrency Scope",
+      "type": "string"
+    },
+    "allow_opposite": {
+      "title": "Allow Opposite",
+      "type": "boolean"
+    },
+    "cooldown_minutes": {
+      "minimum": 0,
+      "title": "Cooldown Minutes",
+      "type": "integer"
+    },
+    "starting_equity": {
+      "exclusiveMinimum": 0,
+      "title": "Starting Equity",
+      "type": "number"
+    },
+    "accounting_unit": {
+      "enum": [
+        "ticks",
+        "pips",
+        "cash"
+      ],
+      "title": "Accounting Unit",
+      "type": "string"
+    }
+  },
+  "required": [
+    "simulator_id",
+    "version",
+    "policy_id",
+    "policy_hash",
+    "max_positions",
+    "max_quantity",
+    "concurrency_scope",
+    "allow_opposite",
+    "cooldown_minutes",
+    "starting_equity",
+    "accounting_unit"
+  ],
+  "title": "PositionContract",
+  "type": "object"
+}

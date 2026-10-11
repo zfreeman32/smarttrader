@@ -1,0 +1,20 @@
+{
+  "period": "2025-01-01 through saved end",
+  "five_minute_source": "data/currency_data/eurusd-5m.csv",
+  "one_minute_source": "data/currency_data/eurusd-1m.normalized.csv",
+  "hypotheses": {
+    "left": {
+      "full_5_constituent_bars": 90391,
+      "exact_ohlc_matches": 90391,
+      "exact_ohlcv_matches": 90391,
+      "match_percent": 100.0
+    },
+    "right": {
+      "full_5_constituent_bars": 90338,
+      "exact_ohlc_matches": 5,
+      "exact_ohlcv_matches": 0,
+      "match_percent": 0.0055347694215059
+    }
+  },
+  "limit": "Tests relative candle membership on a common source clock; does not attest provider identity or original timezone."
+}

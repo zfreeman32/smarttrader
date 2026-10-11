@@ -1,0 +1,38 @@
+{
+  "comparison_id": "b3_b4_candidate_review_v1_20260929",
+  "b1_catalog": "configs/outcome_contracts/b1_v3.json",
+  "b1_scope": "configs/outcome_contracts/baseline_scope_v1.json",
+  "purpose": "Candidate-specific historical outcome review; diagnostic evidence only and never a promotion decision.",
+  "common_opportunity_rule": "Use exact replacement-model held-out endpoints with a contemporaneous named setup match. The setup-only and frozen-threshold legs use identical event IDs and the same B1 tape.",
+  "comparisons": {
+    "setup_only": "Every common named-setup opportunity, no probability filter.",
+    "model_threshold": "The same opportunities with the frozen B2 OOF threshold for the exact replacement model.",
+    "full_policy": "The same opportunities with the exact replacement-version policy binding, only if that binding is frozen before outcomes; otherwise status is insufficient_evidence and no P&L is reported."
+  },
+  "execution": {
+    "entry": "B1 first scheduled open strictly after known_at; offline known_at is completed signal bar plus one second.",
+    "position": "One ES contract, one instrument position, no opposite position, zero cooldown, 100000 USD nominal accounting.",
+    "costs": "B1 es_session_cost_v1; report full costs and a declared double-cost stress when a full-policy binding exists.",
+    "missing_and_rolls": "B1 DATA_GAP/censoring; no holiday inference, no forward search, and coordinate changes are censored.",
+    "clean_sample": "Held-out endpoints are untouched by fitting, but technical replay inspection occurred before this economic review; no claim is made that this historical sample was untouched from all inspection. The clean boundary is the predeclared prospective C1 sample."
+  },
+  "candidates": {
+    "1": {"target": "short_frvp_continuation", "status": "excluded", "reason": "Pooled FRVP model; baseline_scope_v1 makes pooled families diagnostic-only, including setup matches."},
+    "2": {"target": "long_frvp_continuation", "status": "excluded", "reason": "Pooled FRVP model; baseline_scope_v1 makes pooled families diagnostic-only, including setup matches."},
+    "11": {"target": "long_ict_continuation", "status": "excluded", "reason": "Pooled ICT model; baseline_scope_v1 makes pooled families diagnostic-only, including setup matches."},
+    "7": {"target": "long_frvp_continuation_setup5", "status": "reviewed_not_promotion", "threshold": 0.62, "contract": "es_frvp_setup5_long_eval_v2"},
+    "17": {"target": "short_ict_continuation_premium_discount_continuation", "status": "reviewed_not_promotion", "threshold": 0.53, "contract": "es_ict_premium_discount_continuation_eval_v1"}
+  },
+  "prospective_c1": {
+    "required_before_start": false,
+    "sample_definition": "First healthy post-B7 collection timestamp under the new immutable collection identity; full eligible ES session coverage; all selected and rejected same-side named setup opportunities retained.",
+    "freeze_before_observation": ["candidate model and artifact hash", "OOF threshold/calibration", "B1 contract", "setup matcher", "full-policy binding or explicit no-full-policy status", "session coverage", "cost stress", "review target"],
+    "review_target": "Approximately 20 fully collected sessions and 50-100 resolved matches per branch as a practical review target, not a profitability guarantee.",
+    "future_outcomes_needed_to_start": false
+  },
+  "promotion": {
+    "eligible": false,
+    "disallowed_evidence": ["artifact replay", "AUC", "tolerance-based event precision", "training completion", "future C1 outcomes"],
+    "remaining_gates": ["actual live feature-producer parity", "B5 roster eligibility", "B6 staging", "A12/A13", "B7 healthy collection start", "existing economics/drawdown/concentration/promotion restrictions"]
+  }
+}

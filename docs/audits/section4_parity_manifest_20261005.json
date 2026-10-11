@@ -1,0 +1,163 @@
+{
+ "schema": "section4-parity-manifest-v1",
+ "date": "20261005",
+ "protocol": {
+  "version": 3,
+  "sha256": "7ece6bbfa9f5bdf96d4adfa7c55052a31f41fde4968eccd0a8704d29e57cc939",
+  "lock_sha256": "914647a99ad071aa9567ea7117c5b91acceb87076bc64a6b2ec8e0b13ed7e6ce",
+  "executed_under": {
+   "version": 2,
+   "sha256": "e25b5e48905d44de5d6c4369a5ac24b49bf711074722710b149494fccb34eff5",
+   "lock_sha256": "f9b65ced680b65e46ca8f84167c4abd5de15a9372d3d88f98369d2304acbff38"
+  },
+  "note": "run executed under v2 (tolerances identical); classified under v3, which adds only the float32_tree_split declared-behavior clause (Q-P1, user-approved 2026-10-05)"
+ },
+ "windows_sha256": "60a5dc5bea265525a748e706be52fe46acf6b4497b327ca1439a3d1e3a287e17",
+ "run_id": "s4parity_20261002_v1",
+ "reports": [
+  {
+   "queue_id": 2,
+   "model_id": "frvp_long_continuation_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_frvp_long_continuation_xgb_v1_fd447592e305_20261005.json",
+   "sha256": "a42c8d781f8fbf57d4915817a065190b5d8d36ba6a3b643148601c2ed943fce1",
+   "report_sha256": "44f0ac494e3f9d47abd2eceaf3fd26ba911877e669aa6707e58ad1bb9c36ec63"
+  },
+  {
+   "queue_id": 3,
+   "model_id": "frvp_long_meta_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_frvp_long_meta_xgb_v1_e1aec2ed2200_20261005.json",
+   "sha256": "205ad91959f64150505207404dd46db446eb9bcc8083f57f709ab8bccb99ac50",
+   "report_sha256": "4c418829cf40b29a7376762a0edd5778faebccccde82023af7fedf7d8af64e30"
+  },
+  {
+   "queue_id": 5,
+   "model_id": "frvp_long_continuation_setup2_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:app_producer_bug",
+   "path": "docs/audits/section4_parity_frvp_long_continuation_setup2_xgb_v1_9c2d9597f461_20261005.json",
+   "sha256": "f0e80dcaa411619bc28361d6dc0a80eab2414d05297048289f3050e3c0eaeed7",
+   "report_sha256": "45557b6013b3b7c15549033129e9805faa520ee39ae7847de7dc84d1f2653b87"
+  },
+  {
+   "queue_id": 10,
+   "model_id": "frvp_long_reversal_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_frvp_long_reversal_xgb_v1_189a7bd7a9ec_20261005.json",
+   "sha256": "b84dc3b38922e171c694a8d3cecef36dfb54eb9bc20f0d2ededeab19a970c01b",
+   "report_sha256": "a27c09939f7076c7093cf77c16edfe1553295f93d242d944705af2ee380bc53b"
+  },
+  {
+   "queue_id": 12,
+   "model_id": "ict_long_meta_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:app_producer_bug",
+   "path": "docs/audits/section4_parity_ict_long_meta_xgb_v1_3e412022d5b2_20261005.json",
+   "sha256": "d2164f1eef11b515537ad52c3c4981583ee0c70a0cf2ff8fca0f0f4ae56d2d4d",
+   "report_sha256": "6c89a9a148c66010f833a6580ff1ec08033493120fe027d94a64fdf1803a3819"
+  },
+  {
+   "queue_id": 13,
+   "model_id": "ict_long_reversal_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_ict_long_reversal_xgb_v1_9ade681182c7_20261005.json",
+   "sha256": "5a9c2e7dce8a36c4307ef4090d95ec3eea4f29be229b20dd8fb139b0463e9ece",
+   "report_sha256": "eb59b9525d0036013da1ac782e9dc68e9c4a8c685c2088e2671ceb3d497b1d87"
+  },
+  {
+   "queue_id": 14,
+   "model_id": "ict_short_continuation_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_ict_short_continuation_xgb_v1_8c43638b7088_20261005.json",
+   "sha256": "b9bcae66bc6aacb29ddfd0363b83ef57b45d638a321f6f7ef6a61a36f3b2cff7",
+   "report_sha256": "d78a5f38631c52c58aaf8ae7f4f232a5323ed6e479b348492b5235ea67011294"
+  },
+  {
+   "queue_id": 15,
+   "model_id": "ict_short_meta_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:app_producer_bug",
+   "path": "docs/audits/section4_parity_ict_short_meta_xgb_v1_9f98a6eabce0_20261005.json",
+   "sha256": "69ad36d0b4218ea0792a1d3d166bbe796384a9f946ad6fd88b6842763cf3ec39",
+   "report_sha256": "450617f2a649a3c311c29c4eb4e7716550c1e67bfbaeaaebd09349f954c9a460"
+  },
+  {
+   "queue_id": 16,
+   "model_id": "ict_short_reversal_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_ict_short_reversal_xgb_v1_51216268c075_20261005.json",
+   "sha256": "698d936e3976f67c45f9fc711695860a84dd5da0da5fd32ce5065d7b9864790f",
+   "report_sha256": "21a6c7ab0aef56b201f794f5f5ae97df23f718336ba5b0ee44d131a84f936966"
+  },
+  {
+   "queue_id": 18,
+   "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_ict_short_reversal_ifvg_reversal_xgb_v1_3e4fa72a4638_20261005.json",
+   "sha256": "51585b148b4e832e3ea61d7f46fce4b3d2ac41222a3d1ba06edaff0c76481499",
+   "report_sha256": "a77007760a419251ac1741f6ac4c7b8072cfbeb624d2b1388e976bdc2f10e3f1"
+  },
+  {
+   "queue_id": 19,
+   "model_id": "ict_short_reversal_sweep_reclaim_xgb_v1",
+   "stream": "ES",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_ict_short_reversal_sweep_reclaim_xgb_v1_81eee1be0671_20261005.json",
+   "sha256": "3d8564d9ab86613bcb629da8783ae89b5387f6c9c57f62c6ab6043da0c1e6ae4",
+   "report_sha256": "e6ea9890056daec79a90fb95fc35e1ddcaabb99b97fc97f5420d7856d7a1d7af"
+  },
+  {
+   "queue_id": 21,
+   "model_id": "long_ote_meta_tcn_champion",
+   "stream": "EURUSD",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_long_ote_meta_tcn_champion_f212db11c90f_20261005.json",
+   "sha256": "a1a5181fca7fb971aa90b7e0bd1923e5f1a62b0ccde71b961104bc469e32ed24",
+   "report_sha256": "fb71065635c34eb9ca1efdfba131ea0a3a405d596e1aac91eb03adc8b2294008"
+  },
+  {
+   "queue_id": 22,
+   "model_id": "long_reversal_tcn_v2_20260525_narrow48",
+   "stream": "EURUSD",
+   "verdict": "fail:app_producer_bug",
+   "path": "docs/audits/section4_parity_long_reversal_tcn_v2_20260525_narrow48_89572192c393_20261005.json",
+   "sha256": "54a1c341d3567573447b5f508db0352260fa51dbab06f282ee0917b30c386832",
+   "report_sha256": "a4ea78fbddc178c5c644604b4759b81b8954868a9eee8a7f377aa32654bce881"
+  },
+  {
+   "queue_id": 23,
+   "model_id": "long_union_tcn_champion",
+   "stream": "EURUSD",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_long_union_tcn_champion_4a72b654d016_20261005.json",
+   "sha256": "3da44a135a4b955736752fde5f1b25f95db60233405a970b4e82c6c6c5dfa267",
+   "report_sha256": "c44c66c07c7ee9b275e121541f285d393de4aa1f3f45c908f21b37649a1fa6c9"
+  },
+  {
+   "queue_id": 25,
+   "model_id": "short_ote_meta_tcn_champion",
+   "stream": "EURUSD",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_short_ote_meta_tcn_champion_09d774f2d673_20261005.json",
+   "sha256": "f533e71ba0ec57fefa8e1d70baa4df5b14f79048676f5e8aedd44b252320f19e",
+   "report_sha256": "71a1e450278d0a715e4682c5a3925c8cca895e6a146073cf6e103efa84070d61"
+  },
+  {
+   "queue_id": 26,
+   "model_id": "short_reversal_xgb_v2_20260525",
+   "stream": "EURUSD",
+   "verdict": "fail:training_side_noncausal",
+   "path": "docs/audits/section4_parity_short_reversal_xgb_v2_20260525_a012f3f24990_20261005.json",
+   "sha256": "935b5e209ef53648cf68a3406f1f044bf49d4b71ae9f9163cb3a06b80e18de17",
+   "report_sha256": "47a3e5ad972efa25cd7b27bde4612624e3dcfa5ab37671e439283066ae417e3f"
+  }
+ ]
+}

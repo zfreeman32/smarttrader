@@ -133,7 +133,8 @@ def parse_args() -> argparse.Namespace:
         "--bar-timestamp-semantics",
         type=str,
         default="as_provided",
-        help="Metadata-only description of whether timestamps represent bar opens, closes, or another convention.",
+        choices=("as_provided", "bar_open", "bar_close"),
+        help="Declare the source convention. New training labels require bar_open or bar_close.",
     )
     parser.add_argument(
         "--start-date",
@@ -852,8 +853,11 @@ def main() -> None:
         )
     base_bar_minutes = infer_bar_minutes(df_5m.index)
     base_timeframe = format_bar_timeframe(base_bar_minutes)
-    df_30m = resample_ohlcv(df_5m, "30min")
-    df_1hr = resample_ohlcv(df_5m, "1h")
+    from data.labeling.causal_ote import publication_frames
+    source_5m = df_5m.copy()
+    df_5m, df_30m, df_1hr = publication_frames(
+        source_5m, timestamp_semantics=args.bar_timestamp_semantics, bar_minutes=base_bar_minutes,
+    )
 
     print(f"Base rows ({base_timeframe}): {len(df_5m):,}")
     print(f"30m rows: {len(df_30m):,}")
@@ -893,16 +897,22 @@ def main() -> None:
         params=params.breakout,
         verbose=True,
     )
+    frvp_source = source_5m.copy()
+    if args.bar_timestamp_semantics == "bar_close":
+        frvp_source.index -= pd.Timedelta(minutes=base_bar_minutes)
     frvp_df, frvp_diag, frvp_events = build_frvp_labels(
-        df_5m=df_5m,
+        df_5m=frvp_source,
         df_30m=df_30m,
         df_1hr=df_1hr,
         params=params.frvp,
         verbose=True,
     )
 
+    for family_frame in (reversal_df, continuation_df, breakout_df):
+        family_frame.index = source_5m.index
+    frvp_df.index = source_5m.index
     df_labeled = build_combined_label_frame(
-        df_5m,
+        source_5m,
         reversal_df,
         continuation_df,
         breakout_df,
@@ -930,7 +940,7 @@ def main() -> None:
         output_kind="bar_labels",
         source_path=args.input,
         output_path=args.output,
-        df_5m=df_5m,
+        df_5m=source_5m,
         df_30m=df_30m,
         df_1hr=df_1hr,
         params=params,
@@ -945,11 +955,13 @@ def main() -> None:
         "breakout": breakout_diag,
         "frvp": frvp_diag,
     }
+    labels_metadata["htf_publication"] = "completed full buckets; base decisions at candle close"
+    labels_metadata["event_timestamp_semantics"] = "OTE base events use bar-close timestamps; label rows retain source identifiers"
     events_metadata = build_output_metadata(
         output_kind="combined_label_events",
         source_path=args.input,
         output_path=args.events_output,
-        df_5m=df_5m,
+        df_5m=source_5m,
         df_30m=df_30m,
         df_1hr=df_1hr,
         params=params,

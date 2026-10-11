@@ -1,0 +1,28 @@
+{
+  "scope": "Repair-budget selection only; no registry, runtime, weights or dataset changes.",
+  "counts": {
+    "archive_placebo": 10,
+    "archive_no_retrain": 65,
+    "quarantine_missing_history": 9,
+    "repair_first": 4,
+    "retain_background_deferred": 13,
+    "keep_retired": 1,
+    "retain_exploratory_next": 2,
+    "retain_paused": 1,
+    "retain_ote_conditional": 8
+  },
+  "primary_bundles": 113,
+  "auxiliary_weights_preserved_without_retraining": 8,
+  "all_selected_paths_exist": true,
+  "all_selected_lineages_have_available_declared_parents": true,
+  "source_hashes": {
+    "docs\\audits\\b2_lineage_20260918_complete\\inventory.json": "483dd27adf4be403036fd6db0600cf4d43210e97e1f3c096adae756d96b97cfd",
+    "docs\\audits\\b2_dependency_trace_20260918\\dependency_trace.json": "c247f5c2986bff0a4c3c240a416b4e90ec474b859497204e3307ba1187c40c06",
+    "models\\ote_model_registry_live_multifamily.json": "3fa8396441b0d6494d60edeaa6e663df4dd498790607738c0726a2649345daac"
+  },
+  "roster_sha256": "9069139a25eb48be9528933e2fe26d53eaef4129ab753c453a3439aba478dff7",
+  "new_clean_models": 0,
+  "training_run": false,
+  "report_sha256": "4d7055d50c47f7f06645dded06f3ff3404fbb56e8352b0394e718b3d2dea8954",
+  "report_links_valid": true
+}

@@ -581,7 +581,15 @@ def attach_forward_trade_outcomes(
         pd.to_numeric(working[config.gross_pnl_column], errors="coerce")
         - pd.to_numeric(working[config.total_cost_column], errors="coerce")
     )
-    return add_unit_alias_columns(working)
+    # Preserve archived arithmetic while exposing the actual components and
+    # preventing this potential-event return from masquerading as B1 paper P&L.
+    working["policy_spread_cost_units"] = entry_spread_units + exit_spread_units
+    working["policy_slippage_cost_units"] = slippage_units + float(config.fixed_slippage_pips_per_trade)
+    working["policy_commission_cost_units"] = float(config.commission_pips_per_trade)
+    working["outcome_surface"] = "legacy_economic_proxy"
+    working["training_label_outcome"] = working.get(config.target_column)
+    from model_testing.outcome_compatibility import annotate_legacy, legacy_snapshot
+    return annotate_legacy(add_unit_alias_columns(working), legacy_snapshot(config, direction=direction))
 
 
 def resolve_spread_cost_mode(config: ThresholdSearchConfig) -> str:

@@ -103,7 +103,9 @@ def resolve_source_dataset(
 
 
 def load_source_timestamps(source_dataset: Path) -> pd.Series:
-    frame = pd.read_csv(source_dataset, usecols=["datetime"])
+    frame = (pd.read_parquet(source_dataset, columns=["datetime"])
+             if source_dataset.suffix.lower() == ".parquet"
+             else pd.read_csv(source_dataset, usecols=["datetime"]))
     timestamps = pd.to_datetime(frame["datetime"], utc=True, errors="raise")
     if timestamps.isna().any():
         raise ValueError(f"Found null or invalid datetimes in {source_dataset}.")
@@ -124,7 +126,10 @@ def copy_base_layout(
 
     summary_path = base_prepared_root / "summary.json"
     if summary_path.exists():
-        shutil.copy2(summary_path, output_prepared_root / "summary.json")
+        summary = load_json(summary_path)
+        summary["targets"] = {target: summary.get("targets", {}).get(target, {})}
+        summary["base_prepared_root"] = str(base_prepared_root)
+        write_json(output_prepared_root / "summary.json", summary)
 
     output_target_root = output_prepared_root / target
     output_target_root.mkdir(parents=True, exist_ok=True)
@@ -242,6 +247,11 @@ def main() -> None:
         "splits": split_summaries,
     }
     write_json(output_target_root / "recency_weighting_summary.json", weighting_summary)
+    summary_path = output_prepared_root / "summary.json"
+    if summary_path.exists():
+        summary = load_json(summary_path)
+        summary["recency_weighting"] = weighting_summary
+        write_json(summary_path, summary)
     print(json.dumps(weighting_summary, indent=2))
 
 

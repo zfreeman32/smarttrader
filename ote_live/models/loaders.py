@@ -56,7 +56,8 @@ class LoadedRuntimeModel:
 
     @property
     def allows_nan_feature_values(self) -> bool:
-        return self.backend == "xgboost" and self.model_id.lower().startswith(("frvp_", "ict_"))
+        return bool(getattr(self.scaler, "history_contract", None)) or (
+            self.backend == "xgboost" and self.model_id.lower().startswith(("frvp_", "ict_")))
 
     @property
     def context_rows(self) -> int:
@@ -100,6 +101,7 @@ def load_runtime_model(
 
     model = _load_backend_model(manifest)
     scaler = _load_optional_joblib(manifest.artifact_references.scaler_file)
+    validate_source_history_runtime(manifest, training_summary, scaler)
     calibrator = load_probability_calibrator(
         _resolve_repo_path(manifest.artifact_references.calibrator_file)
         if manifest.artifact_references.calibrator_file
@@ -125,6 +127,32 @@ def load_runtime_model(
             training_summary=training_summary,
         ),
     )
+
+
+def validate_source_history_runtime(manifest, training_summary, scaler):
+    """New bundles cannot silently lose their frozen history/imputation contract."""
+    contract = training_summary.get("model_config", {}).get("source_history_contract")
+    saved = getattr(scaler, "history_contract", None)
+    if contract is None and saved is None:
+        return  # Preserve archived/legacy model behavior.
+    from model_training.source_history import validate_contract
+    if contract is None or saved != contract or manifest.backend not in {"xgboost", "tcn", "lstm"}:
+        raise ValueError("Missing or mismatched source-history scaler/summary contract")
+    validate_contract(contract, manifest.feature_manifest.selected_feature_names)
+    expected_backend = training_summary["config"]["backend"]
+    if expected_backend == "torch":
+        expected_backend = training_summary["config"]["model_type"]
+    if manifest.backend != expected_backend:
+        raise ValueError("Source-history runtime backend differs from fitted model")
+    for key in ("lag_steps", "delta_feature_count"):
+        if getattr(manifest.feature_manifest, key) != training_summary[key]:
+            raise ValueError(f"Source-history runtime {key} differs from fitted model")
+    if manifest.context_requirements.context_rows != training_summary["context_rows"]:
+        raise ValueError("Source-history runtime context differs from fitted model")
+    if manifest.context_requirements.window_size != training_summary["window_size"]:
+        raise ValueError("Source-history runtime window differs from fitted model")
+    if manifest.backend in {"tcn", "lstm"} and training_summary["context_rows"] != training_summary["window_size"] - 1:
+        raise ValueError("Source-history sequence context must equal window size minus one")
 
 
 def requires_frozen_frvp_preload_validation(manifest: LiveRuntimeManifest) -> bool:

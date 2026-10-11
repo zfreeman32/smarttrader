@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 REFERENCE_BAR_MINUTES = 5.0
@@ -250,6 +250,13 @@ class FeatureBuilderConfig:
     fractional_diff_threshold: float = 1e-3
     fractional_diff_max_size: int = 200
 
+    # Feature contract version (features/causal_contract.py). 1 = the frozen B2 builds, byte-identical; 2 = causal,
+    # bounded-memory producers (anchored weekly warm-start of bounded_memory_warmup_bars bars).
+    feature_version: int = 1
+    bounded_memory_warmup_bars: int = 2000
+    # v2 only: frozen strategy one-hot vocabulary (causal_contract.add_absent_strategy_one_hots).
+    v2_strategy_one_hot_columns: Optional[List[str]] = None
+
     @classmethod
     def from_dict(cls, raw: Dict[str, Any]) -> "FeatureBuilderConfig":
         valid_fields = {item.name for item in fields(cls)}
@@ -266,4 +273,11 @@ class FeatureBuilderConfig:
         return cls.from_dict(raw)
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        # Version-1 configs serialize exactly as before the version fields existed (frozen config digests unchanged).
+        if self.feature_version == 1 and self.bounded_memory_warmup_bars == 2000:
+            data.pop("feature_version")
+            data.pop("bounded_memory_warmup_bars")
+        if self.v2_strategy_one_hot_columns is None:
+            data.pop("v2_strategy_one_hot_columns")
+        return data

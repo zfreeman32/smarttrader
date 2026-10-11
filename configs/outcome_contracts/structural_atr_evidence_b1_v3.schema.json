@@ -1,0 +1,80 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "definition": {
+      "const": "completed_1h_structural_atr",
+      "default": "completed_1h_structural_atr",
+      "title": "Definition",
+      "type": "string"
+    },
+    "producer_id": {
+      "const": "b1_structural_1h_wilder14_v1",
+      "default": "b1_structural_1h_wilder14_v1",
+      "title": "Producer Id",
+      "type": "string"
+    },
+    "timeframe_minutes": {
+      "const": 60,
+      "default": 60,
+      "title": "Timeframe Minutes",
+      "type": "integer"
+    },
+    "period": {
+      "const": 14,
+      "default": 14,
+      "title": "Period",
+      "type": "integer"
+    },
+    "smoothing": {
+      "const": "wilder_alpha_1_over_14_adjust_false",
+      "default": "wilder_alpha_1_over_14_adjust_false",
+      "title": "Smoothing",
+      "type": "string"
+    },
+    "units": {
+      "const": "price",
+      "default": "price",
+      "title": "Units",
+      "type": "string"
+    },
+    "value": {
+      "exclusiveMinimum": 0,
+      "title": "Value",
+      "type": "number"
+    },
+    "source_close_ts": {
+      "format": "date-time",
+      "title": "Source Close Ts",
+      "type": "string"
+    },
+    "history_start_ts": {
+      "format": "date-time",
+      "title": "History Start Ts",
+      "type": "string"
+    },
+    "available_at_ts": {
+      "format": "date-time",
+      "title": "Available At Ts",
+      "type": "string"
+    },
+    "coordinate_id": {
+      "title": "Coordinate Id",
+      "type": "string"
+    },
+    "source_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "value",
+    "source_close_ts",
+    "history_start_ts",
+    "available_at_ts",
+    "coordinate_id",
+    "source_hash"
+  ],
+  "title": "StructuralATREvidence",
+  "type": "object"
+}

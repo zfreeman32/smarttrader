@@ -1,0 +1,28 @@
+{
+  "contract_id": "es_abs_close_move_20x5m_v1",
+  "instrument": "ES",
+  "timeframe": "5m",
+  "unit": "ticks",
+  "price_increment": 0.25,
+  "horizon_bars": 1,
+  "lookback_returns": 20,
+  "minimum_completed_source_bars": 21,
+  "formula": "mean(abs(close[j]-close[j-1]) / 0.25, j=t-19..t), available after bar t closes",
+  "interpretation": "Trailing empirical estimate of next-five-minute absolute close movement; direction-neutral magnitude, not profit expectancy or an exit target",
+  "parameter_choice": "Fixed simple 20-observation trailing arithmetic mean, no fitting, labels, model scores, targets, PnL or inspected test outcomes used to choose parameters; no horizon scaling",
+  "resets": "Any non-5-minute interval including scheduled closures, contract identity change, missing identity/completion, nonfinite/nonpositive or inconsistent raw OHLC; require 20 fresh valid returns",
+  "missing": "NaN with explicit status and sample count, never zero-filled; a valid flat window gives ready zero and fails a positive spread hurdle",
+  "spread_schedule": {
+    "overlap": 1.0,
+    "london": 1.0,
+    "new_york": 1.0,
+    "asia": 1.5,
+    "off_hours": 2.0
+  },
+  "spread_source": "Existing es_session_cost_v1 B1 session_spreads, ticks per side",
+  "gate": "expected_move_ticks >= inherited minimum_expected_move_to_spread * session_spread_ticks; S3 ratio remains 2",
+  "cost_scope": "Gate compares one-side configured spread only; full B1 two-side spread, slippage and commission remain charged in outcomes",
+  "activation": "Opt-in expected_move_contract in LivePolicy; no installed manifest/registry changes; research only",
+  "source": "Raw FeatureRuntimeState.to_frame and historical raw ES OHLC, shared function before model imputation or feature alignment",
+  "asof": "Completed bar close; existing app bar-availability/freshness gates still apply. Historical availability retains predeclared offline bar-close assumption."
+}

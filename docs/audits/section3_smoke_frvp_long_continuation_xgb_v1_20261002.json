@@ -1,0 +1,317 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 2,
+  "model_id": "frvp_long_continuation_xgb_v1",
+  "stream": "ES",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "9db6421a06bcf04b9e83b0453204ef0d13f3f029773509da0e8e0f4d66f0956b",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 2,
+    "model_id": "frvp_long_continuation_xgb_v1",
+    "status": "selected",
+    "held_out_period": [
+      "2024-11-29T08:00:00+00:00",
+      "2026-06-18T19:35:00+00:00"
+    ],
+    "candidate_weeks": 74,
+    "weeks": [
+      {
+        "week": "2024-12-16",
+        "first_open": "2024-12-15T23:00:00+00:00",
+        "last_open": "2024-12-20T21:55:00+00:00",
+        "sessions": [
+          "2024-12-16",
+          "2024-12-17",
+          "2024-12-18",
+          "2024-12-19",
+          "2024-12-20"
+        ]
+      },
+      {
+        "week": "2024-12-23",
+        "first_open": "2024-12-22T23:00:00+00:00",
+        "last_open": "2024-12-27T21:55:00+00:00",
+        "sessions": [
+          "2024-12-23",
+          "2024-12-24",
+          "2024-12-26",
+          "2024-12-27"
+        ]
+      },
+      {
+        "week": "2025-03-10",
+        "first_open": "2025-03-09T22:00:00+00:00",
+        "last_open": "2025-03-14T20:55:00+00:00",
+        "sessions": [
+          "2025-03-10",
+          "2025-03-11",
+          "2025-03-12",
+          "2025-03-13",
+          "2025-03-14"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:2:setup2:es_frvp_setup2_eval_v2": [
+        "2024-12-16",
+        "2024-12-23",
+        "2025-03-10"
+      ],
+      "route:2:setup3:es_frvp_setup3_long_eval_v2": [
+        "2024-12-16",
+        "2024-12-23"
+      ],
+      "route:2:setup5:es_frvp_setup5_long_eval_v2": [
+        "2024-12-16",
+        "2024-12-23",
+        "2025-03-10"
+      ],
+      "overnight_segment": [
+        "2024-12-16",
+        "2024-12-23",
+        "2025-03-10"
+      ],
+      "rth_segment": [
+        "2024-12-16",
+        "2024-12-23",
+        "2025-03-10"
+      ],
+      "planned_closure": [
+        "2024-12-23"
+      ],
+      "dst_transition": [
+        "2025-03-10"
+      ],
+      "es_roll": [
+        "2024-12-16"
+      ]
+    },
+    "routes_exercised": [
+      "2:setup2:es_frvp_setup2_eval_v2",
+      "2:setup3:es_frvp_setup3_long_eval_v2",
+      "2:setup5:es_frvp_setup5_long_eval_v2"
+    ],
+    "routes_unexercised": {},
+    "calendar_elements_unexercised": {},
+    "held_out_predictions": 982,
+    "held_out_setup_matches": 982
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "ticks",
+  "calendar_id": "pmc_5_1_3_cme_globex_equity_plus_carter_v1",
+  "calendar_hash": "dc4545ba66b691b59451bd9d468bdbd2613035da28354f02f21f320c89ff90c3",
+  "canonical_hash_run_a": "95ed05c4c9233b0b13b217b0873a676bbab9d92bec12c3e9640e83c3f62b88f5",
+  "canonical_hash_run_b": "95ed05c4c9233b0b13b217b0873a676bbab9d92bec12c3e9640e83c3f62b88f5",
+  "surface_hash": "455fc74ad0734d7c14f62caf665aea50e74da712a955ca05e80a3aadd1aae81c",
+  "reviewed_artifact_set_sha256": "fd447592e305a13ace8e3c5cb4148d76e2374b8dfcdf9540047f8ca8e0ca2976",
+  "b4_freeze_files_verified": {
+    "model.json": "f8701763ac91c49b464fbee47e87c83fd6c944300c67f43be98270b9edc0fe89",
+    "scaler.joblib": "9590545168bc36dc7e09eb80c61159a5237168e7a5f25d6e0cb34f4248e861c5",
+    "model_config.json": "43e93d7cc8ea7b0b0bb2c481b8afbe01a0ed16864dcf69ddd402121712a2066d",
+    "training_summary.json": "12f2381a7e61bb0c30797dbd66d93c474362818ee2c5d24398a8c36ce85c851e",
+    "oof_predictions.csv": "a4842337338b84bea9816286c7d1ac8546b7d41faf9f48f659b0662740cc2b41",
+    "test_predictions.csv": "65c562b4141b3802ea8a46f5e38677352900b96eecb6e32d06b40ee38abdb0ac",
+    "cv_fold_manifest.json": "02ae39fbe4c0e2b55adc538badba7f0cbd619a4e77e4fa0dfcf09f641b02e2e9",
+    "cv_fold_manifest.csv": "f4a209664b56b4938b36aea78b56b56bcb87619b24f85803ee5c8d88ef01ecc6"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 35,
+    "raw_score_max_abs_error": 8.773651127835791e-08,
+    "threshold": 0.62,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "selected_same_side_setup": 35
+  },
+  "signals": 35,
+  "open_positions_rows": 0,
+  "route_coverage": [
+    {
+      "route_id": "2:setup2:es_frvp_setup2_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 6,
+      "executable_routes": 6,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 3,
+        "setup_threshold": 2,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "INVALID": 1,
+        "STOP": 1,
+        "TARGET": 4
+      },
+      "data_gap_and_censor_reasons": {
+        "missing_or_wrong_causal_atr": 1
+      },
+      "unresolved": 1
+    },
+    {
+      "route_id": "2:setup3:es_frvp_setup3_long_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 4,
+      "executable_routes": 4,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 2,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "INVALID": 2,
+        "STOP": 1,
+        "TIMEOUT_WIN": 1
+      },
+      "data_gap_and_censor_reasons": {
+        "missing_or_wrong_causal_atr": 2
+      },
+      "unresolved": 2
+    },
+    {
+      "route_id": "2:setup5:es_frvp_setup5_long_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 25,
+      "executable_routes": 25,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 19,
+        "setup_threshold": 7,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 12,
+        "TARGET": 10,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 2
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 35,
+    "capacity_admitted": 9,
+    "independent_admitted": 9,
+    "trades_in_both": 9,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "c8b820719b5859d066956944e4d1599b4d89cd0be893833f0946b67a89c020e7",
+  "advisory_ledger_summaries": {
+    "ind.ES.2.setup_only.base": {
+      "ledger_id": "ind.ES.2.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 35,
+      "admitted": 24,
+      "closed": 24,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 182.0,
+      "total_cost": 69.6,
+      "net_pnl": 112.39999999999989,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 8,
+        "missing_or_wrong_causal_atr": 3
+      }
+    },
+    "ind.ES.2.setup_only.double_all_costs": {
+      "ledger_id": "ind.ES.2.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 35,
+      "admitted": 24,
+      "closed": 24,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 182.0,
+      "total_cost": 139.2,
+      "net_pnl": 42.800000000000125,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 8,
+        "missing_or_wrong_causal_atr": 3
+      }
+    },
+    "ind.ES.2.setup_threshold.base": {
+      "ledger_id": "ind.ES.2.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 35,
+      "admitted": 9,
+      "closed": 9,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 112.0,
+      "total_cost": 25.349999999999998,
+      "net_pnl": 86.64999999999999,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 2,
+        "missing_or_wrong_causal_atr": 1,
+        "probability_below_frozen_threshold": 23
+      }
+    },
+    "ind.ES.2.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.ES.2.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 35,
+      "admitted": 9,
+      "closed": 9,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 112.0,
+      "total_cost": 50.699999999999996,
+      "net_pnl": 61.30000000000001,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 2,
+        "missing_or_wrong_causal_atr": 1,
+        "probability_below_frozen_threshold": 23
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.ES.2.raw_score_gross_forward_response/forward_response.csv": "819d708548d9b3359bc27438e34aa32f7d8eda33919412912fa3fd2b8cba09e9",
+    "markouts/mk.ES.2.raw_score_gross_forward_response/paper_contract_outcome.csv": "246e2f76bfd6d15d0bdb25e2aa87c95e9a115e2e447b76735b389464806f32c9",
+    "ledgers/ind.ES.2.setup_only.base.csv": "b10468f254a8c8c58336d7827e138a386e9e170df4f9b43174a41cdd301a6241",
+    "ledgers/ind.ES.2.setup_only.double_all_costs.csv": "42a94e083534797db21c2d40ac63fbd62e9d38a83826cae6e113f0cd239a3249",
+    "ledgers/ind.ES.2.setup_threshold.base.csv": "bd9f440e984737ecd1bbee7a93314c53a03de4db297dd115e6692af3aa3885f1",
+    "ledgers/ind.ES.2.setup_threshold.double_all_costs.csv": "1a214a40d07e1c843fcecda6c5fd2d4d620b9a702ac3f4ab5a9f76ce3ef483de"
+  },
+  "output_root": "artifacts/s3smoke_20261002_v1/a/m2"
+}

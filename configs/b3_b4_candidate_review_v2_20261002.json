@@ -1,0 +1,414 @@
+{
+  "protocol_id": "b3_b4_candidate_review_v2_20261002",
+  "protocol_version": 2,
+  "status": "frozen_before_prospective_outcomes",
+  "declared_at": "2026-10-02",
+  "parent_protocol": "configs/b3_b4_candidate_review_v1_20260929.json",
+  "parent_protocol_sha256": "dc69806937d6549b815ab24343dc0bb167db15a62137e216edd4ba4cb8afec74",
+  "purpose": "Dual-stream version of the B3 comparison protocol. Prospective, candidate-specific comparison of setup rules, the development-selected frozen model threshold, and the intended full policy for every frozen replacement in the 16-model roster, evaluated as two separate streams (ES FRVP/ICT and EURUSD OTE), each on its own common opportunity population. This is a research protocol and is not a promotion or deployment authorization.",
+  "change_from_v1": [
+    "v1 execution, freshness, cost, session-window, expected-move, and position text was ES-only while its roster included OTE IDs. The ES text is carried verbatim into streams.ES; streams.EURUSD is new.",
+    "The roster is the 16-model selection with frozen replacement artifacts (broad_full_session_shadow_selection_v1) instead of the 22-recipe v0 selection. v0 candidates 27, 6, 7, 11, 17, and 1 have no frozen replacement in the 16-model freeze and are not in this roster; v1 remains their declaration.",
+    "The three branches, the common-opportunity rule, the not_defined rule, the experimental variant, and the outputs are unchanged."
+  ],
+  "outcome_inspection_guard": {
+    "primary_sample": "prospective_c1_only",
+    "historical_windows": "diagnostic_only; never pooled with C1",
+    "freeze_rule": "The protocol, candidate roster, matcher identity, thresholds, policy bindings, execution assumptions, cost cases, freshness rules, and reporting windows must be hashed and recorded before the first C1 observation. No threshold, gate, exit, limit, session window, or cost case may be changed after outcomes are visible.",
+    "outcome_fields_in_this_declaration": false
+  },
+  "scope": {
+    "instruments": [
+      "ES",
+      "EURUSD"
+    ],
+    "timeframe": "5m",
+    "baseline_catalog": "configs/outcome_contracts/b1_v3.json",
+    "baseline_scope": "configs/outcome_contracts/baseline_scope_v1.json",
+    "collection_scope": "configs/outcome_contracts/b2_research_scope_v1.json",
+    "selected_recipe_roster": {
+      "source": "configs/broad_full_session_shadow_selection_v1.json",
+      "selection_id": "broad_full_session_shadow_selection_v1",
+      "candidate_path": "candidates",
+      "candidate_count": 16,
+      "candidate_ids": [
+        2,
+        10,
+        12,
+        13,
+        15,
+        16,
+        22,
+        26,
+        3,
+        19,
+        21,
+        25,
+        5,
+        23,
+        18,
+        14
+      ],
+      "rule": "Every candidate in the frozen selection source receives all three B3 branch declarations before evaluation, inside the stream of its own instrument. No recipe is omitted because it lacks a current policy binding or because it is pooled/diagnostic under an older scope."
+    },
+    "frozen_identities": {
+      "replacement_selection": "configs/broad_full_session_shadow_v2.json",
+      "b4_freeze": "configs/b4_broad_full_session_shadow_freeze_v2.json",
+      "route_bindings": "configs/broad_full_session_shadow_route_bindings_v2.json"
+    },
+    "common_opportunity_universe": {
+      "rule": "For each selected recipe, retain every causally recorded prediction that has an exact contemporaneous same-side setup match under the frozen matcher, model, instrument, timeframe, source timestamp, and bar version. This population is formed before threshold, policy, cost, position-capacity, or outcome fields are inspected.",
+      "setup_only_is_matched_cohort": true,
+      "selection_exclusions": [
+        "labels, future bars, safe-negative flags, quality flags, weights, realized outcomes, or outcome-derived filters",
+        "threshold or policy gates when constructing the common population",
+        "silent removal of rejected, missing, stale, overlapping, or capacity-rejected observations"
+      ],
+      "ledger_requirement": "Write one decision row for every common opportunity and retain admission/rejection reasons independently for all three branches.",
+      "stream_rule": "Formed separately per stream from that stream's own bars, matcher, and predictions. An ES opportunity is never a EURUSD opportunity and the two populations are never merged, matched, or de-duplicated against each other."
+    }
+  },
+  "comparison_branches": {
+    "setup_only": {
+      "primary": true,
+      "admission": "Every opportunity in common_opportunity_universe for every selected recipe; no probability filter and no full-policy gate.",
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "interpretation": "Setup-rule benchmark, not a claim that an earlier standalone detector was executable when no model prediction was recorded.",
+      "empty_ledger_rule": "An empty setup-only ledger is a coverage result, not a zero-P&L pass/fail result."
+    },
+    "model_threshold": {
+      "primary": true,
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "admission": "The same common opportunities with the candidate's development-selected threshold applied to the recorded, calibrated-or-raw score as declared above.",
+      "threshold_source": "Candidate-specific threshold selected only on the declared development data, then frozen and bound before evaluation; no test/outcome refit, recalibration, threshold search, or outcome update during evaluation.",
+      "full_policy_gates": "None. This branch isolates the incremental score threshold from the intended policy.",
+      "threshold_missing_rule": "If a candidate threshold is not frozen before evaluation, record the branch as not_defined and do not evaluate it with a placeholder, default, or post-outcome threshold."
+    },
+    "full_policy": {
+      "primary": true,
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "admission": "The same common opportunities after the same frozen model threshold and the exact candidate-specific intended policy binding, when defined.",
+      "unbound_status": "not_defined",
+      "undefined_output_rule": "If the exact candidate policy binding is absent, record full_policy as not_defined with no ledger, P&L, zero-trade result, pass, or promotion claim. Never convert an empty full-policy ledger into zero P&L or a pass.",
+      "intended_policy_specification": {
+        "threshold": "Use the candidate threshold declared in scope; no second threshold is fitted inside the full-policy branch.",
+        "regime_thresholds": null,
+        "abstain_high_stress": true,
+        "abstain_off_hours": true,
+        "cooldown_bars": 4,
+        "minimum_expected_move_to_spread": 2.0,
+        "session_filters": [],
+        "quantile_filter": null,
+        "policy_state": "Cold start at C1 start; policy cooldown/state advances from candidate policy events independently of position occupancy and is not seeded from historical outcomes.",
+        "expected_move": "Stream-specific; see streams.<instrument>.expected_move. A stream without a frozen expected-move contract has no defined full policy."
+      },
+      "policy_requirements": [
+        "Policy manifest, source model ID, artifact hash, threshold, calibration, gate parameters, policy hash, and availability contract frozen before the first C1 observation.",
+        "The intended policy specification above is applied exactly as bound; no undeclared high-stress, off-hours, cooldown, spread/expected-move, or session filter may be added.",
+        "If an exact replacement-version binding is not frozen, record full_policy as not_defined and do not create a full-policy ledger, report P&L, report a zero-trade result, report a pass, or substitute the historical deployed policy."
+      ],
+      "parameter_changes": "No search, tuning, or outcome-driven policy changes."
+    }
+  },
+  "streams": {
+    "ES": {
+      "instrument": "ES",
+      "timeframe": "5m",
+      "strategies": [
+        "frvp",
+        "ict"
+      ],
+      "candidate_ids": [
+        2,
+        10,
+        12,
+        13,
+        15,
+        16,
+        3,
+        19,
+        5,
+        18,
+        14
+      ],
+      "units": {
+        "markout_and_pnl": "ES ticks",
+        "cash": "USD"
+      },
+      "carried_verbatim_from": "b3_b4_candidate_review_v1_20260929",
+      "outcome_contract_ids": [
+        "es_frvp_setup1_eval_v1",
+        "es_frvp_setup2_eval_v2",
+        "es_frvp_setup3_long_eval_v2",
+        "es_frvp_setup4_eval_v2",
+        "es_frvp_setup5_long_eval_v2",
+        "es_frvp_setup6_eval_v1",
+        "es_ict_displacement_continuation_after_raid_eval_v1",
+        "es_ict_ifvg_reversal_eval_v1",
+        "es_ict_ob_retest_after_mss_eval_v1",
+        "es_ict_premium_discount_continuation_eval_v1",
+        "es_ict_session_open_manipulation_post_ib_eval_v1",
+        "es_ict_session_open_manipulation_pre_ib_eval_v1",
+        "es_ict_sweep_displacement_fvg_eval_v1",
+        "es_ict_sweep_reclaim_eval_v1"
+      ],
+      "route_count": 45,
+      "cost_model_id": "es_session_cost_v1",
+      "prospective_boundary": {
+        "start": "First healthy post-B7 collection timestamp under a new immutable candidate/runtime collection identity.",
+        "end": "The first 20 consecutive fully eligible ES sessions after the start timestamp; the window is not shortened or extended in response to outcomes.",
+        "partial_sessions": "Retain for coverage and censoring diagnostics, but do not include in the primary complete-session aggregate."
+      },
+      "execution_assumptions": {
+        "entry": "First scheduled open strictly after known_at, maximum one 5-minute bar delay, unadjusted open price.",
+        "known_at": "Maximum of causal setup confirmation, completed feature/HTF/regime inputs, prediction, calibration, and policy availability. A retrospective label or best-entry timestamp is never known_at.",
+        "exit": "The candidate's frozen B1 fixed-barrier contract: completed causal 1-minute resolution where available, adverse-first same-bar collision, gap-open barrier handling, timeout close, and no forward search.",
+        "missing_data": "Missing entry or holding bars are DATA_GAP/censored; holidays and closures are not inferred; contract rolls/coordinate changes are censored.",
+        "overnight": "Hold unless the frozen B1 contract explicitly says otherwise.",
+        "portfolio": {
+          "starting_equity_usd": 100000,
+          "max_positions": 1,
+          "max_quantity_contracts": 1,
+          "concurrency_scope": "instrument",
+          "allow_opposite_side": false,
+          "cooldown_minutes": 0,
+          "capacity_rule": "Chronological admission by actual availability; simultaneous opportunities use availability time, opportunity key, and position key as deterministic tie-breakers. An existing or unresolved position reserves capacity.",
+          "overlap_rule": "Retain all overlapping signals in the evidence ledger; capacity rejection is recorded and is not an opportunity-universe exclusion.",
+          "accounting": "Nominal fixed-equity accounting, no compounding, financing, margin model, or position scaling."
+        }
+      },
+      "freshness_and_eligibility": {
+        "live_primary_requirement": "A primary C1 observation requires a complete, aligned, closed ES bar; matching source timestamp and instrument/contract identity; known ordered receipt time; immutable bar version; verified producer lineage; and actual prediction/policy availability.",
+        "max_prediction_age_after_bar_close_seconds": 90,
+        "input_age_limits": {
+          "htf_30m_minutes_exclusive": 30,
+          "other_completed_inputs_minutes_exclusive": 60
+        },
+        "reject_or_censor": [
+          "stale, provisional, delayed/backfilled, revised, frozen, missing, or unknown source/producer observations",
+          "prediction available before source-bar close or after the declared 90-second freshness limit",
+          "unverified contract roll, non-closure gap, or unavailable causal feature history"
+        ],
+        "historical_replay_assumption": "Only where observed arrival is unavailable, use the predeclared completed-bar plus one-second processing assumption and label it offline; it is not live freshness evidence.",
+        "retention": "Every failure remains in the C1 audit ledger with its exact freshness, availability, or setup-match reason and cannot be recoded as a negative outcome."
+      },
+      "cost_cases": {
+        "instrument_cost_model": "es_session_cost_v1",
+        "base": {
+          "spread": "1.0 tick per side in overlap/London/New York; 1.5 ticks per side in Asia; 2.0 ticks per side off-hours.",
+          "slippage_round_trip_ticks": 0.25,
+          "commission_round_trip_ticks": 0.4,
+          "spread_interpretation": "Full configured spread per side at the actual entry and exit sessions.",
+          "spread_slippage_multiplier": 0.0
+        },
+        "double_all_costs": {
+          "rule": "Double the base spread, fixed slippage, and commission on the identical admitted trades and fills; do not change admission, capacity, exits, or thresholds.",
+          "required": true
+        },
+        "reporting": "Report gross P&L, each cost component, total cost, net P&L, and the difference between base and double-all-cost net results for every branch and reporting window."
+      },
+      "session_reporting": {
+        "clock": "london_07_16_ny_08_17_asia_ny_v1",
+        "timezone_contract": "Use the frozen B1 DST-aware session/calendar contract; do not relabel sessions from UTC hours after the fact.",
+        "windows": [
+          "each complete ES trading session",
+          "each calendar week containing at least one complete eligible session",
+          "each calendar month containing at least one complete eligible session",
+          "the full fixed 20-session C1 aggregate"
+        ],
+        "session_slices": [
+          "overlap",
+          "london",
+          "new_york",
+          "asia",
+          "off_hours"
+        ],
+        "coverage": "Report eligible opportunities, prediction availability, setup matches, branch admissions, capacity rejections, unresolved positions, and missing/stale observations by session slice and complete-session window.",
+        "minimum_review_target": "Approximately 20 complete sessions and 50-100 resolved common opportunities per primary candidate are a practical evidence target, not a profitability threshold. If the fixed window misses the target, report the shortfall rather than extending the sample after outcomes are known."
+      },
+      "expected_move": {
+        "status": "predeclared",
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "expected_move_units": "ES ticks",
+        "expected_move_gate": "Causal expected movement in ticks must be at least two times the one-side B1 session spread in ticks; compare one configured spread, while position accounting charges the full B1 costs."
+      }
+    },
+    "EURUSD": {
+      "instrument": "EURUSD",
+      "timeframe": "5m",
+      "strategies": [
+        "ote"
+      ],
+      "candidate_ids": [
+        22,
+        26,
+        21,
+        25,
+        23
+      ],
+      "units": {
+        "markout_and_pnl": "pips",
+        "cash": null
+      },
+      "cash_rule": "eurusd_session_cost_v1 has no cash conversion. EURUSD results are reported in pips only; no USD P&L, equity curve, or lot conversion may be reported until a cash contract is frozen in a new protocol version.",
+      "outcome_contract_ids": [
+        "eurusd_ote_breakout_eval_v2",
+        "eurusd_ote_breakout_sustained_eval_v2",
+        "eurusd_ote_continuation_eval_v2",
+        "eurusd_ote_reversal_eval_v2"
+      ],
+      "route_count": 14,
+      "cost_model_id": "eurusd_session_cost_v1",
+      "outcome_contract_terms": {
+        "eurusd_ote_breakout_eval_v2": {
+          "setup_family": "breakout",
+          "atr_definition": "completed_30m_structural_atr",
+          "stop_atr": 0.7,
+          "target_atr": 0.9,
+          "timeout_bars": 24,
+          "overnight": "hold"
+        },
+        "eurusd_ote_breakout_sustained_eval_v2": {
+          "setup_family": "breakout_sustained",
+          "atr_definition": "completed_30m_structural_atr",
+          "stop_atr": 0.7,
+          "target_atr": 0.9,
+          "timeout_bars": 24,
+          "overnight": "hold"
+        },
+        "eurusd_ote_continuation_eval_v2": {
+          "setup_family": "continuation",
+          "atr_definition": "completed_30m_structural_atr",
+          "stop_atr": 0.7,
+          "target_atr": 0.8,
+          "timeout_bars": 36,
+          "overnight": "hold"
+        },
+        "eurusd_ote_reversal_eval_v2": {
+          "setup_family": "reversal",
+          "atr_definition": "completed_1h_structural_atr",
+          "stop_atr": 2.0,
+          "target_atr": 1.0,
+          "timeout_bars": 120,
+          "overnight": "hold"
+        }
+      },
+      "prospective_boundary": {
+        "start": "First healthy post-B7 EURUSD collection timestamp under the same immutable candidate/runtime collection identity; determined independently of the ES stream start.",
+        "end": "The first 20 consecutive fully eligible EURUSD sessions after the EURUSD start timestamp, where one session is one EURUSD trading day under the frozen B1 DST-aware session/calendar contract; the window is not shortened or extended in response to outcomes and is not aligned to, borrowed from, or padded with ES sessions.",
+        "partial_sessions": "Retain for coverage and censoring diagnostics, but do not include in the primary complete-session aggregate."
+      },
+      "execution_assumptions": {
+        "entry": "First scheduled EURUSD open strictly after known_at, maximum one 5-minute bar delay, unadjusted open price.",
+        "known_at": "Maximum of causal OTE setup confirmation, completed feature/structural-ATR/regime inputs, prediction, calibration, and policy availability, as defined by the frozen OTE contract. A retrospective label, earlier swing, or best-entry timestamp is never known_at.",
+        "exit": "The frozen B1 OTE family v2 fixed-barrier contract of the routed setup family (reversal, continuation, breakout, or breakout_sustained): barriers from the completed structural ATR named by that contract (1h for reversal, 30m otherwise) in raw price units frozen at entry, unrounded FX barrier grid, completed causal 1-minute resolution where available, adverse-first same-bar collision, gap-open barrier handling, timeout close, and no forward search. Meta and union models use the family contract of the detector-selected setup; there is no meta or union exit.",
+        "pooled_routing": "The detector-selected contemporaneous same-side OTE setup is the only executable route. Other contemporaneous same-side matches are non-executable counterfactual markouts; a later setup is never attached.",
+        "missing_data": "Missing entry or holding bars are DATA_GAP/censored; weekend and holiday closures are not inferred; spot series or coordinate changes are censored. There is no futures roll in this stream.",
+        "overnight": "Hold, as every frozen OTE contract declares.",
+        "portfolio": {
+          "accounting_unit": "pips",
+          "starting_equity_usd": null,
+          "max_positions": 1,
+          "max_quantity_units": 1.0,
+          "concurrency_scope": "instrument",
+          "allow_opposite_side": false,
+          "cooldown_minutes": 0,
+          "capacity_rule": "Chronological admission by actual availability within the EURUSD stream only; simultaneous opportunities use availability time, opportunity key, and position key as deterministic tie-breakers. An existing or unresolved EURUSD position reserves EURUSD capacity. ES positions never consume or release EURUSD capacity.",
+          "overlap_rule": "Retain all overlapping signals in the evidence ledger; capacity rejection is recorded and is not an opportunity-universe exclusion.",
+          "accounting": "Nominal one-unit pip accounting, no compounding, financing/swap, margin model, lot conversion, or position scaling."
+        }
+      },
+      "freshness_and_eligibility": {
+        "live_primary_requirement": "A primary C1 observation requires a complete, aligned, closed EURUSD 5-minute bar; matching source timestamp and EURUSD instrument/series identity; known ordered receipt time; immutable bar version; verified producer lineage; and actual prediction/policy availability. ES bars are never an input.",
+        "max_prediction_age_after_bar_close_seconds": 90,
+        "input_age_limits": {
+          "structural_30m_minutes_exclusive": 30,
+          "structural_1h_and_other_completed_inputs_minutes_exclusive": 60
+        },
+        "reject_or_censor": [
+          "stale, provisional, delayed/backfilled, revised, frozen, missing, or unknown source/producer observations",
+          "prediction available before source-bar close or after the declared 90-second freshness limit",
+          "unverified spot series or coordinate change, non-closure gap, or unavailable causal feature history"
+        ],
+        "historical_replay_assumption": "Only where observed arrival is unavailable, use the predeclared completed-bar plus one-second processing assumption and label it offline; it is not live freshness evidence.",
+        "retention": "Every failure remains in the EURUSD C1 audit ledger with its exact freshness, availability, or setup-match reason and cannot be recoded as a negative outcome."
+      },
+      "cost_cases": {
+        "instrument_cost_model": "eurusd_session_cost_v1",
+        "base": {
+          "spread": "1.0 pip per side in overlap; 1.5 pips per side in London/New York; 2.5 pips per side in Asia; 3.0 pips per side off-hours.",
+          "slippage_round_trip_pips": 0.3,
+          "commission_round_trip_pips": 0.35,
+          "spread_interpretation": "Full configured spread per side at the actual entry and exit sessions.",
+          "spread_slippage_multiplier": 0.0
+        },
+        "double_all_costs": {
+          "rule": "Double the base spread, fixed slippage, and commission on the identical admitted trades and fills; do not change admission, capacity, exits, or thresholds.",
+          "required": true
+        },
+        "reporting": "Report gross pips, each cost component, total cost, net pips, and the difference between base and double-all-cost net results for every branch and reporting window."
+      },
+      "session_reporting": {
+        "clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "timezone_contract": "Use the frozen B1 DST-aware session/calendar contract; do not relabel sessions from UTC hours after the fact.",
+        "windows": [
+          "each complete EURUSD trading session",
+          "each calendar week containing at least one complete eligible EURUSD session",
+          "each calendar month containing at least one complete eligible EURUSD session",
+          "the full fixed 20-session EURUSD C1 aggregate"
+        ],
+        "session_slices": [
+          "overlap",
+          "london",
+          "new_york",
+          "asia",
+          "off_hours"
+        ],
+        "coverage": "Report eligible opportunities, prediction availability, setup matches, branch admissions, capacity rejections, unresolved positions, and missing/stale observations by session slice and complete-session window.",
+        "minimum_review_target": "Approximately 20 complete EURUSD sessions and 50-100 resolved common opportunities per primary candidate are a practical evidence target, not a profitability threshold. If the fixed window misses the target, report the shortfall rather than extending the sample after outcomes are known."
+      },
+      "expected_move": {
+        "status": "not_defined",
+        "expected_move_contract": null,
+        "expected_move_units": "pips",
+        "rule": "No versioned causal EURUSD expected-move contract is frozen. The ES contract es_abs_close_move_20x5m_v1 and ES ticks must never be applied to EURUSD, and an unversioned expected_move_pips context field is not a contract. Until a EURUSD expected-move contract in pips and an exact candidate policy binding are frozen in a new protocol version before the first C1 observation, full_policy is not_defined for every EURUSD candidate; setup_only and model_threshold are still collected."
+      }
+    }
+  },
+  "cross_stream_rules": {
+    "aggregate_across_streams": false,
+    "opportunity_universes": "Separate per stream.",
+    "ledgers": "Separate ES and EURUSD score, setup, outcome, and position ledgers; within each stream keep the independent per-model ledger separate from the one-position-per-instrument policy ledger.",
+    "capacity": "Capacity is scoped to the instrument. Neither stream consumes, reserves, or releases the other's capacity.",
+    "windows": "Each stream has its own start timestamp, its own 20 fully eligible sessions, and its own session/week/month windows.",
+    "units": "ES in ticks and USD; EURUSD in pips. Never convert, sum, net, or rank ES ticks/USD and EURUSD pips as one P&L series.",
+    "reporting": "One report section per stream. No combined P&L, drawdown, win rate, profit factor, or ranking across streams. Cross-stream material is limited to coverage counts shown side by side.",
+    "models": "Never run an OTE model on ES bars or an ES model on EURUSD bars."
+  },
+  "experimental_variants": [
+    {
+      "variant_id": "family_model_setup_gate_v1",
+      "status": "experimental_only",
+      "included_in_primary_three": false,
+      "rule": "Apply a newly proposed family/model-specific setup gate only after the base common opportunity universe has been materialized, using a separately frozen matcher identity and hash.",
+      "reporting": "Run as a fourth, separately labeled variant with its own admission/rejection ledger and the same execution, position, cost, freshness, and session assumptions. Never replace setup_only, model_threshold, or full_policy.",
+      "historical_policy_treatment": "Do not back-apply this gate to historical deployed-policy results, do not describe it as the historical deployed policy, and do not use it to rewrite the common cohort.",
+      "promotion": "No promotion, installation, registry change, or paper-trial authorization follows from this variant."
+    }
+  ],
+  "predeclared_outputs": [
+    "common opportunity count and setup-match coverage",
+    "admitted, rejected, capacity-rejected, unresolved, and closed counts per branch",
+    "gross P&L, costs, net P&L, win rate, profit factor, realized drawdown, and average net per trade",
+    "base versus double-all-cost stress",
+    "session, week, month, and fixed-window time stability",
+    "missing/stale/late/roll/censoring reasons and concentration diagnostics",
+    "immutable input, policy, contract, and replay hashes",
+    "every output above reported separately per stream in that stream's units"
+  ],
+  "promotion": {
+    "eligible": false,
+    "interpretation": "C1 is evidence for the predeclared comparison only. Promotion requires separate B5-B7, A12/A13, economics, concentration, drawdown, and readiness decisions.",
+    "no_outcome_retrofit": true
+  }
+}

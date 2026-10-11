@@ -37,6 +37,45 @@ def _observation(strategy="FRVP", **updates):
             "geometry": {"anchor_level": 100.0, "stop_reference": 99.0}, **updates}
 
 
+def test_read_only_model_setup_export_retains_low_scores_opposite_sides_and_no_links(tmp_path):
+    from model_testing.outcome_contracts import file_hash
+    from scripts.export_model_setup_audit import export_collection
+    path = tmp_path / "audit.sqlite"
+    with SQLiteLiveDataStore(path) as store:
+        setup_repo = SetupEventRepository(store)
+        audit = LiveAuditRepository(store)
+        events = setup_repo.record_observations([
+            _observation(selected=False), _observation(setup_type="5", setup_side=-1)
+        ], bar=_bar(), strategy="FRVP", collection_version="v1", observed_at=NOW)
+        for i in range(2):
+            timestamp = NOW + timedelta(minutes=5 * i)
+            snapshot_id = audit.record_feature_snapshot(FeatureSnapshot(asset="ES", timeframe="5m",
+                timestamp=timestamp, collection_version="v1", feature_values={"x": 1.0}))
+            prediction_id = audit.record_prediction(ModelPrediction(model_id="frvp_long_continuation_xgb_v1",
+                direction="long", backend="xgboost", timestamp=timestamp, collection_version="v1",
+                prediction_recorded_at_utc=timestamp + timedelta(minutes=5),
+                raw_score=-2, calibrated_probability=0.2, threshold_applied=0.7), feature_snapshot_id=snapshot_id)
+            if i == 0:
+                for event in events:
+                    setup_repo.link_prediction(event.event_id, prediction_id, model_id="frvp_long_continuation_xgb_v1",
+                                               decision="hold", rejection_reasons=["probability_below_threshold"])
+        store.upsert_bar(_bar(NOW + timedelta(days=2, hours=8)))
+    before = file_hash(path)
+    report = export_collection(path, tmp_path / "export", collection="v1")
+    assert file_hash(path) == before
+    assert report["prediction_count"] == 2 and report["no_link_prediction_count"] == 1
+    rows = pd.read_csv(tmp_path / "export/model_setup_live_observations.csv")
+    assert set(rows.relationship) == {"other_same_side", "opposite_side", "no_persisted_setup_link"}
+    assert rows.calibrated_probability.eq(0.2).all()
+    assert rows.context_status.eq("UNKNOWN_LEGACY").all()
+    assert (tmp_path / "export/feature_snapshots.jsonl").exists()
+    assert report["table_counts"]["canonical_bars_snapshot"] == 1
+    with pytest.raises(FileExistsError):
+        export_collection(path, tmp_path / "export", collection="v1")
+    with pytest.raises(ValueError, match="no persisted predictions"):
+        export_collection(path, tmp_path / "missing", collection="not-v1")
+
+
 @pytest.mark.parametrize("strategy", ["FRVP", "ICT"])
 def test_history_preserves_revisions_invalidations_and_collection_boundaries(tmp_path, strategy):
     with SQLiteLiveDataStore(tmp_path / "setups.sqlite") as store:

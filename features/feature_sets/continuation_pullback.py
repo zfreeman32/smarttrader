@@ -5,7 +5,7 @@ import pandas as pd
 
 from ..config import FeatureBuilderConfig
 from ..registry import register_feature_set
-from ..transforms import bars_since_event, calculate_atr, detect_confirmed_swings, proximity_score, safe_divide
+from ..transforms import bars_since_event, calculate_atr, detect_confirmed_swings, safe_divide
 
 
 def _series_or_fallback(
@@ -62,6 +62,14 @@ def _nanmean(values: list[float]) -> float:
     return float(np.mean(valid))
 
 
+def _scalar_proximity(value: float, threshold: float) -> float:
+    # Same clipped score as proximity_score, without creating four pandas
+    # Series per historical bar during the stateful continuation scan.
+    if np.isnan(value):
+        return 0.0
+    return max(0.0, 1.0 - min(max(value, 0.0), threshold) / threshold)
+
+
 @register_feature_set(
     name="continuation_pullback",
     category="context",
@@ -72,6 +80,11 @@ def build_continuation_pullback(
     df: pd.DataFrame,
     config: FeatureBuilderConfig,
 ) -> pd.DataFrame:
+    if config.htf_bar_timestamp_semantics == "bar_open" and str(config.instrument).lower() != "es":
+        from data.labeling.causal_ote import completed_continuation_context
+        context = completed_continuation_context(df, bar_minutes=config.htf_source_bar_minutes)
+        # Replace carried labeler values, including stale or absent live ones.
+        df = df.drop(columns=df.columns.intersection(context.columns)).join(context)
     out = pd.DataFrame(index=df.index)
 
     atr = df["atr_14"] if "atr_14" in df.columns else calculate_atr(df)
@@ -262,16 +275,13 @@ def build_continuation_pullback(
             )
             bull_pullback_active[index] = int(pullback_is_active)
 
-            ema_proximity = proximity_score(
-                np.array([abs(floor_distance_values[index]) if np.isfinite(floor_distance_values[index]) else np.nan]),
-                threshold=1.25,
-            ).iat[0]
+            ema_proximity = _scalar_proximity(abs(floor_distance_values[index]) if np.isfinite(floor_distance_values[index]) else np.nan, 1.25)
             breakout_distance_atr = (
                 abs(close_values[index] - bull_breakout_level) / atr_at_bar
                 if np.isfinite(bull_breakout_level)
                 else np.nan
             )
-            breakout_proximity = proximity_score(np.array([breakout_distance_atr]), threshold=1.5).iat[0]
+            breakout_proximity = _scalar_proximity(breakout_distance_atr, 1.5)
             floor_quality = (
                 float(np.clip((floor_distance_values[index] + 0.75) / 1.5, 0.0, 1.0))
                 if np.isfinite(floor_distance_values[index])
@@ -308,16 +318,13 @@ def build_continuation_pullback(
             )
             bear_pullback_active[index] = int(pullback_is_active)
 
-            ema_proximity = proximity_score(
-                np.array([abs(floor_distance_values[index]) if np.isfinite(floor_distance_values[index]) else np.nan]),
-                threshold=1.25,
-            ).iat[0]
+            ema_proximity = _scalar_proximity(abs(floor_distance_values[index]) if np.isfinite(floor_distance_values[index]) else np.nan, 1.25)
             breakout_distance_atr = (
                 abs(close_values[index] - bear_breakout_level) / atr_at_bar
                 if np.isfinite(bear_breakout_level)
                 else np.nan
             )
-            breakout_proximity = proximity_score(np.array([breakout_distance_atr]), threshold=1.5).iat[0]
+            breakout_proximity = _scalar_proximity(breakout_distance_atr, 1.5)
             floor_quality = (
                 float(np.clip(((-floor_distance_values[index]) + 0.75) / 1.5, 0.0, 1.0))
                 if np.isfinite(floor_distance_values[index])

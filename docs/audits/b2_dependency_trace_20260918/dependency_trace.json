@@ -1,0 +1,3370 @@
+{
+  "schema_version": "b2-dependency-trace-v1",
+  "inputs": {
+    "docs\\audits\\b2_lineage_20260918_complete\\inventory.json": "483dd27adf4be403036fd6db0600cf4d43210e97e1f3c096adae756d96b97cfd",
+    "docs\\audits\\b2_dependency_witnesses_complete_20260918.json": "fc400ab6073bb04065c936cee82fb94b8cea677fd434a9e43f4303d5d5a19834"
+  },
+  "source_evidence": {
+    "ICT_REFERENCE": [
+      {
+        "path": "ict/structure/liquidity.py",
+        "line": 31,
+        "anchor": "def build_reference_level_features",
+        "sha256": "ff38c10f0ae0dc039325cd452e3ea4edf031c2845d86599f3ff69a8beb00e3cc"
+      },
+      {
+        "path": "ict/feature_sets/ict_context.py",
+        "line": 43,
+        "anchor": "sweeps = detect_ict_sweeps",
+        "sha256": "a8708fc071ce93c414452fe59afe73e4da63cb7228433837abd173450e63ee21"
+      },
+      {
+        "path": "ict/detectors/sweeps.py",
+        "line": 21,
+        "anchor": "_LEVEL_SPECS =",
+        "sha256": "72e2de4bbb7e75b58174d05c51804df8dc3da7807f22661f7319e3e4c987c90c"
+      },
+      {
+        "path": "ict/detectors/premium_discount.py",
+        "line": 89,
+        "anchor": "candidate_up =",
+        "sha256": "c29fe6f391660df4bc777c7bab3d27a4853a5cda69ce9acb4330e1c3916ec626"
+      },
+      {
+        "path": "ict/structure/market_structure.py",
+        "line": 83,
+        "anchor": "if recent_sell[i]",
+        "sha256": "da84ed58d2533448febf4e1fb11621f74d856c1f7dfbb05bf890cc4e82eb9c6b"
+      },
+      {
+        "path": "ict/detectors/order_blocks.py",
+        "line": 223,
+        "anchor": "if displacement_bear[i] and bear_shift[i] and recent_buy_sweep[i]",
+        "sha256": "6f0676bd477603d6efee55027aad60f59545c440e53159a09f6ad6a850237bd4"
+      },
+      {
+        "path": "ict/setups/detector.py",
+        "line": 1280,
+        "anchor": "def _htf_context_label",
+        "sha256": "89b96bfacbe92224391c6781f058fd2890ae5f75f2e38fa6faaf1f6287a2e5b3"
+      },
+      {
+        "path": "ict/labeling/ict_labeling_engine.py",
+        "line": 409,
+        "anchor": "def _resolve_setup_output",
+        "sha256": "b4f7627015160683b04fa2fd4e89b6dbcfa0105af44141b7d958c136d9bfaefd"
+      },
+      {
+        "path": "ict/pipelines/es_primary_phase06.py",
+        "line": 299,
+        "anchor": "\"label_source_path\": str(label_source_csv)",
+        "sha256": "a00becd775238c2ab9c976d0ffb1191092f0b43a171d776491154dce10346bca"
+      },
+      {
+        "path": "scripts/materialize_ict_setup_prepared_root.py",
+        "line": 302,
+        "anchor": "\"setup_target_source_root\"",
+        "sha256": "ec755ee8a913fc7111503f51d043700c4b2561e1b65a578421a42f7d9a47e342"
+      }
+    ],
+    "FRVP_STRUCTURAL_ATR": [
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 193,
+        "anchor": "def _resample_ohlcv",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 338,
+        "anchor": "def _detect_htf_swings",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/reversal_labeling_engine.py",
+        "line": 260,
+        "anchor": "def map_htf_atr_to_ltf",
+        "sha256": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 381,
+        "anchor": "def _build_event_candidates",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 434,
+        "anchor": "def _evaluate_event_barriers",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 540,
+        "anchor": "def _score_event_entries",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 600,
+        "anchor": "def _compute_event_quality",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 763,
+        "anchor": "def _apply_exclusion_masks",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 944,
+        "anchor": "def _apply_event_concurrency_and_weights",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 980,
+        "anchor": "def _materialize_frvp_targets",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "frvp/pipelines/es_primary_phase04.py",
+        "line": 223,
+        "anchor": "merged = feature_frame.merge",
+        "sha256": "415ce83ae25d69eaf706de7927564995b919ce43c77b41b9d2a2b499ecda290a"
+      },
+      {
+        "path": "frvp/setups/detector.py",
+        "line": 119,
+        "anchor": "atr = _to_float(row.get(\"atr_14\"))",
+        "sha256": "cd9c8a55f5e092db82558259218c43b6d6733b2dc144f7393a300bd4f905f21d"
+      }
+    ],
+    "OTE_HTF_PUBLICATION": [
+      {
+        "path": "data/labeling/labeling_engine.py",
+        "line": 433,
+        "anchor": "def resample_ohlcv",
+        "sha256": "80774050dfbc75bb030fe5aafdf787e92fd7f797339f552e0118f62f9602aa3f"
+      },
+      {
+        "path": "data/labeling/labeling_engine.py",
+        "line": 855,
+        "anchor": "df_30m = resample_ohlcv",
+        "sha256": "80774050dfbc75bb030fe5aafdf787e92fd7f797339f552e0118f62f9602aa3f"
+      },
+      {
+        "path": "data/labeling/reversal_labeling_engine.py",
+        "line": 1234,
+        "anchor": "satr_5m = map_htf_atr_to_ltf",
+        "sha256": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f"
+      },
+      {
+        "path": "data/labeling/ote_continuation_pullback_labeling_engine.py",
+        "line": 149,
+        "anchor": "def build_trend_context",
+        "sha256": "d946dd34d9e9a578faf73cc207b35d0cfa1cc21cfc8538da83b8922d7af15a3e"
+      },
+      {
+        "path": "data/labeling/ote_breakout_labeling_engine.py",
+        "line": 151,
+        "anchor": "def build_breakout_context",
+        "sha256": "340e4962e797e4d2a9150c1f4bbe571aef7cdf130807a667937c7ade54e89e2d"
+      },
+      {
+        "path": "data/labeling/labeling_engine.py",
+        "line": 753,
+        "anchor": "def merge_prefixed_output",
+        "sha256": "80774050dfbc75bb030fe5aafdf787e92fd7f797339f552e0118f62f9602aa3f"
+      },
+      {
+        "path": "features/feature_sets/continuation_pullback.py",
+        "line": 22,
+        "anchor": "def _resolve_trend_flags",
+        "sha256": "627c28e99c7e04059833b0c51394d53d71009a9c28bf669eef141f76fc47ab81"
+      }
+    ],
+    "CONFLUENCE_HELPERS": [
+      {
+        "path": "data/labeling/reversal_labeling_engine.py",
+        "line": 940,
+        "anchor": "def compute_htf_swing_match",
+        "sha256": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f"
+      },
+      {
+        "path": "data/labeling/reversal_labeling_engine.py",
+        "line": 916,
+        "anchor": "def compute_htf_confluence",
+        "sha256": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f"
+      },
+      {
+        "path": "data/labeling/frvp_labeling_engine.py",
+        "line": 1031,
+        "anchor": "out.iat[event_idx, out.columns.get_loc(columns[\"htf_confluence\"])]",
+        "sha256": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8"
+      },
+      {
+        "path": "ict/labeling/ict_labeling_engine.py",
+        "line": 990,
+        "anchor": "if event.excluded or family_label not in out.columns",
+        "sha256": "b4f7627015160683b04fa2fd4e89b6dbcfa0105af44141b7d958c136d9bfaefd"
+      },
+      {
+        "path": "ict/labeling/ict_labeling_engine.py",
+        "line": 997,
+        "anchor": "out.iat[idx, out.columns.get_loc(family_columns[\"htf_confluence\"])]",
+        "sha256": "b4f7627015160683b04fa2fd4e89b6dbcfa0105af44141b7d958c136d9bfaefd"
+      },
+      {
+        "path": "preprocessing/feature_selection.py",
+        "line": 223,
+        "anchor": "def resolve_target_context_feature_columns",
+        "sha256": "2db85f60ed96316fa9b01ba4db3ddec537e9b1344ec655d6822996e71f32da8f"
+      },
+      {
+        "path": "ote_live/features/incremental_engine.py",
+        "line": 873,
+        "anchor": "def _materialize_live_default_features",
+        "sha256": "c0045e440033b8f72fc1ed38df1317ae00bab86589ab46eef18dcc72055d1a44"
+      },
+      {
+        "path": "ote_live/features/input_contract.py",
+        "line": 122,
+        "anchor": "base.startswith(\"htf_confluence_\")",
+        "sha256": "c6ff72b48d1d7a0e355234ee23acf987769ed696e82a432ef585c7a71feaa398"
+      }
+    ],
+    "SHARED_HTF_AND_FITTING": [
+      {
+        "path": "features/feature_sets/htf_context.py",
+        "line": 140,
+        "anchor": "semantics = config.htf_bar_timestamp_semantics",
+        "sha256": "5f3d04ffbfed97e24348bfb8e2661f1a68fa70e46d3554f2957ebb117402ed8c"
+      },
+      {
+        "path": "features/feature_sets/htf_context.py",
+        "line": 27,
+        "anchor": "sampler = df.resample",
+        "sha256": "5f3d04ffbfed97e24348bfb8e2661f1a68fa70e46d3554f2957ebb117402ed8c"
+      },
+      {
+        "path": "features/transforms.py",
+        "line": 450,
+        "anchor": "generated.append((\"interaction_htf_trend_momentum\"",
+        "sha256": "7a895e393e7f980e4651351d81d4df606eefaff25be184fbe34606a4018c6055"
+      },
+      {
+        "path": "preprocessing/pipeline.py",
+        "line": 522,
+        "anchor": "usable_mask = ~warmup_mask",
+        "sha256": "ef47cf1e62dcd63d9bbdc825d83fc066c287fad3da3521bc6164f68235b5ac4c"
+      },
+      {
+        "path": "preprocessing/pipeline.py",
+        "line": 613,
+        "anchor": "importance_df, importance_summary = compute_feature_importance",
+        "sha256": "ef47cf1e62dcd63d9bbdc825d83fc066c287fad3da3521bc6164f68235b5ac4c"
+      },
+      {
+        "path": "model_training/ote_training/ote_xgboost_pipeline.py",
+        "line": 435,
+        "anchor": "def load_prepared_target_dataset",
+        "sha256": "79983b22d46c6fc82d124fb2c994950a4726d73b7dbe50f960d83f0db54dfdaf"
+      },
+      {
+        "path": "model_training/ote_training/ote_xgboost_pipeline.py",
+        "line": 598,
+        "anchor": "def make_windowed_feature_names",
+        "sha256": "79983b22d46c6fc82d124fb2c994950a4726d73b7dbe50f960d83f0db54dfdaf"
+      },
+      {
+        "path": "scripts/materialize_frvp_recency_prepared_root.py",
+        "line": 239,
+        "anchor": "\"base_prepared_root\"",
+        "sha256": "80ecb9ca835f00f2f27488d4e172e4c187fa8100ee93bb495b3d36d7f4048334"
+      }
+    ]
+  },
+  "model_defect_matrix": [
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_01/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_02/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_03/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_04/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_05/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_06/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_07/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_08/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_09/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_10/long_frvp_continuation",
+      "model_ids": [],
+      "purpose": "research_placebo",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/challenger_models/reversal_models/long_reversal_tcn_v3_20260526_overlap_ny_dd_repair/long_reversal",
+      "model_ids": [
+        "long_reversal_tcn_v3_20260526_overlap_ny_dd_repair"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_challenger",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_champion/long_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/long_breakout_tcn_repair_20260511_v1/long_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/breakout_models/short_breakout_tcn_champion",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/meta_models/short_tcn_champion",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/long_reversal_tcn_challenger",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/long_reversal_tcn_champion",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_tcn_challenger/short_reversal",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_tcn_champion",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/champion_models/reversal_models/short_reversal_xgb_v1",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/experiment_a_breakout_sustained_pilot_20260621/long_breakout_sustained",
+      "model_ids": [
+        "long_breakout_sustained_tcn_expA_20260621_pilot"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_breakout_sustained_expA_20260621/long_breakout_sustained",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/features/eurusd_5min_ote_full_breakout_sustained_expA_20260621.csv",
+        "data/features/eurusd_5min_ote_full_breakout_sustained_expA_20260621.metadata.json",
+        "data/prepared/eurusd_5min_breakout_sustained_expA_20260621",
+        "data/prepared/eurusd_5min_breakout_sustained_expA_20260621/long_breakout_sustained"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_post2022_smallcv_20260703/long_frvp_meta",
+      "model_ids": [
+        "frvp_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_post2022_20260703/phase04/prepared/long_frvp_meta",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_post2022_20260703/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_post2022_smallcv_20260703/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_post2022_20260703/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_post2022_20260703/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_continuation_refresh_20260701/long_frvp_continuation",
+      "model_ids": [
+        "frvp_long_continuation_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_continuation_refresh_20260701/short_frvp_continuation",
+      "model_ids": [
+        "frvp_short_continuation_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_continuation_v1/short_frvp_continuation",
+      "model_ids": [
+        "frvp_short_continuation_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/short_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_reversal_refresh_20260701/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_reversal_refresh_20260701/short_frvp_reversal",
+      "model_ids": [
+        "frvp_short_reversal_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_tcn_reversal_v1/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_tcn_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_continuation",
+      "model_ids": [
+        "frvp_long_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_meta",
+      "model_ids": [
+        "frvp_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_meta",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_continuation",
+      "model_ids": [
+        "frvp_short_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_meta",
+      "model_ids": [
+        "frvp_short_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_meta",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_frvp_continuation",
+        "htf_confluence_short_frvp_reversal"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_reversal",
+      "model_ids": [
+        "frvp_short_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_v1/long_frvp_continuation",
+      "model_ids": [
+        "frvp_long_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/long_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_v1/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_v1/short_frvp_continuation",
+      "model_ids": [
+        "frvp_short_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/short_frvp_continuation",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_es_primary_xgb_v1/short_frvp_reversal",
+      "model_ids": [
+        "frvp_short_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/short_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+      "model_ids": [
+        "frvp_long_continuation_setup2_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_continuation_setup2",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_continuation_setup3_xgb_20260829/long_frvp_continuation_setup3",
+      "model_ids": [
+        "frvp_long_continuation_setup3_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_continuation_setup3",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_continuation_setup5_xgb_20260829/long_frvp_continuation_setup5",
+      "model_ids": [
+        "frvp_long_continuation_setup5_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_continuation_setup5",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_meta_xgb_recency_trial1_20260705/long_frvp_meta",
+      "model_ids": [
+        "frvp_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_meta_recency_trial1_20260705/phase04/prepared/long_frvp_meta",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_frvp_continuation"
+      ],
+      "selected_dependency_routes": [
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup1_recency730_opt_xgb_20260829/long_frvp_reversal_setup1",
+      "model_ids": [
+        "frvp_long_reversal_setup1_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_setup1_recency730_20260829/phase04/prepared/long_frvp_reversal_setup1",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup1_recency730_xgb_20260829/long_frvp_reversal_setup1",
+      "model_ids": [
+        "frvp_long_reversal_setup1_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_setup1_recency730_20260829/phase04/prepared/long_frvp_reversal_setup1",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup4_xgb_20260829/long_frvp_reversal_setup4",
+      "model_ids": [
+        "frvp_long_reversal_setup4_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_reversal_setup4",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup6_recency730_recall_xgb_20260829/long_frvp_reversal_setup6",
+      "model_ids": [
+        "frvp_long_reversal_setup6_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_setup6_recency730_20260829/phase04/prepared/long_frvp_reversal_setup6",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup6_recency730_xgb_20260829/long_frvp_reversal_setup6",
+      "model_ids": [
+        "frvp_long_reversal_setup6_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_setup6_recency730_20260829/phase04/prepared/long_frvp_reversal_setup6",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup1",
+      "model_ids": [
+        "frvp_long_reversal_setup1_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_reversal_setup1",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup6",
+      "model_ids": [
+        "frvp_long_reversal_setup6_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_reversal_setup6",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup_xgb_20260829/long_frvp_reversal_setup1",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_reversal_setup1",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_setup_xgb_20260829/long_frvp_reversal_setup6",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_reversal_setup6",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_xgb_recency_trial1_20260703/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_recency_trial1_20260703/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_xgb_recency_trial2_365d_20260719/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_recency_trial2_365d_20260719/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/frvp_long_reversal_xgb_recency_trial2_548d_20260719/long_frvp_reversal",
+      "model_ids": [
+        "frvp_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_long_reversal_recency_trial2_548d_20260719/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [
+        "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv"
+      ],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712/long_ict_reversal",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/long_ict_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_continuation",
+      "model_ids": [
+        "ict_long_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/long_ict_continuation",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_meta",
+      "model_ids": [
+        "ict_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/long_ict_meta",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_ict_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_reversal",
+      "model_ids": [
+        "ict_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/long_ict_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_continuation",
+      "model_ids": [
+        "ict_short_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/short_ict_continuation",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_meta",
+      "model_ids": [
+        "ict_short_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/short_ict_meta",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_reversal",
+      "model_ids": [
+        "ict_short_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/short_ict_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_continuation",
+      "model_ids": [
+        "ict_long_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_continuation",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_meta",
+      "model_ids": [
+        "ict_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_meta",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_ict_continuation",
+        "htf_confluence_long_ict_reversal"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_reversal",
+      "model_ids": [
+        "ict_long_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+      "model_ids": [
+        "ict_short_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/short_ict_continuation",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_meta",
+      "model_ids": [
+        "ict_short_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/short_ict_meta",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_short_ict_continuation"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_reversal",
+      "model_ids": [
+        "ict_short_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/short_ict_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_smoke/long_ict_meta",
+      "model_ids": [
+        "ict_long_meta_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_meta",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [
+        "htf_confluence_long_ict_continuation",
+        "htf_confluence_long_ict_reversal"
+      ],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL",
+        "LIVE_CONFLUENCE_PRODUCER_MISMATCH"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_continuation_premium_discount_continuation",
+      "model_ids": [
+        "ict_short_continuation_premium_discount_continuation_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_short_setup_targets_20260811_audit/phase04_prepared/prepared/short_ict_continuation_premium_discount_continuation",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+      "model_ids": [
+        "ict_short_reversal_ifvg_reversal_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_short_setup_targets_20260811_audit/phase04_prepared/prepared/short_ict_reversal_ifvg_reversal",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_sweep_reclaim",
+      "model_ids": [
+        "ict_short_reversal_sweep_reclaim_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ict",
+      "prepared_dir": "artifacts/ict_short_setup_targets_20260811_audit/phase04_prepared/prepared/short_ict_reversal_sweep_reclaim",
+      "ict_witnessed_feature_parent": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_DIRECT",
+        "ICT_REFERENCE_STATEFUL_DEPENDENCY_REVIEW",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/legacy_models/short_breakout_challenger_v1_neighborhood_isotonic_20260506/short_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506",
+        "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506/short_breakout"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/legacy_models/short_breakout_challenger_v1_neighborhood_platt_20260506/short_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506",
+        "data/prepared/eurusd_5min_ote_full_short_breakout_challenger_20260506/short_breakout"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/legacy_models/short_breakout_v2",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/long_breakout_tcn",
+      "model_ids": [
+        "long_breakout_tcn_champion"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/long_breakout_xgb",
+      "model_ids": [
+        "long_breakout_xgb_v1"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/long_meta_tcn",
+      "model_ids": [
+        "long_ote_meta_tcn_champion"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/long_reversal_tcn",
+      "model_ids": [
+        "long_reversal_tcn_v2_20260525_narrow48"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/long_union_tcn",
+      "model_ids": [
+        "long_ote_union_tcn_candidate_20260523"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/short_breakout_tcn",
+      "model_ids": [
+        "short_breakout_tcn_champion"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/short_breakout_tcn_backup_20260530",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/short_meta_tcn",
+      "model_ids": [
+        "short_ote_meta_tcn_champion"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/short_reversal_xgb",
+      "model_ids": [
+        "short_reversal_xgb_v2_20260525"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/live/short_union_tcn",
+      "model_ids": [
+        "short_ote_union_tcn_candidate_20260520"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_1min_reversal_wave1_short_xgb/short_reversal",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_1min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_1min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/features/eurusd_1min_ote_full.csv",
+        "data/features/eurusd_1min_ote_full.metadata.json",
+        "data/prepared/eurusd_1min_ote_full",
+        "data/prepared/eurusd_1min_ote_full/short_reversal"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_lstm_v1/long_ote",
+      "model_ids": [
+        "long_ote_benchmark_lstm_v1",
+        "long_ote_lstm_v1_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_lstm_v2/long_ote",
+      "model_ids": [
+        "long_ote_lstm_v2_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v1/long_ote",
+      "model_ids": [
+        "long_ote_champion_v1",
+        "long_ote_tcn_v1_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v1/short_ote",
+      "model_ids": [
+        "short_ote_tcn_v1_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v2/long_ote",
+      "model_ids": [
+        "long_ote_tcn_v2_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_tcn_v2/short_ote",
+      "model_ids": [
+        "short_ote_candidate_tcn_v2",
+        "short_ote_tcn_v2_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v1/long_ote",
+      "model_ids": [
+        "long_ote_challenger_v1",
+        "long_ote_xgb_v1_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v1/short_ote",
+      "model_ids": [
+        "short_ote_candidate_xgb_v1",
+        "short_ote_xgb_v1_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v2/long_ote",
+      "model_ids": [
+        "long_ote_xgb_v2_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_full_xgb_v2/short_ote",
+      "model_ids": [
+        "short_ote_xgb_v2_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_refresh_20260530/short_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v1/long_continuation_pullback",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_continuation_pullback",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v1/short_continuation_pullback",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_continuation_pullback",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v2/long_continuation_pullback",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_continuation_pullback",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_tcn_v2/short_continuation_pullback",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_continuation_pullback",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_continuation_entry",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_continuation_entry",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_ote",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/long_reversal",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_breakout",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_breakout",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_continuation_entry",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_continuation_entry",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/ote_multi_family_xgb_v1/short_ote",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_5min_ote_full/short_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/runpod_1min_tcn_long_ote_20260615_002054/long_ote",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_1min_ote_full/long_ote",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_1min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION",
+        "ICT_REFERENCE_SWEEP_OR_DOL"
+      ],
+      "missing_ancestor_paths": [
+        "data/features/eurusd_1min_ote_full.csv",
+        "data/features/eurusd_1min_ote_full.metadata.json",
+        "data/prepared/eurusd_1min_ote_full",
+        "data/prepared/eurusd_1min_ote_full/long_ote"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/runpod_1min_tcn_long_reversal_20260612_171301/long_reversal",
+      "model_ids": [
+        "long_reversal_tcn_1min_runpod_20260612_candidate"
+      ],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_1min_ote_full/long_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_1min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/features/eurusd_1min_ote_full.csv",
+        "data/features/eurusd_1min_ote_full.metadata.json",
+        "data/prepared/eurusd_1min_ote_full",
+        "data/prepared/eurusd_1min_ote_full/long_reversal"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "models/runpod_1min_tcn_short_reversal_20260614_193525/short_reversal",
+      "model_ids": [],
+      "purpose": "trained_candidate_or_historical_model",
+      "strategy": "ote",
+      "prepared_dir": "data/prepared/eurusd_1min_ote_full/short_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [
+        "data/labeling/labeled_data/eurusd_1min_ote_labels_full.csv"
+      ],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "data/features/eurusd_1min_ote_full.csv",
+        "data/features/eurusd_1min_ote_full.metadata.json",
+        "data/prepared/eurusd_1min_ote_full",
+        "data/prepared/eurusd_1min_ote_full/short_reversal"
+      ],
+      "evidence_level": "defect_observed_in_declared_parent",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "tmp/frvp_train_smoke_tcn/long_frvp_reversal",
+      "model_ids": [],
+      "purpose": "temporary_saved_training_run",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "artifacts/frvp_es_primary_full_phase02_csvs_gzip/phase02/es_primary_frvp_features_full.csv.gz",
+        "artifacts/frvp_es_primary_full_phase02_csvs_gzip/phase02/es_primary_frvp_features_full.csv.metadata.json",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase02/es_primary_frvp_phase04_dataset.csv.gz",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase02/es_primary_frvp_phase04_dataset.csv.metadata.json",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared/long_frvp_reversal"
+      ],
+      "evidence_level": "dependency_or_missing_lineage_only",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    },
+    {
+      "artifact_path": "tmp/frvp_train_smoke_xgb/long_frvp_reversal",
+      "model_ids": [],
+      "purpose": "temporary_saved_training_run",
+      "strategy": "frvp",
+      "prepared_dir": "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared/long_frvp_reversal",
+      "ict_witnessed_feature_parent": null,
+      "frvp_witnessed_label_parents": [],
+      "ote_witnessed_label_parents": [],
+      "selected_confluence_helpers": [],
+      "selected_dependency_routes": [
+        "HTF_CALENDAR_REFERENCE_SEMANTICS",
+        "HTF_FEATURE_PUBLICATION"
+      ],
+      "missing_ancestor_paths": [
+        "artifacts/frvp_es_primary_full_phase02_csvs_gzip/phase02/es_primary_frvp_features_full.csv.gz",
+        "artifacts/frvp_es_primary_full_phase02_csvs_gzip/phase02/es_primary_frvp_features_full.csv.metadata.json",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase02/es_primary_frvp_phase04_dataset.csv.gz",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase02/es_primary_frvp_phase04_dataset.csv.metadata.json",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared",
+        "artifacts/frvp_es_primary_phase04_full_reuse/phase04/prepared/long_frvp_reversal"
+      ],
+      "evidence_level": "dependency_or_missing_lineage_only",
+      "consumed_training_row_impact_measured": false,
+      "label_delta_measured": false,
+      "decision": "hold_for_B2_impact_review_no_retraining_or_clearance_decision"
+    }
+  ],
+  "saved_prepared_helper_prefixes": [
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/long_frvp_continuation",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1355,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_current/phase04/prepared/short_frvp_continuation",
+      "feature": "htf_confluence_short_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1462,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_post2022_20260703/phase04/prepared/long_frvp_meta",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 871,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_continuation",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1355,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/long_frvp_meta",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 907,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_continuation",
+      "feature": "htf_confluence_short_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1462,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_meta",
+      "feature": "htf_confluence_short_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1008,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_refresh_20260701/phase04/prepared/short_frvp_meta",
+      "feature": "htf_confluence_short_frvp_reversal",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 524,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_continuation_setup3",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 1407,
+      "nonzero_rows": 885,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_es_primary_setup_targets_20260829/phase04/prepared/long_frvp_continuation_setup5",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 1418,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/frvp_long_meta_recency_trial1_20260705/phase04/prepared/long_frvp_meta",
+      "feature": "htf_confluence_long_frvp_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 907,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/ict_es_primary/phase04_prepared/prepared/long_ict_meta",
+      "feature": "htf_confluence_long_ict_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 174,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_meta",
+      "feature": "htf_confluence_long_ict_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 398,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/long_ict_meta",
+      "feature": "htf_confluence_long_ict_reversal",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 793,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    },
+    {
+      "prepared_dir": "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase04_prepared/prepared/short_ict_meta",
+      "feature": "htf_confluence_short_ict_continuation",
+      "exists": true,
+      "prefix_rows": 2000,
+      "nonzero_rows": 330,
+      "null_rows": 0,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "interpretation": "Saved prepared values; may already be transformed/scaled. Prefix witness only."
+    }
+  ],
+  "frozen_live_helper_observations": {
+    "available": true,
+    "source": "research/es_live_audit_20260911/es_audit_snapshot.sqlite3",
+    "sha256": "ddfb75c82a241d378d4fe46ab7ea39b068ec06f31815b8731cea3b88be8f5b74",
+    "counting": "All persisted prediction-linked feature snapshots, including repeats/revisions; diagnostic observations, not independent trades.",
+    "identity_limit": "model_id and saved runtime_manifest_id do not attest historical model weight identity",
+    "rows": [
+      {
+        "model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "runtime_manifest_id": 507,
+        "feature": "htf_confluence_long_frvp_continuation",
+        "snapshots": 1409,
+        "zero": 1409
+      },
+      {
+        "model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "runtime_manifest_id": 505,
+        "feature": "htf_confluence_long_frvp_continuation",
+        "snapshots": 1409,
+        "zero": 1409
+      },
+      {
+        "model_id": "frvp_long_continuation_xgb_v1",
+        "runtime_manifest_id": 156,
+        "feature": "htf_confluence_long_frvp_continuation",
+        "snapshots": 2160,
+        "zero": 2160
+      },
+      {
+        "model_id": "frvp_long_meta_xgb_v1",
+        "runtime_manifest_id": 157,
+        "feature": "htf_confluence_long_frvp_continuation",
+        "snapshots": 2160,
+        "zero": 2160
+      },
+      {
+        "model_id": "frvp_short_continuation_tcn_v1",
+        "runtime_manifest_id": 159,
+        "feature": "htf_confluence_short_frvp_continuation",
+        "snapshots": 2159,
+        "zero": 2159
+      },
+      {
+        "model_id": "frvp_short_meta_xgb_v1",
+        "runtime_manifest_id": 158,
+        "feature": "htf_confluence_short_frvp_continuation",
+        "snapshots": 2160,
+        "zero": 2160
+      },
+      {
+        "model_id": "frvp_short_meta_xgb_v1",
+        "runtime_manifest_id": 158,
+        "feature": "htf_confluence_short_frvp_reversal",
+        "snapshots": 2160,
+        "zero": 2160
+      },
+      {
+        "model_id": "ict_long_meta_xgb_v1",
+        "runtime_manifest_id": 161,
+        "feature": "htf_confluence_long_ict_continuation",
+        "snapshots": 413,
+        "zero": 413
+      },
+      {
+        "model_id": "ict_long_meta_xgb_v1",
+        "runtime_manifest_id": 161,
+        "feature": "htf_confluence_long_ict_reversal",
+        "snapshots": 413,
+        "zero": 413
+      },
+      {
+        "model_id": "ict_long_meta_xgb_v1",
+        "runtime_manifest_id": 373,
+        "feature": "htf_confluence_long_ict_continuation",
+        "snapshots": 1663,
+        "zero": 1663
+      },
+      {
+        "model_id": "ict_long_meta_xgb_v1",
+        "runtime_manifest_id": 373,
+        "feature": "htf_confluence_long_ict_reversal",
+        "snapshots": 1663,
+        "zero": 1663
+      },
+      {
+        "model_id": "ict_short_meta_xgb_v1",
+        "runtime_manifest_id": 165,
+        "feature": "htf_confluence_short_ict_continuation",
+        "snapshots": 413,
+        "zero": 413
+      },
+      {
+        "model_id": "ict_short_meta_xgb_v1",
+        "runtime_manifest_id": 377,
+        "feature": "htf_confluence_short_ict_continuation",
+        "snapshots": 1663,
+        "zero": 1663
+      }
+    ]
+  },
+  "captured_es_roster": {
+    "source": "artifacts/es_collection_baseline_20260913_A1/baseline_manifest.json",
+    "sha256": "3dfbaffdb484fad1615ae0cc0f442001093c03502fb05084d67fe802ae1b77a0",
+    "identity_limit": "Preserved 21-model roster, including retired/diagnostic records; not proof of a currently running process or eligibility.",
+    "models": [
+      {
+        "model_id": "frvp_long_reversal_xgb_v1",
+        "artifact_path": "models/frvp_long_reversal_xgb_recency_trial1_20260703/long_frvp_reversal",
+        "role": "benchmark",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_continuation_xgb_v1",
+        "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_continuation",
+        "role": "benchmark",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_meta_xgb_v1",
+        "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_meta",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_short_meta_xgb_v1",
+        "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_meta",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_short_continuation_tcn_v1",
+        "artifact_path": "models/frvp_es_primary_tcn_continuation_refresh_20260701/short_frvp_continuation",
+        "role": "challenger",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_short_reversal_xgb_v1",
+        "artifact_path": "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_reversal",
+        "role": "benchmark",
+        "status": "deprecated"
+      },
+      {
+        "model_id": "frvp_long_continuation_setup2_xgb_v1",
+        "artifact_path": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "artifact_path": "models/frvp_long_continuation_setup5_xgb_20260829/long_frvp_continuation_setup5",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_reversal_setup1_xgb_v1",
+        "artifact_path": "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup1",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "artifact_path": "models/frvp_long_continuation_setup3_xgb_20260829/long_frvp_continuation_setup3",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_reversal_setup6_xgb_v1",
+        "artifact_path": "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup6",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "frvp_long_reversal_setup4_xgb_v1",
+        "artifact_path": "models/frvp_long_reversal_setup4_xgb_20260829/long_frvp_reversal_setup4",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_long_meta_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_meta",
+        "role": "candidate",
+        "status": "active"
+      },
+      {
+        "model_id": "ict_long_reversal_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_reversal",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_long_continuation_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_continuation",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_reversal_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_reversal",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_meta_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_meta",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_continuation_xgb_v1",
+        "artifact_path": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_reversal_sweep_reclaim_xgb_v1",
+        "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_sweep_reclaim",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_reversal_ifvg_reversal_xgb_v1",
+        "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+        "role": "candidate",
+        "status": "candidate"
+      },
+      {
+        "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+        "artifact_path": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_continuation_premium_discount_continuation",
+        "role": "candidate",
+        "status": "candidate"
+      }
+    ]
+  },
+  "script_sha256": "d66a298dfc2d9f87128af0563015da4a510e51feba6cac3287467958bf676a5c"
+}

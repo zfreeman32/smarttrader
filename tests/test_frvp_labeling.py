@@ -391,6 +391,7 @@ def test_reversal_past_htf_confluence_gate_uses_setup_specific_windows(monkeypat
         return events
 
     monkeypatch.setattr(frvp_engine, "annotate_swing_context", fake_annotate)
+    monkeypatch.setattr(frvp_engine, "annotate_confirmed_htf_spacing", fake_annotate)
     labeled, diagnostics, events = build_frvp_labels(
         _input_frame(market),
         params=_params(enable_reversal_past_htf_confluence_gate=True),

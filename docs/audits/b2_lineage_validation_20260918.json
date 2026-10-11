@@ -1,0 +1,38 @@
+{
+  "audit_id": "b2_lineage_validation_20260918",
+  "inventory_sha256": "483dd27adf4be403036fd6db0600cf4d43210e97e1f3c096adae756d96b97cfd",
+  "dependency_trace_sha256": "c247f5c2986bff0a4c3c240a416b4e90ec474b859497204e3307ba1187c40c06",
+  "witness_sha256": "fc400ab6073bb04065c936cee82fb94b8cea677fd434a9e43f4303d5d5a19834",
+  "tests": {
+    "distinct_passed": 82,
+    "runs": [
+      {
+        "command": "python -B -m pytest tests/test_b2_artifact_lineage.py tests/test_ict_reference_causality.py tests/test_es_causal_feature_contract.py tests/test_outcome_scope_audit_atr.py -q -p no:cacheprovider",
+        "passed": 81,
+        "seconds": 20.28,
+        "inventory_test_count_at_run": 13
+      },
+      {
+        "command": "python -B -m pytest tests/test_b2_artifact_lineage.py -q -p no:cacheprovider",
+        "passed": 14,
+        "seconds": 0.45,
+        "reason": "Added temporary saved-model discovery regression; 13 overlap the prior run."
+      }
+    ]
+  },
+  "inventory_parse_errors": [],
+  "inventory_hash_states": {
+    "not_a_local_file": 523,
+    "observed_stable": 5442
+  },
+  "output_checksum_errors": [],
+  "stable_input_stat_checks": 5442,
+  "inputs_changed_since_inventory": [],
+  "rehashed_model_runtime_and_source_files": 1667,
+  "protected_hash_changes": [],
+  "production_code_changed_by_task": false,
+  "historical_data_rebuilt": false,
+  "training_run": false,
+  "baseline_releases": 0,
+  "evidence_boundary": "Current byte preservation and declared ancestry, not retrospective proof of training-time input bytes or a completed impact/retraining decision."
+}

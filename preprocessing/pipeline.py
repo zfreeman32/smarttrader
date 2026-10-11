@@ -59,18 +59,29 @@ class FeaturePreprocessingPipeline:
 
         metadata = self._load_metadata(resolved_metadata_path)
         active_config, runtime_tuning = self._resolve_runtime_config(metadata)
-        read_plan = self._build_csv_read_plan(
-            input_path=input_path,
-            metadata=metadata,
-            time_column=active_config.time_column,
-            load_time_column=bool(active_config.load_time_column),
-        )
-        df = pd.read_csv(
-            input_path,
-            usecols=read_plan["usecols"],
-            dtype=read_plan["dtypes"],
-            parse_dates=read_plan["parse_dates"],
-        )
+        if input_path.suffix.lower() == ".parquet":
+            df = pd.read_parquet(input_path)
+            for column in metadata.get("feature_columns", []):
+                if column in df and pd.api.types.is_numeric_dtype(df[column]):
+                    df[column] = df[column].astype(np.float32)
+            for column in df:
+                if column.startswith(("label_quality_", "sample_weight_")):
+                    df[column] = df[column].astype(np.float32)
+            if not active_config.load_time_column and active_config.time_column in df:
+                df = df.drop(columns=[active_config.time_column])
+        else:
+            read_plan = self._build_csv_read_plan(
+                input_path=input_path,
+                metadata=metadata,
+                time_column=active_config.time_column,
+                load_time_column=bool(active_config.load_time_column),
+            )
+            df = pd.read_csv(
+                input_path,
+                usecols=read_plan["usecols"],
+                dtype=read_plan["dtypes"],
+                parse_dates=read_plan["parse_dates"],
+            )
         df = standardize_market_frame(df)
         source_row_idx = resolve_source_row_idx(df)
         df = optimize_loaded_frame(df)
@@ -110,12 +121,21 @@ class FeaturePreprocessingPipeline:
         carry_through_feature_columns = [
             column for column in feature_columns if column not in set(metadata_feature_columns)
         ]
-        encoded_features, encoding_info = encode_candidate_features(df, feature_columns)
-        encoded_features, constant_info = remove_global_constant_features(encoded_features)
-        encoded_features, duplicate_info = remove_exact_duplicate_features(
-            encoded_features,
-            active_config.max_analysis_rows,
-        )
+        if active_config.target_selection_fit_rows:
+            missing = {spec.name for spec in target_specs} - set(active_config.target_selection_fit_rows)
+            if missing:
+                raise ValueError(f"Missing frozen selection boundary for targets: {sorted(missing)}")
+            # Keep the complete candidate pool until each target's fit boundary is known.
+            encoded_features = df.loc[:, feature_columns].copy(deep=False)
+            encoding_info = {"encoded_columns": [], "encoders": {}}
+            constant_info = duplicate_info = {"removed_count": 0}
+        else:
+            encoded_features, encoding_info = encode_candidate_features(df, feature_columns)
+            encoded_features, constant_info = remove_global_constant_features(encoded_features)
+            encoded_features, duplicate_info = remove_exact_duplicate_features(
+                encoded_features,
+                active_config.max_analysis_rows,
+            )
 
         target_context = build_target_context(df, target_specs, active_config.time_column)
         target_context["source_row_idx"] = source_row_idx.to_numpy(copy=False)
@@ -552,6 +572,24 @@ class FeaturePreprocessingPipeline:
         val_positions = ordered_positions[val_idx]
         test_positions = ordered_positions[test_idx]
 
+        selection_rows = int(config.target_selection_fit_rows.get(spec.name, len(train_idx)))
+        if not 1 <= selection_rows <= len(train_idx):
+            raise ValueError(f"Invalid selection fit rows for {spec.name}: {selection_rows}")
+        frozen_selection = spec.name in config.target_selection_fit_rows
+        selection_preprocessing = {}
+        if frozen_selection:
+            encoded_features, encoding_info = encode_candidate_features(
+                encoded_features, encoded_features.columns,
+                fit_positions=train_positions[:selection_rows],
+            )
+            selection_pool = encoded_features.iloc[train_positions[:selection_rows]]
+            selection_pool, constant_info = remove_global_constant_features(selection_pool)
+            selection_pool, duplicate_info = remove_exact_duplicate_features(
+                selection_pool, config.max_analysis_rows,
+            )
+            encoded_features = encoded_features.loc[:, selection_pool.columns]
+            selection_preprocessing = dict(encoding=encoding_info, constants=constant_info, duplicates=duplicate_info)
+
         def take_feature_rows(row_positions: np.ndarray, columns: Optional[List[str]] = None) -> pd.DataFrame:
             row_index = encoded_features.index.take(row_positions)
             if columns is None:
@@ -569,23 +607,23 @@ class FeaturePreprocessingPipeline:
         source_row_idx_val = source_row_idx.iloc[val_idx].reset_index(drop=True)
         source_row_idx_test = source_row_idx.iloc[test_idx].reset_index(drop=True)
 
-        fill_values, fill_report = build_fill_values(X_train_raw)
+        fill_values, fill_report = build_fill_values(X_train_raw.iloc[:selection_rows])
         X_train = apply_fill_values(X_train_raw, fill_values)
         del X_train_raw
 
-        X_train, low_variance_info = remove_low_variance_columns(
-            X_train,
+        selection_X, low_variance_info = remove_low_variance_columns(
+            X_train.iloc[:selection_rows],
             config.variance_threshold,
         )
 
         collinearity_info = prune_collinear_features(
-            X_train=X_train,
-            y_train=y_train,
+            X_train=selection_X,
+            y_train=y_train.iloc[:selection_rows],
             config=config,
         )
         selected_features = [
             column
-            for column in X_train.columns
+            for column in selection_X.columns
             if column not in collinearity_info["dropped_columns"]
         ]
         X_train = X_train.loc[:, selected_features]
@@ -605,15 +643,19 @@ class FeaturePreprocessingPipeline:
         )
 
         scaler, X_train_scaled, X_val_scaled, X_test_scaled = maybe_scale(
-            X_train,
+            X_train.iloc[:selection_rows],
             X_val,
             X_test,
             config.scaler_type,
         )
+        if scaler is None:
+            X_train_scaled = X_train
+        else:
+            X_train_scaled = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns, index=X_train.index)
         importance_df, importance_summary = compute_feature_importance(
-            X_train=X_train,
-            y_train=y_train,
-            sample_weight=w_train,
+            X_train=X_train.iloc[:selection_rows],
+            y_train=y_train.iloc[:selection_rows],
+            sample_weight=w_train.iloc[:selection_rows],
             is_binary=is_binary,
             config=config,
         )
@@ -682,6 +724,14 @@ class FeaturePreprocessingPipeline:
             },
             "split_date_ranges": split_date_ranges,
             "split_geometry": split_geometry,
+            "selection_contract": {
+                "mode": "frozen_development_prefix" if frozen_selection else "outer_train",
+                "fit_rows": selection_rows,
+                "fit_end_source_row_idx": int(source_row_idx_train.iloc[selection_rows - 1]),
+                "required_gap_bars": applied_embargo_bars,
+                "preprocessing": selection_preprocessing,
+                "fill_values": selected_fill_values,
+            },
             "timezone_contract": timezone_contract,
             "source_lineage": source_lineage,
             "row_identity": {

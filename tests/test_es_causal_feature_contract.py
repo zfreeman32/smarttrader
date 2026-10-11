@@ -198,7 +198,7 @@ def test_external_helper_attests_every_consumed_source_row() -> None:
     assert evaluate_model_input_contract(manifest, frame, producer_contracts=producer)["status"] == "passed"
 
 
-def test_engine_keeps_diagnostic_fallback_scores_and_publishes_cached_contract(monkeypatch) -> None:
+def test_engine_keeps_missing_helper_state_and_publishes_cached_contract(monkeypatch) -> None:
     feature = "htf_confluence_short_frvp_continuation"
     engine = IncrementalFeatureEngine([_manifest([feature])])
     frame = _bars(pd.date_range("2026-09-10 12:00Z", periods=2, freq="5min"))
@@ -210,7 +210,7 @@ def test_engine_keeps_diagnostic_fallback_scores_and_publishes_cached_contract(m
         return output, {}
     monkeypatch.setattr(engine.builder, "build", build)
     result = engine.build_feature_frame(frame)
-    assert result[feature].tolist() == [0, 0]
+    assert result[feature].isna().all()
     status = engine.input_contract_status(engine.manifests[0].model_id, feature_frame=result)
     assert status["diagnostic_only"]
     assert status["fallback_features"] == [feature]

@@ -1,0 +1,3499 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "contract_id": "es_frvp_setup1_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup1",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup1"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "atr",
+        "stop_atr": 1.0,
+        "target_atr": 0.8,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 60,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_setup2_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup2",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup2"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_setup3_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup3",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup3"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_setup4_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup4",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup4"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_setup5_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup5",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup5"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_setup6_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup6",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup6"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "atr",
+        "stop_atr": 1.0,
+        "target_atr": 0.8,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 60,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_frvp_unmatched_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup1_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup1",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup1"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "atr",
+        "stop_atr": 1.0,
+        "target_atr": 0.8,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 60,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup2_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup2",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup2"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup3_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup3",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup3"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup4_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup4",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup4"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup5_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup5",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_setup5"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Design/code conflict: continuation TP 1.5 vs 1.2 ATR; failed-auction SL/TP 0.8/1.2 vs 0.9/1.0 ATR. Side-specific S3/S5 overrides also exist.",
+        "recommendation": "Freeze an explicitly approved per-side setup contract before scoring; conservative candidate uses implemented SL/TP 1.0/1.2 ATR and 96 bars for S2/S3/S5, 0.9/1.0 ATR and 48 bars for S4. Never substitute the pooled 120-bar markout."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_setup6_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "setup6",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_setup6"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "atr",
+        "stop_atr": 1.0,
+        "target_atr": 0.8,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 60,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_frvp_unmatched_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "frvp",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector firing bar open; profile anchor is separate context, never execution time.",
+      "known_at_definition": "Close of firing bar and all completed profile/HTF producers, then max(feature, regime, prediction, calibration, policy availability).",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "completed_1h_structural_atr",
+        "source": "docs/FRVP_ES_primary_6E_variant_design.md section 7; data/labeling/frvp_labeling_engine.py",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_sweep_reclaim_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "sweep_reclaim",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_sweep_reclaim"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_sweep_displacement_fvg_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "sweep_displacement_fvg",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_sweep_displacement_fvg"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_ob_retest_after_mss_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "ob_retest_after_mss",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_ob_retest_after_mss"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_ifvg_reversal_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "ifvg_reversal",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_ifvg_reversal"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_premium_discount_continuation_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "premium_discount_continuation",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_premium_discount_continuation"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.5,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 24,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_session_open_manipulation_pre_ib_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "session_open_manipulation_pre_ib",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_session_open_manipulation_pre_ib"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 12,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_session_open_manipulation_post_ib_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "session_open_manipulation_post_ib",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_session_open_manipulation_post_ib"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 12,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_displacement_continuation_after_raid_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "displacement_continuation_after_raid",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_displacement_continuation_after_raid"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.5,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 24,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_classic_breaker_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "classic_breaker",
+      "model_families": [
+        "classic_breaker"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical failed order-block origin or retest event anchor, explicitly supplied.",
+      "known_at_definition": "First qualifying retest/rejection close AFTER breaker activation; activation AFTER source OB formation. Never source OB or pivot time.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "Isolated classic-breaker research labels exist; no approved production evaluation economics or policy.",
+        "recommendation": "Use causal retest entry, initial structural stop, max(2 ATR,1.25R,opposing target) and fixed 18-bar cap only after explicit new-version approval."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "es_ict_unmatched_eval_v1",
+      "contract_version": 1,
+      "instrument": "ES",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "es_session_cost_v1",
+        "version": 1,
+        "instrument": "ES",
+        "unit": "ticks",
+        "price_increment": 0.25,
+        "cash_per_unit": 12.5,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_sweep_reclaim_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "sweep_reclaim",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_sweep_reclaim"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_sweep_displacement_fvg_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "sweep_displacement_fvg",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_sweep_displacement_fvg"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_ob_retest_after_mss_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "ob_retest_after_mss",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_ob_retest_after_mss"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_ifvg_reversal_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "ifvg_reversal",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_ifvg_reversal"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_premium_discount_continuation_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "premium_discount_continuation",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_premium_discount_continuation"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.5,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 24,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_session_open_manipulation_pre_ib_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "session_open_manipulation_pre_ib",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_session_open_manipulation_pre_ib"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 12,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_session_open_manipulation_post_ib_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "session_open_manipulation_post_ib",
+      "model_families": [
+        "reversal",
+        "meta",
+        "reversal_session_open_manipulation_post_ib"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 12,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_displacement_continuation_after_raid_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "displacement_continuation_after_raid",
+      "model_families": [
+        "continuation",
+        "meta",
+        "continuation_displacement_continuation_after_raid"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "structural",
+        "stop_atr": 0.25,
+        "target_atr": 2.5,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 24,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "",
+        "recommendation": ""
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_classic_breaker_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "classic_breaker",
+      "model_families": [
+        "classic_breaker"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical failed order-block origin or retest event anchor, explicitly supplied.",
+      "known_at_definition": "First qualifying retest/rejection close AFTER breaker activation; activation AFTER source OB formation. Never source OB or pivot time.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "Isolated classic-breaker research labels exist; no approved production evaluation economics or policy.",
+        "recommendation": "Use causal retest entry, initial structural stop, max(2 ATR,1.25R,opposing target) and fixed 18-bar cap only after explicit new-version approval."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "6e_ict_unmatched_eval_v1",
+      "contract_version": 1,
+      "instrument": "6E",
+      "timeframe_minutes": 5,
+      "strategy": "ict",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Detector event bar open; retain source OB/swing/raid timestamps as evidence, not executable signal times.",
+      "known_at_definition": "Close of detector retest/reclaim/rejection bar after required sweep/MSS/FVG confirmation, then max of all ML pipeline availability times.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": 18,
+        "atr_definition": "signal_bar_atr14",
+        "source": "ict/labeling/ict_labeling_engine.py ICTLabelingConfig; docs/ICT_execution_journal.md",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "6e_session_cost_v1",
+        "version": 1,
+        "instrument": "6E",
+        "unit": "ticks",
+        "price_increment": 5e-05,
+        "cash_per_unit": 6.25,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.0
+          ],
+          [
+            "new_york",
+            1.0
+          ],
+          [
+            "asia",
+            1.5
+          ],
+          [
+            "off_hours",
+            2.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.25,
+        "commission_round_trip": 0.4,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_reversal_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 5,
+      "strategy": "ote",
+      "setup_family": "reversal",
+      "model_families": [
+        "reversal",
+        "meta",
+        "ote",
+        "union"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Saved swing/entry/trend-scan labels and label-horizon/breakout-event backtests do not define an independent live stop/target contract.",
+        "recommendation": "Preserve original labels. Propose fixed initial barriers from causal setup geometry and an explicitly approved family horizon; do not copy label parameters or retrospective best-entry prices automatically."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_reversal_1m_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 1,
+      "strategy": "ote",
+      "setup_family": "reversal",
+      "model_families": [
+        "reversal",
+        "meta",
+        "ote",
+        "union"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Saved swing/entry/trend-scan labels and label-horizon/breakout-event backtests do not define an independent live stop/target contract.",
+        "recommendation": "Preserve original labels. Propose fixed initial barriers from causal setup geometry and an explicitly approved family horizon; do not copy label parameters or retrospective best-entry prices automatically."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_continuation_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 5,
+      "strategy": "ote",
+      "setup_family": "continuation",
+      "model_families": [
+        "continuation",
+        "meta",
+        "ote",
+        "union"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Saved swing/entry/trend-scan labels and label-horizon/breakout-event backtests do not define an independent live stop/target contract.",
+        "recommendation": "Preserve original labels. Propose fixed initial barriers from causal setup geometry and an explicitly approved family horizon; do not copy label parameters or retrospective best-entry prices automatically."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_breakout_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 5,
+      "strategy": "ote",
+      "setup_family": "breakout",
+      "model_families": [
+        "breakout",
+        "meta",
+        "ote",
+        "union"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Saved swing/entry/trend-scan labels and label-horizon/breakout-event backtests do not define an independent live stop/target contract.",
+        "recommendation": "Preserve original labels. Propose fixed initial barriers from causal setup geometry and an explicitly approved family horizon; do not copy label parameters or retrospective best-entry prices automatically."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_breakout_sustained_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 5,
+      "strategy": "ote",
+      "setup_family": "breakout_sustained",
+      "model_families": [
+        "breakout_sustained",
+        "meta",
+        "ote",
+        "union"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Saved swing/entry/trend-scan labels and label-horizon/breakout-event backtests do not define an independent live stop/target contract.",
+        "recommendation": "Preserve original labels. Propose fixed initial barriers from causal setup geometry and an explicitly approved family horizon; do not copy label parameters or retrospective best-entry prices automatically."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_unmatched_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 5,
+      "strategy": "ote",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta",
+        "ote",
+        "union",
+        "breakout",
+        "breakout_sustained"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    },
+    {
+      "contract_id": "eurusd_ote_unmatched_1m_eval_v1",
+      "contract_version": 1,
+      "instrument": "EURUSD",
+      "timeframe_minutes": 1,
+      "strategy": "ote",
+      "setup_family": "unmatched",
+      "model_families": [
+        "reversal",
+        "continuation",
+        "meta",
+        "ote",
+        "union",
+        "breakout",
+        "breakout_sustained"
+      ],
+      "side": "long_or_short",
+      "anchor_definition": "Historical swing extreme for reversal/pullback; breakout event anchor for breakout. Training positive-zone bars are not availability evidence.",
+      "known_at_definition": "Actual online prediction pipeline completion; when replaying a rule event also require zigzag/swing or breakout confirmation close. Retrospective entry labels are never decisions.",
+      "entry_rule": "first_scheduled_open_strictly_after_known_at",
+      "max_entry_delay_bars": 1,
+      "entry_price": "unadjusted_open",
+      "barrier_price_grid": "futures_outward_tick_fx_unrounded",
+      "risk": {
+        "rule": "UNRESOLVED",
+        "stop_atr": null,
+        "target_atr": null,
+        "min_stop_ticks": 1.0,
+        "min_target_rr": 1.25,
+        "timeout_bars": null,
+        "atr_definition": "declared_training_independent_atr",
+        "source": "data/labeling/reversal_labeling_engine.py; data/labeling/ote_continuation_pullback_labeling_engine.py; data/labeling/ote_breakout_labeling_engine.py",
+        "unresolved_reason": "Pooled/all-bar prediction has no causally matched setup. No economic family can be inferred from the label or probability.",
+        "recommendation": "Retain independent forward returns; match to a causal same-side setup before assigning a paper contract."
+      },
+      "paper_management": "fixed_barriers",
+      "concurrency": "independent_every_signal",
+      "barrier_resolution": "complete_causal_1m_else_adverse_first",
+      "exit_price": "barrier_or_adverse_stop_gap_open_timeout_close",
+      "missing_entry": "DATA_GAP_no_search",
+      "missing_holding": "DATA_GAP",
+      "overnight": "hold",
+      "roll_rule": "censor_coordinate_change",
+      "forward_horizons": [
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "costs": {
+        "cost_model_id": "eurusd_session_cost_v1",
+        "version": 1,
+        "instrument": "EURUSD",
+        "unit": "pips",
+        "price_increment": 0.0001,
+        "cash_per_unit": null,
+        "spread_mode": "session_schedule",
+        "session_spreads": [
+          [
+            "overlap",
+            1.0
+          ],
+          [
+            "london",
+            1.5
+          ],
+          [
+            "new_york",
+            1.5
+          ],
+          [
+            "asia",
+            2.5
+          ],
+          [
+            "off_hours",
+            3.0
+          ]
+        ],
+        "spread_interpretation": "full_configured_spread_per_side",
+        "fixed_slippage_round_trip": 0.3,
+        "commission_round_trip": 0.35,
+        "spread_slippage_multiplier": 0.0,
+        "session_clock": "london_07_16_ny_08_17_asia_ny_19_02_v1",
+        "adjustments": "none"
+      }
+    }
+  ]
+}

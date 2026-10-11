@@ -1,0 +1,4988 @@
+{
+ "id": "section4-parity-report-v1",
+ "date": "20261005",
+ "model": {
+  "queue_id": 10,
+  "model_id": "frvp_long_reversal_xgb_v1",
+  "stream": "ES",
+  "reviewed_artifact_set_sha256": "189a7bd7a9ec1fab7c215fcf428ecc3f16e40c5046559f4f4f58c44dcd70e1ac",
+  "artifact_sha256": {
+   "model.json": "bb08d91f73246d449e137f0310bb07db51d8fbe3124769dc8ad2fb592f322ec2",
+   "scaler.joblib": "2bef28efe84254615b286f2a7418841954c999ba437bb6b9c4fbe88ac9c15ba2",
+   "calibrator.joblib": "8e813a9c1932895a352691f8177311f983ce60861c24b461c97b7d3c8250fbff",
+   "model_config.json": "00b73a89833c36f6bfe6ef836ad8841f968e65d56ce1eeb2d49ff703d4881651",
+   "training_summary.json": "273c73de2a1c98e094676fd5fde0fe56a3754e3f558ca7e261d77ec95ba28d82",
+   "oof_predictions.csv": "be5f26e5b4ea252338f10c11eb785f30a581bae45b871d3307914d2f8f99bb14",
+   "test_predictions.csv": "6d6c00e436dcedb94e43571ddf70e5bd0eda2c10a4364742516407f7c5d75fa6",
+   "cv_fold_manifest.json": "8286552d65937e730dd5a17e63c65b8dbd0cb0f7cc2221dc6534932c2dc06ac6",
+   "cv_fold_manifest.csv": "210f119d05ed7d5f2439192f100502ad38d2b45a877884db3558ae3b9bea7c33"
+  },
+  "staged_manifest_sha256": "82b7f50207fc386c7fc27eb5c2b42df2219f4a12b3bdc126307f2818dda298ac",
+  "prepared_manifest_sha256": "6c3cd2608aac2010c38f5ad5a5955e8f337c71d7ff8ea50dc32b5af0cbee37d4",
+  "threshold": 0.5599999999999999,
+  "consumed_rows": 12
+ },
+ "protocol": {
+  "version": 3,
+  "sha256": "7ece6bbfa9f5bdf96d4adfa7c55052a31f41fde4968eccd0a8704d29e57cc939",
+  "lock_sha256": "914647a99ad071aa9567ea7117c5b91acceb87076bc64a6b2ec8e0b13ed7e6ce",
+  "executed_under": {
+   "version": 2,
+   "sha256": "e25b5e48905d44de5d6c4369a5ac24b49bf711074722710b149494fccb34eff5",
+   "lock_sha256": "f9b65ced680b65e46ca8f84167c4abd5de15a9372d3d88f98369d2304acbff38"
+  },
+  "note": "run executed under v2 (tolerances identical); classified under v3, which adds only the float32_tree_split declared-behavior clause (Q-P1, user-approved 2026-10-05)"
+ },
+ "run": {
+  "id": "s4parity_20261002_v1",
+  "dates": [
+   "2026-10-02",
+   "2026-10-03",
+   "2026-10-04",
+   "2026-10-05"
+  ],
+  "windows_sha256": "60a5dc5bea265525a748e706be52fe46acf6b4497b327ca1439a3d1e3a287e17",
+  "code_sha256_sets": [
+   {
+    "code_sha256": {
+     "features/builder.py": "060fc6b45660885a92a3e1ee42ab652105b5eed1e02b244427f8126445bdb46c",
+     "model_training/source_history.py": "a3dc2b6cc432fd9901d925f3e8367c977aa07a553d685f1ce22065ea0f6d33dd",
+     "ote_live/features/incremental_engine.py": "76b5c8159d92333b3aa9a611ec727f07f1f23f9f34de0991040e20bdc1db90ce",
+     "ote_live/features/raw_snapshots.py": "9f506cde58dce38b3cd3637a780b7e9bedb6e9298430ae8d7977727093cdf9c5",
+     "ote_live/ingestion/provenance.py": "af60afa3240e01a675d7fc953d15661f450c3c13e8f6af13c958701fb047528b",
+     "ote_live/ingestion/signals.py": "d0839157b17bc9485df1451fda8b4d52faa88bc36bd9de865216d3dd8ae3546e",
+     "ote_live/models/loaders.py": "dd94919e4db91a34592acab146539bbe6d68d4da609ad51984f41142d238add8",
+     "ote_live/models/runners.py": "d97a8cec5ae936b452dc872e022573f9996787bf0384cf78a1fb1393a2e3ecc2",
+     "ote_live/storage/db.py": "e933ff168e3972db56485feb15e81e7960f60c8fb6171f0d5f859835e0a69ebc",
+     "scripts/run_section3_smoke_replay.py": "3b001ba7b353e34faa361018496497d5d4e54236daa9a1e30933eb065d57362c",
+     "scripts/run_section4_r1_value_neutrality.py": "430bd20885ee1f773484c364cf3413af15cf43781d0ed6238b12eb068701ebe8",
+     "scripts/section4_parity_compare.py": "c8868b3c43e478cf1a3f360c80e036e5377c4ead36678d47fafaacce3b0a397b",
+     "scripts/section4_parity_harness.py": "f583a3d80ed7d4374f108e5e10f5077c64a571e60181c2b1c2c29986b3050294"
+    },
+    "segments": [
+     "ES_F_cold_start",
+     "ES_F_faults",
+     "ES_F_producer_failure",
+     "ES_F_restart_roll",
+     "ES_H_fall_dst",
+     "ES_H_holiday",
+     "ES_H_roll",
+     "ES_R_gap_backfill",
+     "ES_R_labor_day",
+     "ES_R_roll_weekend"
+    ]
+   },
+   {
+    "code_sha256": {
+     "features/builder.py": "060fc6b45660885a92a3e1ee42ab652105b5eed1e02b244427f8126445bdb46c",
+     "model_training/source_history.py": "a3dc2b6cc432fd9901d925f3e8367c977aa07a553d685f1ce22065ea0f6d33dd",
+     "ote_live/features/incremental_engine.py": "76b5c8159d92333b3aa9a611ec727f07f1f23f9f34de0991040e20bdc1db90ce",
+     "ote_live/features/raw_snapshots.py": "9f506cde58dce38b3cd3637a780b7e9bedb6e9298430ae8d7977727093cdf9c5",
+     "ote_live/ingestion/provenance.py": "af60afa3240e01a675d7fc953d15661f450c3c13e8f6af13c958701fb047528b",
+     "ote_live/ingestion/signals.py": "d0839157b17bc9485df1451fda8b4d52faa88bc36bd9de865216d3dd8ae3546e",
+     "ote_live/models/loaders.py": "dd94919e4db91a34592acab146539bbe6d68d4da609ad51984f41142d238add8",
+     "ote_live/models/runners.py": "d97a8cec5ae936b452dc872e022573f9996787bf0384cf78a1fb1393a2e3ecc2",
+     "ote_live/storage/db.py": "e933ff168e3972db56485feb15e81e7960f60c8fb6171f0d5f859835e0a69ebc",
+     "scripts/run_section3_smoke_replay.py": "3b001ba7b353e34faa361018496497d5d4e54236daa9a1e30933eb065d57362c",
+     "scripts/run_section4_r1_value_neutrality.py": "430bd20885ee1f773484c364cf3413af15cf43781d0ed6238b12eb068701ebe8",
+     "scripts/section4_parity_compare.py": "c8868b3c43e478cf1a3f360c80e036e5377c4ead36678d47fafaacce3b0a397b",
+     "scripts/section4_parity_harness.py": "f14ee40699bd3b7c18f88d7bd7791f3be0a7b5f3fb7ba14366f95ad863906d62"
+    },
+    "segments": [
+     "ES_F_restart_rth",
+     "ES_H_rth_maint",
+     "ES_H_spring_dst",
+     "ES_R_rth_maint"
+    ]
+   }
+  ],
+  "logs": [
+   "logs/section4_matrix_20261002.log",
+   "logs/section4_matrix_20261003.log",
+   "logs/section4_diagnostics_20261005.log"
+  ]
+ },
+ "windows": [
+  {
+   "segment_id": "ES_F_cold_start",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "F cold start: 100 prefix bars (< FRVP minimum_runtime_history_bars 132); reference on the same bars",
+   "start": "2026-09-15T09:30:00+00:00",
+   "end": "2026-09-15T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 114,
+   "endpoint_status": {
+    "comparable": 114,
+    "warmup_not_ready": 31
+   },
+   "parity_db_sha256": "72eeb44bfa787f84d0abda02816a0c7d809f5733650cac45dbde1d03eb974c6b",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_cold_start\\summary.json"
+  },
+  {
+   "segment_id": "ES_F_faults",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "F on ES_R_rth_maint bars; reference recomputed on the final delivered series; dropped 1/3/12 non-closure bars, backfill behind the cursor, revision latest+earlier, reconnect batch",
+   "start": "2026-09-15T09:30:00+00:00",
+   "end": "2026-09-15T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 125,
+   "endpoint_status": {
+    "comparable": 125,
+    "not_delivered": 16,
+    "not_evaluated": 4
+   },
+   "parity_db_sha256": "90adc3e094fce90b2f59add2e5c5e5fe2bb87ea8a25efb3e3d24301840d06f07",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\summary.json"
+  },
+  {
+   "segment_id": "ES_F_producer_failure",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "F on ES_R_rth_maint bars; reference recomputed on the final delivered series; one feature set raises for endpoints 60-65 (ES_FRVP frvp_context, ES_ICT ict_context)",
+   "start": "2026-09-15T09:30:00+00:00",
+   "end": "2026-09-15T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 139,
+   "endpoint_status": {
+    "comparable": 139,
+    "not_evaluated": 6
+   },
+   "parity_db_sha256": "1c19d4c65f6186bfe8bcf175bee9bae65e2cb9f788f7fe1d9b848d2fa685e121",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\summary.json"
+  },
+  {
+   "segment_id": "ES_F_restart_roll",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "F on ES_R_roll_weekend bars; restart at every chunk boundary plus after the roll boundary",
+   "start": "2026-09-11T17:00:00+00:00",
+   "end": "2026-09-14T06:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "6dbe70a2ff28a6e3105e585a7c38d7574c7c1ff856a2262d35f5c324d4844c7b",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\summary.json"
+  },
+  {
+   "segment_id": "ES_F_restart_rth",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "F on ES_R_rth_maint bars; reference recomputed on the final delivered series; restart at every chunk boundary plus mid-RTH, inside a full lag window, after the break",
+   "start": "2026-09-15T09:30:00+00:00",
+   "end": "2026-09-15T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "63e59cd097d5409caeda43a1ad00bf47730aae3a29602b717d5eb86d682c38b9",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\summary.json"
+  },
+  {
+   "segment_id": "ES_H_fall_dst",
+   "group": "ES_FRVP",
+   "source": "H",
+   "rule": "first bar after the weekend in the fall DST week (reopen 23:00 UTC under EST)",
+   "start": "2025-10-31T17:00:00+00:00",
+   "end": "2025-11-03T07:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "dd8e3bbd99576b5682cbbac37c45aaa6a73c6080eae94c0976742fb6269ec015",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\summary.json"
+  },
+  {
+   "segment_id": "ES_H_holiday",
+   "group": "ES_FRVP",
+   "source": "H",
+   "rule": "first bar after the Thanksgiving 2025-11-27 planned closure (17:55 -> 23:00 UTC)",
+   "start": "2025-11-27T14:00:00+00:00",
+   "end": "2025-11-28T17:45:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "9807aace63c9786e3f4527a4b7846f0f1423957b9839e163ab8ab1a8e54dd682",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\summary.json"
+  },
+  {
+   "segment_id": "ES_H_roll",
+   "group": "ES_FRVP",
+   "source": "H",
+   "rule": "first contract_symbol change in June 2026 (ESM6 -> ESU6)",
+   "start": "2026-06-16T19:00:00+00:00",
+   "end": "2026-06-17T08:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "63a73854bf262b6a6b3ae9abd8ef6af01ccd9fa79267c4e7405bcb524e744a66",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\summary.json"
+  },
+  {
+   "segment_id": "ES_H_rth_maint",
+   "group": "ES_FRVP",
+   "source": "H",
+   "rule": "first 13:30 UTC RTH open in the last full training week; the 96 bars after reach the 21:00-22:00 break",
+   "start": "2026-06-16T09:30:00+00:00",
+   "end": "2026-06-16T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "458669382b8af04037e8107ed040e402928904586632360c01ad9b7542e7fd26",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_rth_maint\\summary.json"
+  },
+  {
+   "segment_id": "ES_H_spring_dst",
+   "group": "ES_FRVP",
+   "source": "H",
+   "rule": "first bar after the weekend in the spring DST week (reopen 22:00 UTC under EDT)",
+   "start": "2026-03-06T18:00:00+00:00",
+   "end": "2026-03-09T06:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "441e23164d1eabb5908e080c57d6e47bd57a1842c1c239a965bfb59c2cc237e0",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_spring_dst\\summary.json"
+  },
+  {
+   "segment_id": "ES_R_gap_backfill",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "R gap/backfill candidate 2026-09-18 11:40-13:00, bars stored by repair; recorded bars; prefix = everything recorded (protocol segments.prefix)",
+   "start": "2026-09-18T07:40:00+00:00",
+   "end": "2026-09-18T19:40:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "26e6e3437ea156622474cb37b18c9fb58e1278925a9ecae241ea7992aeb0b4b8",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_gap_backfill\\summary.json"
+  },
+  {
+   "segment_id": "ES_R_labor_day",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "R Labor Day closure 16:55 -> 22:00 UTC (ESU6, completion unknown); recorded bars; prefix = everything recorded (protocol segments.prefix)",
+   "start": "2026-09-07T13:00:00+00:00",
+   "end": "2026-09-08T06:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "d2ec58e434934c348047144f28b1de48538ad673e7ee7911619730d473c42aa4",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\summary.json"
+  },
+  {
+   "segment_id": "ES_R_roll_weekend",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "R roll ESU6 -> ESZ6 at the Sunday reopen; recorded bars; prefix = everything recorded (protocol segments.prefix)",
+   "start": "2026-09-11T17:00:00+00:00",
+   "end": "2026-09-14T06:00:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "a5dac621012960f758defb899a52447f079b38492f9dd32c30ad7fe883d003ea",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\summary.json"
+  },
+  {
+   "segment_id": "ES_R_rth_maint",
+   "group": "ES_FRVP",
+   "source": "R",
+   "rule": "R complete week (ESZ6, is_complete known): 2026-09-15 RTH open through the break; recorded bars; prefix = everything recorded (protocol segments.prefix)",
+   "start": "2026-09-15T09:30:00+00:00",
+   "end": "2026-09-15T22:30:00+00:00",
+   "endpoints": 145,
+   "comparable_endpoints": 145,
+   "endpoint_status": {
+    "comparable": 145
+   },
+   "parity_db_sha256": "c2ba1f06588e2c741fef8a82e5e39b93a04fd971e9c2466efacf1254bceb3368",
+   "summary": "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_rth_maint\\summary.json"
+  }
+ ],
+ "coverage": {
+  "overnight_rth_transitions": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_rth_maint",
+    "ES_R_rth_maint"
+   ]
+  },
+  "daily_maintenance_break": {
+   "status": "exercised",
+   "reason": "3 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_R_rth_maint"
+   ]
+  },
+  "spring_dst": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_spring_dst"
+   ]
+  },
+  "fall_dst": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_fall_dst"
+   ]
+  },
+  "holiday_planned_closure": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_holiday",
+    "ES_R_labor_day"
+   ]
+  },
+  "quarterly_roll": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_roll",
+    "ES_R_roll_weekend"
+   ]
+  },
+  "weekend_reopen": {
+   "status": "exercised",
+   "reason": "3 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_spring_dst",
+    "ES_R_roll_weekend"
+   ]
+  },
+  "missing_bars": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_F_faults",
+    "ES_R_gap_backfill"
+   ]
+  },
+  "reconnect_backfill": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_F_faults",
+    "ES_R_gap_backfill"
+   ]
+  },
+  "revision": {
+   "status": "exercised",
+   "reason": "2 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_F_faults",
+    "ES_R_gap_backfill"
+   ]
+  },
+  "restart": {
+   "status": "exercised",
+   "reason": "restart gate passed (4/4 bitwise equal)",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_F_restart_rth"
+   ]
+  },
+  "cold_start_warmup": {
+   "status": "exercised",
+   "reason": "1 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_F_cold_start"
+   ]
+  },
+  "producer_failure": {
+   "status": "exercised",
+   "reason": "surfaced as feature_build_failed error; affected endpoints skipped (never a silent fill)",
+   "segments": [
+    "ES_F_producer_failure"
+   ]
+  },
+  "htf_publication": {
+   "status": "exercised",
+   "reason": "4 segment(s) with comparable endpoints",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst",
+    "ES_R_rth_maint"
+   ]
+  },
+  "group_composition": {
+   "status": "exercised",
+   "reason": "single-model engine equal to group engine on 72 shared rows; io/scores bitwise equal (classification/composition_recheck_ES.json)"
+  }
+ },
+ "stages": {
+  "S1": {
+   "compared": 307788,
+   "matched": 307702,
+   "mismatched": 86,
+   "not_compared": 0,
+   "max_abs": 4.0,
+   "max_rel": 0.0008254230293025176,
+   "first_offending_ts": "2026-09-15T12:20:00+00:00"
+  },
+  "S3": {
+   "compared": 3788160,
+   "matched": 3505199,
+   "mismatched": 282961,
+   "not_compared": 0,
+   "max_abs": 14385688.5,
+   "max_rel": 23405809.361388195,
+   "first_offending_ts": "2025-10-31T17:00:00+00:00"
+  },
+  "S4_mask": {
+   "compared": 3788160,
+   "matched": 3648468,
+   "mismatched": 139692,
+   "not_compared": 0,
+   "max_abs": 1.0,
+   "max_rel": 0.0,
+   "first_offending_ts": "2026-06-17T00:35:00+00:00"
+  },
+  "S4": {
+   "compared": 3788160,
+   "matched": 3505401,
+   "mismatched": 282759,
+   "not_compared": 0,
+   "max_abs": 14385688.0,
+   "max_rel": 23405809.361388195,
+   "first_offending_ts": "2025-10-31T17:00:00+00:00"
+  },
+  "S5": {
+   "compared": 3788160,
+   "matched": 3505397,
+   "mismatched": 282763,
+   "not_compared": 0,
+   "max_abs": 7.44854211807251,
+   "max_rel": 50595331.74272323,
+   "first_offending_ts": "2025-10-31T17:00:00+00:00"
+  },
+  "S3_state": {
+   "compared": 315680,
+   "matched": 315680,
+   "mismatched": 0,
+   "not_compared": 0,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "first_offending_ts": null
+  },
+  "S6": {
+   "compared": 3946,
+   "matched": 1318,
+   "mismatched": 2628,
+   "not_compared": 0,
+   "max_abs": 0.17073965072631836,
+   "max_rel": 0.3394022921718784,
+   "first_offending_ts": "2025-10-31T17:05:00+00:00"
+  },
+  "S7": {
+   "compared": 1973,
+   "matched": 1908,
+   "mismatched": 65,
+   "not_compared": 0,
+   "max_abs": 1.0,
+   "max_rel": 1.0,
+   "first_offending_ts": "2025-11-27T23:25:00+00:00"
+  }
+ },
+ "features": {
+  "frvp_swing_poc_vs_session_poc": {
+   "mismatches": 22002,
+   "classes": [
+    "training_side_noncausal/lookahead"
+   ]
+  },
+  "htf_dist_to_rolling_weekly_high_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_setup_confidence_rule": {
+   "mismatches": 53,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "rolling_vol_60_pct_rank_60": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_roll_mean_100": {
+   "mismatches": 11868,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "rolling_vol_20_pct_rank_60": {
+   "mismatches": 17,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_roll_mean_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_roll_mean_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bars_since_bear_resume_lag_1": {
+   "mismatches": 10878,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "range_to_volume": {
+   "mismatches": 21,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "log_volume_pct_rank_60": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volatility_expansion_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_impulse_magnitude_atr_lag_2": {
+   "mismatches": 4128,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "atr_ratio_14_50_roll_mean_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_roll_std_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_naked_vpoc_dist_above_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "dist_to_prior_low_50_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_imbalance_10_roll_std_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_lag_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "hour": {
+   "mismatches": 11,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "hour_cos": {
+   "mismatches": 11,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_roll_mean_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_dist_nearest_hvn_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_roll_mean_50": {
+   "mismatches": 11868,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "kyle_lambda_proxy": {
+   "mismatches": 25,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bars_since_bear_resume_lag_20": {
+   "mismatches": 11562,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "htf_1h_close_vs_ema_21_atr": {
+   "mismatches": 13608,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "close_return_5_roll_std_50": {
+   "mismatches": 30,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_hvn_above_close": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_roll_mean_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "return_slope_decay_3_8": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bars_since_bear_impulse_lag_20": {
+   "mismatches": 11454,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "range_compression_10_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_roll_mean_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_30m_dist_to_swing_low_atr": {
+   "mismatches": 5158,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "rsi_14_roll_std_100": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_5_roll_std_100": {
+   "mismatches": 20,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_pullback_depth_atr_zscore_100": {
+   "mismatches": 5244,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "atr_ratio_14_50_roll_mean_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "hour_sin": {
+   "mismatches": 11,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_naked_poc_dist_day_atr": {
+   "mismatches": 4,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "log_volume": {
+   "mismatches": 21,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "dollar_volume": {
+   "mismatches": 25,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "candle_body_atr_norm": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_lag_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_zscore_100": {
+   "mismatches": 11868,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "price_position_50_roll_std_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_dist_to_prev_day_low_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "bear_volume_exhaustion_sigma_norm_60": {
+   "mismatches": 37,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "volume_relative_20_roll_std_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_dist_to_prev_day_high_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_va_migration_vel": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "relative_spread_bps": {
+   "mismatches": 23,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_impulse_magnitude_atr_lag_20": {
+   "mismatches": 4560,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "continuation_bear_impulse_magnitude_atr_zscore_100": {
+   "mismatches": 11868,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "frvp_dist_poc_session_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_zscore_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "interaction_lowvol_bull_reversion": {
+   "mismatches": 3012,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "range_atr_14_roll_std_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_roll_std_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_impulse_magnitude_atr_lag_5": {
+   "mismatches": 4200,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "volume_relative_20_lag_3": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_impulse_magnitude_atr_zscore_100": {
+   "mismatches": 5284,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "return_slope_3": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_1_lag_1": {
+   "mismatches": 25,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_poc_anchor_diff_atr": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_roll_std_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_lag_3": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_dist_to_rolling_daily_high_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_lag_5": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_30m_bars_since_swing_high_event": {
+   "mismatches": 4608,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "frvp_va_width_atr": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "gap_return_1": {
+   "mismatches": 17,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "price_position_50_roll_std_50": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_zscore_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_pullback_depth_atr_roll_std_100": {
+   "mismatches": 5244,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "volume_imbalance_10_roll_std_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_pullback_depth_atr": {
+   "mismatches": 4080,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "continuation_bull_impulse_magnitude_atr_lag_10": {
+   "mismatches": 4320,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "close_vs_ema_8_atr_lag_3": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_5_roll_mean_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_1_roll_mean_50": {
+   "mismatches": 22,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_roll_mean_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_dist_to_rolling_daily_low_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "fracdiff_close_atr_norm": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "ict_dist_to_swing_low_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "price_position_50_roll_mean_5": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_dist_nearest_lvn_atr": {
+   "mismatches": 22,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_roll_mean_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "major_event_cluster_25": {
+   "mismatches": 708,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "rsi_14_roll_mean_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "ema_spread_21_50_atr": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "donchian_width_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_wick_rejection_score": {
+   "mismatches": 3241,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "dist_to_prior_high_20_atr_lag_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "roc_10_lag_3": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_dist_lvn_below_atr": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_1_lag_2": {
+   "mismatches": 23,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "interaction_newyork_bull_setup": {
+   "mismatches": 754,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_roll_std_100": {
+   "mismatches": 11868,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "return_slope_3_sigma_norm_60": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_lag_20": {
+   "mismatches": 11454,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "frvp_dist_lvn_above_atr": {
+   "mismatches": 27,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "return_slope_decay_3_8_sigma_norm_60": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_pullback_depth_atr_roll_std_10": {
+   "mismatches": 4296,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "rsi_14_roll_mean_50": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "bull_volume_exhaustion_sigma_norm_60": {
+   "mismatches": 34,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "price_position_50_zscore_100": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "roc_10_roll_std_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "down_volume_share_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_dist_val_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_1_winsor_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_5_roll_std_20": {
+   "mismatches": 30,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "volume_relative_20_roll_std_50": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "interaction_overlap_bull_setup": {
+   "mismatches": 754,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "frvp_naked_poc_dist_session_atr": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "range_atr_14_roll_mean_100": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_1h_bars_since_swing_high_event": {
+   "mismatches": 5040,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "range_atr_14_roll_std_5": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "fracdiff_close_return_1_sigma_norm_60": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "price_position_50_roll_mean_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_vs_ema_21_atr_lag_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_wick_rejection_score_roll_std_50": {
+   "mismatches": 8007,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "return_slope_3_winsor_100": {
+   "mismatches": 28,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_roll_mean_10": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "atr_ratio_14_50_roll_std_5": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_lag_10": {
+   "mismatches": 11094,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "close_vs_ema_21_atr_lag_3": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "rsi_14_lag_2": {
+   "mismatches": 25,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bull_retest_quality_roll_mean_100": {
+   "mismatches": 3434,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "bb_width_20": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "close_return_5_lag_20": {
+   "mismatches": 24,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "continuation_bear_impulse_magnitude_atr_lag_5": {
+   "mismatches": 10830,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "macd_signal": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "frvp_setup_type": {
+   "mismatches": 17,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "continuation_bear_pullback_depth_atr_roll_std_20": {
+   "mismatches": 11418,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "in_london_ny_overlap": {
+   "mismatches": 8,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "in_newyork_killzone": {
+   "mismatches": 8,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "htf_1h_ema_spread_21_50_atr": {
+   "mismatches": 13608,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "rsi_slope_3_sigma_norm_60": {
+   "mismatches": 31,
+   "classes": [
+    "source_difference/fault_pre_resolution"
+   ]
+  },
+  "active_bull_fvg_count": {
+   "mismatches": 6494,
+   "classes": [
+    "source_difference/fault_pre_resolution",
+    "app_producer_bug/window_truncation"
+   ]
+  },
+  "htf_1h_dist_to_swing_high_atr": {
+   "mismatches": 5220,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "htf_1h_dist_to_swing_low_atr": {
+   "mismatches": 5220,
+   "classes": [
+    "declared_contract_behavior/completion_gate"
+   ]
+  },
+  "frvp_failed_auction_with_sweep": {
+   "mismatches": 12,
+   "classes": [
+    "app_producer_bug/window_truncation"
+   ]
+  }
+ },
+ "mismatches": [
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "active_bull_fvg_count",
+   "count": 6482,
+   "first_ts": "2025-10-31T17:55:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "interaction_lowvol_bull_reversion",
+   "count": 2583,
+   "first_ts": "2025-10-31T20:55:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "interaction_newyork_bull_setup",
+   "count": 736,
+   "first_ts": "2025-11-27T13:05:00+00:00",
+   "segments": [
+    "ES_H_holiday",
+    "ES_H_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_rth_maint\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_holiday.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "interaction_overlap_bull_setup",
+   "count": 736,
+   "first_ts": "2025-11-27T13:05:00+00:00",
+   "segments": [
+    "ES_H_holiday",
+    "ES_H_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_rth_maint\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_holiday.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "major_event_cluster_25",
+   "count": 690,
+   "first_ts": "2025-11-03T02:35:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "frvp_setup_confidence_rule",
+   "count": 48,
+   "first_ts": "2025-10-31T17:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_roll"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "frvp_failed_auction_with_sweep",
+   "count": 12,
+   "first_ts": "2025-10-31T17:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "frvp_setup_type",
+   "count": 12,
+   "first_ts": "2025-10-31T17:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_fall_dst.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "bear_volume_exhaustion_sigma_norm_60",
+   "count": 12,
+   "first_ts": "2026-06-17T05:55:00+00:00",
+   "segments": [
+    "ES_H_roll"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_roll.json)"
+  },
+  {
+   "cls": "app_producer_bug/window_truncation",
+   "stage": "S3",
+   "feature": "bull_volume_exhaustion_sigma_norm_60",
+   "count": 12,
+   "first_ts": "2026-03-09T03:05:00+00:00",
+   "segments": [
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_spring_dst\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "the app's 8,000-bar runtime window (runtime_history_bars) truncates history the frozen full-series values use; app equals the offline recompute on the same span (evidence classification/variant_plain_ES_H_spring_dst.json)"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_1h_close_vs_ema_21_atr",
+   "count": 13608,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_1h_ema_spread_21_50_atr",
+   "count": 13608,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_roll_mean_100",
+   "count": 11868,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_roll_mean_50",
+   "count": 11868,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_zscore_100",
+   "count": 11868,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_impulse_magnitude_atr_zscore_100",
+   "count": 11868,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_roll_std_100",
+   "count": 11868,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bars_since_bear_resume_lag_20",
+   "count": 11562,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bars_since_bear_impulse_lag_20",
+   "count": 11454,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_lag_20",
+   "count": 11454,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_roll_std_20",
+   "count": 11418,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_pullback_depth_atr_lag_10",
+   "count": 11094,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bars_since_bear_resume_lag_1",
+   "count": 10878,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_impulse_magnitude_atr_lag_5",
+   "count": 10830,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_wick_rejection_score_roll_std_50",
+   "count": 8007,
+   "first_ts": "2026-09-07T15:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_zscore_100",
+   "count": 5284,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_zscore_100",
+   "count": 5220,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_1h_dist_to_swing_high_atr",
+   "count": 5220,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_1h_dist_to_swing_low_atr",
+   "count": 5220,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_roll_std_100",
+   "count": 5220,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_30m_dist_to_swing_low_atr",
+   "count": 5148,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_1h_bars_since_swing_high_event",
+   "count": 5016,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "htf_30m_bars_since_swing_high_event",
+   "count": 4584,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_20",
+   "count": 4536,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_10",
+   "count": 4296,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_roll_std_10",
+   "count": 4272,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_5",
+   "count": 4176,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_2",
+   "count": 4104,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr",
+   "count": 4056,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bull_retest_quality_roll_mean_100",
+   "count": 3434,
+   "first_ts": "2026-09-13T22:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "continuation_bear_wick_rejection_score",
+   "count": 3241,
+   "first_ts": "2026-09-07T15:05:00+00:00",
+   "segments": [
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_rth",
+    "ES_R_labor_day",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_rth_maint"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "interaction_lowvol_bull_reversion",
+   "count": 406,
+   "first_ts": "2026-09-07T12:50:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "same feature classified in base segment ES_R_roll_weekend"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "interaction_newyork_bull_setup",
+   "count": 10,
+   "first_ts": "2026-09-07T12:50:00+00:00",
+   "segments": [
+    "ES_R_labor_day"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "features/feature_sets/htf_context.py:47 (pre-existing completion gate) under protocol v2 runtime_changes_approved_in_principle.D8_provenance + eurusd_completion analogue; recorded ESU6 rows have is_complete NULL, so this segment is not known-completion evidence (evidence classification/gate_test_ES_R_labor_day.json)"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "S3",
+   "feature": "interaction_overlap_bull_setup",
+   "count": 10,
+   "first_ts": "2026-09-07T12:50:00+00:00",
+   "segments": [
+    "ES_R_labor_day"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "features/feature_sets/htf_context.py:47 (pre-existing completion gate) under protocol v2 runtime_changes_approved_in_principle.D8_provenance + eurusd_completion analogue; recorded ESU6 rows have is_complete NULL, so this segment is not known-completion evidence (evidence classification/gate_test_ES_R_labor_day.json)"
+  },
+  {
+   "cls": "declared_contract_behavior/completion_gate",
+   "stage": "check",
+   "feature": "stale_helper",
+   "count": 12546,
+   "first_ts": null,
+   "segments": [
+    "ES_F_faults",
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\summary.json",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\summary.json",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\summary.json"
+   ],
+   "causal_note": "features/feature_sets/htf_context.py:47 (pre-existing completion gate) under protocol v2 runtime_changes_approved_in_principle.D8_provenance + eurusd_completion analogue; recorded ESU6 rows have is_complete NULL, so this segment is not known-completion evidence"
+  },
+  {
+   "cls": "declared_contract_behavior/post_closure_helper_age",
+   "stage": "check",
+   "feature": "stale_helper",
+   "count": 476,
+   "first_ts": null,
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\summary.json",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\summary.json",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\summary.json"
+   ],
+   "causal_note": "HTF helper age after a planned closure (first hour after reopen); HTF values equal the reference"
+  },
+  {
+   "cls": "declared_contract_behavior/producer_failure_surfaced",
+   "stage": "check",
+   "feature": "health_errors",
+   "count": 6,
+   "first_ts": null,
+   "segments": [
+    "ES_F_producer_failure"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\summary.json"
+   ],
+   "causal_note": "protocol v2 scenarios.F_injections.producer_failure: feature_build_failed error, endpoint skipped, never a silent fill"
+  },
+  {
+   "cls": "declared_contract_behavior/producer_failure_surfaced",
+   "stage": "check",
+   "feature": "not_evaluated",
+   "count": 6,
+   "first_ts": null,
+   "segments": [
+    "ES_F_producer_failure"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\summary.json"
+   ],
+   "causal_note": "protocol v2 scenarios.F_injections.producer_failure: feature_build_failed error, endpoint skipped, never a silent fill"
+  },
+  {
+   "cls": "downstream:app_producer_bug/window_truncation+training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 20023,
+   "first_ts": "2025-10-31T16:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/window_truncation+training_side_noncausal/lookahead",
+   "stage": "S4_mask",
+   "feature": "*",
+   "count": 36,
+   "first_ts": "2026-06-16T23:40:00+00:00",
+   "segments": [
+    "ES_H_roll"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S4_mask.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/window_truncation+training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 19999,
+   "first_ts": "2025-10-31T16:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/window_truncation+training_side_noncausal/lookahead",
+   "stage": "S6",
+   "feature": "*",
+   "count": 384,
+   "first_ts": "2025-10-31T17:05:00+00:00",
+   "segments": [
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_fall_dst\\diff\\frvp_long_reversal_xgb_v1.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_roll\\diff\\frvp_long_reversal_xgb_v1.S6.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:app_producer_bug/window_truncation+training_side_noncausal/lookahead",
+   "stage": "S7",
+   "feature": "*",
+   "count": 4,
+   "first_ts": "2025-11-27T23:25:00+00:00",
+   "segments": [
+    "ES_H_holiday",
+    "ES_H_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_holiday\\diff\\frvp_long_reversal_xgb_v1.S7.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_H_rth_maint\\diff\\frvp_long_reversal_xgb_v1.S7.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 27885,
+   "first_ts": "2026-09-15T08:35:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 27913,
+   "first_ts": "2026-09-15T08:35:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S6",
+   "feature": "*",
+   "count": 250,
+   "first_ts": "2026-09-15T09:30:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S6.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+source_difference/fault_pre_resolution+training_side_noncausal/lookahead",
+   "stage": "S7",
+   "feature": "*",
+   "count": 10,
+   "first_ts": "2026-09-15T09:50:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S7.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 234749,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S4.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+training_side_noncausal/lookahead",
+   "stage": "S4_mask",
+   "feature": "*",
+   "count": 139656,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_restart_roll",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S4_mask.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_labor_day\\diff\\frvp_long_reversal_xgb_v1.S4_mask.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_R_roll_weekend\\diff\\frvp_long_reversal_xgb_v1.S4_mask.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 234749,
+   "first_ts": "2026-09-07T12:05:00+00:00",
+   "segments": [
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S5.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+training_side_noncausal/lookahead",
+   "stage": "S6",
+   "feature": "*",
+   "count": 1994,
+   "first_ts": "2026-09-07T13:00:00+00:00",
+   "segments": [
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S6.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S6.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:declared_contract_behavior/completion_gate+training_side_noncausal/lookahead",
+   "stage": "S7",
+   "feature": "*",
+   "count": 51,
+   "first_ts": "2026-09-07T13:35:00+00:00",
+   "segments": [
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S7.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_roll\\diff\\frvp_long_reversal_xgb_v1.S7.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_restart_rth\\diff\\frvp_long_reversal_xgb_v1.S7.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:training_side_noncausal/lookahead",
+   "stage": "S4",
+   "feature": "*",
+   "count": 102,
+   "first_ts": "2026-09-15T20:05:00+00:00",
+   "segments": [
+    "ES_F_cold_start"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_cold_start\\diff\\frvp_long_reversal_xgb_v1.S4.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "downstream:training_side_noncausal/lookahead",
+   "stage": "S5",
+   "feature": "*",
+   "count": 102,
+   "first_ts": "2026-09-15T20:05:00+00:00",
+   "segments": [
+    "ES_F_cold_start"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_cold_start\\diff\\frvp_long_reversal_xgb_v1.S5.parquet"
+   ],
+   "causal_note": "endpoint has upstream (S3-S5) mismatches in this segment"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "bar_version",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "source_row_idx_offset",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "timestamp",
+   "count": 21,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "observation_kind",
+   "count": 12,
+   "first_ts": "2026-09-15T12:00:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S1",
+   "feature": "is_complete",
+   "count": 4,
+   "first_ts": "2026-09-15T13:35:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S1.parquet"
+   ],
+   "causal_note": "F injection (dropped/backfill/revision/reconnect) changes delivered rows; truth marks them"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volatility_expansion_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_roll_std_100",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_roll_std_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_roll_std_50",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_roll_mean_5",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_roll_mean_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "ema_spread_21_50_atr",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3_sigma_norm_60",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8_sigma_norm_60",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_roll_mean_50",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_zscore_100",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "roc_10_roll_std_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "price_position_50_roll_mean_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "bb_width_20",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "macd_signal",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_slope_3_sigma_norm_60",
+   "count": 31,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_roll_std_50",
+   "count": 30,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_roll_std_20",
+   "count": 30,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_dist_to_rolling_weekly_high_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_naked_vpoc_dist_above_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_low_50_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_nearest_hvn_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_hvn_above_close",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_decay_3_8",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "candle_body_atr_norm",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_dist_to_prev_day_low_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_dist_to_prev_day_high_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_poc_session_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_dist_to_rolling_daily_high_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_dist_to_rolling_daily_low_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "ict_dist_to_swing_low_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_val_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_naked_poc_dist_session_atr",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "fracdiff_close_return_1_sigma_norm_60",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "return_slope_3_winsor_100",
+   "count": 28,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_lvn_above_atr",
+   "count": 27,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "kyle_lambda_proxy",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dollar_volume",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "bear_volume_exhaustion_sigma_norm_60",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_1_lag_1",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rsi_14_lag_2",
+   "count": 25,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rolling_vol_60_pct_rank_60",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_roll_mean_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_roll_mean_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "log_volume_pct_rank_60",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_2",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_mean_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_std_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_imbalance_10_roll_std_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_lag_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_mean_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_compression_10_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_roll_mean_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_zscore_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_mean_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_lag_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_roll_std_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_va_migration_vel",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_zscore_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_std_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_std_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_5",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_lag_3",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_poc_anchor_diff_atr",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_std_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_lag_3",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_lag_5",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_30m_bars_since_swing_high_event",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_va_width_atr",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_zscore_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_roll_std_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_imbalance_10_roll_std_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_impulse_magnitude_atr_lag_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_8_atr_lag_3",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_roll_mean_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "fracdiff_close_atr_norm",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "donchian_width_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "dist_to_prior_high_20_atr_lag_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "roc_10_lag_3",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_lvn_below_atr",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "continuation_bull_pullback_depth_atr_roll_std_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "down_volume_share_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_1_winsor_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "volume_relative_20_roll_std_50",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_mean_100",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_1h_bars_since_swing_high_event",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_atr_14_roll_std_5",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_21_atr_lag_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_mean_10",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "atr_ratio_14_50_roll_std_5",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_vs_ema_21_atr_lag_3",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_lag_20",
+   "count": 24,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "relative_spread_bps",
+   "count": 23,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_lowvol_bull_reversion",
+   "count": 23,
+   "first_ts": "2026-09-15T11:30:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_1_lag_2",
+   "count": 23,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_1_roll_mean_50",
+   "count": 22,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_dist_nearest_lvn_atr",
+   "count": 22,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "bull_volume_exhaustion_sigma_norm_60",
+   "count": 22,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "range_to_volume",
+   "count": 21,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "log_volume",
+   "count": 21,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "close_return_5_roll_std_100",
+   "count": 20,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "major_event_cluster_25",
+   "count": 18,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "rolling_vol_20_pct_rank_60",
+   "count": 17,
+   "first_ts": "2026-09-15T11:40:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "gap_return_1",
+   "count": 17,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "active_bull_fvg_count",
+   "count": 12,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "hour",
+   "count": 11,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "hour_cos",
+   "count": 11,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "hour_sin",
+   "count": 11,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "htf_30m_dist_to_swing_low_atr",
+   "count": 10,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_newyork_bull_setup",
+   "count": 8,
+   "first_ts": "2026-09-15T12:00:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "interaction_overlap_bull_setup",
+   "count": 8,
+   "first_ts": "2026-09-15T12:00:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "in_london_ny_overlap",
+   "count": 8,
+   "first_ts": "2026-09-15T12:00:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "in_newyork_killzone",
+   "count": 8,
+   "first_ts": "2026-09-15T12:00:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_setup_confidence_rule",
+   "count": 5,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_setup_type",
+   "count": 5,
+   "first_ts": "2026-09-15T11:25:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "S3",
+   "feature": "frvp_naked_poc_dist_day_atr",
+   "count": 4,
+   "first_ts": "2026-09-15T13:35:00+00:00",
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "F injection: endpoint processed before the backfill/revision resolved, so its decision-time bars differ from the final series"
+  },
+  {
+   "cls": "source_difference/fault_pre_resolution",
+   "stage": "check",
+   "feature": "not_evaluated",
+   "count": 4,
+   "first_ts": null,
+   "segments": [
+    "ES_F_faults"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\summary.json"
+   ],
+   "causal_note": "withheld backfill bars are delivered behind the cursor and not re-scored"
+  },
+  {
+   "cls": "training_side_noncausal/lookahead",
+   "stage": "S3",
+   "feature": "frvp_swing_poc_vs_session_poc",
+   "count": 22002,
+   "first_ts": "2025-10-31T16:05:00+00:00",
+   "segments": [
+    "ES_F_cold_start",
+    "ES_F_faults",
+    "ES_F_producer_failure",
+    "ES_F_restart_roll",
+    "ES_F_restart_rth",
+    "ES_H_fall_dst",
+    "ES_H_holiday",
+    "ES_H_roll",
+    "ES_H_rth_maint",
+    "ES_H_spring_dst",
+    "ES_R_gap_backfill",
+    "ES_R_labor_day",
+    "ES_R_roll_weekend",
+    "ES_R_rth_maint"
+   ],
+   "evidence_paths": [
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_cold_start\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_faults\\diff\\frvp_long_reversal_xgb_v1.S3.parquet",
+    "artifacts\\s4parity_20261002_v1\\ES\\ES_FRVP\\ES_F_producer_failure\\diff\\frvp_long_reversal_xgb_v1.S3.parquet"
+   ],
+   "causal_note": "value at bar t is revised when later bars arrive (141/145 bars on ES_R_rth_maint, history start fixed); frozen values computed on the full series"
+  }
+ ],
+ "near_threshold": [],
+ "decision_flips": [
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T09:50:00+00:00",
+   "app_calibrated": 0.5676365494728088,
+   "ref_calibrated": 0.5534425973892212,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T09:55:00+00:00",
+   "app_calibrated": 0.5609245896339417,
+   "ref_calibrated": 0.5447254776954651,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T10:00:00+00:00",
+   "app_calibrated": 0.5697395205497742,
+   "ref_calibrated": 0.5598809123039246,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T10:05:00+00:00",
+   "app_calibrated": 0.5662557482719421,
+   "ref_calibrated": 0.5587528347969055,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T10:30:00+00:00",
+   "app_calibrated": 0.5643881559371948,
+   "ref_calibrated": 0.5499449372291565,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T10:40:00+00:00",
+   "app_calibrated": 0.5616767406463623,
+   "ref_calibrated": 0.5554758310317993,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T11:00:00+00:00",
+   "app_calibrated": 0.5626606941223145,
+   "ref_calibrated": 0.5461288094520569,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T11:25:00+00:00",
+   "app_calibrated": 0.5648106932640076,
+   "ref_calibrated": 0.5468341112136841,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T11:35:00+00:00",
+   "app_calibrated": 0.566628634929657,
+   "ref_calibrated": 0.5546626448631287,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_faults",
+   "endpoint": "2026-09-15T12:35:00+00:00",
+   "app_calibrated": 0.5625443458557129,
+   "ref_calibrated": 0.5439269542694092,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T09:50:00+00:00",
+   "app_calibrated": 0.5676365494728088,
+   "ref_calibrated": 0.5534425973892212,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T09:55:00+00:00",
+   "app_calibrated": 0.5609245896339417,
+   "ref_calibrated": 0.5447254776954651,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T10:00:00+00:00",
+   "app_calibrated": 0.5697395205497742,
+   "ref_calibrated": 0.5598809123039246,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T10:05:00+00:00",
+   "app_calibrated": 0.5662557482719421,
+   "ref_calibrated": 0.5587528347969055,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T10:25:00+00:00",
+   "app_calibrated": 0.5642666220664978,
+   "ref_calibrated": 0.5493278503417969,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T10:35:00+00:00",
+   "app_calibrated": 0.562743604183197,
+   "ref_calibrated": 0.5578640103340149,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T10:45:00+00:00",
+   "app_calibrated": 0.5633809566497803,
+   "ref_calibrated": 0.5539318323135376,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T11:10:00+00:00",
+   "app_calibrated": 0.5703513026237488,
+   "ref_calibrated": 0.5597876310348511,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_producer_failure",
+   "endpoint": "2026-09-15T11:15:00+00:00",
+   "app_calibrated": 0.5661398768424988,
+   "ref_calibrated": 0.5590776205062866,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_roll",
+   "endpoint": "2026-09-11T17:00:00+00:00",
+   "app_calibrated": 0.5625540614128113,
+   "ref_calibrated": 0.5510857105255127,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_roll",
+   "endpoint": "2026-09-14T06:00:00+00:00",
+   "app_calibrated": 0.5278249979019165,
+   "ref_calibrated": 0.560113251209259,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T09:50:00+00:00",
+   "app_calibrated": 0.5676365494728088,
+   "ref_calibrated": 0.5534425973892212,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T09:55:00+00:00",
+   "app_calibrated": 0.5609245896339417,
+   "ref_calibrated": 0.5447254776954651,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T10:00:00+00:00",
+   "app_calibrated": 0.5697395205497742,
+   "ref_calibrated": 0.5598809123039246,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T10:05:00+00:00",
+   "app_calibrated": 0.5662557482719421,
+   "ref_calibrated": 0.5587528347969055,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T10:25:00+00:00",
+   "app_calibrated": 0.5642666220664978,
+   "ref_calibrated": 0.5493278503417969,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T10:35:00+00:00",
+   "app_calibrated": 0.562743604183197,
+   "ref_calibrated": 0.5578640103340149,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T10:45:00+00:00",
+   "app_calibrated": 0.5633809566497803,
+   "ref_calibrated": 0.5539318323135376,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T11:10:00+00:00",
+   "app_calibrated": 0.5703513026237488,
+   "ref_calibrated": 0.5597876310348511,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_F_restart_rth",
+   "endpoint": "2026-09-15T11:15:00+00:00",
+   "app_calibrated": 0.5661398768424988,
+   "ref_calibrated": 0.5590776205062866,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_H_holiday",
+   "endpoint": "2025-11-27T23:25:00+00:00",
+   "app_calibrated": 0.5518099665641785,
+   "ref_calibrated": 0.5643958449363708,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_H_holiday",
+   "endpoint": "2025-11-28T00:30:00+00:00",
+   "app_calibrated": 0.5557068586349487,
+   "ref_calibrated": 0.5604541301727295,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_H_rth_maint",
+   "endpoint": "2026-06-16T10:40:00+00:00",
+   "app_calibrated": 0.5569226741790771,
+   "ref_calibrated": 0.5609001517295837,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_H_rth_maint",
+   "endpoint": "2026-06-16T13:05:00+00:00",
+   "app_calibrated": 0.5574885606765747,
+   "ref_calibrated": 0.5617579817771912,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_gap_backfill",
+   "endpoint": "2026-09-18T11:05:00+00:00",
+   "app_calibrated": 0.5593488812446594,
+   "ref_calibrated": 0.5608593821525574,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_gap_backfill",
+   "endpoint": "2026-09-18T12:50:00+00:00",
+   "app_calibrated": 0.5583368539810181,
+   "ref_calibrated": 0.5613265037536621,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_gap_backfill",
+   "endpoint": "2026-09-18T18:30:00+00:00",
+   "app_calibrated": 0.5587489008903503,
+   "ref_calibrated": 0.5602291226387024,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T13:35:00+00:00",
+   "app_calibrated": 0.5472039580345154,
+   "ref_calibrated": 0.5606946349143982,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T13:45:00+00:00",
+   "app_calibrated": 0.559434175491333,
+   "ref_calibrated": 0.5671750903129578,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T14:05:00+00:00",
+   "app_calibrated": 0.5587511658668518,
+   "ref_calibrated": 0.5624558925628662,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T15:20:00+00:00",
+   "app_calibrated": 0.5467589497566223,
+   "ref_calibrated": 0.5644192695617676,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T15:40:00+00:00",
+   "app_calibrated": 0.5465665459632874,
+   "ref_calibrated": 0.5698335766792297,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-07T15:45:00+00:00",
+   "app_calibrated": 0.5463998913764954,
+   "ref_calibrated": 0.5699588060379028,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T00:35:00+00:00",
+   "app_calibrated": 0.5669857859611511,
+   "ref_calibrated": 0.5592657327651978,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T00:55:00+00:00",
+   "app_calibrated": 0.5647192001342773,
+   "ref_calibrated": 0.5590956211090088,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T02:10:00+00:00",
+   "app_calibrated": 0.5494853854179382,
+   "ref_calibrated": 0.565632164478302,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T02:55:00+00:00",
+   "app_calibrated": 0.5604575276374817,
+   "ref_calibrated": 0.5440972447395325,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T03:05:00+00:00",
+   "app_calibrated": 0.5679670572280884,
+   "ref_calibrated": 0.5593833327293396,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T03:20:00+00:00",
+   "app_calibrated": 0.5624828934669495,
+   "ref_calibrated": 0.5455025434494019,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T03:30:00+00:00",
+   "app_calibrated": 0.5611323714256287,
+   "ref_calibrated": 0.5534157156944275,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T03:35:00+00:00",
+   "app_calibrated": 0.5580348968505859,
+   "ref_calibrated": 0.5612265467643738,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T04:00:00+00:00",
+   "app_calibrated": 0.5568506121635437,
+   "ref_calibrated": 0.5610432624816895,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T04:40:00+00:00",
+   "app_calibrated": 0.5596351623535156,
+   "ref_calibrated": 0.5723303556442261,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_labor_day",
+   "endpoint": "2026-09-08T05:20:00+00:00",
+   "app_calibrated": 0.5520594120025635,
+   "ref_calibrated": 0.562386155128479,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_roll_weekend",
+   "endpoint": "2026-09-11T17:00:00+00:00",
+   "app_calibrated": 0.5625540614128113,
+   "ref_calibrated": 0.5510857105255127,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_roll_weekend",
+   "endpoint": "2026-09-14T06:00:00+00:00",
+   "app_calibrated": 0.5278249979019165,
+   "ref_calibrated": 0.560113251209259,
+   "app_decision": false,
+   "ref_decision": true
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T09:50:00+00:00",
+   "app_calibrated": 0.5676365494728088,
+   "ref_calibrated": 0.5534425973892212,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T09:55:00+00:00",
+   "app_calibrated": 0.5609245896339417,
+   "ref_calibrated": 0.5447254776954651,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T10:00:00+00:00",
+   "app_calibrated": 0.5697395205497742,
+   "ref_calibrated": 0.5598809123039246,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T10:05:00+00:00",
+   "app_calibrated": 0.5662557482719421,
+   "ref_calibrated": 0.5587528347969055,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T10:25:00+00:00",
+   "app_calibrated": 0.5642666220664978,
+   "ref_calibrated": 0.5493278503417969,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T10:35:00+00:00",
+   "app_calibrated": 0.562743604183197,
+   "ref_calibrated": 0.5578640103340149,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T10:45:00+00:00",
+   "app_calibrated": 0.5633809566497803,
+   "ref_calibrated": 0.5539318323135376,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T11:10:00+00:00",
+   "app_calibrated": 0.5703513026237488,
+   "ref_calibrated": 0.5597876310348511,
+   "app_decision": true,
+   "ref_decision": false
+  },
+  {
+   "segment": "ES_R_rth_maint",
+   "endpoint": "2026-09-15T11:15:00+00:00",
+   "app_calibrated": 0.5661398768424988,
+   "ref_calibrated": 0.5590776205062866,
+   "app_decision": true,
+   "ref_decision": false
+  }
+ ],
+ "restart": {
+  "ES_F_restart_rth|ES_FRVP": {
+   "equal": true,
+   "base": "ES_R_rth_maint"
+  },
+  "ES_F_restart_rth|ES_ICT": {
+   "equal": true,
+   "base": "ES_R_rth_maint"
+  },
+  "ES_F_restart_roll|ES_FRVP": {
+   "equal": true,
+   "base": "ES_R_roll_weekend"
+  },
+  "ES_F_restart_roll|ES_ICT": {
+   "equal": true,
+   "base": "ES_R_roll_weekend"
+  }
+ },
+ "setup_events": {
+  "status": "compared_reference_recall",
+  "reference_events": 19,
+  "matched": 18,
+  "only_ref": 1,
+  "only_app": 14,
+  "note": "H segments only (offline detector events exist for the training period). Reference = events section 3 used (FRVP detector columns; ICT corrected fired-event file), so app-only events are outside the reference population; geometry mismatches 0. The single only_ref/only_app pair (ES_H_fall_dst FRVP 2025-10-31 17:05, setup_type app 1 vs ref 4, first endpoint) is attributed in the summary."
+ },
+ "source_parity": {
+  "status": "incomplete",
+  "reason": "protocol source_parity.fallback: IBKR not running (no listener on 4001) for ES 2026-06-01..06-19; the app's FMP connector (FMPRESTClient.fetch_historical_chart) sends no from/to and filters the latest response, so EURUSD 2026-03-02..03-24 is unreachable through the app's own connector. No outward fetch was made."
+ },
+ "verdict": "fail:training_side_noncausal",
+ "reasons": [
+  "training_side_noncausal: 22002 cells/checks",
+  "app_producer_bug: 11323 cells/checks",
+  "source parity incomplete (protocol fallback)",
+  "ES R segments are not known-completion evidence (recorded ESU6 completion unknown)"
+ ],
+ "scored_eligibility": "not granted: a parity verdict is not scored eligibility; B6, A12, A13 and B7 are still required",
+ "report_sha256": "a27c09939f7076c7093cf77c16edfe1553295f93d242d944705af2ee380bc53b"
+}

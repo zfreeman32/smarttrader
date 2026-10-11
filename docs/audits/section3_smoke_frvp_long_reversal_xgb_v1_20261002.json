@@ -1,0 +1,303 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 10,
+  "model_id": "frvp_long_reversal_xgb_v1",
+  "stream": "ES",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "9db6421a06bcf04b9e83b0453204ef0d13f3f029773509da0e8e0f4d66f0956b",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 10,
+    "model_id": "frvp_long_reversal_xgb_v1",
+    "status": "selected",
+    "held_out_period": [
+      "2024-12-03T15:10:00+00:00",
+      "2026-06-11T17:20:00+00:00"
+    ],
+    "candidate_weeks": 73,
+    "weeks": [
+      {
+        "week": "2024-12-16",
+        "first_open": "2024-12-15T23:00:00+00:00",
+        "last_open": "2024-12-20T21:55:00+00:00",
+        "sessions": [
+          "2024-12-16",
+          "2024-12-17",
+          "2024-12-18",
+          "2024-12-19",
+          "2024-12-20"
+        ]
+      },
+      {
+        "week": "2024-12-30",
+        "first_open": "2024-12-29T23:00:00+00:00",
+        "last_open": "2025-01-03T21:55:00+00:00",
+        "sessions": [
+          "2024-12-30",
+          "2024-12-31",
+          "2025-01-02",
+          "2025-01-03"
+        ]
+      },
+      {
+        "week": "2025-03-10",
+        "first_open": "2025-03-09T22:00:00+00:00",
+        "last_open": "2025-03-14T20:55:00+00:00",
+        "sessions": [
+          "2025-03-10",
+          "2025-03-11",
+          "2025-03-12",
+          "2025-03-13",
+          "2025-03-14"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:10:setup1:es_frvp_setup1_eval_v1": [
+        "2024-12-16",
+        "2024-12-30"
+      ],
+      "route:10:setup4:es_frvp_setup4_eval_v2": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "route:10:setup6:es_frvp_setup6_eval_v1": [
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "overnight_segment": [
+        "2024-12-16",
+        "2024-12-30",
+        "2025-03-10"
+      ],
+      "rth_segment": [
+        "2024-12-16",
+        "2024-12-30"
+      ],
+      "planned_closure": [
+        "2024-12-30"
+      ],
+      "dst_transition": [
+        "2025-03-10"
+      ],
+      "es_roll": [
+        "2024-12-16"
+      ]
+    },
+    "routes_exercised": [
+      "10:setup1:es_frvp_setup1_eval_v1",
+      "10:setup4:es_frvp_setup4_eval_v2",
+      "10:setup6:es_frvp_setup6_eval_v1"
+    ],
+    "routes_unexercised": {},
+    "calendar_elements_unexercised": {},
+    "held_out_predictions": 361,
+    "held_out_setup_matches": 361
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "ticks",
+  "calendar_id": "pmc_5_1_3_cme_globex_equity_plus_carter_v1",
+  "calendar_hash": "dc4545ba66b691b59451bd9d468bdbd2613035da28354f02f21f320c89ff90c3",
+  "canonical_hash_run_a": "f750796ac0b5efd7c34dc928a8f6bddd69900b707f347d60c22fef7ff5b673dc",
+  "canonical_hash_run_b": "f750796ac0b5efd7c34dc928a8f6bddd69900b707f347d60c22fef7ff5b673dc",
+  "surface_hash": "843af81635ba79bb013df35684b9d233a7b1ec03ade2a93067df3adec613daf7",
+  "reviewed_artifact_set_sha256": "189a7bd7a9ec1fab7c215fcf428ecc3f16e40c5046559f4f4f58c44dcd70e1ac",
+  "b4_freeze_files_verified": {
+    "model.json": "bb08d91f73246d449e137f0310bb07db51d8fbe3124769dc8ad2fb592f322ec2",
+    "scaler.joblib": "2bef28efe84254615b286f2a7418841954c999ba437bb6b9c4fbe88ac9c15ba2",
+    "calibrator.joblib": "8e813a9c1932895a352691f8177311f983ce60861c24b461c97b7d3c8250fbff",
+    "model_config.json": "00b73a89833c36f6bfe6ef836ad8841f968e65d56ce1eeb2d49ff703d4881651",
+    "training_summary.json": "273c73de2a1c98e094676fd5fde0fe56a3754e3f558ca7e261d77ec95ba28d82",
+    "oof_predictions.csv": "be5f26e5b4ea252338f10c11eb785f30a581bae45b871d3307914d2f8f99bb14",
+    "test_predictions.csv": "6d6c00e436dcedb94e43571ddf70e5bd0eda2c10a4364742516407f7c5d75fa6",
+    "cv_fold_manifest.json": "8286552d65937e730dd5a17e63c65b8dbd0cb0f7cc2221dc6534932c2dc06ac6",
+    "cv_fold_manifest.csv": "210f119d05ed7d5f2439192f100502ad38d2b45a877884db3558ae3b9bea7c33"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 15,
+    "raw_score_max_abs_error": 8.389511108042313e-08,
+    "threshold": 0.5599999999999999,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "selected_same_side_setup": 15
+  },
+  "signals": 15,
+  "open_positions_rows": 0,
+  "route_coverage": [
+    {
+      "route_id": "10:setup1:es_frvp_setup1_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 3,
+      "executable_routes": 3,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 3,
+        "setup_threshold": 1,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "TARGET": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "10:setup4:es_frvp_setup4_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 9,
+      "executable_routes": 9,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 7,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 2,
+        "TARGET": 3,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 3
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "10:setup6:es_frvp_setup6_eval_v1",
+      "exercised": true,
+      "setup_matches_in_window": 3,
+      "executable_routes": 3,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 2,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 1,
+        "TIMEOUT_LOSS": 2
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 15,
+    "capacity_admitted": 1,
+    "independent_admitted": 1,
+    "trades_in_both": 1,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "c8b820719b5859d066956944e4d1599b4d89cd0be893833f0946b67a89c020e7",
+  "advisory_ledger_summaries": {
+    "ind.ES.10.setup_only.base": {
+      "ledger_id": "ind.ES.10.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 15,
+      "admitted": 12,
+      "closed": 12,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 290.0,
+      "total_cost": 37.8,
+      "net_pnl": 252.20000000000005,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 3
+      }
+    },
+    "ind.ES.10.setup_only.double_all_costs": {
+      "ledger_id": "ind.ES.10.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 15,
+      "admitted": 12,
+      "closed": 12,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 290.0,
+      "total_cost": 75.6,
+      "net_pnl": 214.39999999999998,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 3
+      }
+    },
+    "ind.ES.10.setup_threshold.base": {
+      "ledger_id": "ind.ES.10.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "base",
+      "opportunities": 15,
+      "admitted": 1,
+      "closed": 1,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 64.0,
+      "total_cost": 2.65,
+      "net_pnl": 61.35,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "probability_below_frozen_threshold": 14
+      }
+    },
+    "ind.ES.10.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.ES.10.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "ES",
+      "unit": "ticks",
+      "cost_case": "double_all_costs",
+      "opportunities": 15,
+      "admitted": 1,
+      "closed": 1,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 64.0,
+      "total_cost": 5.3,
+      "net_pnl": 58.7,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "probability_below_frozen_threshold": 14
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.ES.10.raw_score_gross_forward_response/forward_response.csv": "4bff7e690bca203bf8f4c1a197a8326f5fa7b43a5a2e52add2a1a730b3f0e830",
+    "markouts/mk.ES.10.raw_score_gross_forward_response/paper_contract_outcome.csv": "f204cb5b459d4cd62eccb29b983a48e5596331567265adb3cca56262d062885b",
+    "ledgers/ind.ES.10.setup_only.base.csv": "203ae4bffc7f218928bfbd8cac9bdd2a9481066186ad7da9b004675656e935e4",
+    "ledgers/ind.ES.10.setup_only.double_all_costs.csv": "f7bc66ac59c2c7139cd3990bd96432a69f616d50eb9a18a6e0d330dba9b2e8d8",
+    "ledgers/ind.ES.10.setup_threshold.base.csv": "599809b644cc76dbadd5b036b6e263d4e3426db88b9cf098d30314a63bc62e8c",
+    "ledgers/ind.ES.10.setup_threshold.double_all_costs.csv": "a599628d825b8d3e25b34156bcbe22b6689d8a4345a28b194a9d643d8f1b2cc5"
+  },
+  "output_root": "artifacts/s3smoke_20261002_v1/a/m10"
+}

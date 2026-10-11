@@ -1,0 +1,66 @@
+{
+  "status": "tcn_production_cpu_history_audit_complete",
+  "model": {
+    "id": 1,
+    "target": "short_frvp_continuation",
+    "backend": "torch",
+    "status": "affected_diagnostic_only",
+    "collection_eligible": false,
+    "selected_feature_order_verified": true,
+    "selected_features": 96,
+    "source_dataset": "artifacts\\b2_frvp_july_prepared_20260921_v1\\dataset.parquet",
+    "source_dataset_sha256": "ef90b475a5180ddf8f9fd1a9fb4d7838a434775b89004aa255e18f2b3e4210d6",
+    "test_endpoints": 1053,
+    "context_rows": 31,
+    "source_rows": 666769,
+    "retained_history_endpoint_mismatches": 1053,
+    "frozen_fill_reconstruction_matches_prepared": true,
+    "saved_frozen_fill_contract": false,
+    "raw_runtime_rejected_endpoints": 56,
+    "raw_window_nonfinite_cells": 1901,
+    "raw_vs_frozen_fill_score_differences": 0,
+    "saved_scaler_fit_scope": "all development endpoints, exact center/scale reproduced",
+    "retained_row_saved_replay_max_abs_error": 2.9703521753354778e-08,
+    "consecutive_history_frozen_fill_max_abs_error": 0.06864041132293697,
+    "consecutive_history_threshold_disagreements": 215,
+    "frozen_archived_threshold": 0.5599999999999999,
+    "required_original_bar_gaps": {
+      "raw_bar_gap": 1071,
+      "retained_row_gap": 34
+    },
+    "original_manifest_sha256": "f4977cf9f9fd93aa821e9eea588b9c3df30e5be1da09cdf46e1f2d89f744d178",
+    "outputs_sha256": {
+      "best_checkpoint.pt": "9c36c4bb369c521a408115a27648a9987e11e56c9a9d41bc1ca0926341dc7447",
+      "cv_fold_manifest.csv": "1f78ae68d91ca9b3ee3fdc94402be33a8de647062bc28b24459523da79e70f08",
+      "cv_fold_manifest.json": "2468813996619cbbd4ca45d11f998471ea4ff8a64c5157aa133326f14271a992",
+      "model.pt": "a7be6093f6835ae114721cab062229307799576d5a7f07b9ff5b443278baaad7",
+      "model_config.json": "f97ef59a012c9807d50f33feff10fd6d88d774cdb63c3a1800205c930cb2ebb8",
+      "oof_predictions.csv": "bacfbcb4b9f18891b27da4f14416b477bb1d849984ff7373cd93b27bf3661658",
+      "optuna_trials.csv": "9422773fc2d9d10cc2a77589b2ecd1a0dca8b18403f0fa0e77c4285e1395dccd",
+      "scaler.joblib": "603aeed1700bb4d5770198ade6677d115495883f0beb03798c4142d5473a20ba",
+      "test_predictions.csv": "7d9785ac796862276db7a4eb1ceb5dee15896d0c0f4497991014d6abebf8ce75",
+      "training_history.csv": "ec6f98d70a87ca53ad68feaee266bb1dd070618a81673dd9299b4f9da1288e02",
+      "training_history.json": "ec7579b53c5c214dee7aa659863a4a00f745b1be0122369929a2cbb81b81f95f",
+      "training_summary.json": "3ad4eb5d7283cedb2e4751cd04598be34e25cf9258647d5694f2059237823977",
+      "window_feature_importance.csv": "b89253d0ce3f1edcaf2b2fd93406dd3575a8793384e3578adf4bb6e372263cf4"
+    },
+    "original_code_sha256": {
+      "preprocessing/config.py": "b6fc715b340e4744bfdaba24fa0f217c846856309700ed78f57eada6c6592365",
+      "preprocessing/pipeline.py": "a551dc96aa76c8a2d3cf1f7615ca13edb8740e111bbaed5afb97b1949287024f",
+      "preprocessing/feature_selection.py": "ff6a6c064bca1204513118a717e5641e96a916fa911179b35bafa5641b9de4c0",
+      "preprocessing/feature_importance.py": "65d5763dd31c904640b88471efcc0c84518148a2f7f531d79109aeee097724c8",
+      "model_training/ote_training/ote_xgboost_pipeline.py": "a119f9711c83e4e713c46f04418df7c22b989317881e35a05435bfb52909efe6",
+      "model_training/ote_training/torch_trainer.py": "e1bd8093e2e7e1bbc72b850be889f7d5144f9c09b2a28389db1247ca1581d29e",
+      "scripts/run_b2_retraining.py": "56a6673ee22457132ccc9b87d66d30f4e2ea11a844a85d7564ed7b06328a68f3",
+      "scripts/prepare_b2_validation_views.py": "c81274ef20ded80e04989586a1656c5da1818a370deb3a1417bc124bbfa1053c"
+    },
+    "original_code_paths_changed_since_fit": [
+      "model_training/ote_training/ote_xgboost_pipeline.py",
+      "scripts/run_b2_retraining.py",
+      "scripts/prepare_b2_validation_views.py"
+    ],
+    "limitation": "Prepared-source inference only; actual live producers, availability, gaps and rolls remain separate gates"
+  },
+  "parent_audit_sha256": "d5ae22475ae02d033cc03aeee2cb273637b383a4686aff691f6e1b702a7421d3",
+  "audit_code_sha256": "1a5d201a1c228d9d8eb1e4b54b0199e837b083e2bb51d7f6ece13cde8809a0b5"
+}

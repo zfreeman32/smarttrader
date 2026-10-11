@@ -1040,6 +1040,24 @@ def test_discover_targets_synthesizes_meta_ote_targets_from_family_zone_labels()
     ]
 
 
+def test_preprocessing_parquet_preserves_csv_preparation(tmp_path: Path) -> None:
+    dataset_path = _write_meta_zone_dataset(tmp_path)
+    parquet_path = tmp_path / "same_dataset.parquet"
+    pd.read_csv(dataset_path).to_parquet(parquet_path, index=False)
+    config = PreprocessingConfig(
+        target_columns=["label_long_ote"], min_usable_rows=8,
+        min_train_rows=4, min_positive_samples=2, top_n_features=5,
+        rf_n_estimators=20,
+    )
+    for source, name in ((dataset_path, "csv"), (parquet_path, "parquet")):
+        FeaturePreprocessingPipeline(config).run(source, tmp_path / name, metadata_path=dataset_path.with_suffix(".metadata.json"))
+    for split in ("train", "val", "test"):
+        pd.testing.assert_frame_equal(
+            pd.read_csv(tmp_path / "csv" / "long_ote" / f"{split}.csv"),
+            pd.read_csv(tmp_path / "parquet" / "long_ote" / f"{split}.csv"),
+        )
+
+
 def test_preprocessing_builds_meta_ote_target_from_union_of_family_zone_labels(tmp_path: Path) -> None:
     dataset_path = _write_meta_zone_dataset(tmp_path)
     output_dir = tmp_path / "prepared_meta"
@@ -1160,9 +1178,9 @@ def test_preprocessing_builds_ict_direct_and_meta_targets(tmp_path: Path) -> Non
 
     assert meta_report["target_construction"]["type"] == "direct_column"
     assert meta_report["target_construction"]["source_target_column"] == "label_long_ict_meta"
-    assert "htf_confluence_long_ict_meta" in meta_features["features"]
-    assert "htf_confluence_long_ict_reversal" in reversal_features["features"]
-    assert "htf_confluence_long_ict_continuation" in continuation_features["features"]
+    assert "htf_confluence_long_ict_meta" not in meta_features["features"]
+    assert "htf_confluence_long_ict_reversal" not in reversal_features["features"]
+    assert "htf_confluence_long_ict_continuation" not in continuation_features["features"]
     assert "ict_total_confluence_1atr" in meta_features["features"]
     assert "ict_bull_sweep_plus_fvg" in reversal_features["features"]
 
@@ -1240,7 +1258,7 @@ def test_preprocessing_synthetic_union_keeps_component_local_negative_rows_when_
     assert report["row_counts"]["rows_usable"] == 4
 
 
-def test_preprocessing_appends_target_specific_htf_confluence_for_frvp_targets(tmp_path: Path) -> None:
+def test_preprocessing_excludes_target_specific_htf_confluence_for_frvp_targets(tmp_path: Path) -> None:
     dataset_path = _write_frvp_dataset(tmp_path, include_metadata=True)
     output_dir = tmp_path / "prepared_frvp"
 
@@ -1261,8 +1279,8 @@ def test_preprocessing_appends_target_specific_htf_confluence_for_frvp_targets(t
     long_reversal_features = json.loads((output_dir / "long_frvp_reversal" / "features.json").read_text(encoding="utf-8"))
     long_continuation_features = json.loads((output_dir / "long_frvp_continuation" / "features.json").read_text(encoding="utf-8"))
 
-    assert "htf_confluence_long_frvp_reversal" in long_reversal_features["features"]
-    assert "htf_confluence_long_frvp_continuation" in long_continuation_features["features"]
+    assert "htf_confluence_long_frvp_reversal" not in long_reversal_features["features"]
+    assert "htf_confluence_long_frvp_continuation" not in long_continuation_features["features"]
     assert "frvp_dist_poc_session_atr" in long_reversal_features["features"]
     assert "frvp_open_type" in long_continuation_features["features"]
 
@@ -1285,7 +1303,7 @@ def test_preprocessing_fallback_excludes_frvp_leakage_like_and_contract_lineage_
     features_payload = json.loads((output_dir / "long_frvp_reversal" / "features.json").read_text(encoding="utf-8"))
     selected = set(features_payload["features"])
 
-    assert "htf_confluence_long_frvp_reversal" in selected
+    assert "htf_confluence_long_frvp_reversal" not in selected
     assert "frvp_dist_poc_session_atr" in selected
     assert "frvp_day_type" in selected
 

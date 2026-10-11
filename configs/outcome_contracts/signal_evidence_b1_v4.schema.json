@@ -1,0 +1,804 @@
+{
+  "$defs": {
+    "ModelSetupContext": {
+      "additionalProperties": false,
+      "description": "Complete same-opportunity setup census, captured before threshold filtering.",
+      "properties": {
+        "collection_id": {
+          "title": "Collection Id",
+          "type": "string"
+        },
+        "opportunity_id": {
+          "title": "Opportunity Id",
+          "type": "string"
+        },
+        "prediction_id": {
+          "title": "Prediction Id",
+          "type": "string"
+        },
+        "available_at_ts": {
+          "format": "date-time",
+          "title": "Available At Ts",
+          "type": "string"
+        },
+        "coverage": {
+          "enum": [
+            "all_model_observations",
+            "selected_signals_only",
+            "unknown"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "setup_coverage": {
+          "enum": [
+            "complete",
+            "unknown"
+          ],
+          "title": "Setup Coverage",
+          "type": "string"
+        },
+        "expected_model_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Model Ids",
+          "type": "array"
+        },
+        "setups": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SetupObservation"
+          },
+          "title": "Setups",
+          "type": "array"
+        },
+        "model_artifact_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Artifact Hash"
+        },
+        "calibration_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Hash"
+        },
+        "policy_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Hash"
+        },
+        "raw_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Score"
+        },
+        "calibrated_probability": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibrated Probability"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "threshold_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Source"
+        },
+        "threshold_passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Passed"
+        },
+        "trend_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trend Regime"
+        },
+        "volatility_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Volatility Regime"
+        },
+        "composite_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Composite Regime"
+        },
+        "session_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Regime"
+        },
+        "stress_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stress Regime"
+        },
+        "rejection_reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejection Reasons",
+          "type": "array"
+        },
+        "context_source_hash": {
+          "title": "Context Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "collection_id",
+        "opportunity_id",
+        "prediction_id",
+        "available_at_ts",
+        "coverage",
+        "setup_coverage",
+        "context_source_hash"
+      ],
+      "title": "ModelSetupContext",
+      "type": "object"
+    },
+    "SetupObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "setup_event_id": {
+          "title": "Setup Event Id",
+          "type": "string"
+        },
+        "strategy": {
+          "title": "Strategy",
+          "type": "string"
+        },
+        "setup_family": {
+          "title": "Setup Family",
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "long",
+            "short"
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "known_at_ts": {
+          "format": "date-time",
+          "title": "Known At Ts",
+          "type": "string"
+        },
+        "selected": {
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "detector_version": {
+          "title": "Detector Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "setup_event_id",
+        "strategy",
+        "setup_family",
+        "side",
+        "known_at_ts",
+        "selected",
+        "detector_version"
+      ],
+      "title": "SetupObservation",
+      "type": "object"
+    },
+    "Structural30mATREvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "definition": {
+          "const": "completed_30m_structural_atr",
+          "default": "completed_30m_structural_atr",
+          "title": "Definition",
+          "type": "string"
+        },
+        "producer_id": {
+          "const": "b1_structural_30m_wilder14_v1",
+          "default": "b1_structural_30m_wilder14_v1",
+          "title": "Producer Id",
+          "type": "string"
+        },
+        "timeframe_minutes": {
+          "const": 30,
+          "default": 30,
+          "title": "Timeframe Minutes",
+          "type": "integer"
+        },
+        "period": {
+          "const": 14,
+          "default": 14,
+          "title": "Period",
+          "type": "integer"
+        },
+        "smoothing": {
+          "const": "wilder_alpha_1_over_14_adjust_false",
+          "default": "wilder_alpha_1_over_14_adjust_false",
+          "title": "Smoothing",
+          "type": "string"
+        },
+        "units": {
+          "const": "price",
+          "default": "price",
+          "title": "Units",
+          "type": "string"
+        },
+        "value": {
+          "exclusiveMinimum": 0,
+          "title": "Value",
+          "type": "number"
+        },
+        "source_close_ts": {
+          "format": "date-time",
+          "title": "Source Close Ts",
+          "type": "string"
+        },
+        "history_start_ts": {
+          "format": "date-time",
+          "title": "History Start Ts",
+          "type": "string"
+        },
+        "available_at_ts": {
+          "format": "date-time",
+          "title": "Available At Ts",
+          "type": "string"
+        },
+        "coordinate_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Coordinate Id"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "source_close_ts",
+        "history_start_ts",
+        "available_at_ts",
+        "coordinate_id",
+        "source_hash"
+      ],
+      "title": "Structural30mATREvidence",
+      "type": "object"
+    },
+    "StructuralATREvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "definition": {
+          "const": "completed_1h_structural_atr",
+          "default": "completed_1h_structural_atr",
+          "title": "Definition",
+          "type": "string"
+        },
+        "producer_id": {
+          "const": "b1_structural_1h_wilder14_v1",
+          "default": "b1_structural_1h_wilder14_v1",
+          "title": "Producer Id",
+          "type": "string"
+        },
+        "timeframe_minutes": {
+          "const": 60,
+          "default": 60,
+          "title": "Timeframe Minutes",
+          "type": "integer"
+        },
+        "period": {
+          "const": 14,
+          "default": 14,
+          "title": "Period",
+          "type": "integer"
+        },
+        "smoothing": {
+          "const": "wilder_alpha_1_over_14_adjust_false",
+          "default": "wilder_alpha_1_over_14_adjust_false",
+          "title": "Smoothing",
+          "type": "string"
+        },
+        "units": {
+          "const": "price",
+          "default": "price",
+          "title": "Units",
+          "type": "string"
+        },
+        "value": {
+          "exclusiveMinimum": 0,
+          "title": "Value",
+          "type": "number"
+        },
+        "source_close_ts": {
+          "format": "date-time",
+          "title": "Source Close Ts",
+          "type": "string"
+        },
+        "history_start_ts": {
+          "format": "date-time",
+          "title": "History Start Ts",
+          "type": "string"
+        },
+        "available_at_ts": {
+          "format": "date-time",
+          "title": "Available At Ts",
+          "type": "string"
+        },
+        "coordinate_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Coordinate Id"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "source_close_ts",
+        "history_start_ts",
+        "available_at_ts",
+        "coordinate_id",
+        "source_hash"
+      ],
+      "title": "StructuralATREvidence",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "title": "Event Id",
+      "type": "string"
+    },
+    "model_id": {
+      "title": "Model Id",
+      "type": "string"
+    },
+    "model_version": {
+      "title": "Model Version",
+      "type": "string"
+    },
+    "model_family": {
+      "title": "Model Family",
+      "type": "string"
+    },
+    "strategy": {
+      "enum": [
+        "ote",
+        "frvp",
+        "ict"
+      ],
+      "title": "Strategy",
+      "type": "string"
+    },
+    "setup_family": {
+      "title": "Setup Family",
+      "type": "string"
+    },
+    "instrument": {
+      "enum": [
+        "ES",
+        "6E",
+        "EURUSD"
+      ],
+      "title": "Instrument",
+      "type": "string"
+    },
+    "timeframe_minutes": {
+      "default": 5,
+      "enum": [
+        1,
+        5
+      ],
+      "title": "Timeframe Minutes",
+      "type": "integer"
+    },
+    "side": {
+      "enum": [
+        "long",
+        "short"
+      ],
+      "title": "Side",
+      "type": "string"
+    },
+    "training_label_outcome": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Training Label Outcome"
+    },
+    "training_label_version": {
+      "default": "UNKNOWN_LEGACY",
+      "title": "Training Label Version",
+      "type": "string"
+    },
+    "training_label_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Training Label Hash"
+    },
+    "training_label_provenance": {
+      "default": "unknown_legacy",
+      "enum": [
+        "verified",
+        "unknown_legacy"
+      ],
+      "title": "Training Label Provenance",
+      "type": "string"
+    },
+    "event_anchor_ts": {
+      "format": "date-time",
+      "title": "Event Anchor Ts",
+      "type": "string"
+    },
+    "known_at_ts": {
+      "format": "date-time",
+      "title": "Known At Ts",
+      "type": "string"
+    },
+    "signal_bar_close_ts": {
+      "format": "date-time",
+      "title": "Signal Bar Close Ts",
+      "type": "string"
+    },
+    "confirmation_ts": {
+      "format": "date-time",
+      "title": "Confirmation Ts",
+      "type": "string"
+    },
+    "features_available_at": {
+      "format": "date-time",
+      "title": "Features Available At",
+      "type": "string"
+    },
+    "feature_max_source_close_ts": {
+      "format": "date-time",
+      "title": "Feature Max Source Close Ts",
+      "type": "string"
+    },
+    "regime_available_at": {
+      "format": "date-time",
+      "title": "Regime Available At",
+      "type": "string"
+    },
+    "prediction_available_at": {
+      "format": "date-time",
+      "title": "Prediction Available At",
+      "type": "string"
+    },
+    "calibration_available_at": {
+      "format": "date-time",
+      "title": "Calibration Available At",
+      "type": "string"
+    },
+    "policy_available_at": {
+      "format": "date-time",
+      "title": "Policy Available At",
+      "type": "string"
+    },
+    "geometry_available_at": {
+      "format": "date-time",
+      "title": "Geometry Available At",
+      "type": "string"
+    },
+    "atr_available_at": {
+      "format": "date-time",
+      "title": "Atr Available At",
+      "type": "string"
+    },
+    "availability_status": {
+      "enum": [
+        "verified",
+        "unverified"
+      ],
+      "title": "Availability Status",
+      "type": "string"
+    },
+    "availability_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Availability Evidence Refs",
+      "type": "array"
+    },
+    "atr": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Atr"
+    },
+    "atr_definition": {
+      "title": "Atr Definition",
+      "type": "string"
+    },
+    "atr_provenance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StructuralATREvidence"
+        },
+        {
+          "$ref": "#/$defs/Structural30mATREvidence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Atr Provenance"
+    },
+    "audit_context": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ModelSetupContext"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "stop_reference": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stop Reference"
+    },
+    "target_reference": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Reference"
+    },
+    "coordinate_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Coordinate Id"
+    },
+    "source_structure_formed_ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Structure Formed Ts"
+    },
+    "structure_activation_ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Structure Activation Ts"
+    },
+    "setup_retest_ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Setup Retest Ts"
+    },
+    "policy_eligible": {
+      "default": false,
+      "title": "Policy Eligible",
+      "type": "boolean"
+    },
+    "policy_rejection_reason": {
+      "default": "not_qualified",
+      "title": "Policy Rejection Reason",
+      "type": "string"
+    },
+    "quantity": {
+      "default": 1.0,
+      "exclusiveMinimum": 0,
+      "title": "Quantity",
+      "type": "number"
+    }
+  },
+  "required": [
+    "event_id",
+    "model_id",
+    "model_version",
+    "model_family",
+    "strategy",
+    "setup_family",
+    "instrument",
+    "side",
+    "event_anchor_ts",
+    "known_at_ts",
+    "signal_bar_close_ts",
+    "confirmation_ts",
+    "features_available_at",
+    "feature_max_source_close_ts",
+    "regime_available_at",
+    "prediction_available_at",
+    "calibration_available_at",
+    "policy_available_at",
+    "geometry_available_at",
+    "atr_available_at",
+    "availability_status",
+    "availability_evidence_refs",
+    "atr_definition"
+  ],
+  "title": "SignalEvidence",
+  "type": "object"
+}

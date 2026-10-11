@@ -1,0 +1,151 @@
+{
+  "artifacts\\frvp_es_primary_current\\phase04\\prepared": [
+    "models/frvp_es_primary_tcn_continuation_v1/short_frvp_continuation",
+    "models/frvp_es_primary_tcn_reversal_v1/long_frvp_reversal",
+    "models/frvp_es_primary_xgb_v1/long_frvp_continuation",
+    "models/frvp_es_primary_xgb_v1/long_frvp_reversal",
+    "models/frvp_es_primary_xgb_v1/short_frvp_continuation",
+    "models/frvp_es_primary_xgb_v1/short_frvp_reversal"
+  ],
+  "artifacts\\frvp_es_primary_phase04_full_reuse\\phase04\\prepared": [
+    "tmp/frvp_train_smoke_tcn/long_frvp_reversal",
+    "tmp/frvp_train_smoke_xgb/long_frvp_reversal"
+  ],
+  "artifacts\\frvp_es_primary_post2022_20260703\\phase04\\prepared": [
+    "models/frvp_es_primary_post2022_smallcv_20260703/long_frvp_meta",
+    "models/frvp_es_primary_post2022_smallcv_20260703/long_frvp_reversal"
+  ],
+  "artifacts\\frvp_es_primary_refresh_20260701\\phase04\\prepared": [
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_01/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_02/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_03/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_04/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_05/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_06/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_07/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_08/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_09/long_frvp_continuation",
+    "model_testing/reports/frvp_placebo_readouts/frvp_long_continuation_xgb_v1_20260717/shuffle_10/long_frvp_continuation",
+    "models/frvp_es_primary_tcn_continuation_refresh_20260701/long_frvp_continuation",
+    "models/frvp_es_primary_tcn_continuation_refresh_20260701/short_frvp_continuation",
+    "models/frvp_es_primary_tcn_reversal_refresh_20260701/long_frvp_reversal",
+    "models/frvp_es_primary_tcn_reversal_refresh_20260701/short_frvp_reversal",
+    "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_continuation",
+    "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_meta",
+    "models/frvp_es_primary_xgb_refresh_20260701/long_frvp_reversal",
+    "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_continuation",
+    "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_meta",
+    "models/frvp_es_primary_xgb_refresh_20260701/short_frvp_reversal"
+  ],
+  "artifacts\\frvp_es_primary_setup_targets_20260829\\phase04\\prepared": [
+    "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+    "models/frvp_long_continuation_setup3_xgb_20260829/long_frvp_continuation_setup3",
+    "models/frvp_long_continuation_setup5_xgb_20260829/long_frvp_continuation_setup5",
+    "models/frvp_long_reversal_setup4_xgb_20260829/long_frvp_reversal_setup4",
+    "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup1",
+    "models/frvp_long_reversal_setup_fullspan_rerun2_xgb_20260829/long_frvp_reversal_setup6",
+    "models/frvp_long_reversal_setup_xgb_20260829/long_frvp_reversal_setup1",
+    "models/frvp_long_reversal_setup_xgb_20260829/long_frvp_reversal_setup6"
+  ],
+  "artifacts\\frvp_long_meta_recency_trial1_20260705\\phase04\\prepared": [
+    "models/frvp_long_meta_xgb_recency_trial1_20260705/long_frvp_meta"
+  ],
+  "artifacts\\frvp_long_reversal_recency_trial1_20260703\\phase04\\prepared": [
+    "models/frvp_long_reversal_xgb_recency_trial1_20260703/long_frvp_reversal"
+  ],
+  "artifacts\\frvp_long_reversal_recency_trial2_365d_20260719\\phase04\\prepared": [
+    "models/frvp_long_reversal_xgb_recency_trial2_365d_20260719/long_frvp_reversal"
+  ],
+  "artifacts\\frvp_long_reversal_recency_trial2_548d_20260719\\phase04\\prepared": [
+    "models/frvp_long_reversal_xgb_recency_trial2_548d_20260719/long_frvp_reversal"
+  ],
+  "artifacts\\frvp_long_reversal_setup1_recency730_20260829\\phase04\\prepared": [
+    "models/frvp_long_reversal_setup1_recency730_opt_xgb_20260829/long_frvp_reversal_setup1",
+    "models/frvp_long_reversal_setup1_recency730_xgb_20260829/long_frvp_reversal_setup1"
+  ],
+  "artifacts\\frvp_long_reversal_setup6_recency730_20260829\\phase04\\prepared": [
+    "models/frvp_long_reversal_setup6_recency730_recall_xgb_20260829/long_frvp_reversal_setup6",
+    "models/frvp_long_reversal_setup6_recency730_xgb_20260829/long_frvp_reversal_setup6"
+  ],
+  "artifacts\\ict_es_primary\\phase04_prepared\\prepared": [
+    "models/ict_es_primary_xgb_baseline_20260712/long_ict_reversal",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_continuation",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_meta",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/long_ict_reversal",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_continuation",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_meta",
+    "models/ict_es_primary_xgb_baseline_20260712_v2/short_ict_reversal"
+  ],
+  "artifacts\\ict_es_primary_refresh_20260724_spacing_refit_final_confirm\\phase04_prepared\\prepared": [
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_continuation",
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_meta",
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/long_ict_reversal",
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_meta",
+    "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_reversal",
+    "models/ict_es_primary_xgb_bootstrap_20260726_smoke/long_ict_meta"
+  ],
+  "artifacts\\ict_short_setup_targets_20260811_audit\\phase04_prepared\\prepared": [
+    "models/ict_short_setup_family_xgb_20260811_audit/short_ict_continuation_premium_discount_continuation",
+    "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+    "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_sweep_reclaim"
+  ],
+  "data\\prepared\\eurusd_1min_ote_full": [
+    "models/ote_1min_reversal_wave1_short_xgb/short_reversal",
+    "models/runpod_1min_tcn_long_ote_20260615_002054/long_ote",
+    "models/runpod_1min_tcn_long_reversal_20260612_171301/long_reversal",
+    "models/runpod_1min_tcn_short_reversal_20260614_193525/short_reversal"
+  ],
+  "data\\prepared\\eurusd_5min_breakout_sustained_expA_20260621": [
+    "models/experiment_a_breakout_sustained_pilot_20260621/long_breakout_sustained"
+  ],
+  "data\\prepared\\eurusd_5min_ote_full": [
+    "models/challenger_models/reversal_models/long_reversal_tcn_v3_20260526_overlap_ny_dd_repair/long_reversal",
+    "models/champion_models/breakout_models/long_breakout_tcn_challenger",
+    "models/champion_models/breakout_models/long_breakout_tcn_champion/long_breakout",
+    "models/champion_models/breakout_models/long_breakout_tcn_repair_20260511_v1/long_breakout",
+    "models/champion_models/breakout_models/short_breakout_tcn_champion",
+    "models/champion_models/meta_models/short_tcn_champion",
+    "models/champion_models/reversal_models/long_reversal_tcn_challenger",
+    "models/champion_models/reversal_models/long_reversal_tcn_champion",
+    "models/champion_models/reversal_models/short_reversal_tcn_challenger/short_reversal",
+    "models/champion_models/reversal_models/short_reversal_tcn_champion",
+    "models/champion_models/reversal_models/short_reversal_xgb_v1",
+    "models/legacy_models/short_breakout_v2",
+    "models/live/long_breakout_tcn",
+    "models/live/long_breakout_xgb",
+    "models/live/long_meta_tcn",
+    "models/live/long_reversal_tcn",
+    "models/live/long_union_tcn",
+    "models/live/short_breakout_tcn",
+    "models/live/short_breakout_tcn_backup_20260530",
+    "models/live/short_meta_tcn",
+    "models/live/short_reversal_xgb",
+    "models/live/short_union_tcn",
+    "models/ote_full_lstm_v1/long_ote",
+    "models/ote_full_lstm_v2/long_ote",
+    "models/ote_full_tcn_v1/long_ote",
+    "models/ote_full_tcn_v1/short_ote",
+    "models/ote_full_tcn_v2/long_ote",
+    "models/ote_full_tcn_v2/short_ote",
+    "models/ote_full_xgb_v1/long_ote",
+    "models/ote_full_xgb_v1/short_ote",
+    "models/ote_full_xgb_v2/long_ote",
+    "models/ote_full_xgb_v2/short_ote",
+    "models/ote_multi_family_tcn_refresh_20260530/short_breakout",
+    "models/ote_multi_family_tcn_v1/long_continuation_pullback",
+    "models/ote_multi_family_tcn_v1/short_continuation_pullback",
+    "models/ote_multi_family_tcn_v2/long_continuation_pullback",
+    "models/ote_multi_family_tcn_v2/short_continuation_pullback",
+    "models/ote_multi_family_xgb_v1/long_continuation_entry",
+    "models/ote_multi_family_xgb_v1/long_ote",
+    "models/ote_multi_family_xgb_v1/long_reversal",
+    "models/ote_multi_family_xgb_v1/short_breakout",
+    "models/ote_multi_family_xgb_v1/short_continuation_entry",
+    "models/ote_multi_family_xgb_v1/short_ote"
+  ],
+  "data\\prepared\\eurusd_5min_ote_full_short_breakout_challenger_20260506": [
+    "models/legacy_models/short_breakout_challenger_v1_neighborhood_isotonic_20260506/short_breakout",
+    "models/legacy_models/short_breakout_challenger_v1_neighborhood_platt_20260506/short_breakout"
+  ]
+}

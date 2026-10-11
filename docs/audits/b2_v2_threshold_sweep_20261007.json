@@ -1,0 +1,122 @@
+{
+  "models": {
+    "2": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "fewer than 6 detector setups a week on the declared routes even with no threshold",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 5.8078666999635935
+    },
+    "3": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 7.306862818121898
+    },
+    "5": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "fewer than 6 detector setups a week on the declared routes even with no threshold",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 1.3246674251213715
+    },
+    "10": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "fewer than 6 detector setups a week on the declared routes even with no threshold",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 3.071096736254043
+    },
+    "21": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 26.244758237056057
+    },
+    "23": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 26.470205406328734
+    },
+    "25": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 26.978393667847207
+    },
+    "22": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 9.222877733422829
+    },
+    "26": {
+      "status": "no_feasible_threshold",
+      "threshold": null,
+      "reason": "no threshold keeps >= 6 trades/week with positive returns in the selection period",
+      "evaluation_passes": null,
+      "select_trades_per_week": null,
+      "select_net": null,
+      "select_pf": null,
+      "eval_trades_per_week": null,
+      "eval_net": null,
+      "eval_pf": null,
+      "max_possible_trades_per_week": 8.61858074089777
+    }
+  },
+  "tape_notes": {}
+}

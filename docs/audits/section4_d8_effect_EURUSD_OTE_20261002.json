@@ -1,0 +1,25 @@
+{
+ "probe": "section4-d8-effect-v1",
+ "asset": "EURUSD",
+ "queue_ids": [
+  21,
+  22,
+  23,
+  25,
+  26
+ ],
+ "rows": 8000,
+ "first": "2026-07-31T03:10:00+00:00",
+ "last": "2026-09-22T05:05:00+00:00",
+ "is_complete_counts": {
+  "None": 8000
+ },
+ "selected_features": 253,
+ "changed_feature_count": 0,
+ "changed_feature_prefixes": [],
+ "changed_cells": 0,
+ "top_changed": [],
+ "endpoint_nan_off": 0,
+ "endpoint_nan_on": 0,
+ "non_htf_changes": []
+}

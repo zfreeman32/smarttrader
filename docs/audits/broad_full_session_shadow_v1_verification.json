@@ -1,0 +1,25 @@
+{
+  "status": "broad_full_session_shadow_v1_verification_passed",
+  "verified_at": "2026-10-01",
+  "selected_ids": [
+    2,
+    10,
+    12,
+    13,
+    15,
+    16,
+    22,
+    26,
+    3,
+    19,
+    21,
+    25
+  ],
+  "replacement_count": 12,
+  "selection_sha256": "08729bea6852213d8afdea6c9928c727844bfde7c95a8eb7b73a6e37c5d61808",
+  "freeze_sha256": "6c25d379e55077981fb2f827c5c3ffb231bdb13d6753f1a6441fd7a6c53966fe",
+  "all_source_data_code_feature_fold_calibration_threshold_replay_pins_verified": true,
+  "all_exact_threshold_decisions_verified": true,
+  "all_full_policies_not_defined": true,
+  "scored_collection_eligible": false
+}

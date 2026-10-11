@@ -15,6 +15,8 @@ param(
     [string[]]$ModelIds = @(),
     [string]$TargetedFilterPreset = "",
     [string]$SpreadCostMode = "auto",
+    [switch]$LegacyOutcomes,
+    [string]$OutcomeInputManifest = "",
     [switch]$SkipRegime,
     [switch]$SkipThreshold,
     [switch]$SkipBacktest
@@ -22,6 +24,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($OutcomeInputManifest) -and -not $LegacyOutcomes -and (-not $SkipThreshold -or -not $SkipBacktest)) {
+    throw "B1 requires causal outcome inputs via scripts/run_outcome_evaluation.py. Use -LegacyOutcomes only for explicit historical reproduction with new output roots."
+}
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $venvPython = Join-Path $repoRoot "ote_venv\Scripts\python.exe"
@@ -33,6 +38,13 @@ if ([string]::IsNullOrWhiteSpace($PythonExe)) {
     else {
         $PythonExe = "python"
     }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($OutcomeInputManifest)) {
+    if ($LegacyOutcomes) { throw "B1 inputs and legacy replay are mutually exclusive." }
+    & $PythonExe (Join-Path $repoRoot "scripts/run_outcome_evaluation.py") --input-manifest $OutcomeInputManifest --output-dir $BacktestOutputRoot
+    if ($LASTEXITCODE -ne 0) { throw "B1 outcome evaluation failed." }
+    return
 }
 
 function Invoke-Step {
@@ -159,6 +171,11 @@ Write-Host "Threshold root:    $ThresholdOutputRoot"
 Write-Host "Backtest root:     $BacktestOutputRoot"
 Write-Host "Spread costs:      $SpreadCostMode"
 Write-Host "Backtest min yrs:  $BacktestMinTrainYears"
+if ($LegacyOutcomes) {
+    $thresholdArgs += @("--legacy-outcomes")
+    $backtestArgs += @("--legacy-outcomes")
+}
+
 if ($BacktestMaxTrainYears -gt 0) {
     Write-Host "Backtest max yrs:  $BacktestMaxTrainYears"
 }

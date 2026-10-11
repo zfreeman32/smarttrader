@@ -1,0 +1,51 @@
+{
+  "data/futures_data/ES-5m-tagged.csv": {
+    "sha256": "747c9a85e5450e9b252080d1fced5debde51264da2e254c42a29a96988ee328b",
+    "unchanged": true
+  },
+  "data/futures_data/ES-1m.csv": {
+    "sha256": "30b9482129a12b51dfa956af2d885edad7396cab142cd5932fda5b322e7d09b5",
+    "unchanged": true
+  },
+  "data/currency_data/eurusd-5m.csv": {
+    "sha256": "76e05ef297fcb23ea56b6d71ac812aca7f71cb996d7caca614b931f830ee1bba",
+    "unchanged": true
+  },
+  "artifacts/ict_es_primary/phase02_features/ict_es_features.csv": {
+    "sha256": "e3d50d1a1cd2aabbcc85b96a4b79f6842a780bc96105b08e98fdc410889a385a",
+    "unchanged": true
+  },
+  "artifacts/frvp_es_primary_refresh_20260701/phase02/es_primary_frvp_features_full.csv.gz": {
+    "sha256": "a71ef92ac5f6201d447d01619a259529d3171b2633b743218d91e01480cd6d69",
+    "unchanged": true
+  },
+  "artifacts/frvp_es_primary_current/phase02/es_primary_frvp_features_full.csv.gz": {
+    "sha256": "b6be6ebf67109e6a3163576fbf147ab66ade07933cf1579265e5aa742c8289eb",
+    "unchanged": true
+  },
+  "data/features/eurusd_5min_ote_full.csv": {
+    "sha256": "e3dd2d7088be769b21f42e303261992f29fd619b297c8a3ee5e32a95fe82c153",
+    "unchanged": true
+  },
+  "artifacts/ict_es_primary_refresh_20260724_spacing_refit_final_confirm/phase03_labeling/ict_es_labels.csv": {
+    "sha256": "e3fa957a8e392f07a12642669f61b9d5d70bd3d676be47de773ca54138ead578",
+    "unchanged": true
+  },
+  "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv": {
+    "sha256": "14dfdee91377096981ffc30c145b040213c46d18e0c331e092d25a4d34282fe6",
+    "unchanged": true
+  },
+  "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv": {
+    "sha256": "d41668d4a750a4613424058c54fcbd63dd824dfe2d41b31467c964da85db8a93",
+    "unchanged": true
+  },
+  "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv": {
+    "sha256": "51108e39d4c33e7054fb8f4e8f7202174e86d62fa99143ad5f98f5ea9a04f440",
+    "unchanged": true
+  },
+  "data/currency_data/eurusd-1m.normalized.csv": {
+    "sha256": "1325838ada3faa894fab885d0ba17c6f269c848532029d2bafc823e2569b41ad",
+    "unchanged": true,
+    "comparison_baseline": "fullspan timestamp verification source hash"
+  }
+}

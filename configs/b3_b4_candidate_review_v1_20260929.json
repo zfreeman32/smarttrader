@@ -1,0 +1,176 @@
+{
+  "protocol_id": "b3_b4_candidate_review_v1_20260929",
+  "protocol_version": 1,
+  "status": "frozen_before_prospective_outcomes",
+  "declared_at": "2026-09-29",
+  "purpose": "Prospective, candidate-specific comparison of setup rules, the development-selected frozen model threshold, and the intended full policy for every recipe in the frozen broad-selection roster on one common opportunity population. This is a research protocol and is not a promotion or deployment authorization.",
+  "outcome_inspection_guard": {
+    "primary_sample": "prospective_c1_only",
+    "historical_windows": "diagnostic_only; never pooled with C1",
+    "freeze_rule": "The protocol, candidate roster, matcher identity, thresholds, policy bindings, execution assumptions, cost cases, freshness rules, and reporting windows must be hashed and recorded before the first C1 observation. No threshold, gate, exit, limit, session window, or cost case may be changed after outcomes are visible.",
+    "outcome_fields_in_this_declaration": false
+  },
+  "scope": {
+    "instrument": "ES",
+    "timeframe": "5m",
+    "baseline_catalog": "configs/outcome_contracts/b1_v3.json",
+    "baseline_scope": "configs/outcome_contracts/baseline_scope_v1.json",
+    "collection_scope": "configs/outcome_contracts/b2_research_scope_v1.json",
+    "selected_recipe_roster": {
+      "source": "configs/broad_full_session_shadow_selection_v0.json",
+      "selection_id": "broad_full_session_shadow_selection_v0",
+      "candidate_path": "candidates",
+      "candidate_count": 22,
+      "candidate_ids": [2, 10, 12, 13, 15, 16, 22, 26, 3, 19, 21, 25, 5, 23, 27, 6, 7, 11, 17, 1, 18, 14],
+      "include_order_groups": ["minimum_core", "expanded_core_if_latency_permits", "reserve", "diagnostic_companion"],
+      "rule": "Every candidate in the frozen selection source receives all three B3 branch declarations before fitting or evaluation. No recipe is omitted because it lacks a current policy binding or because it is pooled/diagnostic under an older scope."
+    },
+    "historical_b1_review_candidates": [7, 17],
+    "legacy_baseline_diagnostic_candidates": [1, 2, 11],
+    "prospective_boundary": {
+      "start": "First healthy post-B7 collection timestamp under a new immutable candidate/runtime collection identity.",
+      "end": "The first 20 consecutive fully eligible ES sessions after the start timestamp; the window is not shortened or extended in response to outcomes.",
+      "partial_sessions": "Retain for coverage and censoring diagnostics, but do not include in the primary complete-session aggregate."
+    },
+    "common_opportunity_universe": {
+      "rule": "For each selected recipe, retain every causally recorded prediction that has an exact contemporaneous same-side setup match under the frozen matcher, model, instrument, timeframe, source timestamp, and bar version. This population is formed before threshold, policy, cost, position-capacity, or outcome fields are inspected.",
+      "setup_only_is_matched_cohort": true,
+      "selection_exclusions": [
+        "labels, future bars, safe-negative flags, quality flags, weights, realized outcomes, or outcome-derived filters",
+        "threshold or policy gates when constructing the common population",
+        "silent removal of rejected, missing, stale, overlapping, or capacity-rejected observations"
+      ],
+      "ledger_requirement": "Write one decision row for every common opportunity and retain admission/rejection reasons independently for all three branches."
+    }
+  },
+  "comparison_branches": {
+    "setup_only": {
+      "primary": true,
+      "admission": "Every opportunity in common_opportunity_universe for every selected recipe; no probability filter and no full-policy gate.",
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "interpretation": "Setup-rule benchmark, not a claim that an earlier standalone detector was executable when no model prediction was recorded.",
+      "empty_ledger_rule": "An empty setup-only ledger is a coverage result, not a zero-P&L pass/fail result."
+    },
+    "model_threshold": {
+      "primary": true,
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "admission": "The same common opportunities with the candidate's development-selected threshold applied to the recorded, calibrated-or-raw score as declared above.",
+      "threshold_source": "Candidate-specific threshold selected only on the declared development data, then frozen and bound before evaluation; no test/outcome refit, recalibration, threshold search, or outcome update during evaluation.",
+      "full_policy_gates": "None. This branch isolates the incremental score threshold from the intended policy.",
+      "threshold_missing_rule": "If a candidate threshold is not frozen before evaluation, record the branch as not_defined and do not evaluate it with a placeholder, default, or post-outcome threshold."
+    },
+    "full_policy": {
+      "primary": true,
+      "common_opportunity_universe": "The same causally recorded prediction/setup-match cohort is reused by every branch for that recipe.",
+      "admission": "The same common opportunities after the same frozen model threshold and the exact candidate-specific intended policy binding, when defined.",
+      "unbound_status": "not_defined",
+      "undefined_output_rule": "If the exact candidate policy binding is absent, record full_policy as not_defined with no ledger, P&L, zero-trade result, pass, or promotion claim. Never convert an empty full-policy ledger into zero P&L or a pass.",
+      "intended_policy_specification": {
+        "threshold": "Use the candidate threshold declared in scope; no second threshold is fitted inside the full-policy branch.",
+        "regime_thresholds": null,
+        "abstain_high_stress": true,
+        "abstain_off_hours": true,
+        "cooldown_bars": 4,
+        "minimum_expected_move_to_spread": 2.0,
+        "expected_move_contract": "es_abs_close_move_20x5m_v1",
+        "expected_move_units": "ES ticks",
+        "expected_move_gate": "Causal expected movement in ticks must be at least two times the one-side B1 session spread in ticks; compare one configured spread, while position accounting charges the full B1 costs.",
+        "session_filters": [],
+        "quantile_filter": null,
+        "policy_state": "Cold start at C1 start; policy cooldown/state advances from candidate policy events independently of position occupancy and is not seeded from historical outcomes."
+      },
+      "policy_requirements": [
+        "Policy manifest, source model ID, artifact hash, threshold, calibration, gate parameters, policy hash, and availability contract frozen before the first C1 observation.",
+        "The intended policy specification above is applied exactly as bound; no undeclared high-stress, off-hours, cooldown, spread/expected-move, or session filter may be added.",
+        "If an exact replacement-version binding is not frozen, record full_policy as not_defined and do not create a full-policy ledger, report P&L, report a zero-trade result, report a pass, or substitute the historical deployed policy."
+      ],
+      "parameter_changes": "No search, tuning, or outcome-driven policy changes."
+    }
+  },
+  "execution_assumptions": {
+    "entry": "First scheduled open strictly after known_at, maximum one 5-minute bar delay, unadjusted open price.",
+    "known_at": "Maximum of causal setup confirmation, completed feature/HTF/regime inputs, prediction, calibration, and policy availability. A retrospective label or best-entry timestamp is never known_at.",
+    "exit": "The candidate's frozen B1 fixed-barrier contract: completed causal 1-minute resolution where available, adverse-first same-bar collision, gap-open barrier handling, timeout close, and no forward search.",
+    "missing_data": "Missing entry or holding bars are DATA_GAP/censored; holidays and closures are not inferred; contract rolls/coordinate changes are censored.",
+    "overnight": "Hold unless the frozen B1 contract explicitly says otherwise.",
+    "portfolio": {
+      "starting_equity_usd": 100000,
+      "max_positions": 1,
+      "max_quantity_contracts": 1,
+      "concurrency_scope": "instrument",
+      "allow_opposite_side": false,
+      "cooldown_minutes": 0,
+      "capacity_rule": "Chronological admission by actual availability; simultaneous opportunities use availability time, opportunity key, and position key as deterministic tie-breakers. An existing or unresolved position reserves capacity.",
+      "overlap_rule": "Retain all overlapping signals in the evidence ledger; capacity rejection is recorded and is not an opportunity-universe exclusion.",
+      "accounting": "Nominal fixed-equity accounting, no compounding, financing, margin model, or position scaling."
+    }
+  },
+  "freshness_and_eligibility": {
+    "live_primary_requirement": "A primary C1 observation requires a complete, aligned, closed ES bar; matching source timestamp and instrument/contract identity; known ordered receipt time; immutable bar version; verified producer lineage; and actual prediction/policy availability.",
+    "max_prediction_age_after_bar_close_seconds": 90,
+    "input_age_limits": {
+      "htf_30m_minutes_exclusive": 30,
+      "other_completed_inputs_minutes_exclusive": 60
+    },
+    "reject_or_censor": [
+      "stale, provisional, delayed/backfilled, revised, frozen, missing, or unknown source/producer observations",
+      "prediction available before source-bar close or after the declared 90-second freshness limit",
+      "unverified contract roll, non-closure gap, or unavailable causal feature history"
+    ],
+    "historical_replay_assumption": "Only where observed arrival is unavailable, use the predeclared completed-bar plus one-second processing assumption and label it offline; it is not live freshness evidence.",
+    "retention": "Every failure remains in the C1 audit ledger with its exact freshness, availability, or setup-match reason and cannot be recoded as a negative outcome."
+  },
+  "cost_cases": {
+    "instrument_cost_model": "es_session_cost_v1",
+    "base": {
+      "spread": "1.0 tick per side in overlap/London/New York; 1.5 ticks per side in Asia; 2.0 ticks per side off-hours.",
+      "slippage_round_trip_ticks": 0.25,
+      "commission_round_trip_ticks": 0.4,
+      "spread_interpretation": "Full configured spread per side at the actual entry and exit sessions.",
+      "spread_slippage_multiplier": 0.0
+    },
+    "double_all_costs": {
+      "rule": "Double the base spread, fixed slippage, and commission on the identical admitted trades and fills; do not change admission, capacity, exits, or thresholds.",
+      "required": true
+    },
+    "reporting": "Report gross P&L, each cost component, total cost, net P&L, and the difference between base and double-all-cost net results for every branch and reporting window."
+  },
+  "session_reporting": {
+    "clock": "london_07_16_ny_08_17_asia_ny_v1",
+    "timezone_contract": "Use the frozen B1 DST-aware session/calendar contract; do not relabel sessions from UTC hours after the fact.",
+    "windows": [
+      "each complete ES trading session",
+      "each calendar week containing at least one complete eligible session",
+      "each calendar month containing at least one complete eligible session",
+      "the full fixed 20-session C1 aggregate"
+    ],
+    "session_slices": ["overlap", "london", "new_york", "asia", "off_hours"],
+    "coverage": "Report eligible opportunities, prediction availability, setup matches, branch admissions, capacity rejections, unresolved positions, and missing/stale observations by session slice and complete-session window.",
+    "minimum_review_target": "Approximately 20 complete sessions and 50-100 resolved common opportunities per primary candidate are a practical evidence target, not a profitability threshold. If the fixed window misses the target, report the shortfall rather than extending the sample after outcomes are known."
+  },
+  "experimental_variants": [
+    {
+      "variant_id": "family_model_setup_gate_v1",
+      "status": "experimental_only",
+      "included_in_primary_three": false,
+      "rule": "Apply a newly proposed family/model-specific setup gate only after the base common opportunity universe has been materialized, using a separately frozen matcher identity and hash.",
+      "reporting": "Run as a fourth, separately labeled variant with its own admission/rejection ledger and the same execution, position, cost, freshness, and session assumptions. Never replace setup_only, model_threshold, or full_policy.",
+      "historical_policy_treatment": "Do not back-apply this gate to historical deployed-policy results, do not describe it as the historical deployed policy, and do not use it to rewrite the common cohort.",
+      "promotion": "No promotion, installation, registry change, or paper-trial authorization follows from this variant."
+    }
+  ],
+  "predeclared_outputs": [
+    "common opportunity count and setup-match coverage",
+    "admitted, rejected, capacity-rejected, unresolved, and closed counts per branch",
+    "gross P&L, costs, net P&L, win rate, profit factor, realized drawdown, and average net per trade",
+    "base versus double-all-cost stress",
+    "session, week, month, and fixed-window time stability",
+    "missing/stale/late/roll/censoring reasons and concentration diagnostics",
+    "immutable input, policy, contract, and replay hashes"
+  ],
+  "promotion": {
+    "eligible": false,
+    "interpretation": "C1 is evidence for the predeclared comparison only. Promotion requires separate B5-B7, A12/A13, economics, concentration, drawdown, and readiness decisions.",
+    "no_outcome_retrofit": true
+  }
+}

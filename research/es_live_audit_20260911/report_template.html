@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ES collected-data audit | FRVP and ICT | September 11, 2026</title>
+<style>
+:root{color-scheme:light;--ink:#14283d;--muted:#52677b;--accent:#17667c;--line:#dbe4ed;--bg:#f3f6fa}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+nav{position:sticky;top:0;background:#102d44;color:white;display:flex;gap:24px;align-items:center;padding:13px max(18px,calc((100% - 1160px)/2));z-index:10;flex-wrap:wrap}
+nav a{color:white;text-decoration:none;font-size:14px}nav b{margin-right:auto;font-size:16px}main{max-width:1200px;margin:28px auto;padding:0 22px 50px}
+.card{background:white;border:1px solid var(--line);border-radius:12px;padding:28px 34px;margin-bottom:24px;box-shadow:0 3px 20px #102d4405}
+p{margin:0 0 18px}p:has(>strong:only-child){font-size:22px;margin-top:32px;padding-top:18px;border-top:1px solid var(--line)}p:first-child{margin-top:0;border:0;padding-top:0}
+a{color:#096886}strong{color:#0b334f}table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.45;margin:22px 0;display:block;overflow:auto;font-variant-numeric:tabular-nums}
+thead{background:#eaf1f6}th{text-align:left;font-weight:650;color:#163e59}th,td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}td{min-width:65px}tr:nth-child(even){background:#f8fafc}td:first-child{overflow-wrap:anywhere}img{max-width:100%;height:auto}figure{margin:12px 0 28px}
+li{margin-bottom:10px}code{background:#edf2f6;padding:1px 4px;border-radius:3px;font-size:.88em;overflow-wrap:anywhere}
+.title{font-size:26px;font-weight:750;line-height:1.25;margin-bottom:8px}.subtitle,.note{color:var(--muted);font-size:14px}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0}
+input,select,button{font:inherit;padding:9px 12px;border:1px solid #b6c7d5;border-radius:6px;background:white;color:var(--ink)}input[type=search]{flex:1;min-width:220px}button{cursor:pointer;background:#eaf4f7}label{font-size:14px}.event-list{max-height:370px;overflow:auto;border:1px solid var(--line);border-radius:7px}.event-list table{margin:0;font-size:12px}.event-list thead{position:sticky;top:0;z-index:1}.event-list tr[data-i]{cursor:pointer}.event-list tr[data-i]:hover,.event-list tr.selected{background:#dceff4}
+.negative{color:#a12d37}.positive{color:#146646}.metrics{display:flex;gap:12px;flex-wrap:wrap;margin:15px 0}.metric{background:#f0f5f9;border-radius:7px;padding:12px 17px;flex:1;min-width:130px}.metric span{display:block;font-size:12px;color:var(--muted)}.metric b{font-size:22px;font-variant-numeric:tabular-nums}#chart{width:100%;height:480px}.detail{margin-top:28px;padding-top:24px;border-top:2px solid var(--line)}.detail-title{font-size:21px;font-weight:700}#scores td:first-child{max-width:420px}#scores td{font-size:12px}.pill{font-size:12px;background:#dff0e9;padding:2px 6px;border-radius:4px}
+@media(max-width:700px){main{padding:0 9px}.card{padding:20px 15px}nav{gap:12px}body{font-size:15px}.title{font-size:23px}#chart{height:380px}}
+@media print{nav,.controls,.event-list{display:none}body{background:white}main{max-width:none;margin:0;padding:0}.card{border:0;box-shadow:none;padding:0}table{display:table;font-size:10px}a{color:inherit}figure{break-inside:avoid}#explorer{break-before:page}}
+</style></head><body>
+<nav><b>ES / FRVP / ICT audit</b><a href="#report">Analysis</a><a href="#explorer">Explore all 87 setups</a><a href="#price-charts">Price charts</a><a href="audit_report.md">Markdown</a></nav>
+<main><article class="card" id="report">__REPORT__</article>
+<section class="card" id="explorer"><p class="title">Every retained setup, with its saved model outputs</p>
+<p class="subtitle">87 events · New York time · Fixed one-point round-trip audit cost · Select a row to inspect candles and scores. Blank outcomes are censored; they are not zero returns. All prices and outcomes below are historical diagnostics.</p>
+<div class="controls"><input type="search" id="search" placeholder="Filter by date, FRVP/ICT, setup type, or direction" aria-label="Filter setups"><select id="sort" aria-label="Sort setups"><option value="time">Time ascending</option><option value="best">Best 60m outcome</option><option value="worst">Worst 60m outcome</option></select><span id="count" class="note"></span></div>
+<div class="event-list"><table><thead><tr><th>Mark ET</th><th>System / setup</th><th>Side</th><th>Rule confidence</th><th>15m net pts</th><th>60m net pts</th><th>100m net pts</th></tr></thead><tbody id="events"></tbody></table></div>
+<div class="detail" id="detail"><p class="detail-title" id="event-title"></p><p class="note" id="event-note"></p><div class="metrics" id="metrics"></div><div id="chart"></div>
+<p class="note">Candles are final saved prices, which may differ from model-time inputs. Orange marks the setup bar; green marks the ideal next-bar entry. Gray candles were incomplete at the cutoff. The chart preserves missing time. MFE/MAE are ideal-entry excursions over a complete one-hour path.</p>
+<div class="controls"><label><input type="checkbox" id="matching" checked> Show only models matching the setup, side, and family</label><span class="note">All saved scores were shadow decisions at these marks.</span></div>
+<table id="scores"><thead><tr><th>Model</th><th>Probability</th><th>Threshold</th><th>Pass?</th><th>Matches?</th><th>Recorded ET</th></tr></thead><tbody></tbody></table>
+<p class="note">The probability column is a model label score; rule confidence is separate. Threshold pass alone did not pass the live setup, abstention, or cooldown gates. The recorded timestamp is shown to expose delay and catch-up processing.</p></div>
+</section><section class="card" id="price-charts"><p class="title">Coverage, price opportunity, and large-move episodes</p>__PRICE_CHARTS__</section></main>
+<script>__PLOTLY_JS__</script>
+<script id="event-data" type="application/json">__EVENT_DATA__</script>
+<script>
+'use strict';
+const data=JSON.parse(document.getElementById('event-data').textContent);
+let selected=0;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(x,n=2)=>x===null||x===undefined?'—':Number(x).toFixed(n);
+const moneyClass=x=>x===null?'':x>0?'positive':x<0?'negative':'';
+const local=x=>x?new Date(x).toLocaleString('sv-SE',{timeZone:'America/New_York',hour12:false}):'unknown';
+function renderRows(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  let rows=data.map((e,i)=>({e,i})).filter(({e})=>`${e.timestamp_et} ${e.strategy} ${e.setup_type} ${e.setup_name} ${e.setup_side>0?'long':'short'}`.toLowerCase().includes(q));
+  const sort=document.getElementById('sort').value;
+  if(sort!=='time')rows.sort((a,b)=>{if(a.e.net_points_12===null)return 1;if(b.e.net_points_12===null)return -1;return sort==='best'?b.e.net_points_12-a.e.net_points_12:a.e.net_points_12-b.e.net_points_12});
+  document.getElementById('events').innerHTML=rows.map(({e,i})=>`<tr data-i="${i}" tabindex="0" class="${i===selected?'selected':''}"><td>${esc(e.timestamp_et.slice(0,16).replace('T',' '))}</td><td>${esc(e.strategy)} ${esc(e.setup_type)}<br>${esc(e.setup_name)}</td><td>${e.setup_side>0?'Long':'Short'}</td><td>${fmt(e.confidence,3)}</td><td class="${moneyClass(e.net_points_3)}">${fmt(e.net_points_3)}</td><td class="${moneyClass(e.net_points_12)}">${fmt(e.net_points_12)}</td><td class="${moneyClass(e.net_points_20)}">${fmt(e.net_points_20)}</td></tr>`).join('');
+  document.getElementById('count').textContent=`${rows.length} / ${data.length} setups`;
+  document.querySelectorAll('#events tr').forEach(row=>{row.onclick=()=>selectEvent(Number(row.dataset.i));row.onkeydown=ev=>{if(ev.key==='Enter')selectEvent(Number(row.dataset.i))}});
+}
+function renderScores(){
+  const matchedOnly=document.getElementById('matching').checked;
+  const scores=data[selected].scores.filter(s=>!matchedOnly||s.route_match);
+  document.querySelector('#scores tbody').innerHTML=scores.map(s=>`<tr><td>${esc(s.model_id)}</td><td>${fmt(s.probability,4)}</td><td>${fmt(s.threshold,4)}</td><td>${s.threshold_pass?'Yes':'No'}</td><td>${s.route_match?'Yes':'No'}</td><td>${esc(local(s.recorded_at_utc))}</td></tr>`).join('');
+  if(!scores.length)document.querySelector('#scores tbody').innerHTML='<tr><td colspan="6">No matching saved model. Uncheck the filter to see all scores on this source bar.</td></tr>';
+}
+function selectEvent(i){
+  selected=i;const e=data[i];renderRows();renderScores();
+  document.getElementById('event-title').textContent=`${e.timestamp_et.slice(0,16).replace('T',' ')} ET · ${e.strategy} ${e.setup_type} · ${e.setup_side>0?'Long':'Short'} ${e.setup_name}`;
+  document.getElementById('event-note').textContent=`Evidence: ${e.provenance}. Saved mark close ${fmt(e.close)}; final canonical close ${fmt(e.canonical_close)}. First same-bar model record: ${local(e.first_model_recorded_at_utc)} ET. ${e.strategy==='ICT'?'Exact original ICT marking time is not retained.':''}`;
+  document.getElementById('metrics').innerHTML=[['15m net points',e.net_points_3],['60m net points',e.net_points_12],['100m net points',e.net_points_20],['60m MFE',e.mfe_points_12],['60m MAE',e.mae_points_12]].map(([label,v])=>`<div class="metric"><span>${label}</span><b>${fmt(v)}</b></div>`).join('');
+  const traces=[true,false].map(complete=>{const rows=e.bars.filter(b=>b.complete===complete);return {type:'candlestick',name:complete?'Complete bars':'Incomplete bars',x:rows.map(b=>b.time),open:rows.map(b=>b.open),high:rows.map(b=>b.high),low:rows.map(b=>b.low),close:rows.map(b=>b.close),increasing:{line:{color:complete?'#168274':'#969da5'}},decreasing:{line:{color:complete?'#c94d5a':'#969da5'}},showlegend:!complete}});
+  const source=e.timestamp_et.slice(0,16).replace('T',' '),entry=local(new Date(new Date(e.timestamp_utc).getTime()+300000).toISOString()).slice(0,16);
+  const shapes=[{type:'line',x0:source,x1:source,y0:0,y1:1,yref:'paper',line:{color:'#da8a15',width:2,dash:'dot'}},{type:'line',x0:entry,x1:entry,y0:0,y1:1,yref:'paper',line:{color:'#148276',width:1,dash:'dot'}}];
+  Plotly.react('chart',traces,{margin:{t:20,r:20,l:60,b:50},paper_bgcolor:'white',plot_bgcolor:'#fbfcfe',xaxis:{type:'date',rangeslider:{visible:false},title:'New York local time'},yaxis:{title:'ES price',fixedrange:false},shapes,legend:{orientation:'h'},hovermode:'x unified',dragmode:'pan'}, {responsive:true,displaylogo:false,scrollZoom:false});
+}
+document.getElementById('search').addEventListener('input',renderRows);
+document.getElementById('sort').addEventListener('change',renderRows);
+document.getElementById('matching').addEventListener('change',renderScores);
+selectEvent(0);
+</script></body></html>

@@ -1,0 +1,38 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "scope_kind": {"const": "research", "type": "string"},
+    "scope_id": {"type": "string"},
+    "version": {"type": "integer"},
+    "excluded_setups": {"items": {"type": "string"}, "type": "array"},
+    "diagnostic_setups": {"items": {"type": "string"}, "type": "array"},
+    "pooled_families": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {"type": "string"},
+          {"items": {"type": "string"}, "type": "array"}
+        ],
+        "type": "array"
+      },
+      "type": "array"
+    },
+    "pooled_admission": {"const": "selected_same_side_causal_setup", "type": "string"},
+    "pooled_counterfactual": {"const": "other_same_side_markout_only", "type": "string"},
+    "required_context_coverage": {"const": "all_model_observations", "type": "string"},
+    "required_setup_coverage": {"const": "complete", "type": "string"},
+    "causal_clock": {"const": "setup_known_at_decision_time", "type": "string"},
+    "simulated_outcomes_only": {"const": true, "type": "boolean"},
+    "broker_order_authority": {"const": false, "type": "boolean"},
+    "decision_source": {"type": "string"}
+  },
+  "required": [
+    "scope_kind", "scope_id", "version", "excluded_setups", "diagnostic_setups",
+    "pooled_families", "pooled_admission", "pooled_counterfactual",
+    "required_context_coverage", "required_setup_coverage", "causal_clock",
+    "simulated_outcomes_only", "broker_order_authority", "decision_source"
+  ],
+  "title": "ResearchScope",
+  "type": "object"
+}

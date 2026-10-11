@@ -1,0 +1,14 @@
+{
+  "simulator_id": "synthetic_ote_fixed_v1",
+  "version": 1,
+  "management": "fixed_barriers",
+  "policy_id": "synthetic_ote_policy_v1",
+  "policy_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "max_positions": 1,
+  "max_quantity": 1.0,
+  "concurrency_scope": "instrument",
+  "allow_opposite": false,
+  "cooldown_minutes": 0,
+  "starting_equity": 1000.0,
+  "accounting_unit": "pips"
+}

@@ -1,0 +1,7 @@
+{
+  "signals": "signals.jsonl",
+  "bars": "bars.csv",
+  "schedule": "schedule.csv",
+  "calendar": "calendar.json",
+  "position_contract": "position_contract.json"
+}

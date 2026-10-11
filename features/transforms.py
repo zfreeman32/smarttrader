@@ -217,12 +217,20 @@ def rolling_winsorize_series(
 def rolling_sigma_normalize(
     series: pd.Series,
     window: int,
+    *,
+    exact: bool = False,
 ) -> pd.Series:
-    """Normalize a series by rolling historical mean and sigma."""
+    """Normalize a series by rolling historical mean and sigma (``exact``: feature v2 per-window computation)."""
     numeric = pd.to_numeric(series, errors="coerce")
     history = numeric.shift(1)
-    mean = history.rolling(window, min_periods=window).mean()
-    std = history.rolling(window, min_periods=window).std().replace(0, np.nan)
+    if exact:
+        from .causal_contract import exact_rolling_mean_std
+
+        mean, std = exact_rolling_mean_std(history, window)
+        std = std.replace(0, np.nan)
+    else:
+        mean = history.rolling(window, min_periods=window).mean()
+        std = history.rolling(window, min_periods=window).std().replace(0, np.nan)
     return (numeric - mean) / std
 
 
@@ -308,13 +316,15 @@ def add_sigma_normalized_features(
     df: pd.DataFrame,
     columns: Sequence[str],
     window: int,
+    *,
+    exact: bool = False,
 ) -> pd.DataFrame:
     """Normalize selected features by rolling historical sigma."""
     generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
-        generated.append((f"{column}_sigma_norm_{window}", rolling_sigma_normalize(df[column], window)))
+        generated.append((f"{column}_sigma_norm_{window}", rolling_sigma_normalize(df[column], window, exact=exact)))
     return _build_transform_frame(generated, index=df.index)
 
 
@@ -337,14 +347,23 @@ def add_rolling_statistics(
     df: pd.DataFrame,
     columns: Sequence[str],
     windows: Sequence[int],
+    *,
+    exact: bool = False,
 ) -> pd.DataFrame:
-    """Add rolling means and standard deviations."""
+    """Add rolling means and standard deviations (``exact``: feature v2 per-window computation)."""
     generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
         numeric = pd.to_numeric(df[column], errors="coerce")
         for window in windows:
+            if exact:
+                from .causal_contract import exact_rolling_mean_std
+
+                mean, std = exact_rolling_mean_std(numeric, window)
+                generated.append((f"{column}_roll_mean_{window}", mean))
+                generated.append((f"{column}_roll_std_{window}", std))
+                continue
             rolling = numeric.rolling(window)
             generated.append((f"{column}_roll_mean_{window}", rolling.mean()))
             generated.append((f"{column}_roll_std_{window}", rolling.std()))
@@ -355,15 +374,23 @@ def add_rolling_zscores(
     df: pd.DataFrame,
     columns: Sequence[str],
     window: int,
+    *,
+    exact: bool = False,
 ) -> pd.DataFrame:
-    """Rolling z-scores using past data only."""
+    """Rolling z-scores using past data only (``exact``: feature v2 per-window computation)."""
     generated: list[tuple[str, pd.Series]] = []
     for column in columns:
         if column not in df.columns:
             continue
         numeric = pd.to_numeric(df[column], errors="coerce")
-        mean = numeric.rolling(window).mean()
-        std = numeric.rolling(window).std().replace(0, np.nan)
+        if exact:
+            from .causal_contract import exact_rolling_mean_std
+
+            mean, std = exact_rolling_mean_std(numeric, window)
+            std = std.replace(0, np.nan)
+        else:
+            mean = numeric.rolling(window).mean()
+            std = numeric.rolling(window).std().replace(0, np.nan)
         generated.append((f"{column}_zscore_{window}", (numeric - mean) / std))
     return _build_transform_frame(generated, index=df.index)
 

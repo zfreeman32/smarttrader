@@ -1,0 +1,545 @@
+{
+  "protocol_id": "section4_live_parity",
+  "version": 3,
+  "status": "locked",
+  "approved_at": "2026-10-05",
+  "approval": "user 2026-10-05: decision Q-P1 answered '(b)' (recommendation in docs/section4_progress.md, prompt 4)",
+  "scope": {
+    "roster": {
+      "ES": [
+        2,
+        3,
+        5,
+        10,
+        12,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19
+      ],
+      "EURUSD": [
+        21,
+        22,
+        23,
+        25,
+        26
+      ]
+    },
+    "reserves_out_of_scope": [
+      1,
+      6,
+      7,
+      11,
+      17
+    ],
+    "reserve_control_only": {
+      "1": "negative control for ES fill-order composition (not evaluated)"
+    },
+    "decision_compared": "threshold decision: calibrated_probability >= B4 v2 per-binding float threshold (full policy not_defined for all 16)",
+    "eurusd_calendar_status": "provisional eurusd_5m_feed_clock_week_v1; state in every EURUSD report",
+    "pass_is_not_scored_eligibility": "B6, A12, A13 and B7 still required"
+  },
+  "inputs": {
+    "b4_freeze_v2": {
+      "path": "configs/b4_broad_full_session_shadow_freeze_v2.json",
+      "sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b"
+    },
+    "b4_freeze_v2_lock": {
+      "path": "configs/b4_broad_full_session_shadow_freeze_v2.lock.json",
+      "sha256": "b5f2f21a255d1f12fc1d47c51efc23fad0fb0ef19ec48aa45a5e6390303fb4c7"
+    },
+    "route_bindings_v2": {
+      "path": "configs/broad_full_session_shadow_route_bindings_v2.json",
+      "sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6"
+    },
+    "route_bindings_v2_lock": {
+      "path": "configs/broad_full_session_shadow_route_bindings_v2.lock.json",
+      "sha256": "0d469596a6f69517ea36b5c800dfe2ad6e9c0b59b38840bfb11a7baf60aa482e"
+    },
+    "selection_v1": {
+      "path": "configs/broad_full_session_shadow_selection_v1.json",
+      "sha256": "bd6c860088b3a92e945ccbbb10c41742431e226dde860484763052c826ddb853"
+    },
+    "eurusd_calendar_v1": {
+      "path": "configs/eurusd_5m_expected_open_calendar_v1.json",
+      "sha256": "5db00e42d5513af92943184a7c566a5f44782700258a72a1f889c2d9d884d139"
+    },
+    "eurusd_calendar_v1_lock": {
+      "path": "configs/eurusd_5m_expected_open_calendar_v1.lock.json",
+      "sha256": "244a5de3937848fc00dfc6a9a31ca0103b446e596d37cb2a58cb053b376b4fd9"
+    },
+    "feature_inventory_tolerance_classes": {
+      "path": "docs/audits/section4_feature_inventory_20261002.json",
+      "sha256": "d97a949be8150c4a5f9513f3ae4a2fe6f53ab0aaf4e8c68a284dbbf49923bb9f"
+    },
+    "approved_draft": {
+      "path": "docs/section4_parity_protocol_v1_draft_20261002.md",
+      "sha256": "f0aebb3099769d3c9a146775767e87a1334ee5f7f149d71362cff4b88592b527"
+    },
+    "inventory": {
+      "path": "docs/section4_inventory_20261002.md",
+      "sha256": "15be36a5e4e2239ed416ce3ba36627d62b50107c0d1bac87ade377aeb391485b"
+    },
+    "build_timing_es_ict": {
+      "path": "docs/audits/section4_build_timing_ES_ICT_20261002.json",
+      "sha256": "dcab1ef8ffbd05fa517e890d9da2fee4b069b3256e0a79d00ee6f6766abfba31"
+    },
+    "build_timing_es_frvp": {
+      "path": "docs/audits/section4_build_timing_ES_FRVP_20261002.json",
+      "sha256": "e50bcf850244fe7cf6a1dd42690fb6d73fa376417c71f79f14cd0a8750aabddf"
+    },
+    "build_timing_eurusd": {
+      "path": "docs/audits/section4_build_timing_EURUSD_20261002.json",
+      "sha256": "8c5bc4ffd214894bab8b0fe1160123473cbf47134a8d8f851d4db38bb4be273e"
+    },
+    "superseded_b5_doc_kept": {
+      "path": "docs/B5_B6_live_feature_parity_20260929.md",
+      "sha256": "92decb969e13ff3932ee943fce0f9af1c992e1fcf6f07997a28fa0af8d48d5b1"
+    },
+    "superseded_b5_json_kept": {
+      "path": "docs/audits/b5_b6_live_feature_parity_20260929_v2.json",
+      "sha256": "5fb5bb6b8c8e00f93e0b01ac3ececc1fbec1bd7d44efc2cb32a245c7db6763d8"
+    },
+    "protocol_v1": {
+      "path": "configs/section4_parity_protocol_v1.json",
+      "sha256": "55f9d226701c620ba3939de4de6b2bfb43289c52badc61ef25262c93cfbcdd2f"
+    },
+    "protocol_v1_lock": {
+      "path": "configs/section4_parity_protocol_v1.lock.json",
+      "sha256": "d9550d28c09c51d817de3de13c7dbd6d849444b24079dc79ccd52cad23fb4869"
+    },
+    "r1_value_neutrality": {
+      "path": "artifacts/s4parity_20261002_v1/r1_value_neutrality/value_neutrality.json",
+      "sha256": "bb7914e76129d8a1194910b8ec678c63a1087c92306c00849216615c60ace316"
+    },
+    "d8_effect_es_ict": {
+      "path": "docs/audits/section4_d8_effect_ES_ICT_20261002.json",
+      "sha256": "04eb929ab867c3bb257783ed6d45cb6999c7f4491353bf417a65559cea34a93b"
+    },
+    "d8_effect_es_frvp": {
+      "path": "docs/audits/section4_d8_effect_ES_FRVP_20261002.json",
+      "sha256": "751e06ea4c9858aa44d94259ee5ea1bd3ef78d5de0ea2c34fdfc3494a8de50f7"
+    },
+    "d8_effect_eurusd": {
+      "path": "docs/audits/section4_d8_effect_EURUSD_OTE_20261002.json",
+      "sha256": "57fa003328a60455e074166d3f27d96afefd671fdd2c0aefd25bf5d92813ecf1"
+    },
+    "protocol_v2": {
+      "path": "configs/section4_parity_protocol_v2.json",
+      "sha256": "e25b5e48905d44de5d6c4369a5ac24b49bf711074722710b149494fccb34eff5"
+    },
+    "protocol_v2_lock": {
+      "path": "configs/section4_parity_protocol_v2.lock.json",
+      "sha256": "f9b65ced680b65e46ca8f84167c4abd5de15a9372d3d88f98369d2304acbff38"
+    }
+  },
+  "preconditions": [
+    "hash every B4 v2 artifact file and prepared manifest before load; stage manifests outside ote_live/runtime_manifests; a historical app artifact in place of the B4 v2 replacement fails that branch",
+    "app path runs on an isolated SQLite parity database (schema + migrations) holding copied canonical bars/source history; the live DB is opened read-only for copying only",
+    "scored registration disabled; shadow forced; no broker/paper/alert/email output",
+    "record sha256 of harness, runtime and producer modules per run"
+  ],
+  "layers": {
+    "P": "identical source bars through the actual app path (LiveSignalProcessor.process_new_bars_from_store -> IncrementalFeatureEngine -> RuntimeModelRunner -> decision engine) vs the offline reference (historical: frozen source_history.parquet + frozen runner; recorded live: repaired builder on the full contiguous series + frozen runner, after the anchor check)",
+    "S": "app-recorded bars vs historical training source on overlapping timestamps (D2)",
+    "anchor_check": "recompute path on historical windows must reproduce frozen source_history.parquet before it is used on recorded live windows; differences are producer drift and are classified first"
+  },
+  "engine_composition": {
+    "rule": "one shared producer pass per group per segment, then per-model selection; ES runs as the app's two groups because the runtime pruning path rejects an ES all-model union (multiple z-score windows 60/100); EURUSD runs as one union",
+    "groups": {
+      "ES_FRVP": {
+        "stream": "ES",
+        "queue_ids": [
+          2,
+          3,
+          5,
+          10
+        ],
+        "median_build_seconds": 12.676,
+        "runtime_history_bars": 8000,
+        "chunk_endpoints": 48,
+        "estimated_minutes_per_chunk": 10.1,
+        "estimated_minutes_per_segment": 30.6
+      },
+      "ES_ICT": {
+        "stream": "ES",
+        "queue_ids": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          18,
+          19
+        ],
+        "median_build_seconds": 1.877,
+        "runtime_history_bars": 8000,
+        "chunk_endpoints": 48,
+        "estimated_minutes_per_chunk": 1.5,
+        "estimated_minutes_per_segment": 4.5
+      },
+      "EURUSD_OTE": {
+        "stream": "EURUSD",
+        "queue_ids": [
+          21,
+          22,
+          23,
+          25,
+          26
+        ],
+        "median_build_seconds": 78.554,
+        "runtime_history_bars": 8000,
+        "chunk_endpoints": 19,
+        "estimated_minutes_per_chunk": 24.9,
+        "estimated_minutes_per_segment": 127.0
+      }
+    },
+    "composition_invariance": "F scenario: each group engine vs single-model engines on sampled endpoints; any value difference is app_producer_bug",
+    "b6_constraint": "B6 must not mix a non frvp_/ict_ XGB model into an ES group, or the composition-dependent ffill+0 must be removed by a versioned fix (D7); B6 must run with carry_bar_provenance=True (D8) and the D6 FMP completion rule enabled, the configuration section 4 parity proves"
+  },
+  "stages": {
+    "S1": "source-bar identity/provenance: timestamp, source_row_idx (consecutive), instrument, contract_symbol, bar_version, is_complete, feed_type, observation_kind, first/last observed",
+    "S2": "setup events consumed by routes: type, side, family, source timestamp, observed-at, detector identity/version, rule confidence, geometry, revision kind",
+    "S3": "raw pre-imputation selected features, plus missing-producer/fallback/warmup state",
+    "S4": "imputed values and imputation mask",
+    "S5": "scaled model input after scaler and clip (XGB lag/delta view or TCN sequence tensor)",
+    "S6": "raw score and calibrated score",
+    "S7": "threshold decision",
+    "rows": "every consumed row of every compared endpoint (XGB max(lag)+1 rows, TCN window_size rows)"
+  },
+  "tolerances": {
+    "rule": "pass iff |app - ref| <= atol + rtol*|ref|; NaN matches only NaN; +/-inf only same sign; a missingness-pattern difference is a mismatch",
+    "E_exact": {
+      "atol": 0.0,
+      "rtol": 0.0,
+      "applies_to": "S1, S7, S2 categorical/timestamps, all states, imputation mask, C0 features"
+    },
+    "C1_continuous": {
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    "C2_price_level": {
+      "atol": 1e-06,
+      "rtol": 2e-07,
+      "applies_to": "untransformed price levels and S2 geometry"
+    },
+    "C3_volume_scale": {
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    "S4_imputed": "class of the raw cell",
+    "S5_scaled": {
+      "atol": 1e-05,
+      "rtol": 1e-06
+    },
+    "S6_scores": {
+      "atol": 1e-06,
+      "rtol": 1e-05
+    },
+    "S2_rule_confidence": {
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    "restart_vs_continuous": {
+      "atol": 0.0,
+      "rtol": 0.0,
+      "applies_to": "S1-S7, app vs app (bitwise)"
+    },
+    "feature_classes": "pre-assigned per feature in inputs.feature_inventory_tolerance_classes (frozen-data rule, before any comparison)",
+    "near_threshold": {
+      "band": "1e-6 + 1e-5*threshold",
+      "rule": "endpoints with |cal_ref-thr| <= band or |cal_app-thr| <= band are listed with both scores and decisions, never counted as pass or fail; a non-empty list blocks pass until user review; a flip outside the band is an S7 failure"
+    },
+    "change_control": "changing any tolerance needs a new protocol version approved by the user with the reason recorded"
+  },
+  "segments": {
+    "selection": "calendar/event presence only, never outcomes or scores; written to windows.json (hashed) before any comparison",
+    "shape": {
+      "ES": {
+        "bars_before_event": 48,
+        "bars_after_event": 96,
+        "endpoints": 145
+      },
+      "EURUSD": {
+        "bars_before_event": 32,
+        "bars_after_event": 64,
+        "endpoints": 97
+      }
+    },
+    "shape_basis": "set after measured build time: ES FRVP ~12.7 s, ES ICT ~1.9 s, EURUSD ~78.6 s per build (strategy_signals ~77 s)",
+    "prefix": "up to runtime_history_bars (8000) earlier bars; for recorded ES windows everything recorded",
+    "sources": {
+      "R": "real app-recorded bars (live DB)",
+      "H": "real historical training-source bars (P layer only)",
+      "F": "deterministic fault injection on R bars where R exists, else H"
+    }
+  },
+  "scenarios": {
+    "ES": {
+      "overnight_rth_transitions": [
+        "R",
+        "H"
+      ],
+      "daily_maintenance_break": [
+        "R",
+        "H"
+      ],
+      "spring_dst": [
+        "H"
+      ],
+      "fall_dst": [
+        "H"
+      ],
+      "holiday_planned_closure": [
+        "R",
+        "H"
+      ],
+      "quarterly_roll": [
+        "R",
+        "H"
+      ],
+      "weekend_reopen": [
+        "R",
+        "H"
+      ],
+      "missing_bars": [
+        "R",
+        "F"
+      ],
+      "reconnect_backfill": [
+        "R",
+        "F"
+      ],
+      "revision": [
+        "R",
+        "F"
+      ],
+      "restart": [
+        "F"
+      ],
+      "cold_start_warmup": [
+        "F"
+      ],
+      "producer_failure": [
+        "F"
+      ],
+      "htf_publication": [
+        "R",
+        "H"
+      ],
+      "group_composition": [
+        "F"
+      ],
+      "candidates": {
+        "R_complete_week": "2026-09-14..18 (ESZ6)",
+        "labor_day": "2026-09-07 (completion unknown)",
+        "roll_R": "ESU6->ESZ6 2026-09-13 22:00",
+        "gap_backfill_R": "2026-09-18 11:40-13:00",
+        "spring_dst_H": "week of 2026-03-08",
+        "fall_dst_H": "week of 2025-11-02",
+        "holiday_H": "2025-11-27/28",
+        "roll_H": "first contract_symbol change in June 2026 (and March 2026 if another week)"
+      },
+      "restart_points": [
+        "mid-RTH",
+        "after maintenance break",
+        "after roll boundary",
+        "inside a full lag window"
+      ]
+    },
+    "EURUSD": {
+      "weekend_close_open": [
+        "R",
+        "H"
+      ],
+      "session_transitions_asia_london_ny": [
+        "R",
+        "H"
+      ],
+      "us_eu_dst_mismatch": [
+        "H"
+      ],
+      "completed_30m_1h_atr_publication": [
+        "R",
+        "H"
+      ],
+      "holiday_closure_calendar_v1": [
+        "H"
+      ],
+      "missing_bars": [
+        "R",
+        "F"
+      ],
+      "reconnect_backfill": [
+        "R",
+        "F"
+      ],
+      "revision": [
+        "F",
+        "R"
+      ],
+      "restart": [
+        "F"
+      ],
+      "cold_start_warmup": [
+        "F"
+      ],
+      "strategy_timeout_producer_failure": [
+        "F"
+      ],
+      "candidates": {
+        "R_week": "2026-09-14..18",
+        "weekend_R": "2026-09-18 -> 09-20",
+        "outage_edge_R": "2026-05-14 22:10",
+        "dst_H": [
+          "2026-03-08..03-24",
+          "2025-10-26..11-01"
+        ],
+        "holiday_H": [
+          "2025-12-25",
+          "2026-01-01"
+        ]
+      },
+      "restart_points": [
+        "London",
+        "New York",
+        "after weekend reopen",
+        "inside a TCN window"
+      ],
+      "completion": "all recorded EURUSD bars have unknown completion; compared as exact value 'unknown'; never counts as known-completion evidence"
+    },
+    "F_injections": {
+      "missing_bars": "delete 1/3/12 consecutive non-closure bars",
+      "backfill": "withhold bars then upsert them behind the cursor as backfill",
+      "revision": "revise the latest bar and an earlier bar behind the cursor",
+      "restart": "fresh processor on the same parity DB at bar k: warm_from_store then process_new_bars_from_store",
+      "cold_start": "history shorter than minimum_runtime_history_bars",
+      "producer_failure": "force one feature-set exception / strategy timeout; must surface missing-producer state, never a silent fill"
+    }
+  },
+  "warmup": "compare only rows where the app warmup is ready and the reference row exists (EURUSD also past source_row_offset 250); earlier rows counted not compared; warmup state is an exact S3 state; an endpoint with any non-comparable consumed row is incomplete_history, not a pass",
+  "restart": "real restart path (fresh LiveSignalProcessor/MultiGroupLiveSignalProcessor, warm_from_store, process_new_bars_from_store); post-restart rows must equal continuous bitwise and the reference within tolerance; chunk resumes count as restarts and are allowed only after the stream's restart test passes",
+  "execution": {
+    "order": [
+      "per-build timing (done, inputs.build_timing_*)",
+      "windows.json",
+      "anchor check",
+      "segments",
+      "comparison",
+      "reports"
+    ],
+    "chunk_endpoints": "per group in engine_composition.groups: min(48, floor(25 min / median build seconds))",
+    "chunk_files": "chunk_<n>.parquet + chunk_<n>.done (sha256); resume skips finished chunks",
+    "background_rule": "jobs over ~30 min run in background with a log and a 'SEGMENT <id> COMPLETE' marker",
+    "layout": "artifacts/s4parity_<rundate>_v1/<stream>/<group>/<segment>/{app,ref,diff}/ + summary.json",
+    "diffs": "every out-of-tolerance cell written to diff/; summaries only (counts per stage/feature, first offending timestamp, max abs/rel error, classification) enter reports"
+  },
+  "retention": "keep all app/ref chunks, diffs, summaries and isolated parity DBs (with sha256) until B7 closes; reports in docs/audits permanent and never overwritten; copy only selected segments and prefixes from the live DB (D4)",
+  "source_parity": {
+    "policy": "identity, timestamps and completion must match exactly; price/volume differences reported with per-feature and threshold-decision impact; decision flips listed for user review, never auto pass/fail (D2)",
+    "data": "no overlap exists (ES training ends 2026-06-19, live from 2026-07-29; EURUSD 2026-03-25 vs 2026-04-08); create overlap with the app's own backfill connectors into an isolated parity DB: ES IBKR historical 2026-06-01..06-19, EURUSD FMP historical 2026-03-02..03-24; separate client ID, never the running app's session; approved 2026-10-02",
+    "fallback": "if the fetch is impossible, S is incomplete for all 16"
+  },
+  "setup_events": "S2 compared for both streams (D5); ES: app FRVP/ICT detectors on replayed bars vs offline detector events used in section 3; EURUSD: S2 incomplete for 21-26 until a versioned live OTE event producer reusing data/labeling/causal_ote.py exists (later section 4 prompt, minimal runtime change)",
+  "eurusd_completion": "D6 rule fmp-historical-chart-completion-v1 for new FMP fetches and D2 parity backfills; archived EURUSD rows stay completion-unknown, so their completion-gated HTF inputs are NaN in the app path and are compared as declared_contract_behavior candidates, never as known-completion evidence",
+  "runtime_changes_approved_in_principle": {
+    "D8_provenance": "both store-fetch queries select the provenance columns and _bar_from_row carries them when LiveSignalProcessor(carry_bar_provenance=True); value-changing by design for features behind the htf_context completion gate (30m/1h HTF and consumers continuation_*, interaction_*), which then match the gate-absent offline build on complete bars; every other feature is unchanged (before/after test); the section 4 app path runs with carry_bar_provenance=True",
+    "D6_fmp_completion": "fmp-historical-chart-completion-v1: an FMP bar is is_complete=True once last_observed_at >= bar end + 90 s (the app's finalized-bar grace); earlier observations stay unknown, a provider flag is never overwritten, and bar_version is recomputed; enabled per client with FMPConfig(apply_completion_rule=True) for new fetches (new recordings and the D2 parity backfills); archived rows stay unknown",
+    "D5_ote_event_producer": "see setup_events",
+    "rule": "minimal, versioned, value-neutral elsewhere (on/off or before/after tests), logged in docs/live_app_change_journal.md",
+    "historical_source_completion": "bars copied into an isolated parity DB from a pinned historical training source are finalized by construction and are copied with is_complete=True, observation_kind='historical', feed_type='historical', source='section4_training_source:<file>'; this completion is never live-qualification evidence"
+  },
+  "staged_manifest_bases": {
+    "23": "ote_live/runtime_manifests/long_ote_union_tcn_candidate_20260523 with all artifact/feature/context/lag/window fields from B4 v2 training summary (D9)"
+  },
+  "mismatch_taxonomy": {
+    "app_producer_bug": {
+      "meaning": "app deviates from the causal contract (incl. window truncation, composition-dependent fill, dropped provenance, stale history after backfill/revision)",
+      "effect": "fail until fixed by a minimal versioned runtime change and rerun under a new run id"
+    },
+    "training_side_noncausal": {
+      "meaning": "frozen reference uses information unavailable at decision time",
+      "effect": "branch diagnostic; record repair recommendation; stop for user decision; no retraining in section 4"
+    },
+    "source_difference": {
+      "meaning": "inputs differ (S layer, vendor/feed/roll convention)",
+      "effect": "not a P failure; reported with impact; flips listed for review"
+    },
+    "declared_contract_behavior": {
+      "meaning": "behavior follows a contract clause that existed before the run (cite file/version)",
+      "effect": "pass only with the citation",
+      "float32_tree_split": "declared_contract_behavior/float32_tree_split: an S6 difference outside S6_scores is declared behavior at an endpoint only if (a) every S1-S5 cell of that model at that endpoint (all consumed rows) is within tolerance, and (b) rebuilding the model input from each side's recorded S5 rows and predicting with the hash-verified frozen model reproduces that side's recorded raw score exactly. Cause: the frozen source_history.parquet stores float32 values computed on the offline path (model_training/source_history.py casts to float32) while the app computes float64 and casts, so inputs can differ by about one float32 ULP (inside S3/S5 tolerance) and a tree split can sit between the two values. An S7 decision flip at such an endpoint is never covered by this clause: it still counts as a flip (near-threshold band rule unchanged)."
+    },
+    "unexplained": {
+      "meaning": "none of the above",
+      "effect": "fail"
+    },
+    "truth": "the causal contract; establish which side is causally correct first; never edit reference data, frozen preprocessing or model bytes; never make an app producer reproduce a non-causal offline value"
+  },
+  "verdict": {
+    "passed": [
+      "B4 v2 bytes verified and loaded by the staged manifest",
+      "every required scenario of the stream exercised with >=1 comparable endpoint of this model",
+      "all S1-S7 cells on every consumed row within tolerance or declared_contract_behavior with citation",
+      "no app_producer_bug / training_side_noncausal / unexplained",
+      "no S7 flip outside the near-threshold band; near-threshold list reviewed",
+      "provenance and completion present and exact; no unexplained fallback or missing producer",
+      "restart test equal",
+      "source parity per policy"
+    ],
+    "incomplete": "a required scenario unexercised or evidence missing (e.g. unknown completion where known completion is required); not a pass",
+    "failed": "any fail class; branch diagnostic/unscored; does not block other branches",
+    "diagnostic_training_side": "stop for user decision"
+  },
+  "report_schema": {
+    "id": "section4-parity-report-v1",
+    "fields": [
+      "model{queue_id, model_id, reviewed_artifact_set_sha256, artifact_sha256, staged_manifest_sha256}",
+      "protocol{version, sha256, lock_sha256}",
+      "run{id, date, code_sha256, parity_db_sha256}",
+      "windows[]{segment_id, source, rule, start, end, endpoints, comparable_endpoints}",
+      "coverage{scenario: exercised|unexercised, reason}",
+      "stages{stage: compared, matched, mismatched, max_abs, max_rel, first_offending_ts}",
+      "features{feature: mismatches, class}",
+      "mismatches[]{class, stage, feature, first_ts, count, evidence_path, causal_note}",
+      "near_threshold[]",
+      "decision_flips[]",
+      "restart{point: equal}",
+      "source_parity",
+      "verdict",
+      "reasons[]",
+      "eurusd_calendar{id, sha256, status: provisional} (EURUSD only)",
+      "report_sha256 (canonical JSON without this field; also .sha256 sidecar)"
+    ],
+    "immutability": "writer refuses to overwrite",
+    "paths": "docs/audits/section4_parity_<model_id>_<rundate>.json and docs/section4_parity_<rundate>.md"
+  },
+  "retrain_guard": "no retraining/recalibration in section 4; training_side_noncausal -> diagnostic, repair recommendation, stop; IDs 2/6/7/11/17/1 not retrained unless a completed parity audit finds a real selected-feature, history, preprocessing or producer mismatch",
+  "supersedes": {
+    "protocol": "configs/section4_parity_protocol_v2.json",
+    "sha256": "e25b5e48905d44de5d6c4369a5ac24b49bf711074722710b149494fccb34eff5"
+  },
+  "changes_from_v1": {
+    "decision": "Q-D8",
+    "reason": "Prompt 2 found that htf_context accepts an HTF bucket only when every constituent has is_complete == True, and the store-fetch path drops completion, so the app computes all 30m/1h HTF features (and continuation_*/interaction_* consumers) as NaN; offline sources have no completion column, so the gate never applies there. Carrying provenance (D8) changes 25/300 ES_ICT and 111/362 ES_FRVP group features on recorded bars and 0 on EURUSD. v1's D8 premise 'OHLCV/features unchanged' was therefore wrong; the change is value-changing by design.",
+    "changed_keys": [
+      "runtime_changes_approved_in_principle.D8_provenance",
+      "runtime_changes_approved_in_principle.D6_fmp_completion",
+      "runtime_changes_approved_in_principle.historical_source_completion (new)",
+      "eurusd_completion",
+      "engine_composition.b6_constraint",
+      "inputs (6 added)"
+    ],
+    "unchanged": "tolerances, segments, scenarios, groups, stages, taxonomy, verdicts, report schema, retention"
+  },
+  "changes_from_v2": {
+    "decision": "Q-P1",
+    "reason": "Run s4parity_20261002_v1 found S6-only differences (IDs 12 and 15; 7 endpoints on H windows, no decision flips) whose S1-S5 inputs were within tolerance; each side's recorded S5 rows reproduced its own score exactly, and the inputs differed by one float32 ULP between the float32 frozen history and the app's float64 path. v2 had no class for this, so it was 'unexplained'. Approved after seeing results, with this reason recorded, as the protocol's change_control requires.",
+    "changed_keys": [
+      "mismatch_taxonomy.declared_contract_behavior.float32_tree_split"
+    ],
+    "unchanged": "tolerances (numeric), segments, scenarios, groups, stages, verdicts, report schema, retention"
+  }
+}

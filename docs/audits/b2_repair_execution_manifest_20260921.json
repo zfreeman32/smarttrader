@@ -1,0 +1,460 @@
+{
+  "created_at_utc": "2026-09-21T23:20:20.365942+00:00",
+  "status": "shared_data_repair_complete_models_not_yet_retrained_or_trusted",
+  "scope": {
+    "retained_models": 27,
+    "selected_prepared_datasets": 25,
+    "missing_history_bundles_quarantined": 9,
+    "trading_model_training_run": false,
+    "live_registry_changed": false,
+    "trusted_baseline_promotions": 0,
+    "auxiliary_feature_selection_fitted": true
+  },
+  "validation": {
+    "tests": 127,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "features": [
+    {
+      "root": "artifacts/b2_ict_features_20260920_v2",
+      "rows": 666769,
+      "changed_feature_columns": 158,
+      "features_sha256_recorded_at_build": "f809b28606a09a974269bb4f5acf997c7552b56c7fd095d197d3b062093c948c",
+      "metadata": {
+        "path": "artifacts/b2_ict_features_20260920_v2/features.metadata.json",
+        "sha256": "5bc6f6cc9feb602cdc7089f35716b52c04bf922efc5807bdb5369f2225e9c7c7"
+      },
+      "runtime_recipe": {
+        "path": "artifacts/b2_ict_features_20260920_v2/runtime_feature_recipe.json",
+        "sha256": "f7db2fdefe6367a5bc5a8ed91f208e7ca4970f2b37ec448973f61339b5e31d67"
+      }
+    },
+    {
+      "root": "artifacts/b2_frvp_july_features_20260921_v2",
+      "rows": 666769,
+      "changed_feature_columns": 218,
+      "features_sha256_recorded_at_build": "4574084e317abdd52f3981fc69c3981b8bee954b8c2f0369debdf59d533eba8b",
+      "metadata": {
+        "path": "artifacts/b2_frvp_july_features_20260921_v2/features.metadata.json",
+        "sha256": "2447b905562919a9f1ac4af70d7dbe76dc5636b4f311b911039e738e5bd01bdc"
+      },
+      "runtime_recipe": {
+        "path": "artifacts/b2_frvp_july_features_20260921_v2/runtime_feature_recipe.json",
+        "sha256": "d567114a4bd92f405af4ca97aac85e08858e69fca9dcad06c0d3630fda7f92c6"
+      }
+    },
+    {
+      "root": "artifacts/b2_frvp_setups_features_20260921_v1",
+      "rows": 666769,
+      "changed_feature_columns": 218,
+      "features_sha256_recorded_at_build": "3ae7003dfa335e75dddfc6c2fa4370d1384543c0476f121be4028c6b915f8532",
+      "metadata": {
+        "path": "artifacts/b2_frvp_setups_features_20260921_v1/features.metadata.json",
+        "sha256": "5361afb7d6aa16554265d7baa6c13a20370389cac0956b71e98bda90cba25a9c"
+      },
+      "runtime_recipe": {
+        "path": "artifacts/b2_frvp_setups_features_20260921_v1/runtime_feature_recipe.json",
+        "sha256": "1bad54903d88eadbd564b07891aea21900073aa2b09e9184b039476f98b5e764"
+      }
+    },
+    {
+      "root": "artifacts/b2_ote_features_20260920_v1",
+      "rows": 543191,
+      "changed_feature_columns": 218,
+      "features_sha256_recorded_at_build": "fbcebd5807afd5d29d8aedae2ddd2a013adc1d34ee3163c8997ac12d190de17b",
+      "metadata": {
+        "path": "artifacts/b2_ote_features_20260920_v1/features.metadata.json",
+        "sha256": "860b1c28e7d8c523eba0852a626380542f64afa8fbb81b8458ea8f58a9363e1a"
+      },
+      "runtime_recipe": {
+        "path": "artifacts/b2_ote_features_20260920_v1/runtime_feature_recipe.json",
+        "sha256": "9651378649946ee63d7e31e66a7b2344433ef0550f4da49f68765cd775895e69"
+      }
+    }
+  ],
+  "labels": [
+    {
+      "root": "artifacts/b2_ict_labels_20260921_v1",
+      "metadata_and_comparisons": [
+        {
+          "path": "artifacts/b2_ict_labels_20260921_v1/comparison.json",
+          "sha256": "6b6d35c10471f180b24db57358637437673ac5c0eef4b1f0515f46f5568c51fe"
+        },
+        {
+          "path": "artifacts/b2_ict_labels_20260921_v1/ict_es_labeling_diagnostics.json",
+          "sha256": "2fc82f0e74e8bedc948d1af08c5963cff9f5dd567817880f21424e7b9cf48eac"
+        },
+        {
+          "path": "artifacts/b2_ict_labels_20260921_v1/ict_es_labeling_metadata.json",
+          "sha256": "37553a7b3f5c52e8f556b48d5f4f4d8017f1b8157e71915e86dbaa20cae99fc0"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_frvp_labels_20260920_v1",
+      "metadata_and_comparisons": [
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_refresh_20260701/comparison.json",
+          "sha256": "26684542a2427878a8192d6160b4f2cc458976bc29271620d760b2770660a128"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_refresh_20260701/diagnostics.json",
+          "sha256": "084665012a17fc9e724d7ad03d56b1a6503741f46d3c69e787628c468e7d9f1a"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_refresh_20260701/labeling_config.json",
+          "sha256": "46a17bf3ae0e310bf1a66163c5259a453871352784fb65d7468778085b512ca7"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_refresh_20260701/legacy_reproduction.json",
+          "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_setup_targets_20260829/comparison.json",
+          "sha256": "a1da2451750fdc684468664b64e62717f4ef8250fe003405ed8d4ef45b4af0d3"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_setup_targets_20260829/diagnostics.json",
+          "sha256": "3a9bc21a34573cc56edae809c7cf22146ece4d20fb18ddfd5f65aca6402e52e8"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_setup_targets_20260829/labeling_config.json",
+          "sha256": "46a17bf3ae0e310bf1a66163c5259a453871352784fb65d7468778085b512ca7"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/frvp_es_primary_setup_targets_20260829/legacy_reproduction.json",
+          "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f"
+        },
+        {
+          "path": "artifacts/b2_frvp_labels_20260920_v1/manifest.json",
+          "sha256": "89ab6bbbdd76d2cdba9e13500cd5be54a3b06c07f42c35ddc3798ebe75ff58eb"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_ote_labels_20260920_v2",
+      "metadata_and_comparisons": [
+        {
+          "path": "artifacts/b2_ote_labels_20260920_v2/breakout_legacy_reproduction.json",
+          "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f"
+        },
+        {
+          "path": "artifacts/b2_ote_labels_20260920_v2/comparison.json",
+          "sha256": "a1a4a3e1e2b7545949c73179b17e4638ce4fb41287e5b86a045afe96b7fec1f5"
+        },
+        {
+          "path": "artifacts/b2_ote_labels_20260920_v2/continuation_legacy_reproduction.json",
+          "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f"
+        },
+        {
+          "path": "artifacts/b2_ote_labels_20260920_v2/labels.metadata.json",
+          "sha256": "081adda4c2061aef9d57db5cdc695577ac075122893750301a91729ff6297246"
+        },
+        {
+          "path": "artifacts/b2_ote_labels_20260920_v2/reversal_legacy_reproduction.json",
+          "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f"
+        }
+      ]
+    }
+  ],
+  "prepared": [
+    {
+      "root": "artifacts/b2_ict_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_ict_prepared_20260921_v1/dataset.metadata.json",
+          "sha256": "ce91ac87f17e9554b65dbf1704cac40d288c05553f3e9336c280b509033d9179"
+        },
+        {
+          "path": "artifacts/b2_ict_prepared_20260921_v1/embargo_contract.json",
+          "sha256": "dba9e6ec4236b344591f258183e3f962e849f41f55ea96c36b2e6896e3a1405f"
+        },
+        {
+          "path": "artifacts/b2_ict_prepared_20260921_v1/manifest.json",
+          "sha256": "382544babeb52eb54c776149c38637604c62fc3538df62947ba8edf2e28a3d7c"
+        },
+        {
+          "path": "artifacts/b2_ict_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "e4a131e4a6786f732d4125cdecc9e5fea2d9ce36049fe0554ecebd7d19813325"
+        },
+        {
+          "path": "artifacts/b2_ict_prepared_20260921_v1/run_config.json",
+          "sha256": "179d4564b19ade07815fac4f4b8d05fbe8d8fa628db537f85aceba03c7c5922d"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_ict_specialists_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_ict_specialists_prepared_20260921_v1/dataset.metadata.json",
+          "sha256": "1beab3ea3874535850c907123417db22e66f9b12ed047b0e8576d5e31fbcd2bb"
+        },
+        {
+          "path": "artifacts/b2_ict_specialists_prepared_20260921_v1/manifest.json",
+          "sha256": "319451d2885afa170f7cc743eab003abf0ad1a30e0aa90accf1dc77ecbba92e6"
+        },
+        {
+          "path": "artifacts/b2_ict_specialists_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "ce152ee5e387f6e7f3b5d7d297d2e201d01b9ad3bb8f73757a49118cd0781ffa"
+        },
+        {
+          "path": "artifacts/b2_ict_specialists_prepared_20260921_v1/run_config.json",
+          "sha256": "dba2b143aff6102bc8e128e0313c5d0dd1229c83161bd4c30f2ad38de2992347"
+        },
+        {
+          "path": "artifacts/b2_ict_specialists_prepared_20260921_v1/specialist_counts.json",
+          "sha256": "7cc05dd67562e0038953123831fe8571bb37623ad51612361164a3b078555dcb"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_frvp_july_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_frvp_july_prepared_20260921_v1/dataset.metadata.json",
+          "sha256": "acad9a486ec0e9fe948a8a814cc7478cd8ba859ac31abd2c0d28d988f8e158b5"
+        },
+        {
+          "path": "artifacts/b2_frvp_july_prepared_20260921_v1/embargo_contract.json",
+          "sha256": "0bf9a8553ec3091ebdcf9137f1a7d874b6f7826d32e6eb29c35c8af7f9e3af04"
+        },
+        {
+          "path": "artifacts/b2_frvp_july_prepared_20260921_v1/manifest.json",
+          "sha256": "8c9b49fe836c931bf2672912a69312ff8169bbe3cbb8f251ffdc42a62e6aa839"
+        },
+        {
+          "path": "artifacts/b2_frvp_july_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "421b226717829eebbce76fde073c063e0ed2000e464bff51f9472ce6711af187"
+        },
+        {
+          "path": "artifacts/b2_frvp_july_prepared_20260921_v1/run_config.json",
+          "sha256": "d13e28affc0d308c729d78c09b081e3240035e7a883c672b6f4f04d2bc7ab669"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_frvp_setups_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_frvp_setups_prepared_20260921_v1/dataset.metadata.json",
+          "sha256": "784c4d2fe37bab0d9e5612b0122453d2a5e640081a0ae6e873d9125fb1c4a26c"
+        },
+        {
+          "path": "artifacts/b2_frvp_setups_prepared_20260921_v1/embargo_contract.json",
+          "sha256": "0bf9a8553ec3091ebdcf9137f1a7d874b6f7826d32e6eb29c35c8af7f9e3af04"
+        },
+        {
+          "path": "artifacts/b2_frvp_setups_prepared_20260921_v1/manifest.json",
+          "sha256": "c239a775daf96a785e73909e980de7eb90aba117973e15511fef341e5d3ddcef"
+        },
+        {
+          "path": "artifacts/b2_frvp_setups_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "316affd56c546661e0150672037559fbcb862b13f020bb10fc14140cfdb3cd94"
+        },
+        {
+          "path": "artifacts/b2_frvp_setups_prepared_20260921_v1/run_config.json",
+          "sha256": "cb34411dc3a37ae2776fa7b766d3e0b00e7f34af963ac339e9fe25314ced246a"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_ote_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_ote_prepared_20260921_v1/dataset.metadata.json",
+          "sha256": "4c9205a3730306c7ceec02cfb3e934afa7dbf1492a49ad2144ab2a65991d378b"
+        },
+        {
+          "path": "artifacts/b2_ote_prepared_20260921_v1/embargo_contract.json",
+          "sha256": "427f5fdee0393471f13e6444a69ccab8ad94984ef63131e9738deb636998192b"
+        },
+        {
+          "path": "artifacts/b2_ote_prepared_20260921_v1/manifest.json",
+          "sha256": "664f4dc8f69859a0a0693388f420743ed31bf6cc6136dbb246b9b4abd6072e2e"
+        },
+        {
+          "path": "artifacts/b2_ote_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "c0b241cfeb69047b5d49355d5e638aa361d5b8fa2fdb75f1be2464890245ee82"
+        },
+        {
+          "path": "artifacts/b2_ote_prepared_20260921_v1/run_config.json",
+          "sha256": "726c96f6d126637d2ec47d9b7fc738bfc98495fc1d31c01e5c6cd2243f83c134"
+        }
+      ]
+    },
+    {
+      "root": "artifacts/b2_frvp_recency_prepared_20260921_v1",
+      "metadata": [
+        {
+          "path": "artifacts/b2_frvp_recency_prepared_20260921_v1/prepared/long_frvp_reversal/recency_weighting_summary.json",
+          "sha256": "279a6132bba4fb209866796b546cbd3848db68ede59a667b06b46616b53255a7"
+        },
+        {
+          "path": "artifacts/b2_frvp_recency_prepared_20260921_v1/prepared/summary.json",
+          "sha256": "d12b379ae5e8d5c216a7c86e4253666ca0fb1ddf6590398e657f30dcd291cf93"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/audits/b2_frvp_quality_weight_validation_20260921.json",
+      "sha256": "ffc79362e0277332c76ae0234caa11607b9b33a60f719177e5be3b7531fea10a"
+    },
+    {
+      "path": "docs/audits/b2_label_window_bounds_20260921.json",
+      "sha256": "bf30ad5a169daa41d83a4988f6d21db43d761292643d1b083bfc9732e5211668"
+    },
+    {
+      "path": "docs/audits/b2_lineage_20260918_complete/inventory.json",
+      "sha256": "483dd27adf4be403036fd6db0600cf4d43210e97e1f3c096adae756d96b97cfd"
+    },
+    {
+      "path": "docs/audits/b2_ote_shared_context_parity_20260921.json",
+      "sha256": "cfa9755a80acace298a3f19c5327b45cc31bd1ec7c63a4c38b55ddf18a5c1ebc"
+    },
+    {
+      "path": "docs/audits/b2_ote_timestamp_fullspan_20260920.json",
+      "sha256": "ef5d0711f59a162ffaa3a93c14e9eecf58555bdbe8f79f75170dac46dd5a13c6"
+    },
+    {
+      "path": "docs/audits/b2_ote_timestamp_multiresolution_20260920.json",
+      "sha256": "e60c5d9dab3a801726a3952fa49cc9b0b356a4df3493d6bf391e37404a3e9331"
+    },
+    {
+      "path": "docs/audits/b2_preserved_data_parents_20260921.json",
+      "sha256": "3ed2f67b03fb910101c8ac656c443f1c02161862113cfd9256107d6ac0dd0e8b"
+    },
+    {
+      "path": "docs/audits/b2_preserved_models_20260921.json",
+      "sha256": "fda2be42da8834ebbdd40dc1ec10e9801ac75d48b65764b277140cbdae521a21"
+    },
+    {
+      "path": "docs/audits/b2_repair_tests_20260921.xml",
+      "sha256": "f2c9e189354575f45a5dd8b4fccff2a8a5bef770242cb150a72b6290b63e7a4b"
+    },
+    {
+      "path": "docs/audits/b2_repair_validation_20260921.json",
+      "sha256": "f387f2bf81129a20636b255d722d9d52e880a9b0ecc4ea2618fe6b47b571d642"
+    },
+    {
+      "path": "docs/audits/b2_repaired_model_data_roster_20260921.csv",
+      "sha256": "e4da1f4d83dbd3ccc3baf44033f552b9e6a48e81b7a768b8926018ad0de4525a"
+    },
+    {
+      "path": "docs/audits/b2_retention_roster_20260920.csv",
+      "sha256": "9069139a25eb48be9528933e2fe26d53eaef4129ab753c453a3439aba478dff7"
+    },
+    {
+      "path": "docs/audits/b2_retention_validation_20260920.json",
+      "sha256": "ebea6cb7f157fdbc70ac676349220eff2786d5c6606090739dc1cd8b78cd12bc"
+    }
+  ],
+  "final_source_snapshot": [
+    {
+      "path": "data/labeling/causal_ote.py",
+      "sha256": "a341f8e7e31b0cbfb1703edd8ba3bddbb05a3129e235a438f692eba8990ff383"
+    },
+    {
+      "path": "data/labeling/frvp_labeling_engine.py",
+      "sha256": "d967410589100c16ddb0c91bfbf7ab766199d4106de6aaf857e06bd700f6389a"
+    },
+    {
+      "path": "data/labeling/labeling_engine.py",
+      "sha256": "6753290630e9c7100c959baf98519588a2ddcde3ac9c4b07a335785424d474bc"
+    },
+    {
+      "path": "features/feature_sets/continuation_pullback.py",
+      "sha256": "b647df75c292a593370ed6289ac467104f59c1f6944d093a75fd3575d8686f25"
+    },
+    {
+      "path": "ote_live/features/incremental_engine.py",
+      "sha256": "36384f174de6d9b845d7fbe478039643d62f0cf806f3a4a4ce49057bab7b7e72"
+    },
+    {
+      "path": "preprocessing/feature_selection.py",
+      "sha256": "3cd2135ebce9d5406a4fec007c61e06d4aa1b71b43a6db6e47d764b069183466"
+    },
+    {
+      "path": "preprocessing/pipeline.py",
+      "sha256": "f77e2b2608dbd71dc4c6c4f7de2ba5d33d202f4657c472532d2e8cd95ba55d6c"
+    },
+    {
+      "path": "scripts/materialize_frvp_recency_prepared_root.py",
+      "sha256": "a02c7a25b3410f54df42d681a159de8f8e587895ef94f7786a07d6bad257fff5"
+    },
+    {
+      "path": "scripts/measure_b2_label_windows.py",
+      "sha256": "8a76d3e46ec47450a752ea867cadde06d94790c05ef9ae9ab8cec96c7cee99e6"
+    },
+    {
+      "path": "scripts/rebuild_b2_features.py",
+      "sha256": "e276ded31898f3bf4266d877080403c52a77148712d172597ffe31eceb44c553"
+    },
+    {
+      "path": "scripts/rebuild_b2_frvp_features.py",
+      "sha256": "1290b77c91f7789f7b57d4981fd92a75841d0f3a3a273549c3ccce670b37d556"
+    },
+    {
+      "path": "scripts/rebuild_b2_frvp_labels.py",
+      "sha256": "254150e89f70e012c33ecc3e9ce9e1a271f212aa3519a67b46b74ef552620d9a"
+    },
+    {
+      "path": "scripts/rebuild_b2_ict_labels.py",
+      "sha256": "346bd74e2b5c8463fee2aaac6a765d5caa2f51b58886368b933a295f91e3e940"
+    },
+    {
+      "path": "scripts/rebuild_b2_ote_features.py",
+      "sha256": "ab8ce3a76a70e98e8383b918c8756906b071c9f93f21e88407f401a0c46a6914"
+    },
+    {
+      "path": "scripts/rebuild_b2_ote_labels.py",
+      "sha256": "0228f2e01c65ce773551bf9f3794dd3f648c5c412d8fda1a013ea83b81364d81"
+    },
+    {
+      "path": "scripts/rebuild_b2_prepared.py",
+      "sha256": "f772e1d643c2277ca51f4464c86ab9ff97d8eb467272e60f0d12d14a4ab3f8fc"
+    },
+    {
+      "path": "scripts/run_b2_retained_preparation.py",
+      "sha256": "72e20b48214ac0606acaf7080f2691dcf842a4fd268faec77d82184e9f803403"
+    },
+    {
+      "path": "scripts/validate_b2_repair_outputs.py",
+      "sha256": "fe8d6020be098ee4f8c5ee35377daf4bc568d8a4336cd4466d5f61e41e4c46da"
+    }
+  ],
+  "source_snapshot_note": "Final scripts include post-run metadata and unused-path cleanups; artifact metadata and validation describe the executed data outputs. The source snapshot is not a claim that every job used byte-identical final scripts.",
+  "environment": {
+    "python": "3.12.8",
+    "packages": {
+      "pandas": "3.0.3",
+      "numpy": "2.3.5",
+      "scikit-learn": "1.8.0",
+      "pyarrow": "24.0.0",
+      "joblib": "1.5.3"
+    }
+  },
+  "excluded_outputs": {
+    "artifacts/b2_ict_features_20260920_v1": "Failed initial attempt; not used.",
+    "artifacts/b2_ote_labels_20260920_v1": "Failed initial attempt; not used.",
+    "artifacts/b2_frvp_july_features_20260921_v1": "Superseded candidate; not used.",
+    "artifacts/b2_ict_labels_legacy_20260920_v1": "Historical reproduction control only.",
+    "artifacts/b2_frvp_july_prepared_20260921_v1/prepared/long_frvp_reversal": "Intermediate parent of the selected recency-weighted target; not counted as an additional retained dataset."
+  },
+  "restrictions": [
+    "Existing research, diagnostic and shadow restrictions remain.",
+    "Old model weights are excluded from the new trusted baseline.",
+    "Archived, retired, paused and placebo branches received no automatic prepared-model rebuild.",
+    "Feature metadata retains historical parent fields; b2_repair records replacement lineage.",
+    "Feature change counts include exact numerical differences; not all differences imply changed labels."
+  ],
+  "remaining_b2": [
+    "Retrain retained models and calibrate where required.",
+    "Assign new model versions with replacement-data lineage.",
+    "Re-evaluate through B1 before any trusted-baseline promotion."
+  ]
+}

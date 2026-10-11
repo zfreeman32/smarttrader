@@ -230,8 +230,8 @@ def test_ict_phase6_entry_path_writes_clean_merge_and_prepared_artifacts(tmp_pat
     meta_features = json.loads((prepared_root / "long_ict_meta" / "features.json").read_text(encoding="utf-8"))
     reversal_report = json.loads((prepared_root / "long_ict_reversal" / "report.json").read_text(encoding="utf-8"))
     meta_report = json.loads((prepared_root / "long_ict_meta" / "report.json").read_text(encoding="utf-8"))
-    assert "htf_confluence_long_ict_reversal" in reversal_features["features"]
-    assert "htf_confluence_long_ict_meta" in meta_features["features"]
+    assert "htf_confluence_long_ict_reversal" not in reversal_features["features"]
+    assert "htf_confluence_long_ict_meta" not in meta_features["features"]
     assert "ict_total_confluence_1atr" in meta_features["features"]
     assert "source_row_idx" in pd.read_csv(prepared_root / "long_ict_meta" / "train.csv").columns
     assert reversal_report["split_geometry"]["applied_embargo_bars"] == 9

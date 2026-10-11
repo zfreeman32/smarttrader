@@ -1,0 +1,10 @@
+{
+  "lock_id": "b4_broad_full_session_shadow_freeze_v2_lock",
+  "roster": "configs/broad_full_session_shadow_selection_v1.json",
+  "roster_file_sha256": "bd6c860088b3a92e945ccbbb10c41742431e226dde860484763052c826ddb853",
+  "selection": "configs/broad_full_session_shadow_v2.json",
+  "selection_file_sha256": "a89e8d2622d9f6cf915eb80b1044a1e8af7dacd7cb99cca1fc6e2b9e23e6a430",
+  "freeze": "configs/b4_broad_full_session_shadow_freeze_v2.json",
+  "freeze_file_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "replacement_count": 16
+}

@@ -24,8 +24,6 @@ trial.json
 data/currency_data/
 data/currency_data/sampled/
 data/stock_data/
-features/important_features_datasets/
-model_training/datasets/
 model_training/regression/regression_models/
 *_config.json
 *_summary.json
@@ -36,8 +34,6 @@ ote_venv/
 tmp/
 artifacts/
 data/.strategy_timeout_cache/
-data/prepared/eurusd_5min_breakout_sustained_expA_20260621/
-data/prepared/eurusd_1min_ote_full/
 logs/
 
 # Generated experiment reports stay local; canonical journals live under docs/.
@@ -48,7 +44,6 @@ model_testing/reports/ict_spacing_refit_sweeps/
 model_testing/reports/ict_breaker_state_audits/
 model_testing/reports/ict_classic_breaker_phase3_audits/
 model_testing/reports/ict_policy_research/
-frvp_setup_specific_long_rerun_*_output*.txt
 research/es_live_audit_20260911/*.zip
 research/es_live_audit_20260911/*.png
 research/es_live_audit_20260911/audit_report.html
@@ -62,6 +57,9 @@ ote_live/runtime_manifests/
 *.json
 !features/recipes/*.json
 !ote_live/examples/research_execution/synthetic_contract.json
+!tests/fixtures/outcome_b1_paths.csv
+!model_testing/examples/outcome_b1/*.json
+!model_testing/examples/outcome_b1/*.csv
 *.tgz
 *.sql
 !ote_live/storage/schema.sql
@@ -74,3 +72,52 @@ ote_live/runtime_manifests/
 *.sqlite-*
 *.sqlite3
 *.sqlite3-*
+
+# Datasets (*.csv and *.json are already ignored above)
+*.parquet
+*.jsonl
+*.npz
+*.hdf5
+*.pkl
+*.pickle
+*.arrow
+*.tfrecord
+*.zip
+*.gz
+!model_testing/examples/**/*.jsonl
+!ote_live/examples/**/*.jsonl
+
+# Model checkpoints and weights
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.ubj
+checkpoints/
+models/**/code_snapshot/
+
+# Experiment tracking output
+wandb/
+mlruns/
+runs/
+lightning_logs/
+events.out.tfevents.*
+
+# Logs
+*.log
+*.err
+
+# Frozen research contracts, locks and audit evidence cited by notes.txt and docs
+# (re-included after the global *.json / *.csv ignores)
+!configs/*.json
+!configs/outcome_contracts/*.json
+!docs/audits/**/*.json
+!docs/audits/**/*.csv
+!docs/assets/**/*.csv
+!docs/assets/**/*.json
+# ...but keep the >10 MB evidence dumps local
+docs/audits/b2_lineage_20260918_complete/inventory.json
+docs/audits/b2_impact_20260918/frvp_fixed_event_replay.csv
+docs/assets/live_model_roster_20260929/catalog.json
+docs/assets/live_model_roster_20260929/chart.html

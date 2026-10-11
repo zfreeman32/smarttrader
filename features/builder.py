@@ -13,6 +13,9 @@ import numpy as np
 import pandas as pd
 
 from . import feature_sets as _builtin_feature_sets  # noqa: F401
+from .causal_contract import (
+    V2_BOUNDED_MEMORY_FEATURE_SETS, add_absent_strategy_one_hots, add_bars_since_columns, is_v2, weekly_block_ids,
+)
 from .config import FeatureBuilderConfig
 from .io import load_market_data, save_dataset, standardize_market_frame, validate_ohlcv
 from .progress import ProgressCallback, progress_context, report_progress
@@ -60,7 +63,13 @@ class FeatureDatasetBuilder:
         df: pd.DataFrame,
         *,
         source_path: str | Path | None = None,
+        pre_fill_observer: Callable[[pd.DataFrame, Dict[str, str]], None] | None = None,
     ) -> Tuple[pd.DataFrame, Dict[str, object]]:
+        """Build features; ``pre_fill_observer`` sees producer outputs before numeric fill.
+
+        The observer receives the working frame and a column -> producer map
+        ("feature_set:<name>" / "transform:<name>"). It must not mutate the frame.
+        """
         with progress_context(self.progress_callback):
             build_started = perf_counter()
             working = standardize_market_frame(
@@ -90,6 +99,7 @@ class FeatureDatasetBuilder:
             transform_counts: Dict[str, int] = {}
             feature_set_reports: Dict[str, object] = {}
             step_timings: Dict[str, float] = {}
+            column_producers: Dict[str, str] = {}
 
             total_feature_sets = len(active_config.feature_sets)
             for feature_index, feature_set_name in enumerate(active_config.feature_sets, start=1):
@@ -101,12 +111,13 @@ class FeatureDatasetBuilder:
                     total=total_feature_sets,
                 )
                 step_started = perf_counter()
-                built = FEATURE_REGISTRY.build(feature_set_name, working, active_config)
+                built = self._build_feature_set(feature_set_name, working, active_config)
                 feature_report = built.attrs.get("feature_build_report")
                 if feature_report is not None:
                     feature_set_reports[feature_set_name] = feature_report
                 working, added = self._append_features(working, built)
                 del built
+                column_producers.update((column, f"feature_set:{feature_set_name}") for column in added)
                 elapsed = perf_counter() - step_started
                 generated_columns.extend(added)
                 feature_counts[feature_set_name] = len(added)
@@ -143,6 +154,7 @@ class FeatureDatasetBuilder:
                         continue
                     prepared_blocks.append(prepared)
                     existing_columns.update(added)
+                    column_producers.update((column, f"transform:{transform_name}") for column in added)
                     generated_columns.extend(added)
 
                 if prepared_blocks:
@@ -157,6 +169,9 @@ class FeatureDatasetBuilder:
 
             if active_config.drop_warmup_rows and active_config.warmup_rows > 0:
                 working = working.iloc[active_config.warmup_rows :].reset_index(drop=True)
+
+            if pre_fill_observer is not None:
+                pre_fill_observer(working, dict(column_producers))
 
             if active_config.fillna_numeric:
                 self._fill_numeric_columns_inplace(working)
@@ -380,6 +395,56 @@ class FeatureDatasetBuilder:
         return active_config, info
 
     @staticmethod
+    def _build_feature_set(name: str, working: pd.DataFrame, config: FeatureBuilderConfig) -> pd.DataFrame:
+        """v1: the registered producer on the whole frame. v2: bounded-memory producers run per weekly block (anchored
+        warm-start, features/causal_contract.py); ict_context also gains translation-invariant ``*_bars_since``."""
+        if not is_v2(config) or name not in V2_BOUNDED_MEMORY_FEATURE_SETS:
+            return FEATURE_REGISTRY.build(name, working, config)
+        return FeatureDatasetBuilder._build_blocked(name, working, config)
+
+    @staticmethod
+    def _build_blocked(name: str, working: pd.DataFrame, config: FeatureBuilderConfig) -> pd.DataFrame:
+        """One producer per weekly block with a warm-up of ``bounded_memory_warmup_bars`` bars before the anchor."""
+        time_column = "datetime" if "datetime" in working.columns else "timestamp"
+        blocks = weekly_block_ids(working[time_column])
+        if len(blocks) == 0:
+            return FEATURE_REGISTRY.build(name, working, config)
+        starts = np.flatnonzero(np.r_[True, blocks[1:] != blocks[:-1]])
+        ends = np.r_[starts[1:], len(working)]
+        warmup = max(0, int(config.bounded_memory_warmup_bars))
+        pieces: List[pd.DataFrame] = []
+        report = None
+        for start, end in zip(starts, ends):
+            low = max(0, int(start) - warmup)
+            frame = working.iloc[low:int(end)].reset_index(drop=True)
+            built = FEATURE_REGISTRY.build(name, frame, config)
+            if len(built) != len(frame):
+                raise ValueError(f"Feature set {name!r} changed the row count inside a bounded-memory block")
+            if name == "ict_context":
+                built = add_bars_since_columns(built)
+            report = built.attrs.get("feature_build_report", report)
+            piece = built.iloc[int(start) - low:].copy()
+            piece.index = working.index[int(start):int(end)]
+            piece.attrs = {}
+            pieces.append(piece)
+        out = pd.concat(pieces, axis=0, sort=False)
+        if name == "strategy_signals":
+            # One-hot strategy columns exist only for categories seen in a block. A block without the category has no
+            # row of it, so its rows are exactly 0 (not NaN).
+            for column in out.columns:
+                if all(column in piece.columns for piece in pieces):
+                    continue
+                observed = pd.concat([piece[column] for piece in pieces if column in piece.columns])
+                if pd.api.types.is_integer_dtype(observed) and observed.isin([0, 1]).all():
+                    absent = np.concatenate([np.full(len(piece), column not in piece.columns) for piece in pieces])
+                    out.loc[absent, column] = 0
+                    out[column] = out[column].astype(int)
+            out = add_absent_strategy_one_hots(out, config.v2_strategy_one_hot_columns)
+        if report is not None:
+            out.attrs["feature_build_report"] = report
+        return out
+
+    @staticmethod
     def _append_features(
         working: pd.DataFrame,
         additions: pd.DataFrame,
@@ -459,6 +524,7 @@ class FeatureDatasetBuilder:
                 working,
                 config.sigma_normalization_columns,
                 config.sigma_normalization_window,
+                exact=is_v2(config),
             ),
         )
         register(
@@ -477,6 +543,7 @@ class FeatureDatasetBuilder:
                 working,
                 config.rolling_stat_columns,
                 config.rolling_windows,
+                exact=is_v2(config),
             ),
         )
         register(
@@ -486,6 +553,7 @@ class FeatureDatasetBuilder:
                 working,
                 config.zscore_columns,
                 config.zscore_window,
+                exact=is_v2(config),
             ),
         )
 

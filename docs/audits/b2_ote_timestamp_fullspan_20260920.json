@@ -1,0 +1,40 @@
+{
+  "period": "2019-01-01 through saved end",
+  "source_sha256": {
+    "data/currency_data/eurusd-5m.csv": "76e05ef297fcb23ea56b6d71ac812aca7f71cb996d7caca614b931f830ee1bba",
+    "data/currency_data/eurusd-1m.normalized.csv": "1325838ada3faa894fab885d0ba17c6f269c848532029d2bafc823e2569b41ad"
+  },
+  "hypotheses": {
+    "left": {
+      "full_5_constituent_bars": 538586,
+      "exact_ohlc_matches": 538586,
+      "exact_ohlcv_matches": 538586,
+      "match_percent": 100.0,
+      "first": "2019-01-01 00:00:00",
+      "last": "2026-03-24 20:45:00",
+      "mismatch_examples": []
+    },
+    "right": {
+      "full_5_constituent_bars": 538225,
+      "exact_ohlc_matches": 63,
+      "exact_ohlcv_matches": 16,
+      "match_percent": 0.011705141901621068,
+      "first": "2019-01-01 00:05:00",
+      "last": "2026-03-24 20:45:00",
+      "mismatch_examples": [
+        "2019-01-01 00:05:00",
+        "2019-01-01 00:10:00",
+        "2019-01-01 00:30:00",
+        "2019-01-01 00:35:00",
+        "2019-01-01 00:45:00",
+        "2019-01-01 00:50:00",
+        "2019-01-01 00:55:00",
+        "2019-01-01 01:00:00",
+        "2019-01-01 01:05:00",
+        "2019-01-01 01:10:00"
+      ]
+    }
+  },
+  "decision": "5-minute timestamps identify left/open aggregation boundaries; publication contract is t+5min. Original fixed GMT-6 clock retained, no timezone reinterpretation.",
+  "limit": "Numerical verification of candle membership. Does not identify vendor; incomplete constituent intervals are excluded from verification."
+}

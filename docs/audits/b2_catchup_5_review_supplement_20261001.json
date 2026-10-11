@@ -1,0 +1,118 @@
+{
+  "status": "catchup_supplementary_review_passed",
+  "model_id": 5,
+  "recorded_on": "2026-10-01",
+  "runner_review": "docs/audits/b2_catchup_5_review_20261001.json",
+  "runner_review_sha256": "160dfe5adff057b18089aa783acf0e1bb43c75390d4b2ecd91a79cc7517e16ab",
+  "runner_review_status": "candidate_history_artifact_review_passed",
+  "trial_counts": {
+    "budget": 32,
+    "total": 32,
+    "complete": 17,
+    "pruned": 15,
+    "failed": 0
+  },
+  "study_best_trial": 26,
+  "study_best_value": 0.6504808959595545,
+  "selected_features": 160,
+  "window_size": 24,
+  "context_rows": 23,
+  "resolved_purge_bars": 132,
+  "cv_folds": 3,
+  "final_holdout": {
+    "fit_end": 532,
+    "val_start": 664,
+    "val_end": 847,
+    "context_rows": 23,
+    "purge_rows": 132,
+    "required_source_gap": 1071,
+    "source_gap": 72491,
+    "scaler_fit_rows": 532,
+    "checkpoint_selection_rows": 183
+  },
+  "calibration": {
+    "requested_method": "platt",
+    "resolved_method": "none",
+    "disabled_for_continuation_target": true
+  },
+  "gaps": {
+    "raw_bar_gap": 1071,
+    "retained_row_gap": 14
+  },
+  "environment_omp_num_threads": null,
+  "history_driven_threshold_disagreements": 0,
+  "history_driven_threshold_disagreements_note": "Production-runner replay over the consecutive source tape reproduced every saved test decision (runner review threshold_decisions_equal)",
+  "test_rows": 146,
+  "test_signals": 16,
+  "advisory_only": {
+    "note": "Historical quality metrics; not a gate and not used for any selection",
+    "oof_summary": {
+      "dev_rows": 847,
+      "oof_rows": 300,
+      "missing_oof_rows": 547,
+      "raw_average_precision": 0.6403930767132859,
+      "calibrated_average_precision": 0.6403930767132859
+    },
+    "threshold_metrics": {
+      "event_precision": 1.0,
+      "event_recall": 0.38461538461538464,
+      "event_f1": 0.5555555555555556,
+      "event_fbeta_0_5": 0.7575757575757577,
+      "predicted_events": 20.0,
+      "true_events": 52.0,
+      "matched_events": 20.0,
+      "predicted_to_true_event_ratio": 0.38461538461538464,
+      "event_count_gap_ratio": 0.6153846153846154,
+      "turnover_excess_ratio": 0.0,
+      "threshold_score": 0.8545454545454546
+    },
+    "test_metrics": {
+      "average_precision": 0.5611921124960673,
+      "roc_auc": 0.35575913018809147,
+      "brier": 0.24534925818443298,
+      "threshold": 0.62,
+      "event_precision": 0.7272727272727273,
+      "event_recall": 0.38095238095238093,
+      "event_f1": 0.5,
+      "event_fbeta_0_5": 0.6153846153846153,
+      "predicted_events": 11.0,
+      "true_events": 21.0,
+      "matched_events": 8.0,
+      "predicted_to_true_event_ratio": 0.5238095238095238,
+      "event_count_gap_ratio": 0.47619047619047616
+    }
+  },
+  "legacy_bundles_unchanged_vs_progress_file": {
+    "5": {
+      "bundle": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+      "files": 12,
+      "tree_sha256": "67451c8573533221bd608726aa0ca45b740f776196f9b9eddd758280a83f1769",
+      "unchanged": true
+    },
+    "23": {
+      "bundle": "models/live/long_union_tcn",
+      "files": 14,
+      "tree_sha256": "6c39458797d3045b8561983704aed97581aab2e93cf79bb665ef887d6f0fc2e4",
+      "unchanged": true
+    },
+    "14": {
+      "bundle": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+      "files": 12,
+      "tree_sha256": "734de76ecec1965242ffc8ac3abb089d457bd4ff71d9b731221302a5dac7f55f",
+      "unchanged": true
+    },
+    "18": {
+      "bundle": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+      "files": 13,
+      "tree_sha256": "74282285772b431c4feead607c908dfda49129c4f86fffbad3dc8a2b85c9ac69",
+      "unchanged": true
+    }
+  },
+  "pinned_inputs_sha256": {
+    "configs/broad_full_session_shadow_selection_v0.json": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+    "configs/broad_full_session_shadow_route_bindings_v1.json": "d53af7931605e625842f350a6719465f161be7c8a356c5e166587e40e53b1868",
+    "docs/audits/b2_candidate_history_catchup_es_20261001.json": "6aa97117a7435963a66b5a31387f85080ad39dbe21a280822c1ae29150163c43",
+    "docs/audits/b2_queue_preflight_20260924.json": "61e35370f4e41683ab6cc662e6cb16d2ec2bb38d8207dc3a78a3d1218402c72d"
+  },
+  "collection_eligible": false
+}

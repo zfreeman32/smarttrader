@@ -1,0 +1,24 @@
+{
+  "manifest": "artifacts\\b2_validation_prepared_v2_20261006\\manifest.json",
+  "manifest_sha256": "afba2f9cd07ef97f3ed5e22c11836b8c7120d139204c8f6abb75944ab4b467b4",
+  "roster": "docs\\audits\\b2_v2_model_data_roster_20261006.csv",
+  "roster_sha256": "8d50d873f376c91def632db9eff3217bc3cdfa2c9398d12c822faf641e72e5ae",
+  "models": [
+    "2",
+    "3",
+    "5",
+    "10",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "18",
+    "19",
+    "21",
+    "22",
+    "23",
+    "25",
+    "26"
+  ]
+}

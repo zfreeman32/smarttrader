@@ -1,0 +1,514 @@
+{
+  "schema_version": "b2-dependency-witnesses-v1",
+  "scope": "bounded saved-data and synthetic witnesses; no model clearance or full-span repair decision",
+  "ict": {
+    "source": "artifacts/ict_es_primary/phase02_features/ict_es_features.csv",
+    "scope": "first 4000 saved rows; existence witness, not full-history impact",
+    "comparisons": {
+      "ict_rth_open": {
+        "compared_rows": 4000,
+        "different_rows": 2694,
+        "examples": [
+          {
+            "timestamp": "2017-01-02 23:00:00+00:00",
+            "saved_value": 2252.0,
+            "causal_value": null
+          },
+          {
+            "timestamp": "2017-01-02 23:05:00+00:00",
+            "saved_value": 2252.0,
+            "causal_value": null
+          },
+          {
+            "timestamp": "2017-01-02 23:10:00+00:00",
+            "saved_value": 2252.0,
+            "causal_value": null
+          }
+        ]
+      },
+      "ict_rth_gap_open": {
+        "compared_rows": 4000,
+        "different_rows": 2508,
+        "examples": [
+          {
+            "timestamp": "2017-01-03 21:00:00+00:00",
+            "saved_value": 3.75,
+            "causal_value": null
+          },
+          {
+            "timestamp": "2017-01-03 21:05:00+00:00",
+            "saved_value": 3.75,
+            "causal_value": null
+          },
+          {
+            "timestamp": "2017-01-03 21:10:00+00:00",
+            "saved_value": 3.75,
+            "causal_value": null
+          }
+        ]
+      },
+      "ict_prior_rth_high": {
+        "compared_rows": 4000,
+        "different_rows": 255,
+        "examples": [
+          {
+            "timestamp": "2017-01-06 21:00:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          },
+          {
+            "timestamp": "2017-01-06 21:05:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          },
+          {
+            "timestamp": "2017-01-06 21:10:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          }
+        ]
+      },
+      "ict_prior_rth_low": {
+        "compared_rows": 4000,
+        "different_rows": 255,
+        "examples": [
+          {
+            "timestamp": "2017-01-06 21:00:00+00:00",
+            "saved_value": null,
+            "causal_value": 2258.25
+          },
+          {
+            "timestamp": "2017-01-06 21:05:00+00:00",
+            "saved_value": null,
+            "causal_value": 2258.25
+          },
+          {
+            "timestamp": "2017-01-06 21:10:00+00:00",
+            "saved_value": null,
+            "causal_value": 2258.25
+          }
+        ]
+      },
+      "ict_prior_rth_close": {
+        "compared_rows": 4000,
+        "different_rows": 255,
+        "examples": [
+          {
+            "timestamp": "2017-01-06 21:00:00+00:00",
+            "saved_value": null,
+            "causal_value": 2271.75
+          },
+          {
+            "timestamp": "2017-01-06 21:05:00+00:00",
+            "saved_value": null,
+            "causal_value": 2271.75
+          },
+          {
+            "timestamp": "2017-01-06 21:10:00+00:00",
+            "saved_value": null,
+            "causal_value": 2271.75
+          }
+        ]
+      },
+      "ict_prior_week_high": {
+        "compared_rows": 4000,
+        "different_rows": 255,
+        "examples": [
+          {
+            "timestamp": "2017-01-06 21:00:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          },
+          {
+            "timestamp": "2017-01-06 21:05:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          },
+          {
+            "timestamp": "2017-01-06 21:10:00+00:00",
+            "saved_value": null,
+            "causal_value": 2277.0
+          }
+        ]
+      },
+      "ict_prior_week_low": {
+        "compared_rows": 4000,
+        "different_rows": 255,
+        "examples": [
+          {
+            "timestamp": "2017-01-06 21:00:00+00:00",
+            "saved_value": null,
+            "causal_value": 2239.5
+          },
+          {
+            "timestamp": "2017-01-06 21:05:00+00:00",
+            "saved_value": null,
+            "causal_value": 2239.5
+          },
+          {
+            "timestamp": "2017-01-06 21:10:00+00:00",
+            "saved_value": null,
+            "causal_value": 2239.5
+          }
+        ]
+      }
+    },
+    "opening_price_witness": {
+      "historical_row": "2017-01-02 23:00:00+00:00",
+      "saved_rth_open": 2252.0,
+      "next_observed_rth_open_time": "2017-01-03 14:30:00+00:00",
+      "next_rth_open_price": 2252.0,
+      "equal": true,
+      "causal_reference_missing": true
+    }
+  },
+  "frvp": [
+    {
+      "source": "artifacts/frvp_es_primary_current/phase03/es_primary_frvp_labels.csv",
+      "raw_source": "data/futures_data/ES-5m-tagged.csv",
+      "identical_prefix_timestamps": true,
+      "comparison": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3708,
+        "matches_open_stamped_reconstruction": 3708,
+        "matches_open_and_differs_completion": 3708,
+        "examples": [
+          {
+            "timestamp": "2017-01-03 13:00:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:05:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:10:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    },
+    {
+      "source": "artifacts/frvp_es_primary_refresh_20260701/phase03/es_primary_frvp_labels.csv",
+      "raw_source": "data/futures_data/ES-5m-tagged.csv",
+      "identical_prefix_timestamps": true,
+      "comparison": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3708,
+        "matches_open_stamped_reconstruction": 3708,
+        "matches_open_and_differs_completion": 3708,
+        "examples": [
+          {
+            "timestamp": "2017-01-03 13:00:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:05:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:10:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    },
+    {
+      "source": "artifacts/frvp_es_primary_setup_targets_20260829/phase03/es_primary_frvp_labels.csv",
+      "raw_source": "data/futures_data/ES-5m-tagged.csv",
+      "identical_prefix_timestamps": true,
+      "comparison": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3708,
+        "matches_open_stamped_reconstruction": 3708,
+        "matches_open_and_differs_completion": 3708,
+        "examples": [
+          {
+            "timestamp": "2017-01-03 13:00:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:05:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2017-01-03 13:10:00+00:00",
+            "saved_atr": 3.1960796286907778,
+            "hour_or_halfhour_open_reconstruction": 3.1960796286907778,
+            "completion_stamped_timing_control": 3.1919319078208375,
+            "source_period_close": "2017-01-03 14:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    },
+    {
+      "source": "artifacts/frvp_es_primary_post2022_20260703/phase03/es_primary_frvp_labels.csv",
+      "raw_source": "data/futures_data/ES-5m-tagged-post2022.csv",
+      "identical_prefix_timestamps": true,
+      "comparison": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3828,
+        "matches_open_stamped_reconstruction": 3828,
+        "matches_open_and_differs_completion": 3828,
+        "examples": [
+          {
+            "timestamp": "2022-01-03 13:00:00+00:00",
+            "saved_atr": 6.452219148054507,
+            "hour_or_halfhour_open_reconstruction": 6.452219148054507,
+            "completion_stamped_timing_control": 6.1600821594433155,
+            "source_period_close": "2022-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2022-01-03 13:05:00+00:00",
+            "saved_atr": 6.452219148054507,
+            "hour_or_halfhour_open_reconstruction": 6.452219148054507,
+            "completion_stamped_timing_control": 6.1600821594433155,
+            "source_period_close": "2022-01-03 14:00:00+00:00"
+          },
+          {
+            "timestamp": "2022-01-03 13:10:00+00:00",
+            "saved_atr": 6.452219148054507,
+            "hour_or_halfhour_open_reconstruction": 6.452219148054507,
+            "completion_stamped_timing_control": 6.1600821594433155,
+            "source_period_close": "2022-01-03 14:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    }
+  ],
+  "ote": {
+    "source": "data/labeling/labeled_data/eurusd_5min_ote_labels_full.csv",
+    "source_timestamp_metadata": "as_provided; absolute original bar-open/bar-close convention remains unverified",
+    "comparisons": {
+      "reversal": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3792,
+        "matches_open_stamped_reconstruction": 3792,
+        "matches_open_and_differs_completion": 3792,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 18:00:00+00:00",
+            "saved_atr": 0.0023377870578316,
+            "hour_or_halfhour_open_reconstruction": 0.0023377870578316987,
+            "completion_stamped_timing_control": 0.0015245399084341216,
+            "source_period_close": "2019-01-01 19:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 18:05:00+00:00",
+            "saved_atr": 0.0023377870578316,
+            "hour_or_halfhour_open_reconstruction": 0.0023377870578316987,
+            "completion_stamped_timing_control": 0.0015245399084341216,
+            "source_period_close": "2019-01-01 19:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 18:10:00+00:00",
+            "saved_atr": 0.0023377870578316,
+            "hour_or_halfhour_open_reconstruction": 0.0023377870578316987,
+            "completion_stamped_timing_control": 0.0015245399084341216,
+            "source_period_close": "2019-01-01 19:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      },
+      "continuation": {
+        "period": "30min",
+        "comparable_full_bucket_rows": 3870,
+        "matches_open_stamped_reconstruction": 3870,
+        "matches_open_and_differs_completion": 3870,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 07:30:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:35:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:40:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      },
+      "breakout": {
+        "period": "30min",
+        "comparable_full_bucket_rows": 3870,
+        "matches_open_stamped_reconstruction": 3870,
+        "matches_open_and_differs_completion": 3870,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 07:30:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:35:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:40:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    }
+  },
+  "ote_native_1m": {
+    "source": "data/labeling/labeled_data/eurusd_1min_ote_labels_full.csv",
+    "source_timestamp_metadata": "as_provided; absolute original bar-open/bar-close convention remains unverified",
+    "comparisons": {
+      "reversal": {
+        "period": "1h",
+        "comparable_full_bucket_rows": 3060,
+        "matches_open_stamped_reconstruction": 3060,
+        "matches_open_and_differs_completion": 3060,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 22:00:00+00:00",
+            "saved_atr": 0.0023643246419316,
+            "hour_or_halfhour_open_reconstruction": 0.0023643246419316247,
+            "completion_stamped_timing_control": 0.00247388807592637,
+            "source_period_close": "2019-01-01 23:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 22:01:00+00:00",
+            "saved_atr": 0.0023643246419316,
+            "hour_or_halfhour_open_reconstruction": 0.0023643246419316247,
+            "completion_stamped_timing_control": 0.00247388807592637,
+            "source_period_close": "2019-01-01 23:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 22:02:00+00:00",
+            "saved_atr": 0.0023643246419316,
+            "hour_or_halfhour_open_reconstruction": 0.0023643246419316247,
+            "completion_stamped_timing_control": 0.00247388807592637,
+            "source_period_close": "2019-01-01 23:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      },
+      "continuation": {
+        "period": "30min",
+        "comparable_full_bucket_rows": 3300,
+        "matches_open_stamped_reconstruction": 3300,
+        "matches_open_and_differs_completion": 3300,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 07:30:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:31:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:32:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      },
+      "breakout": {
+        "period": "30min",
+        "comparable_full_bucket_rows": 3300,
+        "matches_open_stamped_reconstruction": 3300,
+        "matches_open_and_differs_completion": 3300,
+        "examples": [
+          {
+            "timestamp": "2019-01-01 07:30:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:31:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          },
+          {
+            "timestamp": "2019-01-01 07:32:00+00:00",
+            "saved_atr": 0.0011966881422116,
+            "hour_or_halfhour_open_reconstruction": 0.0011966881422116149,
+            "completion_stamped_timing_control": 0.001260279537766356,
+            "source_period_close": "2019-01-01 08:00:00+00:00"
+          }
+        ],
+        "control_limit": "Publication-shift diagnostic only. Not a replacement producer: no new labels, gap/roll/warmup policy or live-availability attestation."
+      }
+    }
+  },
+  "retrospective_htf_match": {
+    "function": "data/labeling/reversal_labeling_engine.py::compute_htf_swing_match",
+    "event_time": "2026-09-10 10:00:00+00:00",
+    "future_swing_time": "2026-09-10 11:00:00+00:00",
+    "future_confirmation": "2026-09-10 12:00:00+00:00",
+    "before_future_swing": false,
+    "after_future_swing": true,
+    "inference": "Legitimate retrospective label annotation is not automatically a causal prediction feature. FRVP materialization copies this match into selected htf_confluence helpers."
+  },
+  "source_hashes": {
+    "scripts/probe_b2_dependencies.py": "325060a1f2adb587bbc561b2e788a86e9d7c0504fc7fb7da70e2862194d19121",
+    "ict/structure/liquidity.py": "ff38c10f0ae0dc039325cd452e3ea4edf031c2845d86599f3ff69a8beb00e3cc",
+    "data/labeling/frvp_labeling_engine.py": "ed7224c9c6f23cdea5c0017f5c8ad8216fd9e862d77b16338635f6cdd0bbc1a8",
+    "data/labeling/reversal_labeling_engine.py": "18f18ac2d8a41faa726a1f2cf00b66aa89c8b475154dfabe1e4f957ff4b57c3f"
+  }
+}

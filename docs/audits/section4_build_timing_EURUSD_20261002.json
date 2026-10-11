@@ -1,0 +1,108 @@
+{
+ "stream": "EURUSD",
+ "model_ids": [
+  22,
+  26,
+  21,
+  25,
+  23
+ ],
+ "runtime_history_bars": 8000,
+ "built_feature_count": 261,
+ "builds": [
+  {
+   "timestamp": "2026-03-24T20:35:00+00:00",
+   "wall_seconds": 80.39,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     80.02586
+    ],
+    [
+     "feature_set:strategy_signals",
+     78.736947
+    ],
+    [
+     "feature_set:ict_context",
+     0.407132
+    ],
+    [
+     "feature_set:continuation_pullback",
+     0.242598
+    ],
+    [
+     "feature_set:htf_context",
+     0.089638
+    ],
+    [
+     "feature_set:temporal_context",
+     0.037721
+    ]
+   ]
+  },
+  {
+   "timestamp": "2026-03-24T20:40:00+00:00",
+   "wall_seconds": 78.554,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     78.184301
+    ],
+    [
+     "feature_set:strategy_signals",
+     76.895041
+    ],
+    [
+     "feature_set:ict_context",
+     0.425005
+    ],
+    [
+     "feature_set:continuation_pullback",
+     0.199666
+    ],
+    [
+     "feature_set:htf_context",
+     0.07264
+    ],
+    [
+     "feature_set:temporal_context",
+     0.050845
+    ]
+   ]
+  },
+  {
+   "timestamp": "2026-03-24T20:45:00+00:00",
+   "wall_seconds": 77.8,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     77.418524
+    ],
+    [
+     "feature_set:strategy_signals",
+     76.133154
+    ],
+    [
+     "feature_set:ict_context",
+     0.446471
+    ],
+    [
+     "feature_set:continuation_pullback",
+     0.202935
+    ],
+    [
+     "feature_set:htf_context",
+     0.070447
+    ],
+    [
+     "feature_set:temporal_context",
+     0.039004
+    ]
+   ]
+  }
+ ],
+ "median_wall_seconds": 78.554
+}

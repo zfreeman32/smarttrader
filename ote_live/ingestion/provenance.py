@@ -39,6 +39,26 @@ def observe_bar(bar: MarketBar, *, observed_at: datetime | None = None, observat
     return result.model_copy(update={"bar_version": result.bar_version or source_bar_version(result)})
 
 
+FMP_COMPLETION_RULE_VERSION = "fmp-historical-chart-completion-v1"
+# Same grace as the app's finalized-bar rule (runtime DEFAULT_FINALIZED_BAR_GRACE_SECONDS).
+FMP_COMPLETION_GRACE_SECONDS = 90.0
+
+
+def apply_fmp_completion_rule(bar: MarketBar, *, grace_seconds: float = FMP_COMPLETION_GRACE_SECONDS) -> MarketBar:
+    """Section 4 D6: an FMP historical-chart bar is complete once observed at least ``grace`` after its end.
+
+    FMP carries no completion flag. Earlier observations stay unknown (never ``False``), an existing flag
+    is never overwritten, and the content version is recomputed because completion is part of it.
+    """
+    if bar.is_complete is not None or bar.last_observed_at is None:
+        return bar
+    close_at = ensure_utc(bar.timestamp) + timeframe_to_timedelta(bar.timeframe)
+    if close_at + timedelta(seconds=float(grace_seconds)) > ensure_utc(bar.last_observed_at):
+        return bar
+    completed = bar.model_copy(update={"is_complete": True, "bar_version": None})
+    return completed.model_copy(update={"bar_version": source_bar_version(completed)})
+
+
 @dataclass(frozen=True)
 class ShadowBarEligibility:
     eligible: bool

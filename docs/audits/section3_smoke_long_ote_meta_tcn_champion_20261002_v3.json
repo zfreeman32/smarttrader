@@ -1,0 +1,289 @@
+{
+  "audit": "section3_smoke_replay_20261002",
+  "queue_id": 21,
+  "model_id": "long_ote_meta_tcn_champion",
+  "stream": "EURUSD",
+  "protocol_sha256": "7e5189cdd1543005e5035e940a168d3d22e233b3039aac899077a303b0a7dcc4",
+  "b4_freeze_sha256": "b9a7bc674b2b38118fcc2187b8c94c9f1aec6b2d84869572244f33f5abd6cb5b",
+  "route_bindings_sha256": "2473e44e4054068eac4fda1219586401c300b3a2e7a3aa54202e08bf873045d6",
+  "windows_sha256": "7e40460772dd06123dbf3b47cc99418629d2ca8f5272f93548f791373792fac8",
+  "engine_version": "b1-v5",
+  "window": {
+    "queue_id": 21,
+    "model_id": "long_ote_meta_tcn_champion",
+    "status": "selected",
+    "held_out_period": [
+      "2025-02-24T02:25:00+00:00",
+      "2026-03-25T02:45:00+00:00"
+    ],
+    "candidate_weeks": 4,
+    "weeks": [
+      {
+        "week": "2025-03-03",
+        "first_open": "2025-03-02T21:00:00+00:00",
+        "last_open": "2025-03-07T21:55:00+00:00",
+        "sessions": [
+          "2025-03-03",
+          "2025-03-04",
+          "2025-03-05",
+          "2025-03-06",
+          "2025-03-07"
+        ]
+      }
+    ],
+    "element_weeks": {
+      "route:21:reversal:eurusd_ote_reversal_eval_v2": [
+        "2025-03-03"
+      ],
+      "route:21:continuation:eurusd_ote_continuation_eval_v2": [
+        "2025-03-03"
+      ],
+      "route:21:breakout:eurusd_ote_breakout_eval_v2": [
+        "2025-03-03"
+      ],
+      "overnight_segment": [
+        "2025-03-03"
+      ],
+      "london_new_york_segment": [
+        "2025-03-03"
+      ]
+    },
+    "routes_exercised": [
+      "21:reversal:eurusd_ote_reversal_eval_v2",
+      "21:continuation:eurusd_ote_continuation_eval_v2",
+      "21:breakout:eurusd_ote_breakout_eval_v2"
+    ],
+    "routes_unexercised": {
+      "21:breakout_sustained:eurusd_ote_breakout_sustained_eval_v2": "no_detector_emits_this_setup_family"
+    },
+    "calendar_elements_unexercised": {
+      "planned_closure": "no_eligible_week_in_held_out_period",
+      "dst_transition": "no_eligible_week_in_held_out_period"
+    },
+    "held_out_predictions": 80399,
+    "held_out_setup_matches": 2332
+  },
+  "full_policy": "not_defined",
+  "authority": {
+    "scored_collection": false,
+    "paper": false,
+    "alerts": false,
+    "broker_orders": false,
+    "promotion": false
+  },
+  "profitability": "advisory only; recorded, not interpreted",
+  "status": "passed",
+  "scored": false,
+  "checks": {
+    "bytes_verified_against_b4_v2": true,
+    "production_runner_matches_saved_predictions": true,
+    "replay_hashes_identical": true,
+    "per_trade_pnl_sums_to_ledger_totals": true,
+    "costs_applied_once_at_contract_rates": true,
+    "open_positions_carried_as_open": true,
+    "independent_and_capacity_ledgers_reconcile": true,
+    "capacity_replay_identical": true,
+    "no_cross_stream_aggregation": true,
+    "full_policy_not_defined_without_ledger": true
+  },
+  "failures": [],
+  "unit": "pips",
+  "calendar_id": "eurusd_5m_feed_clock_week_v1",
+  "calendar_hash": "1a305b934d027b4fcf4666ccca9d83eedcd9fc89dd9c38d6e7e2291b0565e1d1",
+  "canonical_hash_run_a": "f151e50318b250571b15be0545b8c34e0163ed1fc9f4e6a88e8a165b65979340",
+  "canonical_hash_run_b": "f151e50318b250571b15be0545b8c34e0163ed1fc9f4e6a88e8a165b65979340",
+  "surface_hash": "4968b7d2fd29d91ed297711b0c113024e4761a8d10a0ca2e654e1232c1764978",
+  "reviewed_artifact_set_sha256": "f212db11c90fc047d14d8780062909841f6e71ef8cdfa6972177f5ddefced812",
+  "b4_freeze_files_verified": {
+    "model.pt": "f05cbd5528f801257707520ed3028850894cf55e0f96a8f64bfe73cf53a9fd22",
+    "scaler.joblib": "1093c5e2e663320d075a9c8bfadb625a5ce72c8eec7303cae86ab04b325805cb",
+    "calibrator.joblib": "21751eeef1160a8709e90f94a9bfd56b88e1f177b99dbb1734f5b71c15747460",
+    "model_config.json": "632657ad44afbb1d1c53ed61c7040136d375ccfe9d143a79c9b4291238abfe9d",
+    "training_summary.json": "9b062354c24753698a92e53dbfaaf6fed914900b67795e5219193c722d1a6415",
+    "oof_predictions.csv": "e3986d897d3eea3ce81f7d9e85780ff4a3b1ab2e867168a193d6e4e0d0167e42",
+    "test_predictions.csv": "0dedfaac054f65e37ec50e75cdd3c7f773f60711840abf267cec89e4a6f8f036",
+    "cv_fold_manifest.json": "cd4dd8a728cb9cc3a5f6b8cb8517a6640920f33aeddf6d4cf1fa40014d3e8b12",
+    "cv_fold_manifest.csv": "d4750f64690dbcc548165371e8921793650608fd5264fa45e1db7152c925f15b"
+  },
+  "scoring": {
+    "runner": "ote_live RuntimeModelRunner via the B2 candidate-history loader",
+    "history": "full consecutive source history (context rows before each endpoint)",
+    "endpoints_scored": 1452,
+    "raw_score_max_abs_error": 2.6612167358663896e-07,
+    "threshold": 0.5599999999999999,
+    "threshold_decisions_equal_saved": true
+  },
+  "census": {
+    "no_same_side_setup": 1394,
+    "selected_same_side_setup": 58
+  },
+  "signals": 58,
+  "open_positions_rows": 2,
+  "route_coverage": [
+    {
+      "route_id": "21:reversal:eurusd_ote_reversal_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 10,
+      "executable_routes": 10,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 9,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "DATA_GAP": 1,
+        "TARGET": 8,
+        "TIMEOUT_WIN": 1
+      },
+      "data_gap_and_censor_reasons": {
+        "missing_or_corrupt_bar": 1
+      },
+      "unresolved": 1
+    },
+    {
+      "route_id": "21:continuation:eurusd_ote_continuation_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 18,
+      "executable_routes": 17,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 12,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 11,
+        "TARGET": 6
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "21:breakout:eurusd_ote_breakout_eval_v2",
+      "exercised": true,
+      "setup_matches_in_window": 31,
+      "executable_routes": 31,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 20,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {
+        "STOP": 13,
+        "TARGET": 15,
+        "TIMEOUT_LOSS": 1,
+        "TIMEOUT_WIN": 2
+      },
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    },
+    {
+      "route_id": "21:breakout_sustained:eurusd_ote_breakout_sustained_eval_v2",
+      "exercised": false,
+      "setup_matches_in_window": 0,
+      "executable_routes": 0,
+      "counterfactual_markouts": 0,
+      "admitted_per_variant": {
+        "setup_only": 0,
+        "setup_threshold": 0,
+        "full_policy": "not_defined"
+      },
+      "paper_contract_outcomes": {},
+      "data_gap_and_censor_reasons": {},
+      "unresolved": 0
+    }
+  ],
+  "capacity_reconcile": {
+    "capacity_rows": 58,
+    "capacity_admitted": 0,
+    "independent_admitted": 0,
+    "trades_in_both": 0,
+    "trades_mismatched": 0
+  },
+  "capacity_ledger_hash": "b2964bdca2db74ea0e91774eadc97857fed02a735aa469fd0d29904a002e6848",
+  "advisory_ledger_summaries": {
+    "ind.EURUSD.21.setup_only.base": {
+      "ledger_id": "ind.EURUSD.21.setup_only.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "EURUSD",
+      "unit": "pips",
+      "cost_case": "base",
+      "opportunities": 58,
+      "admitted": 41,
+      "closed": 40,
+      "unresolved_open_exposure": 1,
+      "gross_pnl": 151.51063954033762,
+      "total_cost": 164.0,
+      "net_pnl": -12.489360459662398,
+      "open_unrealized_gross_pnl": -20.599999999999508,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 17
+      }
+    },
+    "ind.EURUSD.21.setup_only.double_all_costs": {
+      "ledger_id": "ind.EURUSD.21.setup_only.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "EURUSD",
+      "unit": "pips",
+      "cost_case": "double_all_costs",
+      "opportunities": 58,
+      "admitted": 41,
+      "closed": 40,
+      "unresolved_open_exposure": 1,
+      "gross_pnl": 151.51063954033762,
+      "total_cost": 328.0,
+      "net_pnl": -176.4893604596624,
+      "open_unrealized_gross_pnl": -20.599999999999508,
+      "no_trade_reasons": {
+        "concurrent_position_limit": 17
+      }
+    },
+    "ind.EURUSD.21.setup_threshold.base": {
+      "ledger_id": "ind.EURUSD.21.setup_threshold.base",
+      "ledger_kind": "independent_model_variant",
+      "stream": "EURUSD",
+      "unit": "pips",
+      "cost_case": "base",
+      "opportunities": 58,
+      "admitted": 0,
+      "closed": 0,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 0.0,
+      "total_cost": 0.0,
+      "net_pnl": 0.0,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "probability_below_frozen_threshold": 58
+      }
+    },
+    "ind.EURUSD.21.setup_threshold.double_all_costs": {
+      "ledger_id": "ind.EURUSD.21.setup_threshold.double_all_costs",
+      "ledger_kind": "independent_model_variant",
+      "stream": "EURUSD",
+      "unit": "pips",
+      "cost_case": "double_all_costs",
+      "opportunities": 58,
+      "admitted": 0,
+      "closed": 0,
+      "unresolved_open_exposure": 0,
+      "gross_pnl": 0.0,
+      "total_cost": 0.0,
+      "net_pnl": 0.0,
+      "open_unrealized_gross_pnl": 0.0,
+      "no_trade_reasons": {
+        "probability_below_frozen_threshold": 58
+      }
+    }
+  },
+  "files": {
+    "markouts/mk.EURUSD.21.raw_score_gross_forward_response/forward_response.csv": "c3de39814850d625cdeaeb32a2dbef1235d6d567849ef2cd96306dcc176a6f51",
+    "markouts/mk.EURUSD.21.raw_score_gross_forward_response/paper_contract_outcome.csv": "bb890aa3516cfeed237d9907397f30bd60ebf562d12879021e2be978472b9a5c",
+    "ledgers/ind.EURUSD.21.setup_only.base.csv": "ad7e6d8c5f5ec23e1e02a2797799ed485ff7dd8c865f04c991d892f29553b2b0",
+    "ledgers/ind.EURUSD.21.setup_only.double_all_costs.csv": "83d78def34c2dfca88c85bf3c382a51bd33551f866f5d468debe293ca18d4376",
+    "ledgers/ind.EURUSD.21.setup_threshold.base.csv": "7937c013830facd3413975e9ca21633eff1f2f5c929f540a8110015e81a5813a",
+    "ledgers/ind.EURUSD.21.setup_threshold.double_all_costs.csv": "204c1c6cd45e3a936516e67752f36dc035a2dacfc0868ae1d5239d668e61ceb9"
+  },
+  "output_root": "artifacts/s3smoke_eurusd_20261002_v1/a/m21"
+}

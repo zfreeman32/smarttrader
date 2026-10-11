@@ -9,6 +9,7 @@ import pandas as pd
 
 from model_testing.ote_abstain_policy import DEFAULT_SESSION_SPREAD_PIPS
 from ote_live.features.manifest import LivePolicy
+from ote_live.policies.expected_move import expected_move_spread_check
 
 
 @dataclass
@@ -94,8 +95,12 @@ def evaluate_live_abstain(
         if float(probability) <= cutoff:
             return LiveAbstainDecision(abstain=True, reason="probability_quantile_filter")
 
-    expected_move_pips = _optional_float(context_row.get("expected_move_pips"))
-    if expected_move_pips is not None and session_regime is not None:
+    expected_move_pips = _optional_float(context_row.get("expected_move_pips")) if live_policy.expected_move_contract is None else None
+    if live_policy.expected_move_contract is not None:
+        check = expected_move_spread_check(live_policy, context_row)
+        if check["status"] != "passed":
+            return LiveAbstainDecision(abstain=True, reason=";".join(check["reasons"]))
+    elif expected_move_pips is not None and session_regime is not None:
         session_spread_pips = dict(DEFAULT_SESSION_SPREAD_PIPS)
         session_spread_pips.update(live_policy.cost_assumptions.session_spread_pips)
         spread = float(session_spread_pips.get(session_regime, session_spread_pips["off_hours"]))

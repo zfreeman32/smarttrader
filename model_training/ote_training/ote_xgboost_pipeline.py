@@ -180,6 +180,8 @@ class PreparedTargetDataset:
     event_window_source: str | None = None
     prepared_summary: Dict[str, object] = field(default_factory=dict)
     prepared_summary_path: str | None = None
+    source_history_X: np.ndarray | None = field(default=None, repr=False)
+    source_history_contract: Dict[str, Any] = field(default_factory=dict)
     _dev_X_cache: np.ndarray | None = field(default=None, init=False, repr=False)
     _dev_y_cache: np.ndarray | None = field(default=None, init=False, repr=False)
     _dev_w_cache: np.ndarray | None = field(default=None, init=False, repr=False)
@@ -292,10 +294,15 @@ class SequenceWindowSource:
         return int(self.available_rows)
 
     def with_sampled_indices(self, indices: np.ndarray) -> "SequenceWindowSource":
+        # Sampling selects label endpoints. Preserve any existing mapping from
+        # those endpoints to source-window starts (including duplicate draws).
+        indices = np.asarray(indices, dtype=np.int64)
+        if indices.ndim != 1 or (indices.size and (indices.min() < 0 or indices.max() >= len(self))):
+            raise ValueError("Sequence sample indices are outside the endpoint set")
         return SequenceWindowSource(
             matrix=self.matrix,
             window_size=self.window_size,
-            sampled_indices=np.asarray(indices, dtype=np.int64),
+            sampled_indices=indices if self.sampled_indices is None else self.sampled_indices[indices],
         )
 
 
@@ -492,7 +499,7 @@ def load_prepared_target_dataset(
         target_name=target_name,
     )
 
-    return PreparedTargetDataset(
+    dataset = PreparedTargetDataset(
         target_name=target_name,
         prepared_dir=prepared_dir,
         feature_names=ranked_features,
@@ -515,6 +522,24 @@ def load_prepared_target_dataset(
         event_window_lookup=event_window_lookup,
         event_window_source=event_window_source,
     )
+    history_path = prepared_dir / "source_history_contract.json"
+    if history_path.exists():
+        from model_training.source_history import file_sha256, validate_contract, impute_matrix
+        contract = json.loads(history_path.read_text(encoding="utf-8"))
+        validate_contract(contract, ranked_features)
+        tape_path = prepared_dir / "source_history.parquet"
+        if file_sha256(tape_path) != contract["source_history_sha256"]:
+            raise ValueError("Source-history tape hash mismatch")
+        history = pd.read_parquet(tape_path, columns=["source_row_idx", *ranked_features])
+        if not np.array_equal(history.source_row_idx, np.arange(len(history))):
+            raise ValueError("Source history must include every original row in order from zero")
+        dataset.source_history_X = impute_matrix(history[ranked_features].to_numpy(), contract)
+        dataset.source_history_contract = contract
+        for source, expected in ((source_row_idx_train, X_train), (source_row_idx_val, X_val), (source_row_idx_test, X_test)):
+            if np.any(source < config.window_max - 1) or np.any(source >= len(history)) or np.any(np.diff(source) <= 0):
+                raise ValueError("Label endpoints lack chronological source context")
+            np.testing.assert_allclose(dataset.source_history_X[source], expected, rtol=1e-6, atol=1e-6)
+    return dataset
 
 
 def resolve_dataset_timezone_contract(dataset: PreparedTargetDataset) -> Dict[str, object]:
@@ -1533,7 +1558,8 @@ def train_xgboost_model(
 
     max_bin = int(params["max_bin"])
     train_dm = make_training_dmatrix(X_train, y_train, w_train, max_bin=max_bin)
-    eval_dm = make_training_dmatrix(X_eval, y_eval, w_eval, max_bin=max_bin, ref=train_dm)
+    eval_dm = make_training_dmatrix(X_eval, y_eval, w_eval, max_bin=max_bin, ref=train_dm) if len(y_eval) else None
+    evals = [(train_dm, "train")] + ([(eval_dm, "eval")] if eval_dm is not None else [])
     warmup_dm = make_training_dmatrix(warmup_X, warmup_y, warmup_w, max_bin=max_bin)
 
     base_params = {
@@ -1568,7 +1594,7 @@ def train_xgboost_model(
         params=base_params,
         dtrain=train_dm,
         num_boost_round=main_rounds,
-        evals=[(train_dm, "train"), (eval_dm, "eval")],
+        evals=evals,
         obj=make_focal_objective(alpha=focal_alpha, gamma=focal_gamma),
         custom_metric=weighted_ap_metric,
         xgb_model=booster,
@@ -1581,14 +1607,14 @@ def train_xgboost_model(
         params=fine_params,
         dtrain=train_dm,
         num_boost_round=fine_rounds,
-        evals=[(train_dm, "train"), (eval_dm, "eval")],
+        evals=evals,
         obj=make_focal_objective(alpha=focal_alpha, gamma=focal_gamma),
         custom_metric=weighted_ap_metric,
         xgb_model=booster,
         verbose_eval=False if verbosity < 2 else 25,
     )
 
-    raw_pred = booster.predict(make_prediction_dmatrix(X_eval))
+    raw_pred = booster.predict(make_prediction_dmatrix(X_eval)) if len(y_eval) else np.empty(0, dtype=np.float32)
     probabilities = sigmoid(raw_pred).astype(np.float32)
     training_history = [
         {
@@ -1669,6 +1695,7 @@ def train_backend_model(
     params: Mapping[str, float],
     config: OTETrainingConfig,
     seed: int,
+    fixed_epoch_schedule: Optional[List[Dict[str, Any]]] = None,
 ) -> ModelTrainingResult:
     if config.backend == "xgboost":
         return train_xgboost_model(
@@ -1701,6 +1728,7 @@ def train_backend_model(
             config=config,
         )
         trainer_config["seed"] = seed
+        trainer_config["fixed_epoch_schedule"] = fixed_epoch_schedule
         return train_torch_model(
             X_train=X_train,
             y_train=y_train,
@@ -1779,11 +1807,24 @@ def build_xgboost_fold_datasets(
     lag_steps: Sequence[int],
     delta_feature_count: int,
     config: OTETrainingConfig,
+    source_history: np.ndarray | None = None,
+    source_row_idx: np.ndarray | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     max_lag = max(lag_steps)
 
     if not np.all(np.diff(train_idx) == 1) or not np.all(np.diff(val_idx) == 1):
         raise ValueError("This pipeline expects contiguous expanding-window folds.")
+
+    if source_history is not None:
+        from model_training.source_history import indexed_lag_view
+        if source_row_idx is None:
+            raise ValueError("Source-row endpoints are required for source-history folds")
+        scaler = fit_scaler(X_dev[np.ix_(train_idx, selected_feature_idx)], config)
+        def view(rows):
+            return indexed_lag_view(source_history, source_row_idx[rows], selected_feature_idx,
+                                    scaler, lag_steps, delta_feature_count, config.scale_clip)
+        return (view(train_idx), y_dev[train_idx].copy(), w_dev[train_idx].copy(),
+                view(val_idx), y_dev[val_idx].copy(), w_dev[val_idx].copy())
 
     train_start = int(train_idx[0])
     train_end = int(train_idx[-1]) + 1
@@ -1827,7 +1868,19 @@ def build_sequence_fold_datasets(
     selected_feature_idx: np.ndarray,
     window_size: int,
     config: OTETrainingConfig,
+    *,
+    source_history: np.ndarray | None = None,
+    source_row_idx: np.ndarray | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if source_history is not None:
+        if source_row_idx is None:
+            raise ValueError("Source-history sequences require endpoint identities")
+        scaler = fit_scaler(X_dev[np.ix_(train_idx, selected_feature_idx)], config)
+        def view(rows):
+            return indexed_sequence_view(source_history, source_row_idx[rows], selected_feature_idx,
+                                         scaler, window_size, config.scale_clip)
+        return (view(train_idx), y_dev[train_idx].astype(np.uint8), w_dev[train_idx].copy(),
+                view(val_idx), y_dev[val_idx].astype(np.uint8), w_dev[val_idx].copy())
     context_rows = window_size - 1
 
     if not np.all(np.diff(train_idx) == 1) or not np.all(np.diff(val_idx) == 1):
@@ -1864,6 +1917,17 @@ def build_sequence_fold_datasets(
     w_val = w_dev[val_start:val_end].astype(np.float32, copy=True)
 
     return X_train, y_train, w_train, X_val, y_val, w_val
+
+
+def indexed_sequence_view(history, endpoints, selected_features, scaler, window_size, clip):
+    """Lazy sequences at labeled endpoints using only their causal source bars."""
+    ends = np.asarray(endpoints, dtype=np.int64)
+    if ends.ndim != 1 or not len(ends) or window_size < 1 or ends.min() < window_size - 1 or ends.max() >= len(history):
+        raise ValueError("Missing causal source history for sequence endpoints")
+    first = int(ends.min()) - window_size + 1
+    last = int(ends.max()) + 1
+    scaled = transform_matrix(scaler, history[first:last, :][:, selected_features], clip)
+    return SequenceWindowSource(scaled, window_size, ends - window_size + 1 - first)
 
 
 def slice_label_aligned_source_rows(
@@ -2162,6 +2226,7 @@ def cross_validate_trial(
         min_folds=config.cv_min_folds,
     )
     folds = splitter.split(len(dataset.dev_X))
+    validate_frozen_selection(dataset, folds)
 
     oof_predictions = np.full(len(dataset.dev_y), np.nan, dtype=np.float32)
     oof_fold_id = np.full(len(dataset.dev_y), -1, dtype=np.int16)
@@ -2185,6 +2250,8 @@ def cross_validate_trial(
                     lag_steps=lag_steps,
                     delta_feature_count=delta_feature_count,
                     config=config,
+                    source_history=dataset.source_history_X,
+                    source_row_idx=dataset.dev_source_row_idx,
                 )
             else:
                 X_train, y_train, w_train, X_val, y_val, w_val = build_sequence_fold_datasets(
@@ -2196,13 +2263,15 @@ def cross_validate_trial(
                     selected_feature_idx=selected_feature_idx,
                     window_size=window_size,
                     config=config,
+                    source_history=dataset.source_history_X,
+                    source_row_idx=dataset.dev_source_row_idx,
                 )
 
             source_row_idx_train = slice_label_aligned_source_rows(
                 dev_source_row_idx,
                 start_row=int(train_idx[0]),
                 end_row=int(train_idx[-1]) + 1,
-                context_rows=context_rows,
+                context_rows=0 if dataset.source_history_X is not None else context_rows,
             )
             X_fit, y_fit, w_fit, selection_diagnostics = apply_fold_training_weights(
                 X_train=X_train,
@@ -2310,6 +2379,49 @@ def summarize_fold_metrics(fold_metrics: Sequence[Mapping[str, float]]) -> Dict[
     return summary
 
 
+def validate_frozen_selection(dataset: PreparedTargetDataset, folds: Sequence[FoldPlan]) -> None:
+    contract = dataset.report.get("selection_contract", {})
+    if contract.get("mode") != "frozen_development_prefix":
+        return  # Legacy preparation remains readable; B2's runner requires the new contract.
+    fit_rows = int(contract["fit_rows"])
+    source = dataset.dev_source_row_idx
+    if not 0 < fit_rows <= len(source) or int(source[fit_rows - 1]) != int(contract["fit_end_source_row_idx"]):
+        raise ValueError("Frozen selection boundary does not match development row identity.")
+    gap = int(contract["required_gap_bars"])
+    for fold in folds:
+        if fit_rows > fold.train_end or fold.val_start - fit_rows < fold.purge_bars:
+            raise ValueError("Validation overlaps the frozen feature-selection fit segment or its purge.")
+        if int(source[fold.val_start]) - int(source[fit_rows - 1]) - 1 < gap:
+            raise ValueError("Frozen selection does not leave the required original-bar gap.")
+
+
+def plan_final_holdout(dataset: PreparedTargetDataset, config: OTETrainingConfig, context_rows: int) -> Dict[str, Any]:
+    """Return raw development boundaries, enforcing retained-row and source-bar gaps."""
+    rows = len(dataset.dev_y)
+    label_context = 0 if dataset.source_history_X is not None else context_rows
+    windowed_rows = rows - label_context
+    if windowed_rows < 64:
+        raise ValueError("Not enough development rows after windowing to fit the final model.")
+    eval_rows = min(max(context_rows + config.final_eval_min_rows, int(windowed_rows * 0.15)), windowed_rows - 32)
+    val_start = rows - eval_rows
+    purge = resolve_dataset_cv_purge_bars(dataset, config, context_rows=context_rows)
+    fit_end = val_start - purge
+    raw_gap = int(dataset.report.get("split_geometry", {}).get("applied_embargo_bars", 0))
+    source = dataset.dev_source_row_idx
+    valid_source = len(source) == rows and np.all(source >= 0) and np.all(np.diff(source) > 0)
+    if raw_gap:
+        if not valid_source:
+            raise ValueError("Final holdout requires chronological source-row identity to enforce the label gap.")
+        fit_end = min(fit_end, int(np.searchsorted(source, source[val_start] - raw_gap, side="left")))
+    if fit_end - label_context < 32:
+        raise ValueError("Not enough final-fit rows after the required holdout purge.")
+    validate_frozen_selection(dataset, [FoldPlan(0, 0, fit_end, val_start, rows, purge)])
+    return dict(fit_end=fit_end, val_start=val_start, val_end=rows, context_rows=context_rows,
+                purge_rows=val_start - fit_end, required_source_gap=raw_gap,
+                source_gap=int(source[val_start] - source[fit_end - 1] - 1) if valid_source else None,
+                scaler_fit_rows=fit_end, checkpoint_selection_rows=eval_rows)
+
+
 def fit_final_model(
     dataset: PreparedTargetDataset,
     artifacts: TrialArtifacts,
@@ -2330,11 +2442,21 @@ def fit_final_model(
     context_rows = artifacts.context_rows
 
     X_dev_raw = dataset.dev_X[:, selected_feature_idx]
-    scaler = fit_scaler(X_dev_raw, config)
+    source_mode = dataset.source_history_X is not None
+    label_context = 0 if source_mode else context_rows
+    def source_view(scaler, endpoints):
+        if config.backend == "torch":
+            return indexed_sequence_view(dataset.source_history_X, endpoints, selected_feature_idx,
+                                         scaler, window_size, config.scale_clip)
+        from model_training.source_history import indexed_lag_view
+        return indexed_lag_view(dataset.source_history_X, endpoints, selected_feature_idx,
+                                scaler, lag_steps, delta_feature_count, config.scale_clip)
+    holdout = plan_final_holdout(dataset, config, context_rows)
+    scaler = fit_scaler(X_dev_raw[:holdout["fit_end"]], config)
     X_dev_scaled = transform_matrix(scaler, X_dev_raw, clip_value=config.scale_clip)
 
     if config.backend == "xgboost":
-        X_dev_windowed = build_sparse_lag_view(
+        X_dev_windowed = source_view(scaler, dataset.dev_source_row_idx) if source_mode else build_sparse_lag_view(
             X_dev_scaled,
             lag_steps=lag_steps,
             delta_feature_count=delta_feature_count,
@@ -2345,42 +2467,35 @@ def fit_final_model(
             delta_feature_count=delta_feature_count,
         )
     else:
-        X_dev_windowed = SequenceWindowSource(
+        X_dev_windowed = source_view(scaler, dataset.dev_source_row_idx) if source_mode else SequenceWindowSource(
             matrix=X_dev_scaled,
             window_size=window_size,
         )
         feature_names = list(selected_feature_names)
 
-    y_dev = dataset.dev_y[context_rows:].astype(np.uint8, copy=False)
-    w_dev = dataset.dev_w[context_rows:].astype(np.float32, copy=False)
-    dev_source_row_idx = dataset.dev_source_row_idx[context_rows:].astype(np.int64, copy=False)
+    y_dev = dataset.dev_y[label_context:].astype(np.uint8, copy=False)
+    w_dev = dataset.dev_w[label_context:].astype(np.float32, copy=False)
+    dev_source_row_idx = dataset.dev_source_row_idx[label_context:].astype(np.int64, copy=False)
 
-    if len(X_dev_windowed) < 64:
-        raise ValueError("Not enough development rows after windowing to fit the final model.")
-
-    eval_rows = max(context_rows + config.final_eval_min_rows, int(len(X_dev_windowed) * 0.15))
-    eval_rows = min(eval_rows, len(X_dev_windowed) - 32)
-    if eval_rows < 32:
-        eval_rows = min(64, max(32, len(X_dev_windowed) // 4))
-
-    fit_end = len(X_dev_windowed) - eval_rows
+    fit_end = holdout["fit_end"] - label_context
+    eval_start = holdout["val_start"] - label_context
     if config.backend == "torch":
-        X_fit = SequenceWindowSource(
+        X_fit = X_dev_windowed.with_sampled_indices(np.arange(fit_end)) if source_mode else SequenceWindowSource(
             matrix=X_dev_scaled[: fit_end + context_rows],
             window_size=window_size,
         )
-        X_eval = SequenceWindowSource(
-            matrix=X_dev_scaled[fit_end:],
+        X_eval = X_dev_windowed.with_sampled_indices(np.arange(eval_start, len(y_dev))) if source_mode else SequenceWindowSource(
+            matrix=X_dev_scaled[eval_start:],
             window_size=window_size,
         )
     else:
         X_fit = X_dev_windowed[:fit_end]
-        X_eval = X_dev_windowed[fit_end:]
+        X_eval = X_dev_windowed[eval_start:]
     y_fit = y_dev[:fit_end]
     w_fit = w_dev[:fit_end]
     source_row_idx_fit = dev_source_row_idx[:fit_end]
-    y_eval = y_dev[fit_end:]
-    w_eval = w_dev[fit_end:]
+    y_eval = y_dev[eval_start:]
+    w_eval = w_dev[eval_start:]
     X_fit, y_fit, w_fit, fit_selection_diagnostics = apply_fold_training_weights(
         X_train=X_fit,
         y_train=y_fit,
@@ -2407,8 +2522,25 @@ def fit_final_model(
     )
 
     final_refit_selection_diagnostics: Dict[str, Any] | None = None
+    holdout_history = training_result.training_history
+    fixed_schedule = None
     if config.final_refit_on_dev:
-        final_train_X = X_dev_windowed
+        if config.backend == "torch":
+            best_epoch = int((training_result.checkpoint or {}).get("best_epoch", 0))
+            if not 0 < best_epoch <= len(holdout_history):
+                raise ValueError("Purged holdout did not select a valid training duration.")
+            fixed_schedule = [dict(epoch) for epoch in holdout_history[:best_epoch]]
+        # The refit has no evaluation rows and cannot select a checkpoint or schedule.
+        scaler = fit_scaler(X_dev_raw, config)
+        X_dev_scaled = transform_matrix(scaler, X_dev_raw, clip_value=config.scale_clip)
+        if config.backend == "torch":
+            final_train_X = (source_view(scaler, dataset.dev_source_row_idx) if source_mode else
+                             SequenceWindowSource(matrix=X_dev_scaled, window_size=window_size))
+            empty_eval = np.empty((0, window_size, selected_feature_count), dtype=np.float32)
+        else:
+            final_train_X = (source_view(scaler, dataset.dev_source_row_idx) if source_mode else
+                             build_sparse_lag_view(X_dev_scaled, lag_steps=lag_steps, delta_feature_count=delta_feature_count))
+            empty_eval = final_train_X[:0]
         final_train_X, final_train_y, final_train_w, final_refit_selection_diagnostics = apply_fold_training_weights(
             X_train=final_train_X,
             y_train=y_dev,
@@ -2425,12 +2557,13 @@ def fit_final_model(
             X_train=final_train_X,
             y_train=final_train_y,
             w_train=final_train_w,
-            X_eval=X_eval,
-            y_eval=y_eval,
-            w_eval=w_eval,
+            X_eval=empty_eval,
+            y_eval=y_eval[:0],
+            w_eval=w_eval[:0],
             params=params,
             config=config,
             seed=config.random_seed,
+            fixed_epoch_schedule=fixed_schedule,
         )
 
     final_model_object = training_result.model
@@ -2494,14 +2627,14 @@ def fit_final_model(
     test_scaled = transform_matrix(scaler, test_context, clip_value=config.scale_clip)
 
     if config.backend == "xgboost":
-        X_test_windowed = build_sparse_lag_view(
+        X_test_windowed = source_view(scaler, dataset.test_source_row_idx) if source_mode else build_sparse_lag_view(
             test_scaled,
             lag_steps=lag_steps,
             delta_feature_count=delta_feature_count,
         )
         raw_test = sigmoid(final_model_object.predict(make_prediction_dmatrix(X_test_windowed))).astype(np.float32)
     else:
-        X_test_windowed = SequenceWindowSource(
+        X_test_windowed = source_view(scaler, dataset.test_source_row_idx) if source_mode else SequenceWindowSource(
             matrix=test_scaled,
             window_size=window_size,
         )
@@ -2553,6 +2686,9 @@ def fit_final_model(
         "training_history": training_result.training_history,
         "fit_selection_diagnostics": fit_selection_diagnostics,
         "final_refit_selection_diagnostics": final_refit_selection_diagnostics,
+        "final_holdout": holdout,
+        "holdout_training_history": holdout_history,
+        "refit_fixed_epoch_schedule": fixed_schedule,
         "model_config": {
             "backend": config.backend,
             "model_type": config.model_type if config.backend == "torch" else "xgboost",
@@ -2610,7 +2746,13 @@ def save_training_outputs(
         torch.save(final_model["checkpoint"], output_dir / "model.pt")
         torch.save(final_model["checkpoint"], output_dir / "best_checkpoint.pt")
 
-    joblib.dump(final_model["scaler"], output_dir / "scaler.joblib")
+    saved_scaler = final_model["scaler"]
+    saved_history_contract = {}
+    if dataset.source_history_contract:
+        from model_training.source_history import FrozenHistoryScaler, selected_contract
+        saved_history_contract = selected_contract(dataset.source_history_contract, artifacts.selected_feature_names)
+        saved_scaler = FrozenHistoryScaler(saved_scaler, saved_history_contract)
+    joblib.dump(saved_scaler, output_dir / "scaler.joblib")
     if final_model["calibrator"] is not None:
         joblib.dump(final_model["calibrator"], output_dir / "calibrator.joblib")
 
@@ -2637,6 +2779,8 @@ def save_training_outputs(
         encoding="utf-8",
     )
     model_config_payload = dict(final_model["model_config"])
+    if dataset.source_history_contract:
+        model_config_payload["source_history_contract"] = saved_history_contract
     if timezone_contract:
         model_config_payload["timezone_contract"] = timezone_contract
     if source_lineage:
@@ -2788,6 +2932,9 @@ def save_training_outputs(
         "cv_fold_manifest": cv_fold_manifest_records,
         "fit_selection_diagnostics": final_model.get("fit_selection_diagnostics"),
         "final_refit_selection_diagnostics": final_model.get("final_refit_selection_diagnostics"),
+        "final_holdout": final_model.get("final_holdout"),
+        "holdout_training_history": final_model.get("holdout_training_history"),
+        "refit_fixed_epoch_schedule": final_model.get("refit_fixed_epoch_schedule"),
         "row_identity": {
             "source_row_idx_column": "source_row_idx",
             "source_row_idx_available": bool(

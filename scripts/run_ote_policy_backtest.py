@@ -25,6 +25,9 @@ from model_testing.ote_policy_backtest import WalkForwardBacktestConfig, run_wal
 from model_testing.ote_policy_metrics import sanitize_for_json
 from model_testing.ote_prediction_joiner import load_source_frame
 from model_testing.ote_threshold_policy import ThresholdSearchConfig
+from model_testing.outcome_compatibility import (
+    require_legacy_opt_in, legacy_snapshot, annotate_legacy, save_legacy_snapshot,
+)
 from models.ote_registry_loader import OTEModelRecord, load_ote_model_registry
 from scripts.evaluation_contracts import (
     DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
@@ -73,13 +76,23 @@ def run_policy_backtest(
     promotion_min_trades_per_week_floor: float = DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
     requested_min_folds: int | None = None,
     available_min_folds: int | None = None,
+    legacy_outcomes: bool = False,
+    b1_input_manifest: str | Path | None = None,
 ) -> Dict[str, Any]:
+    if b1_input_manifest is not None:
+        if legacy_outcomes:
+            raise ValueError("B1 input and legacy replay modes are mutually exclusive")
+        from scripts.run_outcome_evaluation import run_input_manifest
+        return run_input_manifest(b1_input_manifest, output_dir=output_root)
+    require_legacy_opt_in(legacy_outcomes)
     if max_train_years is not None and float(max_train_years) < float(min_train_years):
         raise ValueError(
             f"max_train_years={max_train_years} must be greater than or equal to min_train_years={min_train_years}."
         )
     regime_report_root = Path(regime_report_root)
     output_root = Path(output_root)
+    if (output_root / "run_summary.json").exists():
+        raise FileExistsError("Saved evaluations are immutable; use a new output root")
     output_root.mkdir(parents=True, exist_ok=True)
     cost_config = resolve_evaluation_cost_config(
         instrument,
@@ -97,6 +110,8 @@ def run_policy_backtest(
     )
 
     registry = load_ote_model_registry(registry_path)
+    evaluation_contract["promotion_quality_disqualifiers"].append("legacy_outcome_contract_not_b1")
+    evaluation_contract["promotion_quality_gate_eligible"] = False
     models = _resolve_models(
         registry,
         model_ids=model_ids,
@@ -180,7 +195,13 @@ def run_policy_backtest(
 
         model_output_dir = output_root / model.model_id
         model_output_dir.mkdir(parents=True, exist_ok=True)
+        outcome_snapshot = legacy_snapshot(threshold_config, direction=model.direction, training_summary=training_summary)
+        save_legacy_snapshot(model_output_dir, outcome_snapshot, artifact_dir=model.resolve_artifact_path())
+        for result_name, result_value in list(results.items()):
+            if isinstance(result_value, pd.DataFrame):
+                results[result_name] = annotate_legacy(result_value, outcome_snapshot)
         model_summary = dict(results["summary"])
+        model_summary["outcome_contract"] = outcome_snapshot
         model_summary["paper_trading_gate"] = build_paper_trading_gate(
             model_summary["acceptance"],
             evaluation_contract=evaluation_contract,
@@ -289,10 +310,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run a walk-forward OTE threshold-policy backtest with realistic frictions."
     )
+    parser.add_argument("--legacy-outcomes", action="store_true",
+                        help="Explicit pre-B1 reproduction; new causal evaluation uses run_outcome_evaluation.py")
+    parser.add_argument("--b1-input-manifest", type=Path,
+                        help="Evaluate frozen causal B1 inputs without legacy horizon returns or threshold fitting")
     parser.add_argument(
         "--regime-report-root",
         type=Path,
-        required=True,
+        required=False,
         help="Directory produced by run_ote_regime_slice_report.py containing per-model labeled predictions.",
     )
     parser.add_argument(
@@ -437,6 +462,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
+    if args.b1_input_manifest is None and args.regime_report_root is None:
+        parser.error("Provide --b1-input-manifest or an explicit --legacy-outcomes --regime-report-root replay")
 
     output_root = args.output_root
     if output_root is None:
@@ -444,6 +471,8 @@ def main() -> None:
         output_root = REPO_ROOT / "model_testing" / "reports" / "ote_policy_backtests" / timestamp
 
     summary = run_policy_backtest(
+        legacy_outcomes=args.legacy_outcomes,
+        b1_input_manifest=args.b1_input_manifest,
         regime_report_root=args.regime_report_root,
         output_root=output_root,
         registry_path=args.registry_path,

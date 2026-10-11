@@ -17,6 +17,7 @@ from ote_live.contracts.research_execution import ResearchContract, ResearchOppo
 from ote_live.ingestion.base import ensure_utc, timeframe_to_timedelta
 from ote_live.ingestion.provenance import assess_shadow_bar_eligibility
 from ote_live.storage.collection import canonical_json
+from model_testing.outcome_surfaces import surface_schema
 
 
 VARIANTS = ("setup_only", "setup_threshold", "setup_full_policy")
@@ -402,6 +403,8 @@ class ResearchExecutionLedger:
         states = self.positions(run_id)
         return {"run_id": run_id, "contract_sha256": _hash(c.model_dump(mode="json")),
                 "mode": "diagnostic", "scored_collection_enabled": False,
+                # Section 3 schema identity only; this ledger does not write those stores.
+                "surface_schema": surface_schema(),
                 "contract": c.model_dump(mode="json"),
                 "outcome_kind": "position_level_simulated_pnl",
                 "open_exposure": [s for s in states if s["status"] == "open"],

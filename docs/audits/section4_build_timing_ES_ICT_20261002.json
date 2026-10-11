@@ -1,0 +1,110 @@
+{
+ "stream": "ES",
+ "model_ids": [
+  12,
+  13,
+  15,
+  16,
+  19,
+  18,
+  14
+ ],
+ "runtime_history_bars": 8000,
+ "built_feature_count": 303,
+ "builds": [
+  {
+   "timestamp": "2026-06-19T16:45:00+00:00",
+   "wall_seconds": 1.929,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     1.633696
+    ],
+    [
+     "feature_set:ict_context",
+     0.885426
+    ],
+    [
+     "feature_set:htf_context",
+     0.098648
+    ],
+    [
+     "feature_set:temporal_context",
+     0.053459
+    ],
+    [
+     "transform:winsorization",
+     0.044981
+    ],
+    [
+     "transform:interactions",
+     0.040163
+    ]
+   ]
+  },
+  {
+   "timestamp": "2026-06-19T16:50:00+00:00",
+   "wall_seconds": 1.877,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     1.593889
+    ],
+    [
+     "feature_set:ict_context",
+     0.867497
+    ],
+    [
+     "feature_set:htf_context",
+     0.084781
+    ],
+    [
+     "feature_set:temporal_context",
+     0.057287
+    ],
+    [
+     "transform:winsorization",
+     0.046157
+    ],
+    [
+     "feature_set:exhaustion",
+     0.039049
+    ]
+   ]
+  },
+  {
+   "timestamp": "2026-06-19T16:55:00+00:00",
+   "wall_seconds": 1.837,
+   "rows": 8000,
+   "top_steps": [
+    [
+     "total",
+     1.572539
+    ],
+    [
+     "feature_set:ict_context",
+     0.950323
+    ],
+    [
+     "feature_set:htf_context",
+     0.078714
+    ],
+    [
+     "feature_set:temporal_context",
+     0.048332
+    ],
+    [
+     "transform:winsorization",
+     0.040321
+    ],
+    [
+     "feature_set:exhaustion",
+     0.032225
+    ]
+   ]
+  }
+ ],
+ "median_wall_seconds": 1.877
+}

@@ -1,0 +1,169 @@
+{
+ "status": "catchup_supplementary_review_passed",
+ "model_id": 23,
+ "recorded_on": "2026-10-01",
+ "runner_review": "docs/audits/b2_catchup_23_review_20261001.json",
+ "runner_review_sha256": "5daac741b55c8ffc7e79e4a94c1ed3fcb966fdc8536e71586fb12ec610c7b16d",
+ "runner_review_status": "candidate_ote_history_artifact_review_passed",
+ "trial_counts": {
+  "budget": 48,
+  "total": 48,
+  "complete": 15,
+  "pruned": 33,
+  "failed": 0
+ },
+ "study_best_trial": 38,
+ "study_best_value": 0.5047897230805951,
+ "selected_features": 128,
+ "window_size": 20,
+ "context_rows": 19,
+ "resolved_purge_bars": 1071,
+ "cv_folds": 5,
+ "final_holdout": {
+  "fit_end": 390429,
+  "val_start": 391500,
+  "val_end": 460588,
+  "context_rows": 19,
+  "purge_rows": 1071,
+  "required_source_gap": 1071,
+  "source_gap": 1071,
+  "scaler_fit_rows": 390429,
+  "checkpoint_selection_rows": 69088
+ },
+ "calibration": {
+  "requested_method": "platt",
+  "resolved_method": "platt",
+  "disabled_for_continuation_target": false
+ },
+ "gaps": {
+  "raw_bar_gap": 1071,
+  "retained_row_gap": 1071
+ },
+ "environment_omp_num_threads": null,
+ "cpu_tcn_production_runner_replay": {
+  "runner": "ote_live.models.runners.RuntimeModelRunner via ote_live.models.loaders._load_backend_model (torch.device('cpu'))",
+  "endpoints": 80399,
+  "prediction_max_abs_error": 4.2085647583567365e-07,
+  "calibrated_prediction_max_abs_error": 5.388153075935875e-07,
+  "threshold_decisions_equal": true
+ },
+ "history_driven_threshold_disagreements": 0,
+ "history_driven_threshold_disagreements_note": "CPU production-runner replay over the consecutive source tape reproduced every saved test decision (runner review threshold_decisions_equal)",
+ "test_rows": 80399,
+ "test_signals": 448,
+ "threshold": 0.59,
+ "eurusd_only_inputs": {
+  "verified": true,
+  "upstream_source_path": "data\\currency_data\\eurusd-5m.csv",
+  "feature_builder_source_path": "artifacts\\b2_ote_features_20260920_v1\\features.csv.gz",
+  "source_tape_group": [
+   23
+  ],
+  "source_rows": 543441,
+  "selected_features_matching_es_tokens": [],
+  "runtime_manifest_asset": "EURUSD",
+  "units": "pips (never ES ticks/USD)"
+ },
+ "union_training_recipe": {
+  "target_column": "label_long_ote",
+  "type": "synthetic_any_positive_union",
+  "source_target_columns": [
+   "label_long_reversal",
+   "label_long_continuation_pullback",
+   "label_long_breakout"
+  ],
+  "setup_families_covered": [
+   "OTE reversal (long)",
+   "OTE continuation pullback (long)",
+   "OTE breakout (long)"
+  ],
+  "positive_label_rule": "rowwise_any_component_positive",
+  "negative_label_rule": "not_positive AND any_component_safe_negative_without_component_exclude",
+  "sample_weight_rule": "rowwise_max_component_sample_weight",
+  "note": "Needed for route binding: the union target is positive when any long component family is positive."
+ },
+ "scope": {
+  "pooled_union_model": true,
+  "role": "diagnostic",
+  "research_scope_only": true,
+  "note": "Selection v0: pooled/union outputs are not promotion candidates; retained as EURUSD-only diagnostic comparison to reversal/meta.",
+  "collection_eligible": false,
+  "promotion_eligible": false
+ },
+ "advisory_only": {
+  "note": "Historical quality metrics; not a gate and not used for any selection",
+  "oof_summary": {
+   "dev_rows": 460588,
+   "oof_rows": 250000,
+   "missing_oof_rows": 210588,
+   "covered_folds": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "raw_average_precision": 0.42923799605509777,
+   "calibrated_average_precision": 0.4292379960550977
+  },
+  "threshold_metrics": {
+   "event_precision": 0.7024647887323944,
+   "event_recall": 0.2189300411522634,
+   "event_f1": 0.33382137628111275,
+   "event_fbeta_0_5": 0.48723897911832953,
+   "predicted_events": 1136.0,
+   "true_events": 3645.0,
+   "matched_events": 798.0,
+   "predicted_to_true_event_ratio": 0.31165980795610426,
+   "event_count_gap_ratio": 0.6883401920438957,
+   "turnover_excess_ratio": 0.0,
+   "threshold_score": 0.6163744648867684
+  },
+  "test_metrics": {
+   "average_precision": 0.46145518029727123,
+   "roc_auc": 0.9247761496817671,
+   "brier": 0.03318987786769867,
+   "threshold": 0.59,
+   "event_precision": 0.7745098039215687,
+   "event_recall": 0.18824463860206514,
+   "event_f1": 0.30287539936102237,
+   "event_fbeta_0_5": 0.47724526782118404,
+   "predicted_events": 306.0,
+   "true_events": 1259.0,
+   "matched_events": 237.0,
+   "predicted_to_true_event_ratio": 0.24305003971405878,
+   "event_count_gap_ratio": 0.7569499602859412
+  }
+ },
+ "legacy_bundles_unchanged_vs_progress_file": {
+  "5": {
+   "bundle": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+   "files": 12,
+   "tree_sha256": "67451c8573533221bd608726aa0ca45b740f776196f9b9eddd758280a83f1769",
+   "unchanged": true
+  },
+  "23": {
+   "bundle": "models/live/long_union_tcn",
+   "files": 14,
+   "tree_sha256": "6c39458797d3045b8561983704aed97581aab2e93cf79bb665ef887d6f0fc2e4",
+   "unchanged": true
+  },
+  "14": {
+   "bundle": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+   "files": 12,
+   "tree_sha256": "734de76ecec1965242ffc8ac3abb089d457bd4ff71d9b731221302a5dac7f55f",
+   "unchanged": true
+  },
+  "18": {
+   "bundle": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+   "files": 13,
+   "tree_sha256": "74282285772b431c4feead607c908dfda49129c4f86fffbad3dc8a2b85c9ac69",
+   "unchanged": true
+  }
+ },
+ "pinned": {
+  "selection_v0_sha256": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+  "training_manifest_sha256": "de5cd8cc4385879ec664c88242cfc97da15e41eb184067f8550f632aa74055fe",
+  "prepared_manifest_sha256": "3a937c7197343a548a0cdd63cc4e34da2cf135e44f41cc262fc8ba434e5816f1"
+ }
+}

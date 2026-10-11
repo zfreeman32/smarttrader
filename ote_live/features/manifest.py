@@ -134,6 +134,7 @@ class AbstainPolicy(ManifestModel):
 
 
 class PolicyCostAssumptions(ManifestModel):
+    session_spread_ticks: dict[str, float] | None = Field(default=None, exclude_if=lambda value: value is None)
     fixed_slippage_pips_per_trade: float | None = None
     commission_pips_per_trade: float | None = None
     session_spread_pips: dict[str, float] = Field(default_factory=dict)
@@ -156,6 +157,7 @@ class PolicyLineage(ManifestModel):
 
 
 class LivePolicy(ManifestModel):
+    expected_move_contract: Literal["es_abs_close_move_20x5m_v1"] | None = Field(default=None, exclude_if=lambda value: value is None)
     schema_version: str = "1.0.0"
     model_id: str
     direction: Literal["long", "short"]

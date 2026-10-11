@@ -1,0 +1,18 @@
+{
+  "scope": "Offline B2 retraining only; B1 evaluation and baseline eligibility remain pending",
+  "geometry_adjustments": {
+    "10": {
+      "saved": {"cv_val_rows": 300},
+      "effective": {"cv_val_rows": 400},
+      "reason": "Corrected FRVP long reversal labels leave 88 positives in the second 300-row validation fold, below the preserved minimum of 100. Use 400-row validation blocks with the saved 300-row step; all nine window choices pass with three folds. No metric or test outcome was used to choose this adjustment."
+    },
+    "19": {
+      "saved": {"cv_initial_train_rows": 320},
+      "effective": {"cv_initial_train_rows": 352},
+      "reason": "ICT sweep-reclaim has only 79 training positives after context at window 24, below the preserved minimum of 80. Expand initial training by 32 rows, preserving the 320-row selection prefix, 96-row validation/step, all five window choices and 24 folds. No metric or test outcome was used to choose this adjustment."
+    }
+  },
+  "unchanged": ["random_seed", "n_trials", "search_space", "positive_event_minimums", "minimum_gaps", "final_refit", "calibration_policy", "test_period", "sample_weights"],
+  "frvp_long_reversal_recency": {"half_life_days": 730, "floor": 0.20, "weighted_splits": ["train", "val"], "test_weights_unchanged": true},
+  "restrictions": ["FRVP short continuation remains research-only", "All pooled models remain diagnostic-only", "OTE short breakout remains shadow-only", "Nine missing-history bundles remain quarantined", "No live registry activation or qualified collection clearance"]
+}

@@ -17,6 +17,7 @@ from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
 from ote_live.features.manifest import LiveRuntimeManifest
 from ote_live.features.input_contract import INPUT_CONTRACT_VERSION, evaluate_model_input_contract
+from ote_live.features.raw_snapshots import RawFeatureCapture, capture_pre_fill
 from ote_live.features.runtime_state import FeatureRuntimeState, _row_from_bar
 from ote_live.features.strategy_adapter import StrategyFeatureAdapter
 from ote_live.features.warmup import (
@@ -345,6 +346,7 @@ class IncrementalFeatureEngine:
         strategy_timeout_seconds: float | None = None,
         feature_seed_offsets: dict[str, float] | None = None,
         extra_feature_names: Sequence[str] = (),
+        htf_bar_timestamp_semantics: str | None = None,
     ) -> None:
         self.manifests = tuple(manifests)
         self.plan = build_manifest_feature_plan(
@@ -358,6 +360,10 @@ class IncrementalFeatureEngine:
             transform_workers=transform_workers,
             strategy_timeout_seconds=strategy_timeout_seconds,
         )
+        # Section 4 prompt 5 (opt-in, s4-htf-semantics-v1): the frozen dataset config's HTF bar-timestamp semantics.
+        # None keeps the recipe default (htf_context: bar_open for ES, legacy_right_closed otherwise).
+        if htf_bar_timestamp_semantics is not None:
+            self.config.htf_bar_timestamp_semantics = str(htf_bar_timestamp_semantics)
         if _manifests_preserve_numeric_nans(self.manifests):
             self.config.fillna_numeric = False
         # Inspect raw missingness before applying the frozen zero-imputation
@@ -382,6 +388,30 @@ class IncrementalFeatureEngine:
         self.last_build_metadata: dict[str, object] = {}
         self.last_build_timings_seconds: dict[str, float] = {}
         self.last_build_from_cache = False
+        # Section 4 R1: raw pre-fill capture of the selected-feature tail; 0 = disabled.
+        self.raw_capture_rows = 0
+        self.last_raw_capture: RawFeatureCapture | None = None
+
+    @property
+    def fill_mode(self) -> str:
+        if self._fillna_after_input_contract:
+            return "ffill_zero_after_input_contract"
+        return "ffill_zero_in_builder" if self.config.fillna_numeric else "nan_preserved"
+
+    def enable_raw_capture(self, rows: int) -> None:
+        """Copy the last ``rows`` selected-feature rows before numeric fill on every build."""
+        with self._cache_lock:
+            self.raw_capture_rows = max(0, int(rows))
+            self.last_raw_capture = None
+            self._invalidate_cache()
+
+    def _capture_pre_fill(self, working: pd.DataFrame, producers: dict[str, str]) -> None:
+        self.last_raw_capture = capture_pre_fill(
+            working,
+            producers,
+            self.plan.selected_feature_names,
+            self.raw_capture_rows,
+        )
 
     def ingest_bar(self, bar: MarketBar) -> None:
         with self._cache_lock:
@@ -429,7 +459,11 @@ class IncrementalFeatureEngine:
                     return cached
                 return cached.loc[:, list(self.plan.selected_feature_names)].copy()
 
-            built_frame, metadata = self.builder.build(bounded)
+            if self.raw_capture_rows > 0:
+                self.last_raw_capture = None
+                built_frame, metadata = self.builder.build(bounded, pre_fill_observer=self._capture_pre_fill)
+            else:
+                built_frame, metadata = self.builder.build(bounded)
             self._feature_build_count += 1
             self.last_build_from_cache = False
             self.last_build_metadata = dict(metadata)
@@ -875,10 +909,10 @@ def _materialize_live_default_features(
     *,
     requested_feature_names: Sequence[str],
 ) -> pd.DataFrame:
-    """Preserve legacy diagnostic imputation, never evidence of a valid input.
+    """Expose missing legacy label helpers without inventing live observations.
 
-    Missing HTF confluence producers are recorded by the per-model input
-    contract and prevent qualification even though legacy scores use zero.
+    The input contract quarantines consumers before diagnostic imputation.
+    New prepared datasets exclude these target-derived helper predictors.
     """
 
     missing_default_names = [
@@ -892,7 +926,7 @@ def _materialize_live_default_features(
 
     materialized = built_frame.copy()
     for feature_name in missing_default_names:
-        materialized[feature_name] = np.zeros(len(materialized), dtype=np.int8)
+        materialized[feature_name] = np.full(len(materialized), np.nan)
     return materialized
 
 

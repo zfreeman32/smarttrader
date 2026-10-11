@@ -21,6 +21,9 @@ from model_testing.evaluation_costs import (
     resolve_evaluation_cost_config,
 )
 from model_testing.ote_abstain_policy import HardAbstainConfig, apply_abstain_policy
+from model_testing.outcome_compatibility import (
+    require_legacy_opt_in, legacy_snapshot, annotate_legacy, save_legacy_snapshot,
+)
 from model_testing.policy_selection import select_policy_variant
 from model_testing.ote_prediction_joiner import load_source_frame
 from model_testing.ote_regime_slices import resolve_probability_column
@@ -64,9 +67,15 @@ def run_threshold_policy_search(
     write_registry_policies: bool = False,
     evaluation_contract_mode: str = PROMOTION_QUALITY_MODE,
     promotion_min_trades_per_week_floor: float = DEFAULT_PROMOTION_MIN_TRADES_PER_WEEK_FLOOR,
+    legacy_outcomes: bool = False,
 ) -> Dict[str, object]:
+    require_legacy_opt_in(legacy_outcomes)
+    if write_registry_policies:
+        raise ValueError("Legacy outcome research cannot update deployed registry policies under B1")
     regime_report_root = Path(regime_report_root)
     output_root = Path(output_root)
+    if (output_root / "run_summary.json").exists():
+        raise FileExistsError("Saved evaluations are immutable; use a new output root")
     output_root.mkdir(parents=True, exist_ok=True)
     cost_config = resolve_evaluation_cost_config(
         instrument,
@@ -81,6 +90,8 @@ def run_threshold_policy_search(
     )
 
     registry = load_ote_model_registry(registry_path)
+    evaluation_contract["promotion_quality_disqualifiers"].append("legacy_outcome_contract_not_b1")
+    evaluation_contract["promotion_quality_gate_eligible"] = False
     models = _resolve_models(
         registry,
         model_ids=model_ids,
@@ -181,6 +192,10 @@ def run_threshold_policy_search(
 
         model_output_dir = output_root / model.model_id
         model_output_dir.mkdir(parents=True, exist_ok=True)
+        outcome_snapshot = legacy_snapshot(config, direction=model.direction, training_summary=training_summary)
+        save_legacy_snapshot(model_output_dir, outcome_snapshot, artifact_dir=model.resolve_artifact_path())
+        policy_table = annotate_legacy(policy_table, outcome_snapshot)
+        evaluation = annotate_legacy(evaluation, outcome_snapshot)
         policy_table_path = model_output_dir / "policy_table.csv"
         evaluation_path = model_output_dir / "policy_evaluation.csv"
         policy_table.to_csv(policy_table_path, index=False)
@@ -205,6 +220,8 @@ def run_threshold_policy_search(
             )
             oof_decisions_path = model_output_dir / "oof_policy_decisions.csv"
             test_decisions_path = model_output_dir / "test_policy_decisions.csv"
+            oof_decisions = annotate_legacy(oof_decisions, outcome_snapshot)
+            test_decisions = annotate_legacy(test_decisions, outcome_snapshot)
             oof_decisions.to_csv(oof_decisions_path, index=False)
             test_decisions.to_csv(test_decisions_path, index=False)
             decision_outputs = {
@@ -238,6 +255,7 @@ def run_threshold_policy_search(
         model_outputs.append(
             {
                 "model_id": model.model_id,
+                "outcome_contract": outcome_snapshot,
                 "policy_table_path": str(policy_table_path),
                 "policy_evaluation_path": str(evaluation_path),
                 "global_threshold": float(global_result["threshold"]),
@@ -295,6 +313,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Search composite-regime thresholds and evaluate abstain-aware policy variants."
     )
+    parser.add_argument("--legacy-outcomes", action="store_true",
+                        help="Explicit pre-B1 reproduction; cannot qualify or update a B1 baseline")
     parser.add_argument(
         "--regime-report-root",
         type=Path,
@@ -403,6 +423,7 @@ def main() -> None:
         output_root = REPO_ROOT / "model_testing" / "reports" / "ote_threshold_policies" / timestamp
 
     summary = run_threshold_policy_search(
+        legacy_outcomes=args.legacy_outcomes,
         regime_report_root=args.regime_report_root,
         output_root=output_root,
         registry_path=args.registry_path,

@@ -133,6 +133,7 @@ def fallback_feature_columns(df: pd.DataFrame) -> List[str]:
         "bars_since_1h_swing_",
         "bars_since_30m_swing_",
         "concurrency_",
+        "htf_confluence_",
     )
     excluded_columns = {
         "datetime",
@@ -259,17 +260,15 @@ def resolve_feature_columns(
             if column in df.columns and column not in features:
                 features.append(column)
 
-    if target_specs is not None:
-        for column in resolve_target_context_feature_columns(df, target_specs):
-            if column not in features:
-                features.append(column)
-
-    return list(dict.fromkeys(features))
+    # Labeler annotations can depend on future confirmation/outcomes. They
+    # are target diagnostics, even when old metadata lists them as predictors.
+    return list(dict.fromkeys(c for c in features if not c.startswith("htf_confluence_")))
 
 
 def encode_candidate_features(
     df: pd.DataFrame,
     feature_columns: Iterable[str],
+    fit_positions: Optional[np.ndarray] = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     available_columns = [column for column in feature_columns if column in df.columns]
     encoded = df.loc[:, available_columns].copy(deep=False)
@@ -288,6 +287,13 @@ def encode_candidate_features(
             continue
 
         cleaned = series.fillna("__missing__").astype(str).str.strip()
+        if fit_positions is not None:
+            classes = sorted(cleaned.iloc[fit_positions].unique())
+            mapping = {value: code for code, value in enumerate(classes)}
+            encoded[column] = cleaned.map(mapping).fillna(-1).astype(np.int32)
+            encoders[column] = mapping
+            encoded_columns.append(column)
+            continue
         if cleaned.nunique(dropna=False) <= 1:
             encoded[column] = pd.Series(0, index=df.index, dtype=np.int8, name=column)
             continue

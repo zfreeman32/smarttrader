@@ -1,0 +1,84 @@
+{
+ "probe": "section4-d8-effect-v1",
+ "asset": "ES",
+ "queue_ids": [
+  12,
+  13,
+  14,
+  15,
+  16,
+  18,
+  19
+ ],
+ "rows": 6152,
+ "first": "2026-07-29T01:00:00+00:00",
+ "last": "2026-09-22T04:50:00+00:00",
+ "is_complete_counts": {
+  "nan": 4413,
+  "1.0": 1739
+ },
+ "selected_features": 300,
+ "changed_feature_count": 25,
+ "changed_feature_prefixes": [
+  "htf_1h",
+  "htf_30m",
+  "htf_alignment",
+  "interaction_bear",
+  "interaction_bull",
+  "interaction_compression",
+  "interaction_htf",
+  "interaction_lowvol"
+ ],
+ "changed_cells": 33263,
+ "top_changed": [
+  [
+   "htf_30m_ema_alignment",
+   1734
+  ],
+  [
+   "interaction_htf_trend_momentum",
+   1728
+  ],
+  [
+   "htf_alignment_score",
+   1728
+  ],
+  [
+   "htf_1h_ema_alignment",
+   1728
+  ],
+  [
+   "interaction_htf_trend_rsi",
+   1728
+  ],
+  [
+   "htf_30m_bars_since_swing_low_event",
+   1692
+  ],
+  [
+   "htf_30m_bars_since_swing_high_event",
+   1674
+  ],
+  [
+   "htf_30m_close_vs_ema_21_atr",
+   1656
+  ],
+  [
+   "htf_30m_ema_spread_8_21_atr",
+   1656
+  ],
+  [
+   "htf_30m_dist_to_swing_high_atr",
+   1656
+  ]
+ ],
+ "endpoint_nan_off": 27,
+ "endpoint_nan_on": 7,
+ "non_htf_changes": [
+  "interaction_bear_rejection_structure",
+  "interaction_bull_rejection_structure",
+  "interaction_compression_bear_reversion",
+  "interaction_compression_bull_reversion",
+  "interaction_lowvol_bear_reversion"
+ ]
+}

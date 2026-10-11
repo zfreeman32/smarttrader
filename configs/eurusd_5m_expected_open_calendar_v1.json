@@ -1,0 +1,26 @@
+{
+  "calendar_id": "eurusd_5m_feed_clock_week_v1",
+  "version": 1,
+  "declared_at": "2026-10-02",
+  "status": "provisional_research_calendar_user_authorized_20261002",
+  "instrument": "EURUSD",
+  "timeframe_minutes": 5,
+  "clock": "UTC, fixed all year: the canonical clock of the pinned B2 EURUSD source tape. No daylight-saving shift is applied.",
+  "weekly_open_utc": {"weekday": 6, "time": "21:00"},
+  "weekly_close_utc": {"weekday": 4, "time": "22:00"},
+  "weekday_convention": "Monday=0 ... Sunday=6",
+  "holiday_closures": [
+    {"name": "Christmas Day", "month": 12, "day": 25},
+    {"name": "New Year's Day", "month": 1, "day": 1}
+  ],
+  "holiday_rule": "No expected open from 22:00 UTC on the previous calendar day until 23:00 UTC on the holiday.",
+  "session_id_rule": "UTC date of (open + 3 hours), so the trading day rolls at 21:00 UTC; a Saturday result is assigned to Friday.",
+  "bars_outside_calendar": "A source bar outside the expected opens is excluded from the evaluation tape and counted; it never extends the calendar.",
+  "basis": "Rule-based standard spot-FX week (Sunday evening to Friday evening New York, closed Christmas Day and New Year's Day), expressed on the feed's fixed UTC clock. The weekly open/close hours were set to the feed's observed regular hours; no individual closure or gap was inferred from bars.",
+  "limitations": [
+    "The feed clock is fixed in UTC, so the open and close do not follow the 17:00 New York convention across daylight-saving changes.",
+    "Holiday early closes (for example 24 and 31 December afternoons) are not modelled; missing bars there are data gaps, not closures.",
+    "Provisional: authorized by the user on 2026-10-02 for the section 3 smoke replay. Replace with a new version, never edit."
+  ],
+  "authority": {"scored_collection": false, "paper": false, "alerts": false, "broker_orders": false}
+}

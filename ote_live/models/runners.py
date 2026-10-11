@@ -92,6 +92,8 @@ class RuntimeModelRunner:
         frame = pd.DataFrame(
             [{feature: snapshot.feature_values.get(feature) for feature in self.loaded_model.selected_feature_names} for snapshot in snapshots]
         )
+        if getattr(self.loaded_model.scaler, "history_contract", None):
+            frame["source_row_idx"] = [snapshot.source_row_idx for snapshot in snapshots]
         return self.predict_latest(
             frame,
             timestamp=latest.timestamp,
@@ -144,6 +146,16 @@ class RuntimeModelRunner:
         raise ValueError(f"Unsupported runtime backend {self.loaded_model.backend!r}.")
 
     def _coerce_ordered_feature_frame(self, feature_frame: pd.DataFrame) -> pd.DataFrame:
+        if getattr(self.loaded_model.scaler, "history_contract", None):
+            count = self.loaded_model.context_rows + 1
+            # Runtime callers must pass consecutive source-bar history, never a
+            # filtered collection of setup/label observations. The live engine's
+            # ordered feature frame preserves its original integer row index.
+            identities = (feature_frame["source_row_idx"] if "source_row_idx" in feature_frame
+                          else pd.Series(feature_frame.index, index=feature_frame.index))
+            ids = pd.to_numeric(identities.tail(count), errors="coerce").to_numpy(dtype=float)
+            if len(ids) < count or not np.isfinite(ids).all() or not np.equal(ids, np.floor(ids)).all() or not np.all(np.diff(ids) == 1):
+                raise ValueError("Source-history model requires consecutive source-bar row identities")
         feature_names = list(self.loaded_model.selected_feature_names)
         missing = [feature_name for feature_name in feature_names if feature_name not in feature_frame.columns]
         if missing:

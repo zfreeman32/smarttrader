@@ -23,6 +23,8 @@ param(
     [string[]]$ModelRoots = @(),
     [string[]]$ModelIds = @(),
     [string]$TargetedFilterPreset = "",
+    [switch]$LegacyOutcomes,
+    [string]$OutcomeInputManifest = "",
     [switch]$RebuildRegistry,
     [switch]$SkipRegime,
     [switch]$SkipThreshold,
@@ -31,6 +33,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($OutcomeInputManifest) -and -not $LegacyOutcomes -and (-not $SkipThreshold -or -not $SkipBacktest)) {
+    throw "B1 requires causal outcome inputs via scripts/run_outcome_evaluation.py. Use -LegacyOutcomes only for explicit historical reproduction with new output roots."
+}
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $venvPython = Join-Path $repoRoot "ote_venv\Scripts\python.exe"
@@ -53,6 +58,13 @@ if ([string]::IsNullOrWhiteSpace($ThresholdOutputRoot)) {
 }
 if ([string]::IsNullOrWhiteSpace($BacktestOutputRoot)) {
     $BacktestOutputRoot = "model_testing\reports\ict_backtests\ict_es_primary_$runStamp"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($OutcomeInputManifest)) {
+    if ($LegacyOutcomes) { throw "B1 inputs and legacy replay are mutually exclusive." }
+    & $PythonExe (Join-Path $repoRoot "scripts/run_outcome_evaluation.py") --input-manifest $OutcomeInputManifest --output-dir $BacktestOutputRoot
+    if ($LASTEXITCODE -ne 0) { throw "B1 outcome evaluation failed." }
+    return
 }
 
 if (-not $PSBoundParameters.ContainsKey("MinTradesPerWeek")) {
@@ -300,6 +312,10 @@ $thresholdArgs = @(
     "--write-policy-decisions"
 )
 
+if ($LegacyOutcomes) {
+    $thresholdArgs += @("--legacy-outcomes")
+}
+
 if ($ModelIds.Count -gt 0) {
     foreach ($modelId in $ModelIds) {
         $regimeArgs += @("--model-id", $modelId)
@@ -358,6 +374,10 @@ try {
             "--minimum-sharpe", "$MinimumSharpe",
             "--minimum-dsr", "$MinimumDsr"
         )
+
+        if ($LegacyOutcomes) {
+            $backtestArgs += @("--legacy-outcomes")
+        }
 
         if ($BacktestMaxTrainYears -gt 0) {
             $backtestArgs += @("--max-train-years", "$BacktestMaxTrainYears")

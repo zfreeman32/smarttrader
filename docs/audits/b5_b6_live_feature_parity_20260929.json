@@ -1,0 +1,593 @@
+{
+  "evidence_version": "b5-b6-live-feature-parity-v1",
+  "status": "b5_b6_live_feature_parity_audit_complete",
+  "generated_at_utc": "2026-09-29T23:47:33.364001+00:00",
+  "snapshot_db": "research/es_live_audit_20260911/es_audit_snapshot.sqlite3",
+  "snapshot_cutoff": "2026-09-12T02:02:03.011561+00:00",
+  "actual_app_path": [
+    "ote_live.ingestion.signals.LiveSignalProcessor.prepare_ingested_bar_snapshot",
+    "ote_live.features.incremental_engine.IncrementalFeatureEngine.build_feature_frame",
+    "ote_live.models.runners.RuntimeModelRunner.predict_latest"
+  ],
+  "candidate_count": 6,
+  "parity_pass_count": 0,
+  "promotion_pass_count": 0,
+  "collection_eligible": false,
+  "b5": {
+    "status": "preserved_evidence_only",
+    "requires_full_parity": true
+  },
+  "b6": {
+    "status": "preserved_evidence_only",
+    "requires_clean_evaluation_boundary": true
+  },
+  "a13_rehearsal": {
+    "status": "ready_for_rehearsal_after_eligible_research_collection",
+    "future_c1_outcomes_required_before_collection": false,
+    "prospective_c1_rule": "first healthy post-B7 collection timestamp under a new immutable candidate/runtime identity"
+  },
+  "models": [
+    {
+      "queue_id": 1,
+      "model_id": "frvp_short_continuation_tcn_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/frvp_es_paper_signal_20260816/frvp_short_continuation_tcn_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "dfa815415e6d44b74529311e8d89517c0306874cf40a7727933c44b3dc31c7a0",
+        "artifact_dir": "models/b2_candidate_history_20260928_v1/01_short_frvp_continuation/short_frvp_continuation",
+        "source_history": "artifacts/b2_candidate_history_20260928_v1/1/prepared/short_frvp_continuation/source_history.parquet",
+        "source_history_sha256": "3504fd064b89a4eecaac763687f63689c957e5b16978d7c6b2beb9c1181abe16",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 96,
+        "selected_feature_names_sha256": "d73bddfdb16776a7d8ff26cb9aec2944069df5c81e52021ae9a761b7a60120a7",
+        "context_rows": 23,
+        "window_size": 24,
+        "lag_steps": [],
+        "threshold": 0.5599999999999999
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 2159,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 2159,
+        "completion_unknown": 2159,
+        "incomplete_bars": 0,
+        "availability_unknown": 2159,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 23,
+        "unresolved_gap_observations": 182,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "frvp_short_continuation_tcn_v1",
+        "candidate_model_id": "frvp_short_continuation_tcn_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "frvp_short_continuation_tcn_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_candidate_history_review_01_20260928.json",
+        "test_endpoints": 1053,
+        "runner_replay_endpoints": 1053,
+        "runner_errors": [],
+        "frozen_history_contract_present": true,
+        "score_mismatches": 0,
+        "max_abs_score_delta": 1.222105407983065e-07,
+        "threshold": 0.5599999999999999,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": true,
+        "scaler_fit_scope_verified": true,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    },
+    {
+      "queue_id": 2,
+      "model_id": "frvp_long_continuation_xgb_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/frvp_es_paper_signal_20260816/frvp_long_continuation_xgb_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "a794761a13f29af33d9c57c09504be1d16bedc5425c274a0ac09278638b158ed",
+        "artifact_dir": "models/b2_candidate_history_20260928_v1/02_long_frvp_continuation/long_frvp_continuation",
+        "source_history": "artifacts/b2_candidate_history_20260928_v1/2/prepared/long_frvp_continuation/source_history.parquet",
+        "source_history_sha256": "921009b17e1a65d1adf7be2b8724c7ee2027df63db2d9ceb30ff2bc5ffcfdec8",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 160,
+        "selected_feature_names_sha256": "84220ada92087a79ca15c966335a37c6c8ebe4046a308fcf0230952e44d7f7a2",
+        "context_rows": 39,
+        "window_size": 40,
+        "lag_steps": [
+          0,
+          1,
+          3,
+          12,
+          39
+        ],
+        "threshold": 0.62
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 2160,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 2160,
+        "completion_unknown": 2160,
+        "incomplete_bars": 0,
+        "availability_unknown": 2160,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 39,
+        "unresolved_gap_observations": 314,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "frvp_long_continuation_xgb_v1",
+        "candidate_model_id": "frvp_long_continuation_xgb_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "frvp_long_continuation_xgb_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_candidate_history_review_02_20260928.json",
+        "test_endpoints": 982,
+        "runner_replay_endpoints": 982,
+        "runner_errors": [],
+        "frozen_history_contract_present": true,
+        "score_mismatches": 0,
+        "max_abs_score_delta": 8.854293820359516e-08,
+        "threshold": 0.62,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": true,
+        "scaler_fit_scope_verified": true,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    },
+    {
+      "queue_id": 6,
+      "model_id": "frvp_long_continuation_setup3_xgb_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/frvp_long_continuation_setup3_xgb_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "4f11ae40471ef4af751400740d6a5c78a68b140e1770101e67bec097891635dc",
+        "artifact_dir": "models/b2_source_history_20260927_v1/06_long_frvp_continuation_setup3/long_frvp_continuation_setup3",
+        "source_history": "artifacts/b2_source_history_20260927_v1/prepared/long_frvp_continuation_setup3/source_history.parquet",
+        "source_history_sha256": "d5dd0d5c98c247d8b4c3c71fe937c37979299c05c0a6a6a9bca0017977cd904c",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 160,
+        "selected_feature_names_sha256": "aa654eb09bd6e612a7bc090a20270c1238e18096aad6ca16e9a47e8dea8f2444",
+        "context_rows": 7,
+        "window_size": 8,
+        "lag_steps": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7
+        ],
+        "threshold": 0.6499999999999999
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 1409,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 1409,
+        "completion_unknown": 1409,
+        "incomplete_bars": 0,
+        "availability_unknown": 1409,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 7,
+        "unresolved_gap_observations": 28,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "candidate_model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "frvp_long_continuation_setup3_xgb_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_s3_source_history_model_review_20260927.json",
+        "test_endpoints": 301,
+        "runner_replay_endpoints": 301,
+        "runner_errors": [],
+        "frozen_history_contract_present": false,
+        "score_mismatches": null,
+        "max_abs_score_delta": 8.840332033077658e-08,
+        "threshold": 0.6499999999999999,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": false,
+        "scaler_fit_scope_verified": null,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    },
+    {
+      "queue_id": 7,
+      "model_id": "frvp_long_continuation_setup5_xgb_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/frvp_es_setup_family_20260829/frvp_long_continuation_setup5_xgb_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "b80d1496edd57c90d41bcfc967cfcf3f1f1f163d226cc05c1980b6c4bb8a1a3c",
+        "artifact_dir": "models/b2_candidate_history_20260928_v1/07_long_frvp_continuation_setup5/long_frvp_continuation_setup5",
+        "source_history": "artifacts/b2_candidate_history_20260928_v1/7/prepared/long_frvp_continuation_setup5/source_history.parquet",
+        "source_history_sha256": "b32df260d50bf80a753a04568f781f2d150f3ef26e30e4cc5adb46c6ea53a7a7",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 160,
+        "selected_feature_names_sha256": "4a2560a4b455798932d3c3de9fd16b228059ab61fb0044b3620bec4844cf01e5",
+        "context_rows": 27,
+        "window_size": 28,
+        "lag_steps": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          9,
+          16,
+          27
+        ],
+        "threshold": 0.62
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 1409,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 1409,
+        "completion_unknown": 1409,
+        "incomplete_bars": 0,
+        "availability_unknown": 1409,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 27,
+        "unresolved_gap_observations": 108,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "candidate_model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "frvp_long_continuation_setup5_xgb_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_candidate_history_review_07_20260928.json",
+        "test_endpoints": 492,
+        "runner_replay_endpoints": 492,
+        "runner_errors": [],
+        "frozen_history_contract_present": true,
+        "score_mismatches": 0,
+        "max_abs_score_delta": 8.815002439099828e-08,
+        "threshold": 0.62,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": true,
+        "scaler_fit_scope_verified": true,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    },
+    {
+      "queue_id": 11,
+      "model_id": "ict_long_continuation_xgb_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/ict_es_paper_signal_20260813/ict_long_continuation_xgb_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "f86a356261061589498d5bde1790b3d4fdba45650cac36245c17b278a95f80e6",
+        "artifact_dir": "models/b2_candidate_history_20260928_v1/11_long_ict_continuation/long_ict_continuation",
+        "source_history": "artifacts/b2_candidate_history_20260928_v1/11/prepared/long_ict_continuation/source_history.parquet",
+        "source_history_sha256": "3629d50668580f0b61844b81509ae20338fdc2512a014f8558472c045027664a",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 96,
+        "selected_feature_names_sha256": "e140dabfeebf11822da7fadd82293cd1a883084c46e4c8d5486e13d06a73244b",
+        "context_rows": 23,
+        "window_size": 24,
+        "lag_steps": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          8,
+          14,
+          23
+        ],
+        "threshold": 0.5599999999999999
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 2076,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 2076,
+        "completion_unknown": 2076,
+        "incomplete_bars": 0,
+        "availability_unknown": 2076,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 23,
+        "unresolved_gap_observations": 169,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "ict_long_continuation_xgb_v1",
+        "candidate_model_id": "ict_long_continuation_xgb_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "ict_long_continuation_xgb_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_candidate_history_review_11_20260928.json",
+        "test_endpoints": 241,
+        "runner_replay_endpoints": 241,
+        "runner_errors": [],
+        "frozen_history_contract_present": true,
+        "score_mismatches": 0,
+        "max_abs_score_delta": 8.91334533958954e-08,
+        "threshold": 0.5599999999999999,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": true,
+        "scaler_fit_scope_verified": true,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    },
+    {
+      "queue_id": 17,
+      "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+      "collection_status": "diagnostic_only",
+      "reasons": [
+        "completion_or_availability_not_proven",
+        "raw_selected_feature_snapshot_unavailable"
+      ],
+      "inputs": {
+        "app_manifest": "ote_live/runtime_manifests/ict_short_setup_family_20260811_audit/ict_short_continuation_premium_discount_continuation_xgb_v1/live_runtime_manifest.json",
+        "app_manifest_sha256": "90ec5cad8d963a3ae4f6d262184d2ee4e0c3850bfb1eb5dcc712514f8ac7d401",
+        "artifact_dir": "models/b2_candidate_history_20260928_v1/17_short_ict_continuation_premium_discount_continuation/short_ict_continuation_premium_discount_continuation",
+        "source_history": "artifacts/b2_candidate_history_20260928_v1/17/prepared/short_ict_continuation_premium_discount_continuation/source_history.parquet",
+        "source_history_sha256": "726514d236e2fd9a718fe134494aea8e5ced07fb4d3810c5a489fe3f6755a7b2",
+        "snapshot_db_sha256": "deferred_sha256_file_size_916025344"
+      },
+      "candidate_contract": {
+        "selected_feature_count": 96,
+        "selected_feature_names_sha256": "0fdb229c6ae64ea901588cb647e66c99ca6c5a32083fa3e2febcce56b68041bb",
+        "context_rows": 23,
+        "window_size": 24,
+        "lag_steps": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          8,
+          14,
+          23
+        ],
+        "threshold": 0.5299999999999999
+      },
+      "recorded_app_snapshot": {
+        "recorded_snapshots": 1409,
+        "missing_canonical_bars": 0,
+        "source_identity_mismatches": 0,
+        "source_identity_unknown": 1409,
+        "completion_unknown": 1409,
+        "incomplete_bars": 0,
+        "availability_unknown": 1409,
+        "insufficient_warmup_windows": 0,
+        "closure_gap_observations": 23,
+        "unresolved_gap_observations": 92,
+        "roll_transition_observations": 0,
+        "reasons": [
+          "bar_completion_not_proven_for_recorded_snapshot",
+          "bar_availability_timing_not_proven",
+          "unresolved_nonclosure_gaps_in_required_history"
+        ]
+      },
+      "recorded_source_feature_comparison": {
+        "status": "insufficient_evidence",
+        "semantics": "raw_selected_feature_values_are_not_persisted_in_the_recorded_app_snapshot; post-imputation values cannot certify raw producer parity",
+        "cells_compared": 0,
+        "cells_mismatched": null
+      },
+      "recorded_app_artifact_identity": {
+        "recorded_runtime_manifest_model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+        "candidate_model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+        "candidate_artifact_is_the_recorded_app_artifact": false,
+        "reason": "recorded snapshot references historical runtime artifacts; replacement bundle is staged only for diagnostic replay"
+      },
+      "candidate_runtime_load": {
+        "status": "passed",
+        "backend": "tcn",
+        "model_id": "ict_short_continuation_premium_discount_continuation_xgb_v1",
+        "source": "prior_versioned_B2_artifact_review; replacement runtime not reloaded in this evidence pass"
+      },
+      "frozen_scaling_and_score_replay": {
+        "status": "passed",
+        "replay_mode": "versioned_B2_runtime_replay_evidence_reused",
+        "evidence_file": "docs/audits/b2_candidate_history_review_17_20260928.json",
+        "test_endpoints": 185,
+        "runner_replay_endpoints": 185,
+        "runner_errors": [],
+        "frozen_history_contract_present": true,
+        "score_mismatches": 0,
+        "max_abs_score_delta": 8.642730708885438e-08,
+        "threshold": 0.5299999999999999,
+        "threshold_decision_mismatches": 0,
+        "frozen_imputation_verified": true,
+        "scaler_fit_scope_verified": true,
+        "source": "prior_versioned_B2_artifact_review; no new fit or promotion inference"
+      },
+      "actual_app_path_replay": {
+        "status": "not_run_resource_bounded",
+        "full_raw_parity_status": "insufficient_evidence_actual_producer_replay_not_completed",
+        "scope": "recorded_snapshot_and_runtime_contract_review_only",
+        "raw_recorded_snapshot_available": false,
+        "raw_recorded_snapshot_status": "insufficient_evidence_recorded_snapshots_store_post_imputation_feature_values_only",
+        "reason": "full IncrementalFeatureEngine rebuild exceeded safe diagnostic resource bound; no pass inferred"
+      },
+      "parity_pass": false,
+      "promotion_pass": false
+    }
+  ]
+}

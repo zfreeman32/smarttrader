@@ -1,0 +1,155 @@
+{
+  "status": "catchup_supplementary_review_passed",
+  "model_id": 18,
+  "recorded_on": "2026-10-01",
+  "runner_review": "docs/audits/b2_catchup_18_review_20261001.json",
+  "runner_review_sha256": "88443ad07c4ff2d034652e63fb10f8a9262d5f1392a327fa4e528d55a887649e",
+  "runner_review_status": "candidate_history_artifact_review_passed",
+  "checks": {
+    "trials_total_equals_budget": true,
+    "no_failed_trials": true,
+    "best_trial_is_max_complete": true,
+    "runner_review_passed": true,
+    "decisions_equal": true,
+    "saved_decisions_match_threshold": true,
+    "legacy_unchanged": true,
+    "pinned_inputs_unchanged": true,
+    "selected_features_96": true,
+    "calibration_resolved_platt": true,
+    "holdout_gap_ok": true,
+    "training_manifest_sha_matches_review": true
+  },
+  "trial_counts": {
+    "budget": 16,
+    "total": 16,
+    "complete": 5,
+    "pruned": 11,
+    "failed": 0
+  },
+  "study_best_trial": 1,
+  "study_best_value": 0.5304719968105652,
+  "selected_features": 96,
+  "window_size": 16,
+  "context_rows": 15,
+  "resolved_purge_bars": 36,
+  "cv_folds": 21,
+  "final_holdout": {
+    "fit_end": 2088,
+    "val_start": 2124,
+    "val_end": 2498,
+    "context_rows": 15,
+    "purge_rows": 36,
+    "required_source_gap": 36,
+    "source_gap": 7736,
+    "scaler_fit_rows": 2088,
+    "checkpoint_selection_rows": 374
+  },
+  "calibration": {
+    "requested_method": "platt",
+    "resolved_method": "platt",
+    "disabled_for_continuation_target": false
+  },
+  "gaps": {
+    "raw_bar_gap": 36,
+    "retained_row_gap": 4
+  },
+  "environment_omp_num_threads": null,
+  "history_driven_threshold_disagreements": 0,
+  "history_driven_threshold_disagreements_note": "Production-runner replay over the consecutive source tape reproduced every saved test decision (runner review threshold_decisions_equal)",
+  "test_rows": 440,
+  "test_signals": 235,
+  "advisory_only": {
+    "note": "Historical quality metrics; not a gate and not used for any selection",
+    "oof_summary": {
+      "dev_rows": 2498,
+      "oof_rows": 2048,
+      "missing_oof_rows": 450,
+      "covered_folds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "raw_average_precision": 0.37200706377424764,
+      "calibrated_average_precision": 0.3720050382456966
+    },
+    "threshold_metrics": {
+      "event_precision": 0.8012422360248447,
+      "event_recall": 0.6370370370370371,
+      "event_f1": 0.7097661623108666,
+      "event_fbeta_0_5": 0.7619610159480212,
+      "predicted_events": 322.0,
+      "true_events": 405.0,
+      "matched_events": 258.0,
+      "predicted_to_true_event_ratio": 0.7950617283950617,
+      "event_count_gap_ratio": 0.20493827160493827,
+      "turnover_excess_ratio": 0.0,
+      "threshold_score": 0.7796375649825917
+    },
+    "test_metrics": {
+      "average_precision": 0.4141107180833632,
+      "roc_auc": 0.5734031910063707,
+      "brier": 0.21904513239860535,
+      "threshold": 0.31999999999999995,
+      "event_precision": 0.7567567567567568,
+      "event_recall": 0.6746987951807228,
+      "event_f1": 0.7133757961783439,
+      "event_fbeta_0_5": 0.7387862796833774,
+      "predicted_events": 74.0,
+      "true_events": 83.0,
+      "matched_events": 56.0,
+      "predicted_to_true_event_ratio": 0.891566265060241,
+      "event_count_gap_ratio": 0.10843373493975904
+    }
+  },
+  "legacy_bundles_unchanged_vs_progress_file": {
+    "5": {
+      "bundle": "models/frvp_long_continuation_setup2_xgb_20260829/long_frvp_continuation_setup2",
+      "files": 12,
+      "tree_sha256": "67451c8573533221bd608726aa0ca45b740f776196f9b9eddd758280a83f1769",
+      "unchanged": true
+    },
+    "23": {
+      "bundle": "models/live/long_union_tcn",
+      "files": 14,
+      "tree_sha256": "6c39458797d3045b8561983704aed97581aab2e93cf79bb665ef887d6f0fc2e4",
+      "unchanged": true
+    },
+    "14": {
+      "bundle": "models/ict_es_primary_xgb_bootstrap_20260726_full/short_ict_continuation",
+      "files": 12,
+      "tree_sha256": "734de76ecec1965242ffc8ac3abb089d457bd4ff71d9b731221302a5dac7f55f",
+      "unchanged": true
+    },
+    "18": {
+      "bundle": "models/ict_short_setup_family_xgb_20260811_audit/short_ict_reversal_ifvg_reversal",
+      "files": 13,
+      "tree_sha256": "74282285772b431c4feead607c908dfda49129c4f86fffbad3dc8a2b85c9ac69",
+      "unchanged": true
+    }
+  },
+  "pinned_inputs_sha256": {
+    "configs/broad_full_session_shadow_selection_v0.json": "2f6827805c097a299f73b1d1f7c630a3099a3d5a887f3600aac08eeb0fafea4e",
+    "configs/broad_full_session_shadow_route_bindings_v1.json": "d53af7931605e625842f350a6719465f161be7c8a356c5e166587e40e53b1868",
+    "docs/audits/b2_candidate_history_catchup_es_20261001.json": "6aa97117a7435963a66b5a31387f85080ad39dbe21a280822c1ae29150163c43",
+    "docs/audits/b2_queue_preflight_20260924.json": "61e35370f4e41683ab6cc662e6cb16d2ec2bb38d8207dc3a78a3d1218402c72d"
+  },
+  "collection_eligible": false
+}

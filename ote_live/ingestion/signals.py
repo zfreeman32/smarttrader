@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
@@ -17,15 +17,16 @@ from ote_live.alerts.sms import LiveSignalSmsSender, SmsDispatchResult
 from ote_live.contracts.feature_snapshot import FeatureSnapshot
 from ote_live.contracts.market_data import MarketBar
 from ote_live.contracts.signal import SignalDecision
-from ote_live.ingestion.base import utc_now
+from ote_live.ingestion.base import ensure_utc, utc_now
 from ote_live.ingestion.provenance import assess_shadow_bar_eligibility
 from ote_live.storage.collection import collection_identity, register_collection
 from ote_live.storage.setup_events import SetupEventRepository
 from ote_live.ingestion.setup_revisions import (
-    initialize_setup_revision_cursor, mark_setup_evaluated, reconcile_setup_revisions,
+    _refresh_live_state, initialize_setup_revision_cursor, mark_setup_evaluated, reconcile_setup_revisions,
 )
 from ote_live.dashboard.view_state import persist_frvp_dashboard_state, persist_ict_dashboard_state
 from ote_live.models.ict_research import ict_research_priority
+from ote_live.features.raw_snapshots import RawSnapshotRecorder, consumed_rows
 from ote_live.features.incremental_engine import (
     FRVP_DASHBOARD_EXTRA_FEATURE_NAMES,
     ICT_DASHBOARD_EXTRA_FEATURE_NAMES,
@@ -38,6 +39,7 @@ from ote_live.models.setup_family import resolve_setup_family_gate
 from ote_live.models.runners import RuntimeModelRunner
 from ote_live.policies.decision_engine import LiveDecisionEngine
 from ote_live.policies.shadow import match_shadow_setups
+from ote_live.policies.expected_move import build_expected_move_frame
 from ote_live.storage.repositories import LiveAuditRepository
 from ote_live.storage.ict_paper_signal import (
     IctPaperSignalLedgerRepository,
@@ -113,6 +115,15 @@ class PreparedSignalSnapshot:
 
 
 class LiveSignalProcessor:
+    # Section 4 D8 (opt-in): carry canonical-row provenance onto fetched bars.
+    carry_bar_provenance = False
+    # Section 4 prompt 5 (opt-in, s4-history-refresh-v1): rebuild the retained feature history from the store when a
+    # bar at or behind the last processed timestamp is first observed or revised (backfill, late final version).
+    # The ES setup-revision reconciliation already does this for ES processors with FRVP/ICT models.
+    refresh_history_behind_cursor = False
+    _history_cursor_id: int | None = None
+    raw_snapshot_recorder: RawSnapshotRecorder | None = None
+
     def __init__(
         self,
         *,
@@ -130,8 +141,14 @@ class LiveSignalProcessor:
         frvp_paper_signal_authorization: object | None = None,
         enable_ict_paper_signal_ledger: bool = True,
         force_shadow_mode: bool = False,
+        carry_bar_provenance: bool = False,
+        refresh_history_behind_cursor: bool = False,
+        htf_bar_timestamp_semantics: str | None = None,
     ) -> None:
         self.bindings = tuple(bindings)
+        self.carry_bar_provenance = bool(carry_bar_provenance)
+        self.refresh_history_behind_cursor = bool(refresh_history_behind_cursor)
+        self._history_cursor_id = None
         if not self.bindings:
             raise ValueError("At least one loaded runtime model binding is required.")
 
@@ -186,6 +203,7 @@ class LiveSignalProcessor:
         self.feature_engine = feature_engine or IncrementalFeatureEngine(
             manifests,
             rolling_window_bars=rolling_window_bars,
+            htf_bar_timestamp_semantics=htf_bar_timestamp_semantics,
             extra_feature_names=_resolve_dashboard_extra_feature_names(
                 enable_frvp_dashboard_state=self._frvp_dashboard_state_enabled,
                 enable_ict_dashboard_state=self._ict_dashboard_state_enabled,
@@ -208,6 +226,7 @@ class LiveSignalProcessor:
         self.timeframe = first_manifest.timeframe
         self.collection_version, collection_contract = collection_identity(manifests)
         register_collection(self.audit_repository.store, self.collection_version, collection_contract)
+        self._collection_contract = collection_contract
         self.setup_event_repository = SetupEventRepository(self.audit_repository.store)
         self._input_contract_health: dict[str, dict] = {}
         self.last_processed_timestamp: datetime | None = None
@@ -392,6 +411,7 @@ class LiveSignalProcessor:
             return 0
         self.feature_engine.extend(bars)
         self.last_processed_timestamp = bars[-1].timestamp
+        self._init_history_cursor()
         return len(bars)
 
     def process_new_bars_from_store(
@@ -565,6 +585,8 @@ class LiveSignalProcessor:
             "prepare_total": perf_counter() - prepare_started,
             **builder_timings,
         }
+        if self.raw_snapshot_recorder is not None:
+            self._record_raw_snapshot(snapshot, feature_frame)
         return PreparedSignalSnapshot(
             group_name=self.group_name,
             snapshot=snapshot,
@@ -830,6 +852,12 @@ class LiveSignalProcessor:
                 else None
             )
             if decision_path.audit_record is not None:
+                shadow_evaluation = decision_path.signal.shadow_evaluation or {}
+                setup_match = shadow_evaluation.get("setup_match", {})
+                setup_candidates = {
+                    item.get("event_id"): item
+                    for item in setup_match.get("candidates", [])
+                }
                 for event in setup_events:
                     if not loaded_model.model_id.lower().startswith(event.strategy.lower() + "_"):
                         continue
@@ -844,9 +872,15 @@ class LiveSignalProcessor:
                             "model_direction_matches": (event.setup_side == (1 if loaded_model.manifest.direction == "long" else -1)),
                             "setup_gate_matched": setup_gate.matched,
                             "setup_gate_reasons": list(setup_gate.forced_hold_reasons),
-                            "shadow_setup_matched": event.event_id in (
-                                (decision_path.signal.shadow_evaluation or {}).get("setup_match", {}).get("matched_event_ids", [])
-                            ),
+                            "shadow_setup_matched": event.event_id in setup_match.get("matched_event_ids", []),
+                            "routing_contract": setup_match.get("routing_contract"),
+                            "routing_role": setup_candidates.get(event.event_id, {}).get(
+                                "routing_role", "unknown"),
+                            "primary_executable_setup_event_id": setup_match.get("primary_event_id"),
+                            "counterfactual_markout_only": event.event_id in setup_match.get(
+                                "counterfactual_event_ids", []),
+                            "later_setup_not_attached": event.event_id in setup_match.get(
+                                "later_event_ids", []),
                             "shadow_evaluation": decision_path.signal.shadow_evaluation,
                             "collection_version": self.collection_version,
                             "qualified_shadow_entry": False,
@@ -970,8 +1004,45 @@ class LiveSignalProcessor:
             )
         return tuple(results)
 
+    def _init_history_cursor(self) -> None:
+        """Opt-in history refresh: start watching source-bar history from the current upper id."""
+        if not self.refresh_history_behind_cursor:
+            return
+        row = self.audit_repository.store.connection.execute(
+            "SELECT MAX(id) AS upper FROM source_bar_history WHERE asset=? AND timeframe=?",
+            (self.asset, self.timeframe),
+        ).fetchone()
+        self._history_cursor_id = int(row["upper"] or 0)
+
+    def _refresh_history_behind_cursor(self) -> bool:
+        """Opt-in (s4-history-refresh-v1): rebuild the retained history when the store recorded a first observation or
+        revision of a bar at or before the last processed timestamp. Returns True when the history was rebuilt."""
+        if not self.refresh_history_behind_cursor or self.last_processed_timestamp is None:
+            return False
+        if self._history_cursor_id is None:
+            self._init_history_cursor()
+            return False
+        row = self.audit_repository.store.connection.execute(
+            "SELECT MAX(id) AS upper, MIN(CASE WHEN timestamp_utc <= ? THEN timestamp_utc END) AS behind "
+            "FROM source_bar_history WHERE asset=? AND timeframe=? AND id>?",
+            (ensure_utc(self.last_processed_timestamp).isoformat(), self.asset, self.timeframe, self._history_cursor_id),
+        ).fetchone()
+        if row["upper"] is None:
+            return False
+        self._history_cursor_id = int(row["upper"])
+        if row["behind"] is None:
+            return False
+        _refresh_live_state(self, self.last_processed_timestamp)
+        self._record_health_event(
+            component="signal_runtime.history", event_type="history_refreshed_behind_cursor", severity="info",
+            message="A bar at or before the last processed timestamp was backfilled or revised; the retained history was rebuilt from the store.",
+            payload={"earliest_changed_timestamp_utc": row["behind"], "version": "s4-history-refresh-v1"},
+        )
+        return True
+
     def _reconcile_setup_history(self) -> None:
         if self.asset != "ES" or not (self._frvp_dashboard_state_enabled or self._ict_dashboard_state_enabled):
+            self._refresh_history_behind_cursor()
             return
         try:
             reconcile_setup_revisions(self)
@@ -1062,6 +1133,12 @@ class LiveSignalProcessor:
             ],
         ]
         prepared = policy_frame.loc[:, ordered_columns]
+        if getattr(self, "asset", None) == "ES" and getattr(self, "timeframe", None) == "5m":
+            # Use the full RAW state before alignment/trimming or model imputation.
+            movement = build_expected_move_frame(market_frame).tail(len(prepared)).reset_index(drop=True)
+            prepared = prepared.copy()
+            for column in movement:
+                prepared[column] = movement[column].to_numpy()
         _restore_feature_attrs(prepared, portable_attrs)
         return prepared
 
@@ -1117,6 +1194,98 @@ class LiveSignalProcessor:
         self._generation_id += 1
         return int(self._generation_id)
 
+    def attach_raw_snapshot_recorder(self, recorder: RawSnapshotRecorder) -> None:
+        """Enable section 4 R1 raw pre-imputation snapshots for this group (copy-only)."""
+        artifacts = {
+            entry["manifest"]["model_id"]: entry["artifacts"]
+            for entry in (getattr(self, "_collection_contract", None) or {}).get("models", [])
+        }
+        models = []
+        for binding in self.bindings:
+            manifest = binding.loaded_model.manifest
+            context = manifest.context_requirements
+            models.append({
+                "model_id": manifest.model_id,
+                "backend": manifest.backend,
+                "direction": manifest.direction,
+                "selected_feature_names": list(manifest.feature_manifest.selected_feature_names),
+                "lag_steps": list(manifest.feature_manifest.lag_steps or []),
+                "context_rows": int(context.context_rows),
+                "window_size": int(context.window_size),
+                "consumed_rows": consumed_rows(manifest),
+                "capture_rows": max(consumed_rows(manifest), int(context.context_rows) + 1),
+                "threshold": manifest.live_policy.thresholds.global_threshold,
+                "shadow_mode": bool(binding.shadow_mode or self.force_shadow_mode),
+                "artifacts": artifacts.get(manifest.model_id, {}),
+            })
+        recorder.register_models(feature_names=self.feature_engine.plan.selected_feature_names, models=models)
+        self.feature_engine.enable_raw_capture(recorder.capture_rows)
+        self.raw_snapshot_recorder = recorder
+
+    def _record_raw_snapshot(self, snapshot: MarketDataSnapshot, feature_frame: pd.DataFrame) -> None:
+        recorder = self.raw_snapshot_recorder
+        try:
+            capture = self.feature_engine.last_raw_capture
+            warmup = {
+                binding.loaded_model.model_id: asdict(self.feature_engine.warmup_status(
+                    model_id=binding.loaded_model.model_id,
+                    feature_frame=feature_frame,
+                ))
+                for binding in self.bindings
+            }
+            recorder.record(
+                build_id=snapshot.snapshot_id,
+                generation_id=snapshot.generation_id,
+                endpoint_timestamp=snapshot.bar_timestamp,
+                endpoint_source_row_idx=snapshot.source_row_idx,
+                capture=capture,
+                build_metadata=dict(self.feature_engine.last_build_metadata or {}),
+                warmup=warmup,
+                cache_hit=bool(self.feature_engine.last_build_from_cache),
+                collection_version=getattr(self, "collection_version", None),
+                fill_mode=self.feature_engine.fill_mode,
+                store_provenance=self._store_provenance_for(capture.timestamps if capture is not None else ()),
+            )
+        except Exception as exc:  # Instrumentation must never alter or stop scoring.
+            recorder.note_failure(build_id=snapshot.snapshot_id, endpoint_timestamp=snapshot.bar_timestamp, error=exc)
+
+    def _store_provenance_for(self, timestamps: Sequence[pd.Timestamp]) -> dict[pd.Timestamp, dict[str, Any]]:
+        """Canonical-row provenance and source_row_idx for captured rows (read-only)."""
+        valid = [ts for ts in timestamps if not pd.isna(ts)]
+        if not valid:
+            return {}
+        connection = self.audit_repository.store.connection
+        first, last = min(valid).to_pydatetime().isoformat(), max(valid).to_pydatetime().isoformat()
+        before = connection.execute(
+            "SELECT COUNT(*) AS bar_count FROM canonical_bars WHERE asset = ? AND timeframe = ? AND timestamp_utc < ?",
+            (self.asset, self.timeframe, first),
+        ).fetchone()
+        rows = connection.execute(
+            """
+            SELECT timestamp_utc, contract_symbol, source_timestamp_utc, bar_version, is_complete, feed_type,
+                   first_observed_at_utc, last_observed_at_utc, observation_kind
+            FROM canonical_bars
+            WHERE asset = ? AND timeframe = ? AND timestamp_utc >= ? AND timestamp_utc <= ?
+            ORDER BY timestamp_utc ASC
+            """,
+            (self.asset, self.timeframe, first, last),
+        ).fetchall()
+        base = int(before["bar_count"]) if before is not None else 0
+        return {
+            pd.to_datetime(str(row["timestamp_utc"]), utc=True): {
+                "source_row_idx": base + offset,
+                "contract_symbol": row["contract_symbol"],
+                "source_timestamp": row["source_timestamp_utc"],
+                "bar_version": row["bar_version"],
+                "is_complete": bool(row["is_complete"]) if row["is_complete"] is not None else None,
+                "feed_type": row["feed_type"],
+                "first_observed_at": row["first_observed_at_utc"],
+                "last_observed_at": row["last_observed_at_utc"],
+                "observation_kind": row["observation_kind"],
+            }
+            for offset, row in enumerate(rows)
+        }
+
     def _resolve_source_row_idx(self, bar: MarketBar) -> int:
         row = self.audit_repository.store.connection.execute(
             """
@@ -1148,7 +1317,14 @@ class LiveSignalProcessor:
                 symbol,
                 contract_symbol,
                 instrument_id,
-                feature_context_json
+                feature_context_json,
+                source_timestamp_utc,
+                bar_version,
+                is_complete,
+                feed_type,
+                first_observed_at_utc,
+                last_observed_at_utc,
+                observation_kind
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ?
             ORDER BY timestamp_utc DESC
@@ -1157,7 +1333,7 @@ class LiveSignalProcessor:
             (self.asset, self.timeframe, int(limit)),
         ).fetchall()
         return [
-            _bar_from_row(row)
+            _bar_from_row(row, carry_provenance=self.carry_bar_provenance)
             for row in reversed(rows)
         ]
 
@@ -1184,7 +1360,14 @@ class LiveSignalProcessor:
                 symbol,
                 contract_symbol,
                 instrument_id,
-                feature_context_json
+                feature_context_json,
+                source_timestamp_utc,
+                bar_version,
+                is_complete,
+                feed_type,
+                first_observed_at_utc,
+                last_observed_at_utc,
+                observation_kind
             FROM canonical_bars
             WHERE asset = ? AND timeframe = ? AND timestamp_utc > ?
         """
@@ -1195,7 +1378,7 @@ class LiveSignalProcessor:
         query += " ORDER BY timestamp_utc ASC"
 
         rows = self.audit_repository.store.connection.execute(query, params).fetchall()
-        return [_bar_from_row(row) for row in rows]
+        return [_bar_from_row(row, carry_provenance=self.carry_bar_provenance) for row in rows]
 
     def _capture_chart(self, signal_decision_id: int) -> CapturedChartArtifact | None:
         if self.chart_capture_service is None:
@@ -1387,6 +1570,13 @@ class MultiGroupLiveSignalProcessor:
         self._generation_id = 0
         self._closed = False
 
+    def attach_raw_snapshot_recorders(self, recorders: dict[str, RawSnapshotRecorder]) -> None:
+        """Attach one section 4 R1 recorder per group name; groups without one stay disabled."""
+        for processor in self.processors:
+            recorder = recorders.get(processor.group_name)
+            if recorder is not None:
+                processor.attach_raw_snapshot_recorder(recorder)
+
     def warm_from_store(self) -> int:
         if not self._can_share_market_timeline():
             return sum(processor.warm_from_store() for processor in self.processors)
@@ -1417,6 +1607,7 @@ class MultiGroupLiveSignalProcessor:
                 continue
             processor.feature_engine.extend(selected)
             processor.last_processed_timestamp = selected[-1].timestamp
+            processor._init_history_cursor()
             warmed += len(selected)
         return warmed
 
@@ -1834,7 +2025,18 @@ def build_market_snapshot_id(
     return f"{asset}:{timeframe}:{resolved_timestamp.isoformat()}:{int(source_row_idx)}"
 
 
-def _bar_from_row(row) -> MarketBar:
+def _bar_from_row(row, *, carry_provenance: bool = False) -> MarketBar:
+    provenance = {}
+    if carry_provenance:
+        provenance = {
+            "source_timestamp": _optional_datetime(row["source_timestamp_utc"]),
+            "bar_version": row["bar_version"],
+            "is_complete": bool(row["is_complete"]) if row["is_complete"] is not None else None,
+            "feed_type": row["feed_type"],
+            "first_observed_at": _optional_datetime(row["first_observed_at_utc"]),
+            "last_observed_at": _optional_datetime(row["last_observed_at_utc"]),
+            "observation_kind": row["observation_kind"] or "unknown",
+        }
     return MarketBar(
         asset=str(row["asset"]),
         timeframe=str(row["timeframe"]),
@@ -1852,7 +2054,12 @@ def _bar_from_row(row) -> MarketBar:
         contract_symbol=row["contract_symbol"],
         instrument_id=int(row["instrument_id"]) if row["instrument_id"] is not None else None,
         feature_context=_json_loads(row["feature_context_json"]),
+        **provenance,
     )
+
+
+def _optional_datetime(value) -> datetime | None:
+    return datetime.fromisoformat(str(value)) if value else None
 
 
 def _to_python_scalar(value):

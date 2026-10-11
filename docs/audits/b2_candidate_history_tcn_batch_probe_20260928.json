@@ -1,0 +1,6 @@
+{
+  "endpoints": 93,
+  "max_abs_error": 1.2519726104720519e-05,
+  "threshold_disagreements": 0,
+  "amp": false
+}
